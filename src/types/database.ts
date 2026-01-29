@@ -24,6 +24,7 @@ export interface Profile {
   company_id: string | null;
   phone: string | null;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface Area {
@@ -92,7 +93,7 @@ export interface Application {
   property_id: string;
   agent_id: string | null;
   company_id: string | null;
-  
+
   // Applicant Info
   applicant_name: string;
   applicant_email: string;
@@ -105,7 +106,7 @@ export interface Application {
   has_pets: boolean;
   pet_details: string | null;
   additional_notes: string | null;
-  
+
   // Screening Results (SENSITIVE: Only visible to landlords/admins)
   screening_status: ScreeningStatus;
   credit_score: number | null;
@@ -113,15 +114,15 @@ export interface Application {
   income_verified: boolean | null;
   screening_report_url: string | null;
   screening_completed_at: string | null;
-  
+
   // Workflow
   status: ApplicationStatus;
   webhook_sent: boolean;
   webhook_sent_at: string | null;
-  
+
   created_at: string;
   updated_at: string;
-  
+
   // Relations
   property?: Property;
   agent?: Profile;

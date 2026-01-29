@@ -27,7 +27,10 @@ const MOCK_PROFILES: Record<string, Profile> = {
         full_name: 'Admin User',
         role: 'admin',
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        avatar_url: null,
+        company_id: null,
+        phone: null
     },
     'agent@example.com': {
         id: 'mock-agent-id',
@@ -35,7 +38,10 @@ const MOCK_PROFILES: Record<string, Profile> = {
         full_name: 'Agent User',
         role: 'agent',
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        avatar_url: null,
+        company_id: null,
+        phone: null
     },
     'landlord@example.com': {
         id: 'mock-landlord-id',
@@ -43,7 +49,10 @@ const MOCK_PROFILES: Record<string, Profile> = {
         full_name: 'Landlord User',
         role: 'landlord',
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        avatar_url: null,
+        company_id: null,
+        phone: null
     }
 };
 
@@ -179,7 +188,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
                     full_name: 'Demo User',
                     role: 'agent',
                     created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
+                    updated_at: new Date().toISOString(),
+                    avatar_url: null,
+                    company_id: null,
+                    phone: null
                 };
                 setUser(genericUser);
                 setProfile(genericProfile);
@@ -226,7 +238,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 full_name: fullName,
                 role,
                 created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
+                avatar_url: null,
+                company_id: null,
+                phone: null
             };
 
             setUser(mockUser);
