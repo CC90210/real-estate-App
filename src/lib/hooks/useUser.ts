@@ -121,8 +121,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <UserContext.Provider
-      value= {{
+        <UserContext.Provider value= {{
         user,
             profile,
             isLoading,
@@ -132,12 +131,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
                     signUp,
                     signOut,
                     refreshProfile,
-      }
-}
-    >
+        }
+}>
     { children }
     </UserContext.Provider>
-  );
+    );
 }
 
 export function useUser() {
