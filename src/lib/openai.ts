@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 
 export const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+    apiKey: process.env.OPENAI_API_KEY || 'mock-key-for-build',
 });
 
 export const CHAT_SYSTEM_PROMPT = `You are PropFlow AI, a helpful real estate assistant for property management. You help real estate agents, landlords, and administrators with property information, tenant applications, and general inquiries.
