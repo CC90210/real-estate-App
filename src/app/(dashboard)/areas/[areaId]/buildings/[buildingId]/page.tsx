@@ -10,6 +10,7 @@ import {
     Building2,
     Search,
     ArrowLeft,
+    ArrowRight,
     Bed,
     Bath,
     Ruler,

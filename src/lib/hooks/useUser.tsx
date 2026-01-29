@@ -121,21 +121,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <UserContext.Provider value= {{
-        user,
-            profile,
-            isLoading,
-            isAuthenticated: !!user,
-                role: profile?.role || null,
-                    signIn,
-                    signUp,
-                    signOut,
-                    refreshProfile,
-        }
+        <UserContext.Provider value= {{ user, profile, isLoading, isAuthenticated: !!user, role: profile?.role || null, signIn, signUp, signOut, refreshProfile }
 }>
     { children }
     </UserContext.Provider>
-    );
+  );
 }
 
 export function useUser() {

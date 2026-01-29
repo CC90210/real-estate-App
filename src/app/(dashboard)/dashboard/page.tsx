@@ -17,6 +17,7 @@ import {
 import Link from 'next/link';
 import { useApplicationStats } from '@/lib/hooks/useApplications';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 export default function DashboardPage() {
     const { profile, role } = useUser();
@@ -53,7 +54,7 @@ export default function DashboardPage() {
                             </Button>
                         </Link>
                     )}
-                    {['landlord', 'admin'].includes(role) && (
+                    {role && ['landlord', 'admin'].includes(role) && (
                         <Link href="/applications">
                             <Button className="gradient-bg text-white shadow-lg shadow-primary/20">
                                 <FileText className="w-4 h-4 mr-2" />
