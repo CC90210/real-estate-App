@@ -54,16 +54,28 @@ export default async function DashboardPage() {
         .order('created_at', { ascending: false })
         .limit(4);
 
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user?.id)
+        .single();
+
     return (
         <div className="space-y-10 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm">
-                <div>
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
+                <div className="relative z-10">
                     <div className="flex items-center gap-2 mb-2">
                         <div className="px-2 py-0.5 rounded-md bg-blue-50 text-[10px] font-bold text-blue-600 border border-blue-100 uppercase tracking-widest">Performance Active</div>
+                        <span className="text-slate-300">•</span>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{profile?.role || 'Agent'} Account</div>
                     </div>
-                    <h1 className="text-4xl font-black tracking-tight text-slate-900">Portfolio Overview</h1>
-                    <p className="text-slate-500 mt-2 font-medium">Welcome back. Your portfolio is currently generating <span className="text-slate-900 font-bold">${totalMonthlyRent.toLocaleString()}</span> in monthly revenue.</p>
+                    <h1 className="text-4xl font-black tracking-tight text-slate-900">
+                        Welcome back, <span className="text-blue-600">{profile?.full_name?.split(' ')[0] || 'Agent'}</span>
+                    </h1>
+                    <p className="text-slate-500 mt-2 font-medium">Your portfolio is currently generating <span className="text-slate-900 font-bold">${totalMonthlyRent.toLocaleString()}</span> in monthly revenue.</p>
                 </div>
                 <div className="flex gap-3">
                     <Link href="/documents">

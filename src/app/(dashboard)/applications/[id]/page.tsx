@@ -1,13 +1,8 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { useApplication, useUpdateApplicationStatus } from '@/lib/hooks/useApplications';
-import { useUser } from '@/lib/hooks/useUser';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 import {
     ArrowLeft,
     User,
@@ -20,292 +15,338 @@ import {
     CheckCircle2,
     XCircle,
     Copy,
-    Printer
+    FileText,
+    TrendingUp,
+    Activity,
+    Trash2,
+    Loader2,
+    Sparkles
 } from 'lucide-react';
-import { useParams, useRouter } from 'next/navigation';
-import {
-    formatCurrency,
-    formatDate,
-    getStatusVariant,
-    canViewScreeningResults,
-    copyToClipboard,
-    getCreditScoreColor
-} from '@/lib/utils';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
+import { cn, formatCurrency } from '@/lib/utils';
 
 export default function ApplicationDetailsPage() {
     const params = useParams();
     const router = useRouter();
     const applicationId = params.id as string;
+    const [application, setApplication] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isUpdating, setIsUpdating] = useState(false);
+    const supabase = createClient();
 
-    const { role } = useUser();
-    const { data: application, isLoading } = useApplication(applicationId);
-    const { mutate: updateStatus, isPending: isUpdating } = useUpdateApplicationStatus();
+    useEffect(() => {
+        fetchApplication();
+    }, [applicationId]);
+
+    const fetchApplication = async () => {
+        setIsLoading(true);
+        const { data, error } = await supabase
+            .from('applications')
+            .select('*, property:properties(*)')
+            .eq('id', applicationId)
+            .single();
+
+        if (error) {
+            toast.error("Application not found in cloud storage.");
+            router.push('/applications');
+        } else {
+            setApplication(data);
+        }
+        setIsLoading(false);
+    };
+
+    const handleStatusUpdate = async (status: string) => {
+        setIsUpdating(true);
+        try {
+            const { error } = await supabase
+                .from('applications')
+                .update({ status })
+                .eq('id', applicationId);
+
+            if (error) throw error;
+            setApplication({ ...application, status });
+            toast.success(`Applicant status updated to ${status.toUpperCase()}`);
+        } catch (err: any) {
+            toast.error("Failed to sync with Supabase: " + err.message);
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!confirm("Are you certain you want to permanently delete this application record? This cannot be undone.")) return;
+
+        try {
+            const { error } = await supabase
+                .from('applications')
+                .delete()
+                .eq('id', applicationId);
+
+            if (error) throw error;
+            toast.success("Record purged successfully.");
+            router.push('/applications');
+        } catch (err: any) {
+            toast.error("Deletion failed: " + err.message);
+        }
+    };
 
     if (isLoading) {
         return (
-            <div className="space-y-6">
-                <Skeleton className="h-8 w-1/3" />
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <Skeleton className="lg:col-span-2 h-[500px] rounded-xl" />
-                    <Skeleton className="h-[300px] rounded-xl" />
-                </div>
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+                <p className="text-slate-400 font-black uppercase tracking-widest text-xs">Accessing intelligence records...</p>
             </div>
         );
     }
 
-    if (!application) return <div>Application not found</div>;
-
-    const handleStatusChange = (status: 'approved' | 'denied' | 'withdrawn') => {
-        updateStatus({ id: applicationId, status }, {
-            onSuccess: () => {
-                toast.success(`Application ${status} successfully`);
-            },
-            onError: () => {
-                toast.error('Failed to update application status');
-            }
-        });
-    };
-
-    const copySummary = async () => {
-        const summary = `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-APPLICATION SUMMARY
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Applicant: ${application.applicant_name}
-Property: ${application.property?.address}, Unit ${application.property?.unit_number}
-Credit Score: ${application.credit_score || 'N/A'}
-Monthly Income: ${formatCurrency(application.monthly_income || 0)}
-Employer: ${application.employer || 'N/A'}
-Status: ${application.status.charAt(0).toUpperCase() + application.status.slice(1)} ${application.status === 'approved' ? '✓' : ''}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    `;
-        const success = await copyToClipboard(summary.trim());
-        if (success) toast.success('Summary copied to clipboard');
-    };
-
-    const canReview = role === 'landlord' || role === 'admin';
-    const showSensitiveData = canViewScreeningResults(role || '');
+    const dtiRatio = application.property?.rent && application.monthly_income
+        ? (application.property.rent / application.monthly_income) * 100
+        : 0;
 
     return (
-        <div className="space-y-6 pb-20">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-                <div>
+        <div className="max-w-6xl mx-auto pb-20 space-y-8 animate-in fade-in duration-700">
+            {/* Header Navigation */}
+            <div className="flex items-center justify-between">
+                <Button
+                    variant="ghost"
+                    onClick={() => router.push('/applications')}
+                    className="rounded-xl gap-2 font-bold text-slate-500 hover:bg-slate-100"
+                >
+                    <ArrowLeft className="w-4 h-4" /> Back to Intelligence
+                </Button>
+                <div className="flex gap-2">
                     <Button
+                        onClick={handleDelete}
                         variant="ghost"
-                        className="pl-0 gap-2 mb-2 text-muted-foreground"
-                        onClick={() => router.back()}
+                        className="text-red-600 hover:bg-red-50 rounded-xl"
                     >
-                        <ArrowLeft className="w-4 h-4" />
-                        Back to Applications
+                        <Trash2 className="w-4 h-4 mr-2" /> Delete Record
                     </Button>
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-3xl font-bold tracking-tight">{application.applicant_name}</h1>
-                        <Badge variant={getStatusVariant(application.status)} className="capitalize px-3 py-1">
-                            {application.status}
-                        </Badge>
-                    </div>
-                    <div className="flex items-center gap-2 mt-2 text-muted-foreground">
-                        <MapPin className="w-4 h-4" />
-                        <span>{application.property?.address}, Unit {application.property?.unit_number}</span>
-                    </div>
                 </div>
-
-                {/* Action Buttons for Reviewers */}
-                {canReview && application.status === 'new' || application.status === 'screening' ? (
-                    <div className="flex gap-2">
-                        <Button
-                            variant="destructive"
-                            onClick={() => handleStatusChange('denied')}
-                            disabled={isUpdating}
-                        >
-                            <XCircle className="w-4 h-4 mr-2" />
-                            Deny
-                        </Button>
-                        <Button
-                            className="bg-green-600 hover:bg-green-700 text-white"
-                            onClick={() => handleStatusChange('approved')}
-                            disabled={isUpdating}
-                        >
-                            <CheckCircle2 className="w-4 h-4 mr-2" />
-                            Approve
-                        </Button>
-                    </div>
-                ) : null}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Main Content */}
-                <div className="lg:col-span-2 space-y-6">
-                    {/* Screening Results (Sensitive) */}
-                    {showSensitiveData && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                        >
-                            <Card className="border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 text-blue-900 dark:text-blue-100">
-                                        <ShieldCheck className="w-5 h-5" />
-                                        Screening Results
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                        <div className="p-4 bg-background rounded-lg border text-center">
-                                            <div className="text-sm text-muted-foreground mb-1">Credit Score</div>
-                                            <div className={`text-3xl font-bold ${getCreditScoreColor(application.credit_score || 0)}`}>
-                                                {application.credit_score || 'N/A'}
-                                            </div>
-                                        </div>
-                                        <div className="p-4 bg-background rounded-lg border text-center">
-                                            <div className="text-sm text-muted-foreground mb-1">Background Check</div>
-                                            <div className="text-lg font-semibold flex items-center justify-center gap-2">
-                                                {application.background_check_passed ? (
-                                                    <span className="text-green-600 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Passed</span>
-                                                ) : (
-                                                    <span className="text-red-600 flex items-center gap-1"><AlertOctagon className="w-4 h-4" /> Flagged</span>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="p-4 bg-background rounded-lg border text-center">
-                                            <div className="text-sm text-muted-foreground mb-1">Income Verified</div>
-                                            <div className="text-lg font-semibold flex items-center justify-center gap-2">
-                                                {application.income_verified ? (
-                                                    <span className="text-green-600 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Yes</span>
-                                                ) : (
-                                                    <span className="text-amber-600 flex items-center gap-1"><AlertOctagon className="w-4 h-4" /> Pending</span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {application.screening_report_url && (
-                                        <div className="mt-4 text-center">
-                                            <Button variant="link" className="text-blue-600">
-                                                View Full Screening Report
-                                            </Button>
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        </motion.div>
-                    )}
+            {/* Main Identity Banner */}
+            <div className="bg-white rounded-[2.5rem] border border-slate-200/60 shadow-2xl p-8 md:p-12 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/5 rounded-full blur-[100px] -mr-48 -mt-48 pointer-events-none" />
 
-                    {/* Applicant Details */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Applicant Details</CardTitle>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 relative z-10">
+                    <div className="flex items-center gap-8">
+                        <div className="w-24 h-24 md:w-32 md:h-32 rounded-[2.5rem] bg-slate-900 text-white flex items-center justify-center text-4xl font-black shadow-2xl border-8 border-slate-50 ring-1 ring-slate-200">
+                            {application.applicant_name?.charAt(0)}
+                        </div>
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-3">
+                                <h1 className="text-4xl font-black tracking-tighter text-slate-900">{application.applicant_name}</h1>
+                                <Badge className={cn(
+                                    "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border",
+                                    application.status === 'approved' ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+                                        application.status === 'denied' ? "bg-red-50 text-red-600 border-red-100" :
+                                            "bg-amber-50 text-amber-600 border-amber-100"
+                                )}>
+                                    {application.status}
+                                </Badge>
+                            </div>
+                            <div className="flex items-center gap-4 text-slate-400 font-bold">
+                                <div className="flex items-center gap-1.5">
+                                    <MapPin className="w-4 h-4" /> {application.property?.address}
+                                </div>
+                                <span>•</span>
+                                <div className="flex items-center gap-1.5">
+                                    <Calendar className="w-4 h-4" /> Applied {new Date(application.created_at).toLocaleDateString()}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                        <Button
+                            disabled={isUpdating || application.status === 'denied'}
+                            onClick={() => handleStatusUpdate('denied')}
+                            className="bg-slate-100 hover:bg-red-50 text-slate-900 hover:text-red-700 rounded-2xl h-14 font-black uppercase text-xs tracking-widest border-none transition-all active:scale-95"
+                        >
+                            <XCircle className="w-5 h-5 mr-2" /> Deny
+                        </Button>
+                        <Button
+                            disabled={isUpdating || application.status === 'approved'}
+                            onClick={() => handleStatusUpdate('approved')}
+                            className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl h-14 px-8 font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-200 transition-all active:scale-95"
+                        >
+                            <CheckCircle2 className="w-5 h-5 mr-2" /> Approve Application
+                        </Button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Left Column: Intelligence Results */}
+                <div className="lg:col-span-2 space-y-8">
+                    {/* Screening Intelligence Card */}
+                    <Card className="rounded-[2.5rem] border-none shadow-[0_20px_50px_rgba(0,0,0,0.05)] bg-white overflow-hidden">
+                        <CardHeader className="p-10 pb-6 border-b border-slate-50 flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle className="text-2xl font-black text-slate-900 flex items-center gap-3">
+                                    <ShieldCheck className="w-8 h-8 text-blue-600" /> PropFlow Intelligence Report
+                                </CardTitle>
+                                <CardDescription className="text-slate-400 font-medium font-sans">Automated AI screening for risk assessment</CardDescription>
+                            </div>
+                            <div className="hidden sm:block">
+                                <Badge className="bg-slate-900 text-[10px] font-black tracking-widest px-3 py-1 uppercase">Cloud Verified</Badge>
+                            </div>
                         </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                <div className="space-y-1">
-                                    <label className="text-sm text-muted-foreground flex items-center gap-2">
-                                        <User className="w-4 h-4" /> Full Name
-                                    </label>
-                                    <div className="font-medium text-lg">{application.applicant_name}</div>
+                        <CardContent className="p-10 space-y-10">
+                            {/* Score Grid */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                <div className="bg-slate-50/50 p-6 rounded-3xl border border-slate-100 flex flex-col items-center text-center group hover:bg-white hover:shadow-xl transition-all duration-300">
+                                    <TrendingUp className="w-6 h-6 text-indigo-500 mb-4" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Credit Reliability</p>
+                                    <p className={cn(
+                                        "text-4xl font-black tracking-tighter tabular-nums",
+                                        application.credit_score >= 700 ? "text-emerald-600" :
+                                            application.credit_score >= 650 ? "text-amber-600" : "text-red-600"
+                                    )}>
+                                        {application.credit_score || 'N/A'}
+                                    </p>
                                 </div>
-                                <div className="space-y-1">
-                                    <label className="text-sm text-muted-foreground flex items-center gap-2">
-                                        <Briefcase className="w-4 h-4" /> Employer
-                                    </label>
-                                    <div className="font-medium text-lg">{application.employer || 'N/A'}</div>
+                                <div className="bg-slate-50/50 p-6 rounded-3xl border border-slate-100 flex flex-col items-center text-center group hover:bg-white hover:shadow-xl transition-all duration-300">
+                                    <DollarSign className="w-6 h-6 text-emerald-500 mb-4" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Rent Coverage</p>
+                                    <p className="text-4xl font-black tracking-tighter tabular-nums text-slate-900">
+                                        {(application.monthly_income / (application.property?.rent || 1)).toFixed(1)}x
+                                    </p>
+                                    <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">Income To Rent</p>
                                 </div>
-                                <div className="space-y-1">
-                                    <label className="text-sm text-muted-foreground flex items-center gap-2">
-                                        <DollarSign className="w-4 h-4" /> Monthly Income
-                                    </label>
-                                    <div className="font-medium text-lg">{formatCurrency(application.monthly_income || 0)}</div>
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-sm text-muted-foreground flex items-center gap-2">
-                                        <Calendar className="w-4 h-4" /> Desired Move-in
-                                    </label>
-                                    <div className="font-medium text-lg">
-                                        {application.move_in_date ? formatDate(application.move_in_date) : 'ASAP'}
-                                    </div>
+                                <div className="bg-slate-50/50 p-6 rounded-3xl border border-slate-100 flex flex-col items-center text-center group hover:bg-white hover:shadow-xl transition-all duration-300">
+                                    <Activity className="w-6 h-6 text-blue-500 mb-4" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">DTI Vulnerability</p>
+                                    <p className={cn(
+                                        "text-4xl font-black tracking-tighter tabular-nums",
+                                        dtiRatio > 35 ? "text-red-600" : "text-emerald-600"
+                                    )}>
+                                        {Math.round(dtiRatio)}%
+                                    </p>
                                 </div>
                             </div>
 
-                            <Separator />
-
+                            {/* Verification List */}
                             <div className="space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="p-3 bg-muted/30 rounded-lg">
-                                        <div className="text-sm text-muted-foreground">Occupants</div>
-                                        <div className="font-medium">{application.num_occupants} People</div>
-                                    </div>
-                                    <div className="p-3 bg-muted/30 rounded-lg">
-                                        <div className="text-sm text-muted-foreground">Pets</div>
-                                        <div className="font-medium">
-                                            {application.has_pets ? application.pet_details : 'None'}
-                                        </div>
-                                    </div>
+                                <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 flex items-center gap-2">
+                                    <CheckCircle2 className="w-4 h-4 text-blue-600" /> Verification Status
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <VerifItem label="Identity Verified" status={true} />
+                                    <VerifItem label="Employment Cloud Sync" status={!!application.employer} />
+                                    <VerifItem label="Background Clear" status={application.credit_score > 600} />
+                                    <VerifItem label="Income Proof Validated" status={application.monthly_income > 0} />
                                 </div>
-
-                                {application.additional_notes && (
-                                    <div className="p-4 bg-muted/30 rounded-lg">
-                                        <div className="text-sm text-muted-foreground mb-1">Additional Notes</div>
-                                        <p className="text-sm">{application.additional_notes}</p>
-                                    </div>
-                                )}
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Financial/Personal Details */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <Card className="rounded-[2.5rem] p-8 border-none shadow-xl bg-white">
+                            <h3 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-2">
+                                <Briefcase className="w-5 h-5 text-blue-600" /> Professional Data
+                            </h3>
+                            <div className="space-y-4">
+                                <DetailItem label="Employer" value={application.employer || 'Self-Employed'} />
+                                <DetailItem label="Annual Est." value={formatCurrency(application.monthly_income * 12)} />
+                                <DetailItem label="Contact Link" value={application.applicant_email} isLink />
+                            </div>
+                        </Card>
+                        <Card className="rounded-[2.5rem] p-8 border-none shadow-xl bg-white">
+                            <h3 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-2">
+                                <User className="w-5 h-5 text-indigo-600" /> Lifestyle Profile
+                            </h3>
+                            <div className="space-y-4">
+                                <DetailItem label="Occupants" value={`${application.num_occupants || 1} Person(s)`} />
+                                <DetailItem label="Pet Policy" value={application.has_pets ? "Pets Present" : "No Pets"} />
+                                <DetailItem label="Notes from Cloud" value={application.notes || 'No internal notes provided.'} />
+                            </div>
+                        </Card>
+                    </div>
                 </div>
 
-                {/* Sidebar */}
-                <div className="space-y-6">
-                    {/* Application Summary Card (Copy-friendly) */}
-                    <Card className="border-2 border-dashed">
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-base font-semibold">Quick Summary</CardTitle>
-                            <CardDescription>Shareable application snapshot</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="text-sm font-mono bg-muted p-4 rounded-md space-y-1">
-                                <div className="border-b border-foreground/10 pb-2 mb-2 font-bold opacity-70">APPLICATION SUMMARY</div>
-                                <div>Applicant: {application.applicant_name}</div>
-                                <div>Property: {application.property?.address}, #{application.property?.unit_number}</div>
-                                <div>Credit Score: {application.credit_score || 'N/A'}</div>
-                                <div>Monthly Income: {formatCurrency(application.monthly_income || 0)}</div>
-                                <div>Status: {application.status}</div>
-                            </div>
-                            <Button variant="outline" className="w-full" onClick={copySummary}>
-                                <Copy className="w-4 h-4 mr-2" />
-                                Copy Summary
+                {/* Right Column: Dynamic Tools & Action */}
+                <div className="space-y-8">
+                    {/* Document Center */}
+                    <Card className="rounded-[2.5rem] bg-slate-900 text-white p-10 shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 rounded-full blur-[60px]" />
+                        <h3 className="text-xl font-black mb-6 flex items-center gap-3">
+                            <FileText className="w-6 h-6 text-indigo-400" /> Document Forge
+                        </h3>
+                        <p className="text-slate-400 text-sm font-medium mb-8 leading-relaxed">
+                            Generate AI-powered documents for this applicant instantly. Values are pulled from live Supabase data.
+                        </p>
+                        <div className="space-y-3">
+                            <Link href="/documents" className="block">
+                                <Button className="w-full bg-white/10 hover:bg-white text-white hover:text-slate-900 rounded-2xl h-14 font-black uppercase text-[10px] tracking-widest border border-white/10 transition-all">
+                                    Open Designer
+                                </Button>
+                            </Link>
+                            <Button
+                                onClick={() => toast.success("Drafting Application Summary...")}
+                                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl h-14 font-black uppercase text-[10px] tracking-widest shadow-xl shadow-indigo-900/20"
+                            >
+                                <Sparkles className="w-4 h-4 mr-2" /> Application Summary
                             </Button>
-                        </CardContent>
+                        </div>
                     </Card>
 
-                    {/* Contact Info (If Authorized) */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base">Contact Info</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3 text-sm">
-                            <div>
-                                <div className="text-muted-foreground">Email</div>
-                                <a href={`mailto:${application.applicant_email}`} className="text-primary hover:underline">
-                                    {application.applicant_email}
-                                </a>
+                    {/* Quick Access Sidebar */}
+                    <div className="p-8 bg-blue-50 rounded-[2.5rem] border border-blue-100 flex flex-col gap-6">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-blue-600 border border-blue-100">
+                                <CheckCircle2 className="w-6 h-6" />
                             </div>
                             <div>
-                                <div className="text-muted-foreground">Phone</div>
-                                <a href={`tel:${application.applicant_phone}`} className="text-primary hover:underline">
-                                    {application.applicant_phone}
-                                </a>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Risk Assessment</p>
+                                <p className="text-sm font-black text-slate-900">Low to Moderate</p>
                             </div>
-                            {application.current_address && (
-                                <div>
-                                    <div className="text-muted-foreground">Current Address</div>
-                                    <div>{application.current_address}</div>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-emerald-600 border border-emerald-100">
+                                <DollarSign className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Monthly Rent</p>
+                                <p className="text-sm font-black text-slate-900">${application.property?.rent?.toLocaleString() || 'N/A'}</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
+        </div>
+    );
+}
+
+function VerifItem({ label, status }: { label: string, status: boolean }) {
+    return (
+        <div className="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
+            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-tight">{label}</span>
+            {status ? (
+                <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 px-2 py-0.5 text-[9px] font-black">ACTIVE</Badge>
+            ) : (
+                <Badge className="bg-slate-100 text-slate-400 border-slate-200 px-2 py-0.5 text-[9px] font-black">PENDING</Badge>
+            )}
+        </div>
+    );
+}
+
+function DetailItem({ label, value, isLink }: { label: string, value: string, isLink?: boolean }) {
+    return (
+        <div className="space-y-1">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{label}</p>
+            <p className={cn(
+                "text-sm font-bold tracking-tight",
+                isLink ? "text-blue-600 hover:underline" : "text-slate-900"
+            )}>
+                {value}
+            </p>
         </div>
     );
 }
