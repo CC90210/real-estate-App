@@ -139,6 +139,28 @@ export function NewApplicationModal({ propertyId }: { propertyId: string }) {
                                 onChange={(e) => setFormData({ ...formData, monthly_income: e.target.value })}
                                 placeholder="5000"
                             />
+                            {property && formData.monthly_income && !isNaN(parseFloat(formData.monthly_income)) && (
+                                (() => {
+                                    const income = parseFloat(formData.monthly_income);
+                                    const rent = property.rent;
+                                    const ratio = (rent / income) * 100;
+                                    const isHighRisk = ratio > 35;
+
+                                    if (isHighRisk) {
+                                        return (
+                                            <div className="text-xs text-red-600 font-medium flex items-center gap-1 mt-1 animate-in fade-in">
+                                                <AlertTriangle className="w-3 h-3" />
+                                                High Risk: {ratio.toFixed(1)}% Rent/Income
+                                            </div>
+                                        )
+                                    }
+                                    return (
+                                        <div className="text-xs text-green-600 font-medium flex items-center gap-1 mt-1 animate-in fade-in">
+                                            Safe Ratio: {ratio.toFixed(1)}%
+                                        </div>
+                                    )
+                                })()
+                            )}
                         </div>
                         <div className="space-y-2">
                             <Label>Credit Score</Label>
