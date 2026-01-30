@@ -1,221 +1,118 @@
-'use client';
 
-import { motion } from 'framer-motion';
-import { useBuilding, useProperties } from '@/lib/hooks/useProperties';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import {
-    Building2,
-    Search,
-    ArrowLeft,
-    ArrowRight,
-    Bed,
-    Bath,
-    Ruler,
-    Filter
-} from 'lucide-react';
+import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { ArrowLeft, Home, BedDouble, Bath, Square, Calendar } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { formatCurrency, formatBedBath, getStatusVariant, formatSqFt } from '@/lib/utils';
-import Image from 'next/image';
+import { Card } from '@/components/ui/card';
 
-export default function PropertiesListPage() {
-    const params = useParams();
-    const router = useRouter();
-    const areaId = params.areaId as string;
-    const buildingId = params.buildingId as string;
+// Types
+type PropertyStatus = 'available' | 'rented' | 'pending' | 'maintenance';
 
-    const { data: building, isLoading: buildingLoading } = useBuilding(buildingId);
-    const { data: properties, isLoading: propertiesLoading } = useProperties(buildingId);
+export default async function BuildingDetailsPage({ params }: { params: { areaId: string, buildingId: string } }) {
+    const supabase = await createClient();
+    const { areaId, buildingId } = await params;
 
-    const [search, setSearch] = useState('');
-    const [statusFilter, setStatusFilter] = useState('all');
-    const [bedFilter, setBedFilter] = useState('all');
+    const { data: building } = await supabase
+        .from('buildings')
+        .select('*, area:areas(*)')
+        .eq('id', buildingId)
+        .single();
 
-    // Filter properties
-    const filteredProperties = properties?.filter((property) => {
-        const matchesSearch = property.unit_number.toLowerCase().includes(search.toLowerCase());
-        const matchesStatus = statusFilter === 'all' || property.status === statusFilter;
-        const matchesBeds = bedFilter === 'all' || property.bedrooms.toString() === bedFilter;
-
-        return matchesSearch && matchesStatus && matchesBeds;
-    });
-
-    if (buildingLoading || propertiesLoading) {
-        return (
-            <div className="space-y-6">
-                <div className="h-8 w-1/3 bg-muted rounded animate-pulse" />
-                <div className="space-y-4">
-                    {[1, 2, 3, 4].map((i) => (
-                        <Skeleton key={i} className="h-32 rounded-xl" />
-                    ))}
-                </div>
-            </div>
-        );
-    }
+    const { data: properties } = await supabase
+        .from('properties')
+        .select('*')
+        .eq('building_id', buildingId)
+        .order('unit_number', { ascending: true }); // Assuming sort by unit
 
     if (!building) return <div>Building not found</div>;
 
-    return (
-        <div className="space-y-6">
-            {/* Breadcrumb & Header */}
-            <div>
-                <div className="flex items-center text-sm text-muted-foreground mb-2">
-                    <Link href="/areas" className="hover:text-primary">Areas</Link>
-                    <span className="mx-2">/</span>
-                    <Link href={`/areas/${areaId}`} className="hover:text-primary">{building.area?.name}</Link>
-                    <span className="mx-2">/</span>
-                    <span>{building.name}</span>
-                </div>
+    const StatusBadge = ({ status }: { status: PropertyStatus }) => {
+        const styles = {
+            available: 'bg-green-100 text-green-700 border-green-200',
+            pending: 'bg-amber-100 text-amber-700 border-amber-200',
+            rented: 'bg-slate-100 text-slate-700 border-slate-200',
+            maintenance: 'bg-red-100 text-red-700 border-red-200'
+        };
+        return (
+            <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${styles[status] || styles.rented} uppercase tracking-wide`}>
+                {status}
+            </span>
+        );
+    };
 
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div className="flex items-center gap-3">
-                        <Button variant="ghost" size="icon" onClick={() => router.back()} className="-ml-2">
-                            <ArrowLeft className="w-5 h-5" />
-                        </Button>
-                        <div>
-                            <h1 className="text-3xl font-bold tracking-tight">{building.name} Properties</h1>
-                            <p className="text-muted-foreground mt-1">
-                                {building.address}
-                            </p>
-                        </div>
+    return (
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex items-center gap-4">
+                <Link href={`/areas/${areaId}`}>
+                    <Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-100">
+                        <ArrowLeft className="w-5 h-5 text-slate-500" />
+                    </Button>
+                </Link>
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight text-slate-900">{building.name}</h1>
+                    <div className="flex items-center gap-2 text-slate-500 mt-1">
+                        <span>{building.address}</span>
+                        <span>•</span>
+                        <span className="text-blue-600 font-medium">{building.area?.name}</span>
                     </div>
                 </div>
             </div>
 
-            {/* Filters Bar */}
-            <div className="glass p-4 rounded-xl flex flex-col md:flex-row gap-4">
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Search unit number..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="pl-10"
-                    />
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {properties?.map((property) => (
+                    <Link key={property.id} href={`/properties/${property.id}`}>
+                        <div className="group bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer h-full">
+                            <div className="h-40 bg-slate-100 relative items-center justify-center flex">
+                                {property.photos && property.photos.length > 0 ? (
+                                    <img src={property.photos[0]} alt="Property" className="w-full h-full object-cover" />
+                                ) : (
+                                    <Home className="w-12 h-12 text-slate-300" />
+                                )}
+                                <div className="absolute top-3 right-3">
+                                    <StatusBadge status={property.status} />
+                                </div>
+                            </div>
 
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-full md:w-[180px]">
-                        <div className="flex items-center gap-2">
-                            <Filter className="w-4 h-4" />
-                            <SelectValue placeholder="Status" />
-                        </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value="available">Available</SelectItem>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="rented">Rented</SelectItem>
-                        <SelectItem value="maintenance">Maintenance</SelectItem>
-                    </SelectContent>
-                </Select>
-
-                <Select value={bedFilter} onValueChange={setBedFilter}>
-                    <SelectTrigger className="w-full md:w-[180px]">
-                        <SelectValue placeholder="Bedrooms" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Bedrooms</SelectItem>
-                        <SelectItem value="0">Studio</SelectItem>
-                        <SelectItem value="1">1 Bedroom</SelectItem>
-                        <SelectItem value="2">2 Bedrooms</SelectItem>
-                        <SelectItem value="3">3 Bedrooms</SelectItem>
-                        <SelectItem value="4">4+ Bedrooms</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
-
-            {/* Properties List */}
-            <div className="grid grid-cols-1 gap-4">
-                {filteredProperties?.map((property, index) => (
-                    <motion.div
-                        key={property.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                    >
-                        <Link href={`/properties/${property.id}`}>
-                            <Card className="card-hover overflow-hidden border-0 shadow-sm">
-                                <div className="flex flex-col sm:flex-row">
-                                    {/* Thumbnail */}
-                                    <div className="relative w-full sm:w-48 h-48 sm:h-auto bg-muted">
-                                        {property.photos && property.photos.length > 0 ? (
-                                            <Image
-                                                src={property.photos[0].url}
-                                                alt={`Unit ${property.unit_number}`}
-                                                fill
-                                                className="object-cover"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                                                <Building2 className="w-8 h-8 opacity-20" />
-                                            </div>
-                                        )}
-                                        <div className="absolute top-2 right-2">
-                                            <Badge variant={getStatusVariant(property.status)} className="capitalize shadow-sm">
-                                                {property.status}
-                                            </Badge>
-                                        </div>
+                            <div className="p-5">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div>
+                                        <h3 className="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors">Unit {property.unit_number}</h3>
+                                        <p className="text-slate-500 text-sm">
+                                            {property.address}
+                                        </p>
                                     </div>
+                                    <p className="text-xl font-bold text-blue-600">${property.rent.toLocaleString()}</p>
+                                </div>
 
-                                    {/* Content */}
-                                    <div className="flex-1 p-6 flex flex-col justify-between">
-                                        <div>
-                                            <div className="flex justify-between items-start mb-2">
-                                                <h3 className="text-2xl font-bold">Unit {property.unit_number}</h3>
-                                                <div className="text-xl font-bold text-primary">
-                                                    {formatCurrency(property.rent)}
-                                                    <span className="text-sm font-normal text-muted-foreground">/mo</span>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mt-4">
-                                                <div className="flex items-center gap-1.5 bg-muted/50 px-3 py-1.5 rounded-md">
-                                                    <Bed className="w-4 h-4" />
-                                                    <span>{property.bedrooms === 0 ? 'Studio' : `${property.bedrooms} Beds`}</span>
-                                                </div>
-                                                <div className="flex items-center gap-1.5 bg-muted/50 px-3 py-1.5 rounded-md">
-                                                    <Bath className="w-4 h-4" />
-                                                    <span>{property.bathrooms} Baths</span>
-                                                </div>
-                                                <div className="flex items-center gap-1.5 bg-muted/50 px-3 py-1.5 rounded-md">
-                                                    <Ruler className="w-4 h-4" />
-                                                    <span>{formatSqFt(property.square_feet)}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="mt-6 flex items-center justify-between">
-                                            <div className="text-sm text-muted-foreground">
-                                                {property.parking_included && (
-                                                    <Badge variant="outline" className="mr-2">Parking Included</Badge>
-                                                )}
-                                                {property.pet_policy && (
-                                                    <Badge variant="outline">{property.pet_policy}</Badge>
-                                                )}
-                                            </div>
-                                            <Button variant="ghost" size="sm" className="text-primary hover:text-primary hover:bg-primary/10">
-                                                View Details <ArrowRight className="w-4 h-4 ml-1" />
-                                            </Button>
-                                        </div>
+                                <div className="grid grid-cols-3 gap-2 py-3 border-t border-slate-100">
+                                    <div className="flex items-center gap-1.5 text-sm text-slate-600">
+                                        <BedDouble className="w-4 h-4 text-slate-400" />
+                                        <span>{property.bedrooms} Bed</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 text-sm text-slate-600">
+                                        <Bath className="w-4 h-4 text-slate-400" />
+                                        <span>{property.bathrooms} Bath</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 text-sm text-slate-600">
+                                        <Square className="w-4 h-4 text-slate-400" />
+                                        <span>{property.square_feet} sqft</span>
                                     </div>
                                 </div>
-                            </Card>
-                        </Link>
-                    </motion.div>
-                ))}
 
-                {filteredProperties?.length === 0 && (
-                    <div className="text-center py-12 text-muted-foreground">
-                        No properties found matching your criteria.
-                    </div>
-                )}
+                                {property.available_date && (
+                                    <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2 text-xs font-medium text-slate-500">
+                                        <Calendar className="w-3.5 h-3.5" />
+                                        Available: {new Date(property.available_date) <= new Date() ?
+                                            <span className="text-green-600">Now</span> :
+                                            new Date(property.available_date).toLocaleDateString()
+                                        }
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </Link>
+                ))}
             </div>
         </div>
     );

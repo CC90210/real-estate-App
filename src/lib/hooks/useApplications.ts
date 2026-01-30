@@ -1,32 +1,21 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
 import { Application, ApplicationFormData } from '@/types/database';
+import { getApplications } from '@/lib/demo-data';
 
-// Fetch all applications (for landlords/admins)
+// Fetch all applications
 export function useApplications(status?: string) {
     return useQuery({
         queryKey: ['applications', status],
         queryFn: async () => {
-            let query = supabase
-                .from('applications')
-                .select(`
-          *,
-          property:properties(*, building:buildings(*)),
-          agent:profiles(*)
-        `)
-                .order('created_at', { ascending: false });
-
+            const allApps = await getApplications();
             if (status && status !== 'all') {
-                query = query.eq('status', status);
+                return allApps.filter(a => a.status === status);
             }
-
-            const { data, error } = await query;
-
-            if (error) throw error;
-            return data as Application[];
+            return allApps;
         },
+        staleTime: Infinity,
     });
 }
 
@@ -35,20 +24,13 @@ export function useApplication(applicationId: string) {
     return useQuery({
         queryKey: ['applications', applicationId],
         queryFn: async () => {
-            const { data, error } = await supabase
-                .from('applications')
-                .select(`
-          *,
-          property:properties(*, building:buildings(*, area:areas(*))),
-          agent:profiles(*)
-        `)
-                .eq('id', applicationId)
-                .single();
-
-            if (error) throw error;
-            return data as Application;
+            const allApps = await getApplications();
+            const app = allApps.find(a => a.id === applicationId);
+            if (!app) throw new Error('Application not found');
+            return app;
         },
         enabled: !!applicationId,
+        staleTime: Infinity,
     });
 }
 
@@ -57,44 +39,29 @@ export function usePropertyApplications(propertyId: string) {
     return useQuery({
         queryKey: ['applications', 'property', propertyId],
         queryFn: async () => {
-            const { data, error } = await supabase
-                .from('applications')
-                .select(`
-          *,
-          agent:profiles(*)
-        `)
-                .eq('property_id', propertyId)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-            return data as Application[];
+            const allApps = await getApplications();
+            return allApps.filter(a => a.property_id === propertyId);
         },
         enabled: !!propertyId,
+        staleTime: Infinity,
     });
 }
 
-// Fetch applications created by an agent
+// Fetch applications created by an agent (Mock)
 export function useAgentApplications(agentId: string) {
     return useQuery({
         queryKey: ['applications', 'agent', agentId],
         queryFn: async () => {
-            const { data, error } = await supabase
-                .from('applications')
-                .select(`
-          *,
-          property:properties(*, building:buildings(*))
-        `)
-                .eq('agent_id', agentId)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-            return data as Application[];
+            const allApps = await getApplications();
+            // Just return all apps for demo or random ones
+            return allApps;
         },
         enabled: !!agentId,
+        staleTime: Infinity,
     });
 }
 
-// Create application
+// Create application (Mock)
 export function useCreateApplication() {
     const queryClient = useQueryClient();
 
@@ -108,32 +75,13 @@ export function useCreateApplication() {
             agentId: string;
             formData: ApplicationFormData;
         }) => {
-            const { data, error } = await supabase
-                .from('applications')
-                .insert({
-                    property_id: propertyId,
-                    agent_id: agentId,
-                    ...formData,
-                    status: 'new',
-                    screening_status: 'pending',
-                })
-                .select()
-                .single();
-
-            if (error) throw error;
-
-            // Send webhook
-            try {
-                await fetch('/api/webhook/application', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ applicationId: data.id }),
-                });
-            } catch (e) {
-                console.error('Webhook failed:', e);
-            }
-
-            return data as Application;
+            console.log('Mock create application', propertyId, agentId, formData);
+            return {
+                id: 'new_mock_id',
+                property_id: propertyId,
+                status: 'new',
+                ...formData
+            } as any;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['applications'] });
@@ -141,7 +89,7 @@ export function useCreateApplication() {
     });
 }
 
-// Update application status
+// Update application status (Mock)
 export function useUpdateApplicationStatus() {
     const queryClient = useQueryClient();
 
@@ -153,22 +101,12 @@ export function useUpdateApplicationStatus() {
             id: string;
             status: 'approved' | 'denied' | 'withdrawn';
         }) => {
-            const { data, error } = await supabase
-                .from('applications')
-                .update({
-                    status,
-                    updated_at: new Date().toISOString(),
-                })
-                .eq('id', id)
-                .select()
-                .single();
-
-            if (error) throw error;
-            return data as Application;
+            console.log('Mock update status', id, status);
+            return { id, status } as any;
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['applications'] });
-            queryClient.setQueryData(['applications', data.id], data);
+            queryClient.invalidateQueries({ queryKey: ['applications', data.id] });
         },
     });
 }
@@ -178,15 +116,11 @@ export function useApplicationStats() {
     return useQuery({
         queryKey: ['applications', 'stats'],
         queryFn: async () => {
-            const { data, error } = await supabase
-                .from('applications')
-                .select('status, screening_status');
-
-            if (error) throw error;
+            const data = await getApplications();
 
             const stats = {
                 total: data.length,
-                pending: data.filter((a) => a.status === 'new' || a.status === 'screening').length,
+                pending: data.filter((a) => a.status === 'new' || a.screening_status === 'pending').length,
                 approved: data.filter((a) => a.status === 'approved').length,
                 denied: data.filter((a) => a.status === 'denied').length,
                 screeningComplete: data.filter((a) => a.screening_status === 'completed').length,
@@ -194,5 +128,6 @@ export function useApplicationStats() {
 
             return stats;
         },
+        staleTime: Infinity,
     });
 }

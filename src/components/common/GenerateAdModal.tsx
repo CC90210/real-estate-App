@@ -1,147 +1,125 @@
 'use client';
 
 import { useState } from 'react';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
-import { Property } from '@/types/database';
-import { Loader2, Copy, Check, RefreshCw, Wand2 } from 'lucide-react';
-import { copyToClipboard } from '@/lib/utils';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Loader2, Copy, Check, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface GenerateAdModalProps {
-    property: Property;
+export function GenerateAdModal({
+    open,
+    onOpenChange,
+    propertyId
+}: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-}
-
-export function GenerateAdModal({ property, open, onOpenChange }: GenerateAdModalProps) {
-    const [loading, setLoading] = useState(false);
-    const [generatedAd, setGeneratedAd] = useState<Record<string, string>>({});
+    propertyId: string;
+}) {
+    const [format, setFormat] = useState('social');
+    const [content, setContent] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
     const [copied, setCopied] = useState(false);
-    const [activeTab, setActiveTab] = useState('social');
 
-    const generateAd = async () => {
-        setLoading(true);
+    const handleGenerate = async () => {
+        setIsLoading(true);
+        setContent(''); // Clear previous
         try {
-            // Real API Call
-            const response = await fetch('/api/generate-ad', {
+            const res = await fetch('/api/generate-ad', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    propertyId: property.id,
-                    format: activeTab
-                })
+                body: JSON.stringify({ propertyId, format })
             });
 
-            if (!response.ok) throw new Error('Generation failed');
+            if (!res.ok) throw new Error('Generation failed');
 
-            const data = await response.json();
-
-            setGeneratedAd(prev => ({
-                ...prev,
-                [activeTab]: data.content
-            }));
+            const data = await res.json();
+            setContent(data.content);
         } catch (error) {
+            toast.error("Failed to generate ad. Please try again.");
             console.error(error);
-            toast.error('Failed to generate ad. Please check your API key.');
         } finally {
-            setLoading(false);
+            setIsLoading(false);
         }
     };
 
-    const handleCopy = async () => {
-        const text = generatedAd[activeTab];
-        if (!text) return;
-
-        const success = await copyToClipboard(text);
-        if (success) {
-            setCopied(true);
-            toast.success('Ad copy copied to clipboard');
-            setTimeout(() => setCopied(false), 2000);
-        }
+    const handleCopy = () => {
+        navigator.clipboard.writeText(content);
+        setCopied(true);
+        toast.success("Ad content copied to clipboard!");
+        setTimeout(() => setCopied(false), 2000);
     };
-
-    const hasContent = !!generatedAd[activeTab];
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-xl">
+            <DialogContent className="sm:max-w-md bg-white">
                 <DialogHeader>
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="w-8 h-8 rounded-lg gradient-bg flex items-center justify-center">
-                            <Wand2 className="w-4 h-4 text-white" />
-                        </div>
-                        <DialogTitle>AI Ad Generator</DialogTitle>
-                    </div>
+                    <DialogTitle className="flex items-center gap-2">
+                        <Sparkles className="w-5 h-5 text-blue-600" />
+                        Generate Property Ad
+                    </DialogTitle>
                     <DialogDescription>
-                        Generate professional marketing copy for this property in seconds.
+                        Use AI to create engaging marketing content for this property.
                     </DialogDescription>
                 </DialogHeader>
 
-                <Tabs defaultValue="social" value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-3 mb-4">
-                        <TabsTrigger value="social">Social Media</TabsTrigger>
-                        <TabsTrigger value="listing">Listing Site</TabsTrigger>
-                        <TabsTrigger value="email">Email Blast</TabsTrigger>
-                    </TabsList>
-
-                    <div className="min-h-[200px] relative">
-                        {loading ? (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/20 rounded-lg">
-                                <Loader2 className="w-8 h-8 animate-spin text-primary mb-2" />
-                                <p className="text-sm text-muted-foreground animate-pulse">
-                                    Crafting the perfect ad...
-                                </p>
+                <div className="space-y-6 py-4">
+                    <div className="space-y-3">
+                        <Label>Select Format</Label>
+                        <RadioGroup value={format} onValueChange={setFormat} className="grid grid-cols-3 gap-4">
+                            <div>
+                                <RadioGroupItem value="social" id="social" className="peer sr-only" />
+                                <Label
+                                    htmlFor="social"
+                                    className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-blue-600 [&:has([data-state=checked])]:border-blue-600 cursor-pointer text-center h-full"
+                                >
+                                    Social Post
+                                </Label>
                             </div>
-                        ) : !hasContent ? (
-                            <div className="flex flex-col items-center justify-center h-[200px] text-center p-4 border-2 border-dashed rounded-lg">
-                                <Wand2 className="w-10 h-10 text-muted-foreground mb-3" />
-                                <p className="text-muted-foreground mb-4">
-                                    Click generate to create marketing copy for
-                                    <span className="font-semibold block text-foreground mt-1">
-                                        {activeTab === 'social' ? 'Social Media' : activeTab === 'listing' ? 'Listing Sites' : 'Email Campaigns'}
-                                    </span>
-                                </p>
-                                <Button onClick={generateAd} className="gradient-bg text-white">
-                                    Generate Copy
-                                </Button>
+                            <div>
+                                <RadioGroupItem value="listing" id="listing" className="peer sr-only" />
+                                <Label
+                                    htmlFor="listing"
+                                    className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-blue-600 [&:has([data-state=checked])]:border-blue-600 cursor-pointer text-center h-full"
+                                >
+                                    Full Listing
+                                </Label>
                             </div>
-                        ) : (
-                            <div className="space-y-4">
-                                <Textarea
-                                    value={generatedAd[activeTab]}
-                                    readOnly
-                                    className="min-h-[200px] resize-none font-mono text-sm bg-muted/30"
-                                />
-                                <div className="flex gap-2 justify-end">
-                                    <Button variant="outline" onClick={generateAd} size="sm">
-                                        <RefreshCw className="w-4 h-4 mr-2" />
-                                        Regenerate
-                                    </Button>
-                                    <Button onClick={handleCopy} size="sm" className="min-w-[100px]">
-                                        {copied ? (
-                                            <>
-                                                <Check className="w-4 h-4 mr-2" /> Copied
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Copy className="w-4 h-4 mr-2" /> Copy
-                                            </>
-                                        )}
-                                    </Button>
-                                </div>
+                            <div>
+                                <RadioGroupItem value="email" id="email" className="peer sr-only" />
+                                <Label
+                                    htmlFor="email"
+                                    className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-blue-600 [&:has([data-state=checked])]:border-blue-600 cursor-pointer text-center h-full"
+                                >
+                                    Email Blast
+                                </Label>
                             </div>
-                        )}
+                        </RadioGroup>
                     </div>
-                </Tabs>
+
+                    {content && (
+                        <div className="rounded-md bg-slate-50 p-4 border relative group">
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                className="absolute top-2 right-2 h-8 w-8 p-0"
+                                onClick={handleCopy}
+                            >
+                                {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4 text-slate-500" />}
+                            </Button>
+                            <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{content}</p>
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button onClick={handleGenerate} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]">
+                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                        {content ? 'Regenerate' : 'Generate'}
+                    </Button>
+                </div>
             </DialogContent>
         </Dialog>
     );

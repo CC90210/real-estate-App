@@ -54,29 +54,7 @@ export interface Building {
   available_units_count?: number;
 }
 
-export interface Property {
-  id: string;
-  building_id: string;
-  company_id: string | null;
-  unit_number: string;
-  address: string;
-  rent: number;
-  bedrooms: number;
-  bathrooms: number;
-  square_feet: number | null;
-  description: string | null;
-  lockbox_code: string | null; // SENSITIVE: Only visible to agents/admins
-  status: PropertyStatus;
-  available_date: string | null;
-  pet_policy: string | null;
-  parking_included: boolean;
-  utilities_included: string[] | null;
-  created_at: string;
-  updated_at: string;
-  // Relations
-  building?: Building;
-  photos?: PropertyPhoto[];
-}
+
 
 export interface PropertyPhoto {
   id: string;
@@ -181,7 +159,64 @@ export interface ChatMessage {
 // Ad Generation Types
 export type AdFormat = 'social' | 'listing' | 'email';
 
-export interface GeneratedAd {
-  format: AdFormat;
-  content: string;
+export interface Landlord {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  company_name: string | null;
+  address: string | null;
+  notes: string | null;
+  created_at: string;
+  // Computed
+  properties_count?: number;
 }
+
+export interface Document {
+  id: string;
+  type: 'property_summary' | 'lease_proposal' | 'showing_sheet' | 'landlord_report';
+  related_property_id: string | null;
+  related_landlord_id: string | null;
+  content: any; // JSONB
+  created_by: string | null;
+  created_at: string;
+  // Relations
+  property?: Property;
+  landlord?: Landlord;
+}
+
+// Updated Property interface to match new spec while keeping compatibility if needed
+export interface Property {
+  id: string;
+  landlord_id: string | null;
+  building_id?: string;
+  company_id?: string | null;
+  unit_number: string | null;
+  address: string;
+  city: string;
+  neighborhood: string | null;
+  rent: number;
+  bedrooms: number;
+  bathrooms: number;
+  square_feet: number | null;
+  description: string | null;
+  amenities: string[] | null;
+  lockbox_code: string | null;
+  status: PropertyStatus;
+  available_date: string | null;
+  created_at: string;
+  updated_at?: string;
+  photos: string[] | null;
+
+  // Fields from old interface to prevent breaking changes
+  pet_policy?: string | null;
+  parking_included?: boolean;
+  utilities_included?: string[] | null;
+
+  // Relations
+  landlord?: Landlord;
+  building?: Building;
+  photos_relation?: PropertyPhoto[];
+}
+
+export type DocumentType = 'property_summary' | 'lease_proposal' | 'showing_sheet' | 'landlord_report';

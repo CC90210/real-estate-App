@@ -24,7 +24,7 @@ const MOCK_PROFILES: Record<string, Profile> = {
     'admin@example.com': {
         id: 'mock-admin-id',
         email: 'admin@example.com',
-        full_name: 'Admin User',
+        full_name: 'Jessica Pearson',
         role: 'admin',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -35,7 +35,7 @@ const MOCK_PROFILES: Record<string, Profile> = {
     'agent@example.com': {
         id: 'mock-agent-id',
         email: 'agent@example.com',
-        full_name: 'Agent User',
+        full_name: 'Mike Ross',
         role: 'agent',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -46,7 +46,7 @@ const MOCK_PROFILES: Record<string, Profile> = {
     'landlord@example.com': {
         id: 'mock-landlord-id',
         email: 'landlord@example.com',
-        full_name: 'Landlord User',
+        full_name: 'Sarah Mitchell',
         role: 'landlord',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -61,7 +61,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const [profile, setProfile] = useState<Profile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    const isDemoMode = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('mock');
+    const isDemoMode = true; // FORCE DEMO MODE
 
     const fetchProfile = async (userId: string) => {
         if (isDemoMode) {

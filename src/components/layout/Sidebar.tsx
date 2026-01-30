@@ -2,117 +2,105 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { motion } from 'framer-motion';
 import {
-    Building2,
     LayoutDashboard,
     Map,
+    Building2,
     FileText,
+    Users,
     Settings,
     LogOut,
-    ShieldAlert,
-    Menu
+    Menu,
+    ShieldAlert
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useUser } from '@/lib/hooks/useUser';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { createClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useState } from 'react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const navItems = [
     {
-        title: 'Dashboard',
+        label: 'Dashboard',
         href: '/dashboard',
         icon: LayoutDashboard,
-        roles: ['agent', 'landlord', 'admin'],
     },
     {
-        title: 'Areas',
+        label: 'Areas',
         href: '/areas',
         icon: Map,
-        roles: ['agent', 'admin'],
     },
     {
-        title: 'Applications',
+        label: 'Applications',
         href: '/applications',
+        icon: Users,
+    },
+    {
+        label: 'Documents',
+        href: '/documents',
         icon: FileText,
-        roles: ['landlord', 'admin', 'agent'],
     },
     {
-        title: 'Admin',
-        href: '/admin',
-        icon: ShieldAlert,
-        roles: ['admin'],
-    },
-    {
-        title: 'Settings',
+        label: 'Settings',
         href: '/settings',
         icon: Settings,
-        roles: ['agent', 'landlord', 'admin'],
     },
 ];
 
 export function Sidebar({ className }: { className?: string }) {
     const pathname = usePathname();
-    const { role, profile, signOut } = useUser();
+    const router = useRouter();
+    const supabase = createClient();
 
-    if (!role) return null;
-
-    const filteredNavItems = navItems.filter((item) => item.roles.includes(role));
+    const handleSignOut = async () => {
+        await supabase.auth.signOut();
+        router.push('/login');
+    };
 
     return (
-        <div className={cn("flex flex-col h-full bg-card border-r", className)}>
+        <aside className={cn("flex flex-col h-full bg-[#f8fafc] border-r border-[#e2e8f0]", className)}>
             <div className="p-6">
-                <Link href="/dashboard" className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg gradient-bg flex items-center justify-center">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-sm">
                         <Building2 className="w-5 h-5 text-white" />
                     </div>
-                    <span className="text-xl font-bold gradient-text">PropFlow</span>
-                </Link>
+                    <span className="text-xl font-bold text-slate-900 tracking-tight">PropFlow</span>
+                </div>
             </div>
 
-            <div className="flex-1 px-4 py-2 space-y-1 overflow-y-auto">
-                {filteredNavItems.map((item) => {
+            <nav className="flex-1 px-4 py-2 space-y-1">
+                {navItems.map((item) => {
                     const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
                     return (
                         <Link key={item.href} href={item.href}>
-                            <Button
-                                variant={isActive ? "secondary" : "ghost"}
+                            <div
                                 className={cn(
-                                    "w-full justify-start gap-3 mb-1",
-                                    isActive ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground"
+                                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                                    isActive
+                                        ? "bg-blue-50 text-blue-600"
+                                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                                 )}
                             >
-                                <item.icon className={cn("w-5 h-5", isActive ? "text-primary" : "text-muted-foreground")} />
-                                {item.title}
-                            </Button>
+                                <item.icon className={cn("w-5 h-5", isActive ? "text-blue-600" : "text-slate-500")} />
+                                {item.label}
+                            </div>
                         </Link>
                     );
                 })}
-            </div>
+            </nav>
 
-            <div className="p-4 border-t mt-auto">
-                <div className="flex items-center gap-3 mb-4 px-2">
-                    <Avatar>
-                        <AvatarImage src={profile?.avatar_url || ''} />
-                        <AvatarFallback>{profile?.full_name?.charAt(0) || 'U'}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{profile?.full_name}</p>
-                        <p className="text-xs text-muted-foreground truncate capitalize">{role}</p>
-                    </div>
-                </div>
+            <div className="p-4 border-t border-slate-200">
                 <Button
-                    variant="outline"
-                    className="w-full justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => signOut()}
+                    variant="ghost"
+                    className="w-full justify-start gap-2 text-slate-500 hover:text-red-600 hover:bg-red-50"
+                    onClick={handleSignOut}
                 >
                     <LogOut className="w-4 h-4" />
                     Sign Out
                 </Button>
             </div>
-        </div>
+        </aside>
     );
 }
 
@@ -120,13 +108,13 @@ export function MobileNav() {
     const [open, setOpen] = useState(false);
 
     return (
-        <div className="lg:hidden flex items-center justify-between p-4 border-b bg-background sticky top-0 z-40">
-            <Link href="/dashboard" className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg gradient-bg flex items-center justify-center">
+        <div className="lg:hidden flex items-center justify-between p-4 border-b bg-white sticky top-0 z-40 text-slate-900">
+            <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
                     <Building2 className="w-4 h-4 text-white" />
                 </div>
-                <span className="text-lg font-bold gradient-text">PropFlow</span>
-            </Link>
+                <span className="text-lg font-bold">PropFlow</span>
+            </div>
 
             <Sheet open={open} onOpenChange={setOpen}>
                 <SheetTrigger asChild>
@@ -134,7 +122,7 @@ export function MobileNav() {
                         <Menu className="w-6 h-6" />
                     </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="p-0 w-80">
+                <SheetContent side="left" className="p-0 w-72">
                     <Sidebar />
                 </SheetContent>
             </Sheet>

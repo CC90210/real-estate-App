@@ -1,35 +1,50 @@
+
 import { NextResponse } from 'next/server';
-import { AD_GENERATION_PROMPTS, openai } from '@/lib/openai';
+import OpenAI from 'openai';
+import { createClient } from '@/lib/supabase/server';
 
-export async function POST(req: Request) {
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+});
+
+export async function POST(request: Request) {
     try {
-        const { propertyId, format } = await req.json();
+        const { propertyId, format } = await request.json();
+        const supabase = await createClient();
 
-        if (!propertyId || !format) {
-            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+        const { data: property } = await supabase
+            .from('properties')
+            .select('*, buildings(*)')
+            .eq('id', propertyId)
+            .single();
+
+        if (!property) {
+            return NextResponse.json({ error: 'Property not found' }, { status: 404 });
         }
 
-        // In a real app, fetch property details from Supabase using propertyId
-        // const supabase = createServerClient();
-        // const { data: property } = await supabase.from('properties')....
+        // Fallback description if truncated/missing
+        const desc = property.description || `A beautiful ${property.bedrooms} bedroom, ${property.bathrooms} bathroom unit located at ${property.address}.`;
 
-        const promptTemplate = AD_GENERATION_PROMPTS[format as keyof typeof AD_GENERATION_PROMPTS];
+        const prompts: Record<string, string> = {
+            social: 'Write a short, engaging social media post (max 280 chars) for this rental.',
+            listing: 'Write a detailed listing description (150-200 words) for this rental.',
+            email: 'Write a professional email to a prospective tenant about this property.'
+        };
 
         const completion = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
+            model: 'gpt-4o-mini',
             messages: [
-                { role: "system", content: "You are a professional real estate marketing copywriter." },
-                { role: "user", content: `${promptTemplate} \n\n Generate this for a modern apartment property.` } // Context would be injected here
-            ],
-            max_tokens: 300,
+                { role: 'system', content: 'You are a professional real estate copywriter.' },
+                {
+                    role: 'user',
+                    content: `${prompts[format] || prompts.social}\n\nProperty: ${property.address}\nRent: $${property.rent}/month\nBedrooms: ${property.bedrooms}\nBathrooms: ${property.bathrooms}\nDescription: ${desc}`
+                }
+            ]
         });
 
-        return NextResponse.json({
-            content: completion.choices[0].message.content
-        });
-
+        return NextResponse.json({ content: completion.choices[0].message.content });
     } catch (error) {
-        console.error('Ad Gen API Error:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        console.error('Ad Generation Error:', error);
+        return NextResponse.json({ error: 'Generation failed', details: error }, { status: 500 });
     }
 }
