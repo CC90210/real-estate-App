@@ -48,13 +48,19 @@ export default function SignupPage() {
                     description: error.message,
                 });
             } else {
-                toast.success('Account created!', {
-                    description: 'Please check your email to verify your account.',
+                toast.success('Account created successfully!', {
+                    description: 'If email confirmation is enabled, please check your inbox. Otherwise, you can log in now.',
+                    duration: 5000,
                 });
+
+                // Optional: Attempt auto-login if no confirmation required? 
+                // But better to redirect to login to be safe.
                 router.push('/login');
             }
-        } catch {
-            toast.error('An unexpected error occurred');
+        } catch (error: any) {
+            toast.error('Signup failed', {
+                description: error.message || 'An unexpected error occurred',
+            });
         } finally {
             setIsLoading(false);
         }
