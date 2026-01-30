@@ -1,3 +1,5 @@
+'use client';
+
 // ... imports kept same as much as possible, just changing UI structure
 import { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
