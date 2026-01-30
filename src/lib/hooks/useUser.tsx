@@ -255,21 +255,29 @@ export function UserProvider({ children }: { children: ReactNode }) {
         const { data, error } = await supabase.auth.signUp({
             email,
             password,
+            options: {
+                data: {
+                    full_name: fullName,
+                    role: role,
+                }
+            }
         });
 
         if (error) return { error };
 
-        // Create profile
+        // We allow the SQL Trigger to handle profile creation for atomicity.
+        // But if trigger fails or is missing, we try a manual upsert here as backup.
         if (data.user) {
-            const { error: profileError } = await supabase.from('profiles').insert({
+            const { error: profileError } = await supabase.from('profiles').upsert({
                 id: data.user.id,
                 email,
                 full_name: fullName,
                 role,
-            });
+            }, { onConflict: 'id' });
 
+            // We don't fail hard on profile error if auth worked, but we log it
             if (profileError) {
-                return { error: new Error(profileError.message) };
+                console.warn('Manual profile upsert failed (likely handled by trigger):', profileError);
             }
         }
 
