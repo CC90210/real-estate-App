@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { GenerateAdButton } from '@/components/properties/GenerateAdButton';
 import { EditPropertyModal } from '@/components/properties/EditPropertyModal';
+import { DeletePropertyButton } from '@/components/properties/DeletePropertyButton';
 // We need client component for interactivity (modal trigger)
 
 export default async function PropertyDetailsPage({ params }: { params: { id: string } }) {
@@ -46,6 +47,7 @@ export default async function PropertyDetailsPage({ params }: { params: { id: st
                 </div>
                 <div className="ml-auto flex gap-2">
                     <EditPropertyModal property={property} />
+                    <DeletePropertyButton propertyId={property.id} propertyName={property.address} />
                 </div>
             </div>
 

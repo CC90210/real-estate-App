@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Send, MessageSquare, Bot, User, Zap, X } from 'lucide-react';
+import { Sparkles, Send, MessageSquare, Bot, User, Zap, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function ChatPanel() {
@@ -50,12 +50,15 @@ export function ChatPanel() {
         <div className="fixed bottom-8 right-8 z-[100]">
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
                 <SheetTrigger asChild>
-                    <button className="h-16 w-16 rounded-2xl shadow-[0_10px_40px_rgba(37,99,235,0.3)] bg-blue-600 hover:bg-blue-700 transition-all hover:scale-105 active:scale-95 flex items-center justify-center relative group">
+                    <button className={cn(
+                        "h-16 w-16 rounded-2xl shadow-[0_10px_40px_rgba(37,99,235,0.3)] bg-blue-600 hover:bg-blue-700 transition-all hover:scale-105 active:scale-95 flex items-center justify-center relative group",
+                        isOpen ? "opacity-0 pointer-events-none translate-y-20" : "opacity-100 translate-y-0"
+                    )}>
                         <div className="absolute inset-0 rounded-2xl bg-blue-400/20 animate-ping group-hover:hidden" />
                         <Sparkles className="h-7 w-7 text-white fill-white transition-transform group-hover:rotate-12" />
                         {messages.length > 0 && (
                             <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold text-white">
-                                {messages.length}
+                                {messages.filter(m => m.role === 'assistant').length}
                             </div>
                         )}
                     </button>
@@ -86,8 +89,8 @@ export function ChatPanel() {
                                     <p className="text-sm text-slate-500">I have access to all your properties, lockbox codes, and tenant applications.</p>
                                 </div>
                                 <div className="grid grid-cols-1 gap-2 w-full">
-                                    <button onClick={() => setInput("What's the lockbox for 100 Main St?")} className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:border-blue-300 hover:text-blue-600 transition-all">"Wait, what's the lockbox for 100 Main St?"</button>
-                                    <button onClick={() => setInput("Show me available 2 bedroom units")} className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:border-blue-300 hover:text-blue-600 transition-all">"Available 2 bedroom units?"</button>
+                                    <button onClick={() => setInput("What's the lockbox for 100 Main St?")} className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:border-blue-300 hover:text-blue-600 transition-all font-sans italic tracking-tight">"Wait, what's the lockbox for 100 Main St?"</button>
+                                    <button onClick={() => setInput("Show me available 2 bedroom units")} className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:border-blue-300 hover:text-blue-600 transition-all font-sans italic tracking-tight">"Available 2 bedroom units?"</button>
                                 </div>
                             </div>
                         )}
@@ -97,16 +100,16 @@ export function ChatPanel() {
                                 msg.role === 'user' ? 'flex-row-reverse' : ''
                             )}>
                                 <div className={cn(
-                                    "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm",
+                                    "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm transition-transform hover:scale-110",
                                     msg.role === 'user' ? "bg-slate-900" : "bg-blue-600"
                                 )}>
                                     {msg.role === 'user' ? <User className="w-4 h-4 text-white" /> : <Bot className="w-4 h-4 text-white" />}
                                 </div>
                                 <div className={cn(
-                                    'p-4 rounded-2xl max-w-[80%] text-[13px] leading-relaxed shadow-sm font-medium border',
+                                    'p-4 rounded-2xl max-w-[80%] text-[13px] leading-relaxed shadow-sm font-medium border transition-all',
                                     msg.role === 'user'
                                         ? 'bg-slate-900 text-white border-slate-800 rounded-tr-none'
-                                        : 'bg-white text-slate-900 border-slate-200 rounded-tl-none'
+                                        : 'bg-white text-slate-900 border-slate-200 rounded-tl-none hover:border-blue-200'
                                 )}>
                                     {msg.content}
                                 </div>
@@ -117,29 +120,34 @@ export function ChatPanel() {
                                 <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
                                     <Bot className="w-4 h-4 text-white" />
                                 </div>
-                                <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl rounded-tl-none shadow-sm flex gap-1">
+                                <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl rounded-tl-none shadow-sm flex gap-1 items-center justify-center min-w-[60px]">
+                                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
                                     <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" />
-                                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.4s]" />
                                 </div>
                             </div>
                         )}
                     </div>
 
                     <div className="p-6 border-t bg-white">
-                        <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl border border-slate-200 focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-400/10 transition-all">
+                        <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-2xl border border-slate-200 focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-400/10 transition-all shadow-inner">
                             <Input
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 placeholder="Type a message..."
                                 onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-                                className="bg-transparent border-none shadow-none focus-visible:ring-0 font-medium"
+                                className="bg-transparent border-none shadow-none focus-visible:ring-0 font-medium placeholder:text-slate-400"
                             />
-                            <Button onClick={sendMessage} size="icon" className="shrink-0 bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-500/20">
-                                <Send className="w-4 h-4" />
+                            <Button
+                                onClick={sendMessage}
+                                size="icon"
+                                disabled={loading || !input.trim()}
+                                className="shrink-0 bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-90"
+                            >
+                                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                             </Button>
                         </div>
-                        <p className="text-[9px] text-center text-slate-400 mt-4 font-bold uppercase tracking-widest">Powered by Gemini 1.5 Flash</p>
+                        <p className="text-[9px] text-center text-slate-400 mt-4 font-bold uppercase tracking-widest leading-none">Powered by Gemini 1.5 Flash</p>
                     </div>
                 </SheetContent>
             </Sheet>

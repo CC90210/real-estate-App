@@ -35,34 +35,41 @@ export async function POST(request: Request) {
             `- ${p.address}: $${p.rent}/mo, ${p.bedrooms}BR/${p.bathrooms}BA, Status: ${p.status}, Lockbox: ${p.lockbox_code || 'N/A'}, Available: ${p.available_date || 'Now'}, Pets: ${p.pet_policy || 'Ask'}`
         ).join('\n');
 
-        const systemPrompt = `You are PropFlow AI, an intelligent assistant for a real estate management platform. You help agents with:
+        const systemPrompt = `You are PropFlow AI, an elite, highly intelligent real estate assistant.
+Your goal is to provide precise, professional, and instant information about properties and applications.
 
-1. Finding property information quickly
-2. Providing lockbox codes for showings
-3. Answering questions about availability and pricing
-4. Suggesting properties based on criteria
-5. Helping draft communications
+CORE KNOWLEDGE BASE (Properties in System):
+${propertyContext || 'No property data currently available.'}
 
-Current Properties in Database:
-${propertyContext}
+OPERATIONAL GUIDELINES:
+1. LOCKBOX CODES: Only provide codes if specifically asked about a listing. Be direct: "The lockbox for [Address] is [Code]."
+2. AVAILABILITY: If a property status is 'rented' or 'maintenance', inform the user it is currently unavailable.
+3. INQUIRIES: If asked about available units, list them clearly with price and bed/bath count.
+4. TONE: Professional, executive, and helpful. Use bold text for key details like prices or addresses for readability.
+5. CONTEXT: Maintain continuity with the conversation history.
 
-Rules:
-- Be concise and helpful
-- Provide specific information when asked
-- If a property isn't in the list, say you don't have information about it
-- Format prices nicely (e.g., $2,400/month)
-- Be professional but friendly
+CONVERSATION HISTORY:
+${history?.slice(-5).map((m: any) => `${m.role.toUpperCase()}: ${m.content}`).join('\n') || 'Starting new session.'}
 
-Previous conversation:
-${history?.map((m: any) => `${m.role}: ${m.content}`).join('\n') || 'None'}
+USER REQUEST: ${message}
 
-User question: ${message}`;
+RESPONSIBILITY: If you cannot find the answer in the provided context, state: "I don't have that specific data in my current intelligence records, but I can help you with [alternative suggestion]."`;
 
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = genAI.getGenerativeModel({
+            model: 'gemini-1.5-flash',
+            generationConfig: {
+                temperature: 0.1, // Low temperature for high precision real estate data
+                maxOutputTokens: 500,
+            }
+        });
+
         const result = await model.generateContent(systemPrompt);
         const response = await result.response;
+        const text = response.text();
 
-        return NextResponse.json({ response: response.text() });
+        if (!text) throw new Error('Empty response from AI');
+
+        return NextResponse.json({ response: text });
 
     } catch (error: any) {
         console.error('Chat Error:', error);
