@@ -252,36 +252,36 @@ export function UserProvider({ children }: { children: ReactNode }) {
             return { error: null };
         }
 
-        const { data, error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-                data: {
-                    full_name: fullName,
-                    role: role,
-                }
+        // Use our custom API route to create user with auto-confirmation
+        // This is necessary to allow instant login without email verification step
+        try {
+            const res = await fetch('/api/auth/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password, full_name: fullName, role })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                return { error: new Error(data.error || 'Signup failed') };
             }
-        });
 
-        if (error) return { error };
-
-        // We allow the SQL Trigger to handle profile creation for atomicity.
-        // But if trigger fails or is missing, we try a manual upsert here as backup.
-        if (data.user) {
-            const { error: profileError } = await supabase.from('profiles').upsert({
-                id: data.user.id,
+            // Auto login after creation since we are now confirmed
+            const { error: loginError } = await supabase.auth.signInWithPassword({
                 email,
-                full_name: fullName,
-                role,
-            }, { onConflict: 'id' });
+                password
+            });
 
-            // We don't fail hard on profile error if auth worked, but we log it
-            if (profileError) {
-                console.warn('Manual profile upsert failed (likely handled by trigger):', profileError);
+            if (loginError) {
+                console.error("Auto-login failed:", loginError);
+                return { error: loginError };
             }
-        }
 
-        return { error: null };
+            return { error: null };
+        } catch (e: any) {
+            return { error: e };
+        }
     };
 
     const signOut = async () => {
