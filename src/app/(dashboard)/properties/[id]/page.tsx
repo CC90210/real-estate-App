@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { GenerateAdButton } from '@/components/properties/GenerateAdButton';
+import { EditPropertyModal } from '@/components/properties/EditPropertyModal';
 // We need client component for interactivity (modal trigger)
 
 export default async function PropertyDetailsPage({ params }: { params: { id: string } }) {
@@ -44,9 +45,7 @@ export default async function PropertyDetailsPage({ params }: { params: { id: st
                     </div>
                 </div>
                 <div className="ml-auto flex gap-2">
-                    <Button variant="outline">
-                        <Edit className="w-4 h-4 mr-2" /> Edit
-                    </Button>
+                    <EditPropertyModal property={property} />
                 </div>
             </div>
 

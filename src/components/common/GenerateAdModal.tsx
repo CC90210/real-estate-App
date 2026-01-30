@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, Copy, Check, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
@@ -18,6 +19,7 @@ export function GenerateAdModal({
     propertyId: string;
 }) {
     const [format, setFormat] = useState('social');
+    const [notes, setNotes] = useState('');
     const [content, setContent] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [copied, setCopied] = useState(false);
@@ -29,7 +31,7 @@ export function GenerateAdModal({
             const res = await fetch('/api/generate-ad', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ propertyId, format })
+                body: JSON.stringify({ propertyId, format, notes })
             });
 
             if (!res.ok) throw new Error('Generation failed');
@@ -98,8 +100,19 @@ export function GenerateAdModal({
                         </RadioGroup>
                     </div>
 
+                    <div className="space-y-2">
+                        <Label>Additional Notes</Label>
+                        <Textarea
+                            placeholder="e.g. Include pet policy, mention proximity to park..."
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                            rows={2}
+                            className="bg-slate-50 border-slate-200"
+                        />
+                    </div>
+
                     {content && (
-                        <div className="rounded-md bg-slate-50 p-4 border relative group">
+                        <div className="rounded-md bg-slate-50 p-4 border relative group animate-in slide-in-from-bottom-2 duration-300">
                             <Button
                                 size="sm"
                                 variant="ghost"
