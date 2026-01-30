@@ -108,6 +108,12 @@ export default function ApplicationDetailsPage() {
         ? (application.property.rent / application.monthly_income) * 100
         : 0;
 
+    const riskAssessment = dtiRatio > 40 || (application.credit_score && application.credit_score < 620)
+        ? { label: 'High Risk', color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-100', icon: AlertOctagon }
+        : dtiRatio > 30 || (application.credit_score && application.credit_score < 680)
+            ? { label: 'Moderate', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', icon: Activity }
+            : { label: 'Low / Optimal', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', icon: CheckCircle2 };
+
     return (
         <div className="max-w-6xl mx-auto pb-20 space-y-8 animate-in fade-in duration-700">
             {/* Header Navigation */}
@@ -163,20 +169,20 @@ export default function ApplicationDetailsPage() {
                         </div>
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="flex gap-4">
                         <Button
                             disabled={isUpdating || application.status === 'denied'}
                             onClick={() => handleStatusUpdate('denied')}
-                            className="bg-slate-100 hover:bg-red-50 text-slate-900 hover:text-red-700 rounded-2xl h-14 font-black uppercase text-xs tracking-widest border-none transition-all active:scale-95"
+                            className="bg-slate-100 hover:bg-red-50 text-slate-900 hover:text-red-700 rounded-2xl h-14 font-black uppercase text-[10px] tracking-widest border-none transition-all active:scale-95 px-6"
                         >
-                            <XCircle className="w-5 h-5 mr-2" /> Deny
+                            <XCircle className="w-5 h-5 mr-3" /> Deny
                         </Button>
                         <Button
                             disabled={isUpdating || application.status === 'approved'}
                             onClick={() => handleStatusUpdate('approved')}
-                            className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl h-14 px-8 font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-200 transition-all active:scale-95"
+                            className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl h-14 px-10 font-black uppercase text-[10px] tracking-widest shadow-xl shadow-blue-200 transition-all active:scale-95"
                         >
-                            <CheckCircle2 className="w-5 h-5 mr-2" /> Approve Application
+                            <CheckCircle2 className="w-5 h-5 mr-3" /> Approve Record
                         </Button>
                     </div>
                 </div>
@@ -283,39 +289,40 @@ export default function ApplicationDetailsPage() {
                         <p className="text-slate-400 text-sm font-medium mb-8 leading-relaxed">
                             Generate AI-powered documents for this applicant instantly. Values are pulled from live Supabase data.
                         </p>
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                             <Link href="/documents" className="block">
-                                <Button className="w-full bg-white/10 hover:bg-white text-white hover:text-slate-900 rounded-2xl h-14 font-black uppercase text-[10px] tracking-widest border border-white/10 transition-all">
-                                    Open Designer
+                                <Button className="w-full bg-white/10 hover:bg-white text-white hover:text-slate-900 rounded-2xl h-14 font-black uppercase text-[10px] tracking-widest border border-white/10 transition-all shadow-xl">
+                                    Open Design Studio
                                 </Button>
                             </Link>
-                            <Button
-                                onClick={() => toast.success("Drafting Application Summary...")}
-                                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl h-14 font-black uppercase text-[10px] tracking-widest shadow-xl shadow-indigo-900/20"
-                            >
-                                <Sparkles className="w-4 h-4 mr-2" /> Application Summary
-                            </Button>
+                            <Link href={`/documents?type=application_summary&appId=${application.id}`} className="block">
+                                <Button
+                                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl h-14 font-black uppercase text-[10px] tracking-[0.2em] shadow-2xl shadow-indigo-900/40 border border-indigo-500/30 transition-all hover:scale-[1.02] active:scale-95"
+                                >
+                                    <Sparkles className="w-4 h-4 mr-3 fill-indigo-200" /> Forge Applicant Summary
+                                </Button>
+                            </Link>
                         </div>
                     </Card>
 
                     {/* Quick Access Sidebar */}
-                    <div className="p-8 bg-blue-50 rounded-[2.5rem] border border-blue-100 flex flex-col gap-6">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-blue-600 border border-blue-100">
-                                <CheckCircle2 className="w-6 h-6" />
+                    <div className={cn("p-10 rounded-[2.5rem] border flex flex-col gap-8 transition-all duration-500", riskAssessment.bg, riskAssessment.border)}>
+                        <div className="flex items-center gap-5">
+                            <div className="w-14 h-14 rounded-2xl bg-white shadow-xl flex items-center justify-center text-blue-600 border border-slate-100">
+                                <riskAssessment.icon className={cn("w-7 h-7", riskAssessment.color)} />
                             </div>
                             <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Risk Assessment</p>
-                                <p className="text-sm font-black text-slate-900">Low to Moderate</p>
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Risk Intelligence</p>
+                                <p className={cn("text-lg font-black tracking-tight", riskAssessment.color)}>{riskAssessment.label}</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-emerald-600 border border-emerald-100">
-                                <DollarSign className="w-6 h-6" />
+                        <div className="flex items-center gap-5">
+                            <div className="w-14 h-14 rounded-2xl bg-white shadow-xl flex items-center justify-center text-emerald-600 border border-slate-100">
+                                <DollarSign className="w-7 h-7 text-emerald-500" />
                             </div>
                             <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Monthly Rent</p>
-                                <p className="text-sm font-black text-slate-900">${application.property?.rent?.toLocaleString() || 'N/A'}</p>
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Target Monthly Rent</p>
+                                <p className="text-lg font-black text-slate-900 tracking-tight">${application.property?.rent?.toLocaleString() || 'N/A'}</p>
                             </div>
                         </div>
                     </div>
@@ -327,12 +334,16 @@ export default function ApplicationDetailsPage() {
 
 function VerifItem({ label, status }: { label: string, status: boolean }) {
     return (
-        <div className="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
-            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-tight">{label}</span>
+        <div className="flex items-center justify-between p-5 bg-slate-50 border border-slate-100 rounded-2xl shadow-sm hover:border-blue-200 transition-colors">
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">{label}</span>
             {status ? (
-                <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 px-2 py-0.5 text-[9px] font-black">ACTIVE</Badge>
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[9px] font-black border border-emerald-100">
+                    <CheckCircle2 className="w-3 h-3" /> ACTIVE
+                </div>
             ) : (
-                <Badge className="bg-slate-100 text-slate-400 border-slate-200 px-2 py-0.5 text-[9px] font-black">PENDING</Badge>
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-400 rounded-full text-[9px] font-black border border-slate-200">
+                    <Activity className="w-3 h-3" /> PENDING
+                </div>
             )}
         </div>
     );
