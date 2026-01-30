@@ -108,9 +108,9 @@ export function DocumentGenerator({ properties, applications }: DocumentGenerato
             setGeneratedDocument(data.document);
             setStep('preview');
             toast.success("Document generated successfully!");
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            toast.error("Failed to generate document.");
+            toast.error(error.message || "Failed to generate document. Please check your connection and try again.");
         } finally {
             setIsGenerating(false);
         }
@@ -393,11 +393,15 @@ function PropertySummaryForm({ properties, onGenerate, isGenerating }: any) {
 
             <Button
                 onClick={() => onGenerate(formData)}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-200/50 h-11"
                 disabled={!formData.propertyId || !formData.agentName || isGenerating}
             >
-                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ArrowRight className="w-4 h-4 mr-2" />}
-                Generate Document
+                {isGenerating ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                    <Sparkles className="w-4 h-4 mr-2" />
+                )}
+                Generate Marketing Summary
             </Button>
         </div>
     );
@@ -675,11 +679,15 @@ function LeaseProposalForm({ properties, onGenerate, isGenerating }: any) {
 
             <Button
                 onClick={() => onGenerate(formData)}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-12"
+                className="w-full bg-gradient-to-r from-slate-900 to-blue-900 hover:from-black hover:to-blue-950 text-white font-bold h-12 shadow-xl"
                 disabled={!formData.propertyId || !formData.tenantName || !formData.offerRent || isGenerating}
             >
-                {isGenerating ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <ArrowRight className="w-5 h-5 mr-2" />}
-                Generate Lease Proposal
+                {isGenerating ? (
+                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                ) : (
+                    <FileSignature className="w-5 h-5 mr-2" />
+                )}
+                Build Premium Lease Proposal
             </Button>
         </div>
     );
@@ -821,11 +829,15 @@ function ShowingSheetForm({ properties, onGenerate, isGenerating }: any) {
 
             <Button
                 onClick={() => onGenerate(formData)}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-12"
+                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold h-12 shadow-lg shadow-green-100"
                 disabled={!formData.propertyId || !formData.agentName || isGenerating}
             >
-                {isGenerating ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <ArrowRight className="w-5 h-5 mr-2" />}
-                Generate Showing Sheet
+                {isGenerating ? (
+                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                ) : (
+                    <ClipboardList className="w-5 h-5 mr-2" />
+                )}
+                Generate Showing Guide
             </Button>
         </div>
     );
@@ -906,11 +918,15 @@ function ApplicationSummaryForm({ properties, applications, onGenerate, isGenera
 
             <Button
                 onClick={() => onGenerate(formData)}
-                className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold h-12"
+                className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold h-12 shadow-lg shadow-amber-100"
                 disabled={!formData.applicantId || isGenerating}
             >
-                {isGenerating ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <ArrowRight className="w-5 h-5 mr-2" />}
-                Generate Summary
+                {isGenerating ? (
+                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                ) : (
+                    <ShieldCheck className="w-5 h-5 mr-2" />
+                )}
+                Generate Intelligence Summary
             </Button>
         </div>
     );
@@ -1090,9 +1106,20 @@ function DocumentTemplate({ data }: { data: any }) {
 
                 <div className="grid grid-cols-2 gap-10 mb-12">
                     <div className="space-y-6">
+                        {data.aiTalkingPoints && (
+                            <div className="p-6 bg-green-50 rounded-2xl border border-green-100 shadow-sm relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-4 opacity-10">
+                                    <Sparkles className="w-8 h-8 text-green-600" />
+                                </div>
+                                <h3 className="text-xs font-black uppercase tracking-widest text-green-700 mb-4">AI Showing Strategy</h3>
+                                <div className="text-sm font-bold text-slate-800 space-y-2 whitespace-pre-line">
+                                    {data.aiTalkingPoints}
+                                </div>
+                            </div>
+                        )}
                         <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                            <h3 className="text-xs font-black uppercase tracking-widest text-green-600 mb-4">Tour Notes / Access</h3>
-                            <p className="text-sm font-medium leading-relaxed italic">"{customFields.accessNotes || 'No specific access notes provided.'}"</p>
+                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Tour Notes / Access</h3>
+                            <p className="text-sm font-medium leading-relaxed italic text-slate-600 hover:text-slate-900 transition-colors">"{customFields.accessNotes || 'No specific access notes provided.'}"</p>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
@@ -1307,9 +1334,9 @@ function DocumentTemplate({ data }: { data: any }) {
                     <div className="absolute top-0 right-0 p-8 opacity-10">
                         <Sparkles className="w-20 h-20" />
                     </div>
-                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-amber-500 mb-4">Agent Executive Summary</h3>
+                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-amber-500 mb-4 tracking-widest">PropFlow Intelligence Analysis</h3>
                     <p className="text-lg leading-relaxed font-medium italic text-slate-100">
-                        "{customFields.agentNote || 'The applicant has passed preliminary screening metrics. Financial standing appears robust and background check is in progress.'}"
+                        "{data.aiAnalysis || customFields.agentNote || 'The applicant has passed preliminary screening metrics. Financial standing appears robust and background check is in progress.'}"
                     </p>
                 </div>
 
