@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sparkles, FilePlus } from 'lucide-react';
 import { GenerateAdModal } from '@/components/common/GenerateAdModal';
+import { NewApplicationModal } from '@/components/applications/NewApplicationModal';
 import { toast } from 'sonner';
 
 export function GenerateAdButton({ propertyId }: { propertyId: string }) {
@@ -19,14 +20,7 @@ export function GenerateAdButton({ propertyId }: { propertyId: string }) {
                     <Sparkles className="w-4 h-4 mr-2" />
                     Generate Ad
                 </Button>
-                <Button
-                    variant="outline"
-                    className="rounded-full bg-white hover:bg-slate-50 border-slate-200"
-                    onClick={() => toast("New Application flow mock")}
-                >
-                    <FilePlus className="w-4 h-4 mr-2" />
-                    New Application
-                </Button>
+                <NewApplicationModal propertyId={propertyId} />
             </div>
 
             <GenerateAdModal

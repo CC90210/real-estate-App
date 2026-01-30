@@ -5,14 +5,10 @@ import { createClient } from '@/lib/supabase/server';
 
 export async function POST(request: Request) {
     try {
+        if (!process.env.GEMINI_API_KEY) throw new Error("Missing GEMINI_API_KEY");
+
         const { propertyId, format, notes } = await request.json();
         const supabase = await createClient();
-
-        // Debug logging for API Key
-        if (!process.env.GEMINI_API_KEY) {
-            console.error("GEMINI_API_KEY is missing in environment variables.");
-            return NextResponse.json({ error: 'Server configuration error: Missing API Key' }, { status: 500 });
-        }
 
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-pro" });
@@ -24,10 +20,10 @@ export async function POST(request: Request) {
             .single();
 
         if (!property) {
-            return NextResponse.json({ error: 'Property not found' }, { status: 404 });
+            throw new Error("Property not found");
         }
 
-        // Fallback description if truncated/missing
+        // Fallback description
         const desc = property.description || `A beautiful ${property.bedrooms} bedroom, ${property.bathrooms} bathroom unit located at ${property.address}.`;
 
         const prompts: Record<string, string> = {
@@ -36,7 +32,7 @@ export async function POST(request: Request) {
             email: 'Write a professional email to a prospective tenant inviting them for a viewing.'
         };
 
-        const systemInstruction = `You are a professional real estate copywriter. Write a ${format} based on the following property details.`;
+        const systemInstruction = `You are a professional real estate copywriter. Write a ${format} based on the following property details. Return raw text, no markdown backticks.`;
         const userPrompt = `
         ${prompts[format] || prompts.social}
         
@@ -52,11 +48,16 @@ export async function POST(request: Request) {
 
         const result = await model.generateContent(systemInstruction + userPrompt);
         const response = await result.response;
-        const text = response.text();
+        let text = response.text();
+
+        // Clean up markdown if present (User requested regex strip)
+        text = text.replace(/^```(json|text)?\n/, '').replace(/\n```$/, '');
 
         return NextResponse.json({ content: text });
+
     } catch (error: any) {
-        console.error('Ad Generation Error:', error);
-        return NextResponse.json({ error: 'Generation failed', details: error.message }, { status: 500 });
+        console.error("Ad Gen Failure:", error);
+        // Return a clean error message to client
+        return NextResponse.json({ error: error.message || 'Generation failed' }, { status: 500 });
     }
 }
