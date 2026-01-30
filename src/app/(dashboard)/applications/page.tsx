@@ -10,7 +10,7 @@ export default async function ApplicationsPage() {
         .from('applications')
         .select(`
             *,
-            property:properties(address)
+            property:properties(address, rent)
         `)
         .order('created_at', { ascending: false });
 

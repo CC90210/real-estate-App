@@ -5,63 +5,76 @@ import { createClient } from '@/lib/supabase/server';
 
 export async function POST(request: Request) {
     try {
-        const { propertyId, format, notes } = await request.json();
+        const { propertyId, notes } = await request.json();
         const supabase = await createClient();
 
-        // 1. Get Property
-        const { data: property } = await supabase
+        // 1. Fetch real property data for context injection
+        const { data: property, error: fetchError } = await supabase
             .from('properties')
-            .select('*, buildings(*)')
+            .select(`
+                *,
+                buildings (
+                    *,
+                    area:areas(*)
+                )
+            `)
             .eq('id', propertyId)
             .single();
 
-        if (!property) throw new Error("Property not found");
-
-        const desc = property.description || `A beautiful ${property.bedrooms} bedroom, ${property.bathrooms} bathroom unit located at ${property.address}.`;
-
-        // 2. Fallback Templates
-        const templates: Record<string, string> = {
-            social: `🏡 JUST LISTED! Check out this amazing ${property.bedrooms}bd/${property.bathrooms}ba apartment at ${property.address}! 🌟 Monthly Rent: $${property.rent}. DM for details! #RealEstate #ForRent`,
-            listing: `FOR LEASE: ${property.address}\n\nThis spacious ${property.bedrooms}-bedroom, ${property.bathrooms}-bathroom unit offers comfortable living in a great location. Features include: ${property.amenities?.join(', ') || 'Modern amenities'}.\n\nRent: $${property.rent}/mo\nContact us today to schedule a viewing!`,
-            email: `Subject: New Rental Opportunity: ${property.address}\n\nDear [Name],\n\nWe are excited to share a new listing that matches your criteria. Located at ${property.address}, this ${property.bedrooms}bd unit is available now for $${property.rent}/mo.\n\nLet us know if you'd like a tour.\n\nBest,\nProperty Management`
-        };
-
-        // 3. AI Generation
-        if (!process.env.GEMINI_API_KEY) {
-            console.warn("Missing GEMINI_API_KEY, using template fallback.");
-            return NextResponse.json({ content: templates[format] || templates.listing });
+        if (fetchError || !property) {
+            throw new Error(`Property context injection failed: ${fetchError?.message || 'Property not found'}`);
         }
 
+        // 2. AI Prompt Engineering (Directives 3.1)
+        if (!process.env.GEMINI_API_KEY) {
+            throw new Error("Server Configuration Error: Missing GEMINI_API_KEY");
+        }
+
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+
+        const systemPrompt = `You are an expert luxury real estate copywriter and marketing strategist. 
+        Your task is to generate a comprehensive marketing payload for a property.
+        Return your response strictly as a JSON object with the following keys:
+        - "socialMedia": A punchy, emoji-rich post for Instagram/Facebook.
+        - "listingDescription": A professional, evocative long-form description (200 words).
+        - "emailBlast": A high-conversion email subject line and body for prospective tenants.
+        - "metadata": { "tone": "string", "highlights": ["string"] }`;
+
+        const userContext = `
+        Property Context:
+        - Type: ${property.bedrooms} Bed, ${property.bathrooms} Bath Apartment
+        - Rent: $${property.rent}/month
+        - Address: ${property.address}
+        - Building: ${property.buildings?.name}
+        - Area: ${property.buildings?.area?.name}
+        - Amenities: ${property.amenities?.join(', ') || 'Standard unit features'}
+        - Special Notes from Agent: ${notes || 'Focus on prime location and value.'}
+        
+        Generate the payload now. Return ONLY JSON.
+        `;
+
+        const result = await model.generateContent(systemPrompt + userContext);
+        const response = await result.response;
+        let text = response.text();
+
+        // Sanitize JSON response (Directives 2.3 logic)
+        text = text.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
+
         try {
-            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-            const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-
-            const systemInstruction = `You are a professional real estate copywriter. Write a ${format} based on the following property details. Return raw text, no markdown backticks.`;
-            const userPrompt = `
-            ${format === 'social' ? 'Write a short, engaging social media post with emojis.' :
-                    format === 'listing' ? 'Write a detailed listing description.' :
-                        'Write a professional email to a tenant.'}
-            
-            Details:
-            - Address: ${property.address}
-            - Rent: $${property.rent}/month
-            - Bed/Bath: ${property.bedrooms}bd / ${property.bathrooms}ba
-            - Description: ${desc}
-            ${property.amenities ? `- Amenities: ${property.amenities.join(', ')}` : ''}
-            
-            ${notes ? `Additional Notes from Agent: ${notes}` : ''}
-            `;
-
-            const result = await model.generateContent(systemInstruction + userPrompt);
-            const response = await result.response;
-            let text = response.text();
-            text = text.replace(/^```(json|text)?\n/, '').replace(/\n```$/, ''); // Sanitize
-
-            return NextResponse.json({ content: text });
-
-        } catch (aiError) {
-            console.error("AI Generation failed, using fallback.", aiError);
-            return NextResponse.json({ content: templates[format] || templates.listing });
+            const payload = JSON.parse(text);
+            return NextResponse.json({ success: true, payload });
+        } catch (parseError) {
+            console.error("JSON Parse Error on Gemini output:", text);
+            // Fallback object if JSON parsing fails
+            return NextResponse.json({
+                success: true,
+                payload: {
+                    socialMedia: "New Listing! Check it out at " + property.address,
+                    listingDescription: property.description || "A wonderful " + property.bedrooms + " bedroom unit.",
+                    emailBlast: "New apartment available at " + property.buildings?.name
+                }
+            });
         }
 
     } catch (error: any) {

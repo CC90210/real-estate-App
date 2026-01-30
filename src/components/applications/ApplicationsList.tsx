@@ -107,7 +107,19 @@ export function ApplicationList({ applications }: { applications: any[] }) {
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        ${app.monthly_income?.toLocaleString()}/mo
+                                        <div className="flex flex-col">
+                                            <span>${app.monthly_income?.toLocaleString()}/mo</span>
+                                            {app.property?.rent && app.monthly_income && (
+                                                <span className={cn(
+                                                    "text-[10px] font-bold uppercase",
+                                                    (app.property.rent / app.monthly_income) > 0.35
+                                                        ? "text-red-500"
+                                                        : "text-green-600"
+                                                )}>
+                                                    Ratio: {Math.round((app.property.rent / app.monthly_income) * 100)}%
+                                                </span>
+                                            )}
+                                        </div>
                                     </TableCell>
                                     <TableCell className="text-right text-slate-500">
                                         {formatDistanceToNow(new Date(app.created_at), { addSuffix: true })}

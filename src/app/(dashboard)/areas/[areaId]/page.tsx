@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ArrowLeft, Building, MapPin, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { AddBuildingModal } from '@/components/areas/AddBuildingModal';
 
 export default async function AreaDetailsPage({ params }: { params: { areaId: string } }) {
     const supabase = await createClient();
@@ -35,10 +36,11 @@ export default async function AreaDetailsPage({ params }: { params: { areaId: st
                         <ArrowLeft className="w-5 h-5 text-slate-500" />
                     </Button>
                 </Link>
-                <div>
+                <div className="flex-1">
                     <h1 className="text-3xl font-bold tracking-tight text-slate-900">{area.name}</h1>
                     <p className="text-slate-500 mt-1 max-w-2xl">{area.description}</p>
                 </div>
+                <AddBuildingModal areaId={areaId} areaName={area.name} />
             </div>
 
             <div className="grid grid-cols-1 gap-6">

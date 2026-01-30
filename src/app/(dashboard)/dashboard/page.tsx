@@ -8,15 +8,17 @@ import { formatDistanceToNow } from 'date-fns';
 export default async function DashboardPage() {
     const supabase = await createClient();
 
-    // Fetch Stats
-    const { count: totalProperties } = await supabase
+    // Fetch Portfolio Financials
+    const { data: properties } = await supabase
         .from('properties')
-        .select('*', { count: 'exact', head: true });
+        .select('rent, purchase_price, status');
 
-    const { count: availableCount } = await supabase
-        .from('properties')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'available');
+    const totalPortfolioValue = properties?.reduce((sum, p) => sum + (Number(p.purchase_price) || 0), 0) || 0;
+    const annualRent = (properties?.reduce((sum, p) => sum + (Number(p.rent) || 0), 0) || 0) * 12;
+    const portfolioYield = totalPortfolioValue > 0 ? (annualRent / totalPortfolioValue) * 100 : 0;
+
+    const totalProperties = properties?.length || 0;
+    const availableCount = properties?.filter(p => p.status === 'available').length || 0;
 
     const { count: applicationCount } = await supabase
         .from('applications')
@@ -40,16 +42,16 @@ export default async function DashboardPage() {
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard
-                    title="Total Properties"
-                    value={totalProperties || 0}
+                    title="Portfolio Value"
+                    value={`$${(totalPortfolioValue / 1000000).toFixed(1)}M`}
                     icon={Building2}
                     color="text-blue-600"
                     bg="bg-blue-50"
                 />
                 <StatCard
-                    title="Available Units"
-                    value={availableCount || 0}
-                    icon={Building2}
+                    title="Annual Yield"
+                    value={`${portfolioYield.toFixed(2)}%`}
+                    icon={Activity}
                     color="text-green-600"
                     bg="bg-green-50"
                 />
@@ -61,9 +63,9 @@ export default async function DashboardPage() {
                     bg="bg-purple-50"
                 />
                 <StatCard
-                    title="Pending Tasks"
-                    value={3}
-                    icon={Calendar}
+                    title="Available Units"
+                    value={availableCount}
+                    icon={Building2}
                     color="text-amber-600"
                     bg="bg-amber-50"
                 />

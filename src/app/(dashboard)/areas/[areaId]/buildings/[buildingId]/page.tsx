@@ -5,6 +5,7 @@ import { ArrowLeft, Home, BedDouble, Bath, Square, Calendar } from 'lucide-react
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { AddPropertyModal } from '@/components/areas/AddPropertyModal';
 
 // Types
 type PropertyStatus = 'available' | 'rented' | 'pending' | 'maintenance';
@@ -49,7 +50,7 @@ export default async function BuildingDetailsPage({ params }: { params: { areaId
                         <ArrowLeft className="w-5 h-5 text-slate-500" />
                     </Button>
                 </Link>
-                <div>
+                <div className="flex-1">
                     <h1 className="text-3xl font-bold tracking-tight text-slate-900">{building.name}</h1>
                     <div className="flex items-center gap-2 text-slate-500 mt-1">
                         <span>{building.address}</span>
@@ -57,6 +58,11 @@ export default async function BuildingDetailsPage({ params }: { params: { areaId
                         <span className="text-blue-600 font-medium">{building.area?.name}</span>
                     </div>
                 </div>
+                <AddPropertyModal
+                    buildingId={buildingId}
+                    buildingName={building.name}
+                    buildingAddress={building.address}
+                />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
