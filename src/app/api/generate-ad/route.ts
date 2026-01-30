@@ -3,14 +3,16 @@ import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { createClient } from '@/lib/supabase/server';
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
-});
+
 
 export async function POST(request: Request) {
     try {
         const { propertyId, format } = await request.json();
         const supabase = await createClient();
+
+        const openai = new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY || 'dummy-key-for-build'
+        });
 
         const { data: property } = await supabase
             .from('properties')
