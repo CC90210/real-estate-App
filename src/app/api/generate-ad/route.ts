@@ -38,32 +38,64 @@ Parking: ${property.parking_included ? 'Included' : 'Not included'}
 Building: ${property.buildings?.name || 'N/A'}
 Building Amenities: ${property.buildings?.amenities?.join(', ') || 'N/A'}
 Description: ${property.description}
-${notes ? `Agent Context: ${notes}` : ''}
+${notes ? `Additional Agent Context: ${notes}` : ''}
 `;
 
-        const instructions = `You are a real estate marketing expert. Generate 4 marketing assets based on the property details provided. Return ONLY a JSON object with these keys: 
-- "socialMedia": A punchy, emoji-rich post for Instagram/Facebook (max 280 chars).
-- "listingDescription": A professional, evocative long-form description (200 words).
-- "emailBlast": A high-conversion email subject line and body for prospective tenants.
-- "craigslistHtml": A simple HTML-formatted listing (using <b>, <br>, <ul>) optimized for Craigslist.
+        const instructions = `You are an elite real estate marketing strategist. Based on the property details provided, generate a complete marketing payload. 
 
-Property Details:
-${propertyDetails}`;
+Your response MUST be a valid JSON object with the following EXACT keys:
+1. "socialMedia": A punchy, emoji-rich, high-engagement post for Instagram/Facebook. Include relevant hashtags. Use a lifestyle-focused tone.
+2. "listingDescription": A professional, evocative, search-optimized long-form description (approx 200-250 words) suitable for Zillow or MLS.
+3. "emailBlast": A compelling email with a catchy subject line and a body that creates urgency and highlights unique features.
+4. "craigslistHtml": A professional HTML-formatted listing using ONLY <b>, <br>, <ul>, and <li> tags. Optimized for readability on Craigslist.
+
+PROPERTY DATA:
+${propertyDetails}
+
+RESPONSE FORMAT:
+{
+  "socialMedia": "string",
+  "listingDescription": "string",
+  "emailBlast": "string",
+  "craigslistHtml": "string"
+}`;
 
         const model = genAI.getGenerativeModel({
             model: 'gemini-1.5-flash',
-            generationConfig: { responseMimeType: "application/json" }
+            generationConfig: {
+                responseMimeType: "application/json",
+                temperature: 0.7,
+            }
         });
 
         const result = await model.generateContent(instructions);
         const responseText = result.response.text();
+
+        // Robust JSON parsing to handle potential markdown wrapping
+        let cleanJson = responseText.trim();
+        if (cleanJson.startsWith('```json')) {
+            cleanJson = cleanJson.replace(/^```json/, '').replace(/```$/, '').trim();
+        } else if (cleanJson.startsWith('```')) {
+            cleanJson = cleanJson.replace(/^```/, '').replace(/```$/, '').trim();
+        }
+
         let payload;
         try {
-            payload = JSON.parse(responseText);
+            payload = JSON.parse(cleanJson);
         } catch (e) {
-            // Fallback if parsing fails
-            console.error("JSON Parse Error:", responseText);
-            return NextResponse.json({ error: 'Failed to parse AI response' }, { status: 500 });
+            console.error("JSON Parse Error. Raw response:", responseText);
+            return NextResponse.json({
+                error: 'Failed to parse AI response',
+                raw: responseText.substring(0, 100) + '...'
+            }, { status: 500 });
+        }
+
+        // Validate keys
+        const requiredKeys = ["socialMedia", "listingDescription", "emailBlast", "craigslistHtml"];
+        for (const key of requiredKeys) {
+            if (!payload[key]) {
+                payload[key] = `AI failed to generate ${key}. Please try again.`;
+            }
         }
 
         return NextResponse.json({

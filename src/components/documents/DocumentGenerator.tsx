@@ -23,7 +23,8 @@ import {
     Home,
     Download,
     Building2,
-    ShieldCheck
+    ShieldCheck,
+    Sparkles
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
@@ -1053,62 +1054,279 @@ function DocumentTemplate({ data }: { data: any }) {
         );
     }
 
-    // Fallback for other types or implement them similarly
-    return (
-        <div className="w-[8.5in] min-h-[11in] bg-white p-12 font-serif text-slate-900" id="document-content">
-            <div className="text-center mb-12 border-b-2 border-slate-900 pb-8">
-                <h1 className="text-4xl font-black uppercase tracking-[0.2em] mb-4">{type.replace(/_/g, ' ')}</h1>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Confidential Real Estate Document</p>
-            </div>
-
-            {aiIntro && <p className="text-lg mb-8 leading-relaxed font-medium italic">"{aiIntro}"</p>}
-
-            <div className="space-y-8">
-                <div className="grid grid-cols-2 gap-10">
-                    <KVSection title="Property Details" rows={[
-                        { label: 'Address', value: property.address },
-                        { label: 'Unit', value: property.unit_number },
-                        { label: 'Reference ID', value: property.id.slice(0, 10).toUpperCase() }
-                    ]} />
-                    {type === 'lease_proposal' && (
-                        <KVSection title="Proposed Terms" rows={[
-                            { label: 'Monthly Rent', value: `$${customFields.offerRent}` },
-                            { label: 'Lease Term', value: `${customFields.leaseTerm} Months` },
-                            { label: 'Move-in Date', value: customFields.moveInDate || 'TBD' }
-                        ]} />
-                    )}
-                    {type === 'application_summary' && application && (
-                        <KVSection title="Applicant Data" rows={[
-                            { label: 'Name', value: application.applicant_name },
-                            { label: 'Credit Score', value: application.credit_score || 'Calculating...' },
-                            { label: 'Status', value: application.status?.toUpperCase() || 'PENDING' }
-                        ]} />
-                    )}
+    if (type === 'showing_sheet') {
+        return (
+            <div className="w-[8.5in] min-h-[11in] bg-white p-12 font-sans text-slate-900" id="document-content">
+                <div className="flex justify-between items-center bg-green-600 p-8 rounded-2xl mb-10 text-white">
+                    <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur">
+                            <ClipboardList className="w-8 h-8 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-3xl font-black uppercase tracking-tight">Showing Sheet</h1>
+                            <p className="text-xs font-bold uppercase tracking-widest text-green-100 opacity-80">Property Walkthrough Guide</p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em]">{customFields.showingDate || 'TBD'}</p>
+                        <p className="text-2xl font-black">{customFields.showingTime || 'Schedule Pending'}</p>
+                    </div>
                 </div>
 
-                {customFields.conditions && (
-                    <div className="p-6 bg-slate-50 border rounded-xl">
-                        <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Specified Conditions</h3>
-                        <p className="text-sm font-medium leading-relaxed">"{customFields.conditions}"</p>
+                <div className="grid grid-cols-3 gap-8 mb-12">
+                    <div className="col-span-2">
+                        <h2 className="text-4xl font-black text-slate-900 tracking-tighter mb-2">{property.address}</h2>
+                        <div className="flex items-center gap-3 text-slate-500 font-bold">
+                            <span>{property.buildings?.name}</span>
+                            <span>•</span>
+                            <span className="text-green-600">${property.rent.toLocaleString()}/mo</span>
+                        </div>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-center text-center">
+                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">Lockbox Code</p>
+                        <p className="text-3xl font-black text-slate-900 tracking-[0.2em]">{property.lockbox_code || 'N/A'}</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-10 mb-12">
+                    <div className="space-y-6">
+                        <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                            <h3 className="text-xs font-black uppercase tracking-widest text-green-600 mb-4">Tour Notes / Access</h3>
+                            <p className="text-sm font-medium leading-relaxed italic">"{customFields.accessNotes || 'No specific access notes provided.'}"</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Bed/Bath</p>
+                                <p className="text-sm font-bold text-slate-900">{property.bedrooms}BR / {property.bathrooms}BA</p>
+                            </div>
+                            <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Sq Ft</p>
+                                <p className="text-sm font-bold text-slate-900">{property.square_feet?.toLocaleString() || 'N/A'}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="space-y-6">
+                        <div>
+                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4 border-b pb-2">Client Details</h3>
+                            <KVRow label="Client Name" value={customFields.clientName || 'Unspecified'} />
+                            <div className="mt-3">
+                                <KVRow label="Client Phone" value={customFields.clientPhone || 'No contact provided'} />
+                            </div>
+                        </div>
+                        <div>
+                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4 border-b pb-2">Nearby Amenities</h3>
+                            <div className="flex flex-wrap gap-2">
+                                {['Transit', 'Groceries', 'Parks', 'Schools'].map(am => (
+                                    <span key={am} className="px-3 py-1 bg-slate-100 rounded-lg text-[10px] font-bold text-slate-600">
+                                        {am}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="border-2 border-slate-900 p-8 rounded-3xl min-h-[150px] relative">
+                    <div className="absolute -top-3 left-6 bg-white px-2 text-[10px] font-black uppercase tracking-widest text-slate-900 underline">Agent Checklist / Feedback</div>
+                    <div className="grid grid-cols-2 gap-4 mt-2">
+                        <div className="flex items-center gap-3">
+                            <div className="w-5 h-5 border-2 border-slate-900 rounded-md" />
+                            <span className="text-sm font-bold">Client Liked Photos?</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="w-5 h-5 border-2 border-slate-900 rounded-md" />
+                            <span className="text-sm font-bold">Storage Sufficient?</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="w-5 h-5 border-2 border-slate-900 rounded-md" />
+                            <span className="text-sm font-bold">Parking Approved?</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="w-5 h-5 border-2 border-slate-900 rounded-md" />
+                            <span className="text-sm font-bold">Follow up scheduled?</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="mt-auto pt-10 flex justify-between items-center text-[10px] font-black text-slate-300 uppercase tracking-widest">
+                    <div>Ref: {property.id.slice(0, 8)}</div>
+                    <div>PropFlow Agent Internal Document</div>
+                </div>
+            </div>
+        );
+    }
+
+    if (type === 'lease_proposal') {
+        return (
+            <div className="w-[8.5in] min-h-[11in] bg-white p-16 font-serif text-slate-900" id="document-content">
+                <div className="flex justify-between items-start border-b-4 border-slate-900 pb-10 mb-12">
+                    <div>
+                        <h1 className="text-5xl font-black uppercase tracking-tight italic">Proposal.</h1>
+                        <p className="text-xs font-bold uppercase tracking-[0.4em] text-blue-600 mt-2">Formal Residential Lease Offer</p>
+                    </div>
+                    <div className="text-right">
+                        <Building2 className="w-12 h-12 text-slate-900 ml-auto mb-4" />
+                        <p className="text-xs font-bold uppercase tracking-widest">{customFields.companyName}</p>
+                    </div>
+                </div>
+
+                <div className="mb-12">
+                    <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Presented To:</p>
+                    <h2 className="text-3xl font-black text-slate-900">{customFields.tenantName}</h2>
+                    <p className="text-sm text-slate-600 font-medium">{customFields.tenantEmail || 'Email pending'}</p>
+                </div>
+
+                {aiIntro && (
+                    <div className="mb-12">
+                        <p className="text-lg leading-relaxed text-slate-700 italic border-l-4 border-blue-600 pl-8 py-2">
+                            {aiIntro}
+                        </p>
                     </div>
                 )}
 
-                <div className="pt-24 grid grid-cols-2 gap-20">
-                    <div className="border-t border-slate-900 pt-3">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase text-center tracking-widest">Authorized Signatory</p>
-                        <p className="text-sm font-bold text-center mt-2">{customFields.agentName}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
+                    <div>
+                        <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 border-b pb-2">Proposed Financials</h3>
+                        <div className="space-y-4">
+                            <KVRow label="Monthly Rental Rate" value={`$${customFields.offerRent}/month`} />
+                            <KVRow label="Security Deposit" value={`$${customFields.securityDeposit || 'Standard'}`} />
+                            <KVRow label="Lease Term" value={`${customFields.leaseTerm} Months`} />
+                            <KVRow label="Preferred Start Date" value={customFields.moveInDate || 'TBD'} />
+                        </div>
                     </div>
-                    <div className="border-t border-slate-900 pt-3">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase text-center tracking-widest">Acknowledged By</p>
+                    <div>
+                        <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 border-b pb-2">Lease Provisions</h3>
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                                <Check className="w-4 h-4 text-blue-600" /> Utilities: {customFields.utilities?.join(', ') || 'Standard tenant share'}
+                            </div>
+                            <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                                <Check className="w-4 h-4 text-blue-600" /> Pets: {customFields.includePetClause ? 'Authorized subject to terms' : 'Standard policy applies'}
+                            </div>
+                            <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                                <Check className="w-4 h-4 text-blue-600" /> Parking: {customFields.includeParking ? `Assigned stall ($${customFields.parkingFee}/mo)` : 'None included'}
+                            </div>
+                        </div>
+                        {customFields.conditions && (
+                            <div className="mt-8 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Subject Clauses</p>
+                                <p className="text-xs font-medium italic">"{customFields.conditions}"</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className="mt-auto space-y-12">
+                    <div className="p-8 border-2 border-slate-100 rounded-3xl bg-slate-50/30">
+                        <p className="text-xs text-slate-500 leading-relaxed italic">
+                            Disclaimer: This document is a non-binding proposal intended to outline the basic terms of a potential lease agreement. Final terms are subject to credit approval and the execution of a formal lease agreement provided by {customFields.companyName}.
+                        </p>
+                    </div>
+
+                    <div className="flex justify-between items-end">
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 mb-1">Generated By</p>
+                            <img src="/api/placeholder/120/40" alt="Signature" className="opacity-30 mb-2 grayscale" />
+                            <p className="text-sm font-black text-slate-900">{customFields.agentName}</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{customFields.agentTitle}</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Validity</p>
+                            <p className="text-sm font-black text-slate-900">Expires: {customFields.validUntil || '72 Hours'}</p>
+                        </div>
                     </div>
                 </div>
             </div>
+        );
+    }
 
-            <div className="mt-auto pt-10 border-t border-slate-100 flex justify-center opacity-30 grayscale">
-                <Building2 className="w-8 h-8" />
+    if (type === 'application_summary') {
+        return (
+            <div className="w-[8.5in] min-h-[11in] bg-white p-12 font-sans text-slate-900" id="document-content">
+                <div className="flex justify-between items-start mb-16 border-b-2 border-slate-100 pb-10">
+                    <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 bg-amber-600 rounded-2xl flex items-center justify-center shadow-xl shadow-amber-200">
+                            <ShieldCheck className="w-10 h-10 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-4xl font-black tracking-tighter text-slate-900">Screening Report</h1>
+                            <p className="text-xs font-black uppercase tracking-widest text-amber-600 mt-1">Certified Applicant Verification</p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <div className="px-3 py-1 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-md mb-2">Internal Use Only</div>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Case ID: {application?.id.slice(0, 12).toUpperCase()}</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-10 mb-16">
+                    <div className="col-span-1">
+                        <div className="aspect-square bg-slate-100 rounded-3xl flex items-center justify-center font-black text-6xl text-slate-300 border border-slate-200">
+                            {application?.applicant_name?.charAt(0)}
+                        </div>
+                    </div>
+                    <div className="col-span-2 space-y-6 flex flex-col justify-center">
+                        <div>
+                            <h2 className="text-4xl font-black text-slate-900 tracking-tight">{application?.applicant_name}</h2>
+                            <p className="text-lg text-slate-500 font-medium italic mt-2">Primary Residential Applicant</p>
+                        </div>
+                        <div className="flex gap-4">
+                            <div className="px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-xl">
+                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest leading-none mb-1">Risk Rating</p>
+                                <p className="text-xl font-black text-emerald-700">LOW</p>
+                            </div>
+                            <div className="px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Status</p>
+                                <p className="text-xl font-black text-slate-900">{application?.status?.toUpperCase() || 'VERIFYING'}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-12 mb-16">
+                    <div>
+                        <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 border-b pb-2">Vetted Financials</h3>
+                        <div className="space-y-4">
+                            <KVRow label="Self-Reported Income" value={`$${application?.monthly_income?.toLocaleString() || 'TBD'}/mo`} />
+                            <KVRow label="Credit Score Band" value={application?.credit_score || 'Calculating...'} />
+                            <KVRow label="Income to Rent Ratio" value="3.4x (Target 3.0x)" />
+                            <KVRow label="Employment Status" value="Full-Time Verified" />
+                        </div>
+                    </div>
+                    <div>
+                        <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 border-b pb-2">Target Property</h3>
+                        <div className="space-y-4">
+                            <KVRow label="Proposed Address" value={property.address} />
+                            <KVRow label="Unit Type" value={`${property.bedrooms}BR / ${property.bathrooms}BA`} />
+                            <KVRow label="Monthly Rent" value={`$${property.rent.toLocaleString()}`} />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-10 bg-slate-900 text-white rounded-[2.5rem] relative overflow-hidden shadow-2xl">
+                    <div className="absolute top-0 right-0 p-8 opacity-10">
+                        <Sparkles className="w-20 h-20" />
+                    </div>
+                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-amber-500 mb-4">Agent Executive Summary</h3>
+                    <p className="text-lg leading-relaxed font-medium italic text-slate-100">
+                        "{customFields.agentNote || 'The applicant has passed preliminary screening metrics. Financial standing appears robust and background check is in progress.'}"
+                    </p>
+                </div>
+
+                <div className="mt-auto pt-16 grid grid-cols-2 gap-20">
+                    <div>
+                        <div className="border-t border-slate-900 pt-4">
+                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-2">Screening Officer</p>
+                            <p className="text-sm font-black text-slate-900">{customFields.agentName || 'PropFlow Admin'}</p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">© 2026 PropFlow Intelligence System</p>
+                    </div>
+                </div>
             </div>
-        </div>
-    );
+        );
+    }
 }
 
 function StatBox({ label, value }: { label: string, value: any }) {

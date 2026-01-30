@@ -14,6 +14,10 @@ export async function POST(request: Request) {
         const customFields = JSON.parse(formData.get('customFields') as string || '{}');
         const image = formData.get('image') as File | null;
 
+        if (!process.env.GEMINI_API_KEY) {
+            return NextResponse.json({ error: 'Gemini API key not configured' }, { status: 500 });
+        }
+
         const supabase = await createClient();
 
         let documentData: any = { type, generatedAt: new Date().toISOString() };
@@ -21,24 +25,28 @@ export async function POST(request: Request) {
 
         // Handle image upload if provided
         if (image) {
-            const bytes = await image.arrayBuffer();
-            const buffer = Buffer.from(bytes);
-            const fileName = `documents/${Date.now()}-${image.name}`;
+            try {
+                const bytes = await image.arrayBuffer();
+                const buffer = Buffer.from(bytes);
+                const fileName = `documents/${Date.now()}-${image.name.replace(/\s+/g, '_')}`;
 
-            const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('property-images')
-                .upload(fileName, buffer, {
-                    contentType: image.type,
-                    upsert: true
-                });
-
-            if (!uploadError && uploadData) {
-                const { data: { publicUrl } } = supabase.storage
+                const { data: uploadData, error: uploadError } = await supabase.storage
                     .from('property-images')
-                    .getPublicUrl(fileName);
-                imageUrl = publicUrl;
-            } else {
-                console.error('Storage Upload Error:', uploadError);
+                    .upload(fileName, buffer, {
+                        contentType: image.type,
+                        upsert: true
+                    });
+
+                if (!uploadError && uploadData) {
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('property-images')
+                        .getPublicUrl(fileName);
+                    imageUrl = publicUrl;
+                } else {
+                    console.error('Storage Upload Error:', uploadError);
+                }
+            } catch (imageErr) {
+                console.error('Image Processing Error:', imageErr);
             }
         }
 
@@ -51,11 +59,11 @@ export async function POST(request: Request) {
                 .single();
 
             documentData.property = property;
-            documentData.imageUrl = imageUrl;
+            documentData.imageUrl = imageUrl || (property?.photos?.[0]);
         }
 
         // Fetch application data
-        if (applicantId) {
+        if (applicantId && applicantId !== 'none') {
             const { data: application } = await supabase
                 .from('applications')
                 .select('*')
@@ -69,29 +77,30 @@ export async function POST(request: Request) {
         documentData.customFields = customFields;
 
         // Generate AI-enhanced content if needed
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
         if (type === 'property_summary' && documentData.property) {
-            const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
             const prompt = `Write a compelling 2-3 sentence marketing highlight for this property. Focus on the best features and lifestyle benefits. Be specific and avoid generic phrases.
-
-Property: ${documentData.property.address}
-Rent: $${documentData.property.rent}/month
-Bedrooms: ${documentData.property.bedrooms}
-Bathrooms: ${documentData.property.bathrooms}
-Description: ${documentData.property.description}
-Building Amenities: ${documentData.property.buildings?.amenities?.join(', ') || 'N/A'}`;
+            
+Address: ${documentData.property.address}
+Rent: $${documentData.property.rent}/mo
+Specs: ${documentData.property.bedrooms}BR/${documentData.property.bathrooms}BA
+Context: ${customFields.highlightFeatures || ''}
+Description: ${documentData.property.description}`;
 
             const result = await model.generateContent(prompt);
-            documentData.aiHighlight = result.response.text();
+            documentData.aiHighlight = result.response.text().trim();
         }
 
         if (type === 'lease_proposal') {
-            const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
-            const prompt = `Write a professional opening paragraph for a lease proposal letter. The tenant is ${customFields.tenantName}, the property is ${documentData.property?.address || 'the property'}, and the proposed rent is $${customFields.offerRent}/month for a ${customFields.leaseTerm}-month term. Be warm but professional.`;
+            const prompt = `Write a professional, welcoming opening paragraph (3-4 sentences) for a formal lease proposal. 
+            Tenant: ${customFields.tenantName}
+            Property: ${documentData.property?.address || 'the property'}
+            Terms: $${customFields.offerRent}/mo for ${customFields.leaseTerm} months.
+            Tone: Professional, elite, welcoming.`;
 
             const result = await model.generateContent(prompt);
-            documentData.aiIntro = result.response.text();
+            documentData.aiIntro = result.response.text().trim();
         }
 
         return NextResponse.json({
