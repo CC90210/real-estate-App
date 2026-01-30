@@ -30,9 +30,6 @@ export async function POST(request: Request) {
             if (createError.message.includes('already registered') || createError.status === 422) {
                 console.log("User likely exists, attempting to find and force-confirm...");
 
-                // 2. Find existing user to get ID (Since we can't get ID from error)
-                // We list users filtering by email is not directly available, but we can list and find.
-                // For a new app, listing 1000 is safe.
                 const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers({
                     perPage: 1000
                 });
@@ -42,24 +39,34 @@ export async function POST(request: Request) {
                 const existingUser = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
 
                 if (existingUser) {
+                    // Prepare updates. Only update metadata if provided (preserve existing name if logging in)
+                    const updates: any = {
+                        email_confirm: true,
+                        password: password // Always update password to match current attempt
+                    };
+
+                    if (full_name || role) {
+                        updates.user_metadata = {
+                            ...existingUser.user_metadata,
+                            ...(full_name && { full_name }),
+                            ...(role && { role })
+                        };
+                    }
+
                     // 3. Force update to confirm email & update password/meta
                     const { data: { user: updatedUser }, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
                         existingUser.id,
-                        {
-                            email_confirm: true,
-                            password: password, // Reset password to what they just typed
-                            user_metadata: { full_name, role }
-                        }
+                        updates
                     );
 
                     if (updateError) throw updateError;
 
-                    // Also ensure profile exists via simple upsert since trigger might have missed if user existed pre-trigger
+                    // Also ensure profile exists
                     await supabaseAdmin.from('profiles').upsert({
                         id: existingUser.id,
                         email,
-                        full_name,
-                        role
+                        ...(full_name && { full_name }),
+                        ...(role && { role })
                     }, { onConflict: 'id' });
 
                     return NextResponse.json({ success: true, user: updatedUser, message: "Account recovered and confirmed." });

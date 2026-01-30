@@ -32,6 +32,36 @@ function LoginForm() {
         });
 
         if (error) {
+            // Intelligent Error Handling & Auto-Fix
+            if (error.message.includes('Email not confirmed')) {
+                toast.info("Account needs verification. Attempting auto-fix...");
+
+                try {
+                    // Call our Admin API to force-confirm this existing user
+                    const res = await fetch('/api/auth/signup', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, password }) // Send credentials to fix
+                    });
+
+                    if (res.ok) {
+                        // Retry login immediately
+                        const { error: retryError } = await supabase.auth.signInWithPassword({
+                            email,
+                            password
+                        });
+
+                        if (!retryError) {
+                            toast.success("Account verified and signed in!");
+                            router.push('/dashboard');
+                            return;
+                        }
+                    }
+                } catch (fixErr) {
+                    console.error("Auto-fix failed", fixErr);
+                }
+            }
+
             toast.error(error.message);
             setIsLoading(false);
         } else {
