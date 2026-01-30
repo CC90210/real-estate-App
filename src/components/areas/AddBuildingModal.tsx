@@ -55,6 +55,12 @@ export function AddBuildingModal({ areaId, areaName }: AddBuildingModalProps) {
 
             if (error) throw error;
 
+            // Log activity
+            await supabase.from('activity_log').insert({
+                action: 'BUILDING_CREATED',
+                description: `Added building ${data.name} to ${areaName}`
+            });
+
             toast.success(`${data.name} added to ${areaName}`);
             setOpen(false);
             reset();

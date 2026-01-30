@@ -75,6 +75,12 @@ export function AddPropertyModal({ buildingId, buildingName, buildingAddress }: 
 
             if (error) throw error;
 
+            // Log activity
+            await supabase.from('activity_log').insert({
+                action: 'PROPERTY_CREATED',
+                description: `Created Unit ${data.unit_number} in ${buildingName}`
+            });
+
             toast.success(`Unit ${data.unit_number} added to ${buildingName}`);
             setOpen(false);
             reset();

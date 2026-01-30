@@ -39,6 +39,7 @@ export async function POST(request: Request) {
         - "socialMedia": A punchy, emoji-rich post for Instagram/Facebook.
         - "listingDescription": A professional, evocative long-form description (200 words).
         - "emailBlast": A high-conversion email subject line and body for prospective tenants.
+        - "craigslistHtml": A simple HTML-formatted listing (using <b>, <br>, <ul>) optimized for Craigslist.
         - "metadata": { "tone": "string", "highlights": ["string"] }`;
 
         const userContext = `

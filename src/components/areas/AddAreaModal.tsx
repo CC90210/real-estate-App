@@ -83,6 +83,12 @@ export function AddAreaModal() {
 
             if (error) throw error;
 
+            // Log activity
+            await supabase.from('activity_log').insert({
+                action: 'AREA_CREATED',
+                description: `Created new area: ${data.name}`
+            });
+
             toast.success("Area created successfully");
             setOpen(false);
             reset();

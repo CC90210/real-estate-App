@@ -13,6 +13,7 @@ interface AdPayload {
     socialMedia: string;
     listingDescription: string;
     emailBlast: string;
+    craigslistHtml: string;
 }
 
 export function GenerateAdModal({
@@ -118,10 +119,11 @@ export function GenerateAdModal({
 
                     {payload && !isLoading && (
                         <Tabs defaultValue="social" className="w-full animate-in fade-in slide-in-from-bottom-2">
-                            <TabsList className="grid w-full grid-cols-3">
-                                <TabsTrigger value="social">Social Media</TabsTrigger>
+                            <TabsList className="grid w-full grid-cols-4">
+                                <TabsTrigger value="social">Social</TabsTrigger>
                                 <TabsTrigger value="listing">Listing</TabsTrigger>
                                 <TabsTrigger value="email">Email</TabsTrigger>
+                                <TabsTrigger value="craigslist">Craigslist</TabsTrigger>
                             </TabsList>
                             <div className="mt-4 p-4 border rounded-xl bg-slate-50 relative group">
                                 <TabsContent value="social">
@@ -150,6 +152,17 @@ export function GenerateAdModal({
                                         </Button>
                                     </div>
                                     <p className="text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">{payload.emailBlast}</p>
+                                </TabsContent>
+                                <TabsContent value="craigslist">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <span className="text-[10px] uppercase font-bold text-slate-400">Craigslist HTML Listing</span>
+                                        <Button variant="ghost" size="sm" onClick={() => handleCopy(payload.craigslistHtml, 'Craigslist')} className="h-8 px-2">
+                                            {copied === 'Craigslist' ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                                        </Button>
+                                    </div>
+                                    <code className="text-[10px] font-mono leading-relaxed text-slate-700 whitespace-pre-wrap block p-2 bg-slate-100 rounded border">
+                                        {payload.craigslistHtml}
+                                    </code>
                                 </TabsContent>
                             </div>
                         </Tabs>
