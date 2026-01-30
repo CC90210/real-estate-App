@@ -61,7 +61,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const [profile, setProfile] = useState<Profile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    const isDemoMode = true; // FORCE DEMO MODE
+    const isDemoMode = false; // REAL SUPABASE MODE
 
     const fetchProfile = async (userId: string) => {
         if (isDemoMode) {

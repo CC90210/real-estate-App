@@ -69,6 +69,12 @@ function LoginForm() {
                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                 Sign In
             </Button>
+
+            <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-slate-200" />
+                </div>
+            </div>
         </form>
     );
 }
