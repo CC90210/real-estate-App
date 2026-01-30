@@ -98,7 +98,24 @@ alter table public.properties enable row level security;
 create policy "Properties are viewable by everyone" on properties for select using (true);
 
 
--- 5. APPLICATIONS
+-- 5. LANDLORDS
+create table if not exists public.landlords (
+  id uuid default uuid_generate_v4() primary key,
+  name text not null,
+  email text,
+  phone text,
+  company_name text,
+  address text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+alter table public.landlords enable row level security;
+create policy "Landlords are viewable by everyone" on landlords for select using (true);
+
+-- Update Properties to include landlord relation
+alter table public.properties add column if not exists owner_id uuid references public.landlords(id);
+
+
+-- 6. APPLICATIONS
 create table if not exists public.applications (
   id uuid default uuid_generate_v4() primary key,
   property_id uuid references public.properties(id) not null,

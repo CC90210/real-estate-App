@@ -3,83 +3,82 @@ import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@/lib/supabase/server';
 
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+
 export async function POST(request: Request) {
     try {
         const { propertyId, notes } = await request.json();
+
+        if (!process.env.GEMINI_API_KEY) {
+            return NextResponse.json({ error: 'Gemini API key not configured' }, { status: 500 });
+        }
+
         const supabase = await createClient();
 
-        // 1. Fetch real property data for context injection
-        const { data: property, error: fetchError } = await supabase
+        const { data: property, error } = await supabase
             .from('properties')
-            .select(`
-                *,
-                buildings (
-                    *,
-                    area:areas(*)
-                )
-            `)
+            .select('*, buildings(*)')
             .eq('id', propertyId)
             .single();
 
-        if (fetchError || !property) {
-            throw new Error(`Property context injection failed: ${fetchError?.message || 'Property not found'}`);
+        if (error || !property) {
+            return NextResponse.json({ error: 'Property not found' }, { status: 404 });
         }
 
-        // 2. AI Prompt Engineering (Directives 3.1)
-        if (!process.env.GEMINI_API_KEY) {
-            throw new Error("Server Configuration Error: Missing GEMINI_API_KEY");
-        }
+        const propertyDetails = `
+Property Name/Address: ${property.address}
+Monthly Rent: $${property.rent}
+Bedrooms: ${property.bedrooms}
+Bathrooms: ${property.bathrooms}
+Square Feet: ${property.square_feet || 'N/A'}
+Status: ${property.status}
+Available Date: ${property.available_date || 'Immediately'}
+Pet Policy: ${property.pet_policy || 'Contact for details'}
+Parking: ${property.parking_included ? 'Included' : 'Not included'}
+Building: ${property.buildings?.name || 'N/A'}
+Building Amenities: ${property.buildings?.amenities?.join(', ') || 'N/A'}
+Description: ${property.description}
+${notes ? `Agent Context: ${notes}` : ''}
+`;
 
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        const instructions = `You are a real estate marketing expert. Generate 4 marketing assets based on the property details provided. Return ONLY a JSON object with these keys: 
+- "socialMedia": A punchy, emoji-rich post for Instagram/Facebook (max 280 chars).
+- "listingDescription": A professional, evocative long-form description (200 words).
+- "emailBlast": A high-conversion email subject line and body for prospective tenants.
+- "craigslistHtml": A simple HTML-formatted listing (using <b>, <br>, <ul>) optimized for Craigslist.
 
-        const systemPrompt = `You are an expert luxury real estate copywriter and marketing strategist. 
-        Your task is to generate a comprehensive marketing payload for a property.
-        Return your response strictly as a JSON object with the following keys:
-        - "socialMedia": A punchy, emoji-rich post for Instagram/Facebook.
-        - "listingDescription": A professional, evocative long-form description (200 words).
-        - "emailBlast": A high-conversion email subject line and body for prospective tenants.
-        - "craigslistHtml": A simple HTML-formatted listing (using <b>, <br>, <ul>) optimized for Craigslist.
-        - "metadata": { "tone": "string", "highlights": ["string"] }`;
+Property Details:
+${propertyDetails}`;
 
-        const userContext = `
-        Property Context:
-        - Type: ${property.bedrooms} Bed, ${property.bathrooms} Bath Apartment
-        - Rent: $${property.rent}/month
-        - Address: ${property.address}
-        - Building: ${property.buildings?.name}
-        - Area: ${property.buildings?.area?.name}
-        - Amenities: ${property.amenities?.join(', ') || 'Standard unit features'}
-        - Special Notes from Agent: ${notes || 'Focus on prime location and value.'}
-        
-        Generate the payload now. Return ONLY JSON.
-        `;
+        const model = genAI.getGenerativeModel({
+            model: 'gemini-1.5-flash',
+            generationConfig: { responseMimeType: "application/json" }
+        });
 
-        const result = await model.generateContent(systemPrompt + userContext);
-        const response = await result.response;
-        let text = response.text();
-
-        // Sanitize JSON response (Directives 2.3 logic)
-        text = text.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
-
+        const result = await model.generateContent(instructions);
+        const responseText = result.response.text();
+        let payload;
         try {
-            const payload = JSON.parse(text);
-            return NextResponse.json({ success: true, payload });
-        } catch (parseError) {
-            console.error("JSON Parse Error on Gemini output:", text);
-            // Fallback object if JSON parsing fails
-            return NextResponse.json({
-                success: true,
-                payload: {
-                    socialMedia: "New Listing! Check it out at " + property.address,
-                    listingDescription: property.description || "A wonderful " + property.bedrooms + " bedroom unit.",
-                    emailBlast: "New apartment available at " + property.buildings?.name
-                }
-            });
+            payload = JSON.parse(responseText);
+        } catch (e) {
+            // Fallback if parsing fails
+            console.error("JSON Parse Error:", responseText);
+            return NextResponse.json({ error: 'Failed to parse AI response' }, { status: 500 });
         }
+
+        return NextResponse.json({
+            payload,
+            property: {
+                address: property.address,
+                rent: property.rent
+            }
+        });
 
     } catch (error: any) {
-        console.error("Ad Gen Critical Failure:", error);
-        return NextResponse.json({ error: error.message || 'Generation failed' }, { status: 500 });
+        console.error('Gemini API Error:', error);
+        return NextResponse.json({
+            error: 'Generation failed',
+            details: error.message
+        }, { status: 500 });
     }
 }
