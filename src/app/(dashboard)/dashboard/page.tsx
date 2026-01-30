@@ -71,7 +71,7 @@ export default async function DashboardPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Recent Activity */}
-                <Card className="lg:col-span-2 border-none shadow-sm ring-1 ring-slate-200/50">
+                <Card className="lg:col-span-2 border border-slate-200 shadow-sm ring-0">
                     <CardHeader>
                         <CardTitle className="text-lg font-semibold text-slate-900">Recent Activity</CardTitle>
                     </CardHeader>
@@ -139,8 +139,8 @@ export default async function DashboardPage() {
 
 function StatCard({ title, value, icon: Icon, color, bg }: any) {
     return (
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition-shadow">
-            <div className={`p-4 rounded-xl ${bg}`}>
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 flex items-center gap-4 hover:shadow-md transition-shadow">
+            <div className={`p-4 rounded-xl ${bg} ring-1 ring-inset ring-black/5`}>
                 <Icon className={`w-6 h-6 ${color}`} />
             </div>
             <div>

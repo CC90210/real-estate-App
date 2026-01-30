@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Loader2 } from 'lucide-react';
 import { ChatPanel } from '@/components/chat/ChatPanel';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 
 export default function DashboardLayout({
     children,
@@ -58,6 +59,7 @@ export default function DashboardLayout({
                 <MobileNav />
                 <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
                     <div className="max-w-7xl mx-auto w-full space-y-6">
+                        <Breadcrumbs />
                         {children}
                     </div>
                 </main>
