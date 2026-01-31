@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
+import { deletePropertyAction } from '@/lib/actions/property-actions';
 import { Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import {
     Dialog,
@@ -33,50 +34,18 @@ export function DeletePropertyButton({ propertyId, propertyName }: DeletePropert
         try {
             console.log("DeletePropertyButton: Deleting property", propertyId);
 
-            // Step 1: Manual Cascade Deletion (Client-Side)
-            // First, get all applications for this property
-            const { data: apps } = await supabase
-                .from('applications')
-                .select('id')
-                .eq('property_id', propertyId);
+            // Server Action
+            const result = await deletePropertyAction(propertyId);
 
-            const appIds = apps?.map(a => a.id) || [];
-
-            if (appIds.length > 0) {
-                // Delete logs for these applications
-                await supabase
-                    .from('activity_log')
-                    .delete()
-                    .in('entity_id', appIds);
-
-                // Delete the applications themselves
-                await supabase
-                    .from('applications')
-                    .delete()
-                    .in('id', appIds);
-            }
-
-            // Step 2: Delete property logs
-            await supabase
-                .from('activity_log')
-                .delete()
-                .eq('entity_id', propertyId);
-
-            // Step 3: Delete the property
-            const { error } = await supabase
-                .from('properties')
-                .delete()
-                .eq('id', propertyId);
-
-            if (error) {
-                console.error("Supabase delete error:", error);
-                throw error;
+            if (!result.success) {
+                console.error("Server Action Failed:", result.error);
+                throw new Error(result.error);
             }
 
             toast.success("Listing deleted successfully");
             setIsOpen(false);
 
-            // Force a hard refresh and navigation
+            // Force a hard refresh and navigation - client side still helps feels snappy
             router.refresh();
             router.replace('/areas');
 

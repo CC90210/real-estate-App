@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { updatePropertyAction } from '@/lib/actions/property-actions';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -34,18 +35,19 @@ export function EditPropertyModal({ property }: EditPropertyModalProps) {
     const handleUpdate = async () => {
         setIsLoading(true);
         try {
-            const { error } = await supabase
-                .from('properties')
-                .update({
-                    rent: parseFloat(rent),
-                    lockbox_code: lockbox,
-                    description,
-                    status,
-                    photos
-                })
-                .eq('id', property.id);
+            const formData = {
+                rent: parseFloat(rent),
+                lockbox_code: lockbox,
+                description,
+                status,
+                photos
+            };
 
-            if (error) throw error;
+            const result = await updatePropertyAction(property.id, formData);
+
+            if (!result.success) {
+                throw new Error(result.error);
+            }
 
             toast.success("Property updated successfully");
             setOpen(false);
