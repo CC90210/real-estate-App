@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
-import { deletePropertyAction } from '@/lib/actions/property-actions';
+import { useDeleteProperty } from '@/lib/hooks/useProperties';
 import { Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import {
     Dialog,
@@ -29,29 +29,25 @@ export function DeletePropertyButton({ propertyId, propertyName }: DeletePropert
 
     const [isOpen, setIsOpen] = useState(false);
 
+    const deleteMutation = useDeleteProperty();
+
     const handleDelete = async () => {
         setIsLoading(true);
         try {
-            console.log("DeletePropertyButton: Deleting property", propertyId);
+            console.log("DeletePropertyButton: Deleting property via Hook", propertyId);
 
-            // Server Action
-            const result = await deletePropertyAction(propertyId);
+            // Use Mutation Hook (Exact same pattern as Applications)
+            await deleteMutation.mutateAsync(propertyId);
 
-            if (!result.success) {
-                console.error("Server Action Failed:", result.error);
-                throw new Error(result.error);
-            }
-
-            toast.success("Listing deleted successfully");
             setIsOpen(false);
 
-            // Force a hard refresh and navigation - client side still helps feels snappy
+            // Force a hard refresh and navigation
             router.refresh();
             router.replace('/areas');
 
         } catch (error: any) {
             console.error("Delete error:", error);
-            toast.error("Failed to delete listing: " + error.message);
+            // Error managed by hook toast
         } finally {
             setIsLoading(false);
         }

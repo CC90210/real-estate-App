@@ -60,6 +60,39 @@ export function useDeleteProperty() {
 
     return useMutation({
         mutationFn: async (propertyId: string) => {
+            console.log(`[useDeleteProperty] Deleting: ${propertyId}`);
+
+            // 1. Get related APPS
+            const { data: apps } = await supabase
+                .from('applications')
+                .select('id')
+                .eq('property_id', propertyId);
+
+            const appIds = apps?.map(a => a.id) || [];
+
+            // 2. Delete Logs for Apps
+            if (appIds.length > 0) {
+                await supabase
+                    .from('activity_log')
+                    .delete()
+                    .in('entity_id', appIds)
+                    .eq('entity_type', 'application');
+
+                // 3. Delete Apps
+                await supabase
+                    .from('applications')
+                    .delete()
+                    .in('id', appIds);
+            }
+
+            // 4. Delete Logs for Property
+            await supabase
+                .from('activity_log')
+                .delete()
+                .eq('entity_id', propertyId)
+                .eq('entity_type', 'property');
+
+            // 5. Delete Property
             const { error } = await supabase
                 .from('properties')
                 .delete()
@@ -69,9 +102,12 @@ export function useDeleteProperty() {
             return propertyId;
         },
         onMutate: async (propertyId) => {
+            // Optimistic update for immediate feedback
             await queryClient.cancelQueries({ queryKey: ['properties'] });
+
             const previousProperties = queryClient.getQueryData(['properties']);
 
+            // Optimistically remove from list
             queryClient.setQueryData(['properties'], (old: any[]) =>
                 old?.filter(p => p.id !== propertyId)
             );
@@ -80,13 +116,16 @@ export function useDeleteProperty() {
         },
         onError: (err, propertyId, context) => {
             queryClient.setQueryData(['properties'], context?.previousProperties);
-            toast.error('Failed to delete property');
+            toast.error('Failed to delete property: ' + err.message);
         },
         onSuccess: () => {
             toast.success('Property deleted successfully');
         },
         onSettled: () => {
+            // Invalidate all related queries to force refresh
             queryClient.invalidateQueries({ queryKey: ['properties'] });
+            queryClient.invalidateQueries({ queryKey: ['applications'] });
+            queryClient.invalidateQueries({ queryKey: ['dashboard_metrics'] });
         },
     });
 }
