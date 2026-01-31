@@ -38,6 +38,13 @@ Follow this checklist to validate the "Closed-Loop" integration and User Experie
 5. Generate a "Lease Proposal".
    - [ ] **Pass**: Proposal is generated with the "Vibrant" styling (solid colors, not washed out).
 
+### Application Deletion (Crucial)
+1. **Create** a test application (or use an existing one like "Emma Thompson").
+2. **Delete** it via the dropdown menu -> "Delete Permanently".
+3. **Verify UI**: It should disappear immediately from the list.
+4. **Verify Database**: Check Supabase `applications` table. The row must be gone.
+   - *Note*: If deletion fails, ensure you have run the RLS policies SQL script.
+
 ## 3. Visual Quality Assurance
 **Objective**: Confirm UI polish and responsiveness.
 

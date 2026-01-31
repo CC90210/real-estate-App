@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import { useApplications, useDeleteApplication, useUpdateApplicationStatus } from '@/lib/hooks/useApplications';
 import {
     Dialog,
     DialogContent,
@@ -23,7 +24,6 @@ import {
 } from "@/components/ui/dialog";
 
 export function ApplicationList({ applications: initialApplications }: { applications: any[] }) {
-    const [applications, setApplications] = useState(initialApplications);
     const [filter, setFilter] = useState('all');
     const [search, setSearch] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
@@ -31,7 +31,32 @@ export function ApplicationList({ applications: initialApplications }: { applica
     const router = useRouter();
     const supabase = createClient();
 
-    const filtered = applications.filter(app => {
+    const { data: applicationsData, isLoading } = useApplications();
+    const deleteMutation = useDeleteApplication();
+    const updateStatusMutation = useUpdateApplicationStatus();
+
+    // User server data on first load, then sync with React Query
+    // We prefer the cached data if available to reflect real-time updates from other places
+    const applications = applicationsData || initialApplications || [];
+
+    const handleConfirmDelete = async () => {
+        if (!appToDelete) return;
+        setIsDeleting(true);
+        try {
+            await deleteMutation.mutateAsync(appToDelete.id);
+            setAppToDelete(null);
+        } catch (error) {
+            // Error managed by hook toast
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const handleUpdateStatus = (id: string, status: string) => {
+        updateStatusMutation.mutate({ id, status });
+    };
+
+    const filtered = applications.filter((app: any) => {
         const matchesStatus = filter === 'all' || app.status === filter;
         const matchesSearch =
             app.applicant_name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -39,44 +64,7 @@ export function ApplicationList({ applications: initialApplications }: { applica
         return matchesStatus && matchesSearch;
     });
 
-    const tabs = ['all', 'pending', 'approved', 'denied'];
-
-    const handleDelete = async () => {
-        if (!appToDelete) return;
-        setIsDeleting(true);
-        try {
-            const { error } = await supabase
-                .from('applications')
-                .delete()
-                .eq('id', appToDelete.id);
-
-            if (error) throw error;
-
-            setApplications(prev => prev.filter(a => a.id !== appToDelete.id));
-            toast.success("Application deleted successfully from database.");
-            setAppToDelete(null);
-        } catch (error: any) {
-            toast.error("Failed to delete application: " + error.message);
-        } finally {
-            setIsDeleting(false);
-        }
-    };
-
-    const updateStatus = async (id: string, status: string) => {
-        try {
-            const { error } = await supabase
-                .from('applications')
-                .update({ status })
-                .eq('id', id);
-
-            if (error) throw error;
-
-            setApplications(prev => prev.map(a => a.id === id ? { ...a, status } : a));
-            toast.success(`Status updated to ${status}`);
-        } catch (error: any) {
-            toast.error("Failed to update status: " + error.message);
-        }
-    };
+    const tabs = ['all', 'new', 'screening', 'approved', 'denied'];
 
     return (
         <div className="space-y-4">
@@ -197,10 +185,10 @@ export function ApplicationList({ applications: initialApplications }: { applica
                                                     <Eye className="w-4 h-4" /> LIVE VIEW DETAILS
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator className="bg-slate-100 my-1" />
-                                                <DropdownMenuItem onClick={() => updateStatus(app.id, 'approved')} className="rounded-xl gap-3 text-xs font-black py-3 px-4 text-emerald-600 focus:bg-emerald-50 focus:text-emerald-600">
+                                                <DropdownMenuItem onClick={() => handleUpdateStatus(app.id, 'approved')} className="rounded-xl gap-3 text-xs font-black py-3 px-4 text-emerald-600 focus:bg-emerald-50 focus:text-emerald-600">
                                                     <FileCheck className="w-4 h-4" /> AUTHORIZE APPROVAL
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => updateStatus(app.id, 'denied')} className="rounded-xl gap-3 text-xs font-black py-3 px-4 text-amber-600 focus:bg-amber-50 focus:text-amber-600">
+                                                <DropdownMenuItem onClick={() => handleUpdateStatus(app.id, 'denied')} className="rounded-xl gap-3 text-xs font-black py-3 px-4 text-amber-600 focus:bg-amber-50 focus:text-amber-600">
                                                     <XCircle className="w-4 h-4" /> REJECT APPLICATION
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator className="bg-slate-100 my-1" />
@@ -236,7 +224,7 @@ export function ApplicationList({ applications: initialApplications }: { applica
                             Abort
                         </Button>
                         <Button
-                            onClick={handleDelete}
+                            onClick={handleConfirmDelete}
                             disabled={isDeleting}
                             className="bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest px-8 shadow-xl shadow-red-100"
                         >
