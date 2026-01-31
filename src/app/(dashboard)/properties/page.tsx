@@ -73,10 +73,10 @@ export default function PropertiesPage() {
                         Manage your property portfolio ({filteredProperties?.length || 0})
                     </p>
                 </div>
-                <Link href="/properties/new">
+                <Link href="/areas">
                     <Button className="gradient-bg text-white shadow-lg shadow-primary/20 gap-2">
                         <Plus className="w-4 h-4" />
-                        Add Property
+                        Add Unit (via Areas)
                     </Button>
                 </Link>
             </div>
