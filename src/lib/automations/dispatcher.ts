@@ -7,12 +7,16 @@ export type AutomationEventType =
 export async function triggerAutomation(
     event: AutomationEventType,
     payload: Record<string, any>
-): Promise<{ success: boolean; id?: string; error?: string }> {
+): Promise<{ success: boolean; id?: string; error?: string; warning?: string }> {
     console.log(`[🚀 AUTOMATION DISPATCH] Triggering Event: ${event}`);
 
-    // In a real env, this would be process.env.N8N_WEBHOOK_URL
-    // For this Enterpise demo, we simulate a successful dispatch to an n8n endpoint.
-    const WEBHOOK_URL = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://mock-n8n.propflow.ai/webhook/generic';
+    // 🚀 PRODUCTION MODE: Real Network Dispatch
+    const WEBHOOK_URL = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL;
+
+    if (!WEBHOOK_URL) {
+        console.warn(`[⚠️ AUTOMATION SKIPPED] Missing NEXT_PUBLIC_N8N_WEBHOOK_URL env var.`);
+        return { success: true, id: 'skipped-no-env', warning: 'No Webhook URL configured' };
+    }
 
     try {
         // 1. Construct Standardized Envelope
@@ -24,23 +28,23 @@ export async function triggerAutomation(
             payload: payload
         };
 
-        console.log(`[📦 PAYLOAD]`, JSON.stringify(envelope, null, 2));
+        console.log(`[📦 DISPATCHING]`, JSON.stringify(envelope, null, 2));
 
-        // 2. Dispatch (Mocking the fetch for demo stability, but fully architected)
-        // const response = await fetch(WEBHOOK_URL, {
-        //     method: 'POST',
-        //     headers: { 'Content-Type': 'application/json' },
-        //     body: JSON.stringify(envelope)
-        // });
+        // 2. Dispatch to n8n (or other IPaaS)
+        const response = await fetch(WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(envelope)
+        });
 
-        // if (!response.ok) throw new Error(`Webhook failed: ${response.statusText}`);
-
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 800));
+        if (!response.ok) {
+            throw new Error(`Webhook failed: ${response.status} ${response.statusText}`);
+        }
 
         return { success: true, id: envelope.id };
 
     } catch (error: any) {
+        // Graceful degradation: Log error but don't crash usage flow
         console.error(`[❌ AUTOMATION FAILED]`, error);
         return { success: false, error: error.message };
     }
