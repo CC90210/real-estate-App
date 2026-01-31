@@ -158,22 +158,27 @@ export function DocumentGenerator({ properties, applications }: DocumentGenerato
                             key={doc.id}
                             onClick={() => handleSelectType(doc.id)}
                             className={cn(
-                                "group p-4 rounded-xl border-2 cursor-pointer transition-all hover:shadow-md",
+                                "group p-5 rounded-2xl border-2 cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1",
                                 selectedType === doc.id
-                                    ? "bg-white border-blue-600 shadow-sm"
-                                    : "bg-white border-slate-100 hover:border-slate-200"
+                                    ? "bg-white border-blue-600 shadow-2xl ring-4 ring-blue-50"
+                                    : "bg-white border-slate-100 hover:border-slate-300"
                             )}
                         >
-                            <div className="flex items-center gap-4">
-                                <div className={cn("p-3 rounded-xl shrink-0 transition-colors duration-300",
-                                    selectedType === doc.id ? doc.color.replace('bg-', 'bg-opacity-20 ') : "bg-slate-50 text-slate-400"
+                            <div className="flex items-center gap-5">
+                                <div className={cn("p-4 rounded-2xl shrink-0 transition-colors duration-300 shadow-sm",
+                                    selectedType === doc.id ? doc.color : "bg-slate-50 text-slate-400 group-hover:bg-slate-100"
                                 )}>
-                                    <doc.icon className="w-5 h-5" />
+                                    <doc.icon className="w-6 h-6" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <h3 className={cn("font-bold text-sm truncate", selectedType === doc.id ? "text-slate-900" : "text-slate-600")}>{doc.title}</h3>
+                                    <h3 className={cn("font-black text-base truncate mb-1", selectedType === doc.id ? "text-slate-900" : "text-slate-600")}>{doc.title}</h3>
                                     <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold truncate">{doc.description.split(': ')[0]}</p>
                                 </div>
+                                {selectedType === doc.id && (
+                                    <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center animate-in zoom-in spin-in-90 duration-300">
+                                        <Check className="w-3 h-3 stroke-[4]" />
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))}
@@ -571,18 +576,31 @@ function DocumentTemplate({ data }: { data: any }) {
     if (type === 'showing_sheet') {
         return (
             <div className="w-[8.5in] min-h-[11in] bg-white p-12 font-sans text-slate-900" id="document-content">
-                <div className="bg-green-600 p-10 rounded-3xl text-white mb-10 flex justify-between items-center">
-                    <div>
-                        <h1 className="text-4xl font-black uppercase tracking-tight">Agent Guide</h1>
-                        <p className="font-bold opacity-80 uppercase tracking-widest text-xs">Property: {property.address}</p>
+                <div className="bg-green-600 p-12 rounded-[2.5rem] text-white mb-12 flex justify-between items-center shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
+                    <div className="relative z-10">
+                        <div className="flex items-center gap-4 mb-4">
+                            <Badge className="bg-white/20 text-white font-black uppercase tracking-widest px-3 py-1 hover:bg-white/30 border-0">Official Walkthrough</Badge>
+                        </div>
+                        <h1 className="text-5xl font-black uppercase tracking-tighter mb-2">Agent Guide</h1>
+                        <p className="font-bold opacity-80 uppercase tracking-widest text-xs flex items-center gap-2">
+                            Property: <span className="underline decoration-white/30 underline-offset-4">{property.address}</span>
+                        </p>
                     </div>
-                    <ClipboardList className="w-12 h-12" />
+                    <div className="bg-white/10 p-4 rounded-2xl backdrop-blur-md">
+                        <ClipboardList className="w-12 h-12" />
+                    </div>
                 </div>
-                <div className="p-8 bg-green-50 rounded-3xl border border-green-100 mb-10">
-                    <h3 className="text-xs font-black uppercase text-green-700 tracking-widest mb-4">AI Point of View</h3>
-                    <p className="font-bold text-slate-900 leading-relaxed whitespace-pre-line">{aiTalkingPoints}</p>
+
+                <div className="p-10 bg-gradient-to-br from-green-50 to-emerald-50 rounded-[2.5rem] border border-green-100 mb-12 shadow-inner">
+                    <h3 className="text-[10px] font-black uppercase text-green-700 tracking-[0.3em] mb-6 flex items-center gap-2">
+                        <Sparkles className="w-4 h-4" /> AI Talking Points
+                    </h3>
+                    <div className="prose prose-green max-w-none">
+                        <p className="font-medium text-lg text-slate-800 leading-loose whitespace-pre-line">{aiTalkingPoints}</p>
+                    </div>
                 </div>
-                <div className="grid grid-cols-2 gap-10">
+                <div className="grid grid-cols-2 gap-8">
                     <KVRow label="Client" value={customFields.clientName || 'Private'} />
                     <KVRow label="Time" value={`${customFields.showingDate} @ ${customFields.showingTime}`} />
                 </div>

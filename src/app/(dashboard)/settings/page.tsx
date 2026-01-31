@@ -37,8 +37,54 @@ export default function SettingsPage() {
                 .eq('id', user.id)
                 .single();
             setProfile(data);
+            if (data?.preferences) {
+                setPreferences(data.preferences);
+            }
+            if (data?.branding) {
+                setBranding(data.branding);
+            }
         }
         setIsLoading(false);
+    };
+
+    const [preferences, setPreferences] = useState({
+        notifications: { email: true, push: true },
+        alerts: { new_app: true, ai_doc: true, revenue: false }
+    });
+
+    const [branding, setBranding] = useState({
+        accent: 'blue',
+        theme: 'light'
+    });
+
+    const handleSavePreferences = async (newPrefs: any) => {
+        setPreferences(newPrefs);
+        // Debounce or immediate save
+        const { error } = await supabase
+            .from('profiles')
+            .update({ preferences: newPrefs, updated_at: new Date().toISOString() })
+            .eq('id', profile.id);
+
+        if (error) {
+            toast.error("Failed to save preferences");
+            // Revert state if needed (omitted for brevity)
+        } else {
+            toast.success("Preferences saved");
+        }
+    };
+
+    const handleSaveBranding = async (newBranding: any) => {
+        setBranding(newBranding);
+        const { error } = await supabase
+            .from('profiles')
+            .update({ branding: newBranding, updated_at: new Date().toISOString() })
+            .eq('id', profile.id);
+
+        if (error) {
+            toast.error("Failed to save branding");
+        } else {
+            toast.success("Branding updated");
+        }
     };
 
     const handleSaveProfile = async () => {
@@ -271,17 +317,20 @@ export default function SettingsPage() {
                                 <ToggleSection
                                     title="New Application Webhooks"
                                     description="Receive instant alerts when a high-value applicant submits a dossier."
-                                    enabled={true}
+                                    enabled={preferences.alerts.new_app}
+                                    onToggle={(checked: boolean) => handleSavePreferences({ ...preferences, alerts: { ...preferences.alerts, new_app: checked } })}
                                 />
                                 <ToggleSection
                                     title="AI Document Forge Alerts"
                                     description="Get notified when AI syncs with property records for summary generation."
-                                    enabled={true}
+                                    enabled={preferences.alerts.ai_doc}
+                                    onToggle={(checked: boolean) => handleSavePreferences({ ...preferences, alerts: { ...preferences.alerts, ai_doc: checked } })}
                                 />
                                 <ToggleSection
                                     title="Portfolio Revenue Milestones"
                                     description="Real-time reporting on monthly recurring revenue (MRR) achievements."
-                                    enabled={false}
+                                    enabled={preferences.alerts.revenue}
+                                    onToggle={(checked: boolean) => handleSavePreferences({ ...preferences, alerts: { ...preferences.alerts, revenue: checked } })}
                                 />
                                 <Separator className="my-8" />
                                 <div className="space-y-4">
@@ -289,11 +338,17 @@ export default function SettingsPage() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex items-center justify-between">
                                             <span className="font-black text-slate-900 text-sm">Direct Email Delivery</span>
-                                            <Switch defaultChecked />
+                                            <Switch
+                                                checked={preferences.notifications.email}
+                                                onCheckedChange={(checked) => handleSavePreferences({ ...preferences, notifications: { ...preferences.notifications, email: checked } })}
+                                            />
                                         </div>
                                         <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex items-center justify-between">
                                             <span className="font-black text-slate-900 text-sm">Push (Chrome/System)</span>
-                                            <Switch defaultChecked />
+                                            <Switch
+                                                checked={preferences.notifications.push}
+                                                onCheckedChange={(checked) => handleSavePreferences({ ...preferences, notifications: { ...preferences.notifications, push: checked } })}
+                                            />
                                         </div>
                                     </div>
                                 </div>
@@ -314,21 +369,33 @@ export default function SettingsPage() {
                                     <div className="space-y-6">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Workspace Accent</p>
                                         <div className="flex gap-4">
-                                            <ColorBall color="bg-blue-600" active />
-                                            <ColorBall color="bg-indigo-600" />
-                                            <ColorBall color="bg-slate-900" />
-                                            <ColorBall color="bg-emerald-600" />
-                                            <ColorBall color="bg-rose-600" />
+                                            {['blue', 'indigo', 'slate', 'emerald', 'rose'].map((color) => (
+                                                <ColorBall
+                                                    key={color}
+                                                    color={`bg-${color}-600`}
+                                                    active={branding.accent === color}
+                                                    onClick={() => handleSaveBranding({ ...branding, accent: color })}
+                                                />
+                                            ))}
                                         </div>
                                     </div>
                                     <div className="space-y-6">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Appearance Mode</p>
                                         <div className="flex gap-4">
-                                            <div className="flex-1 p-4 bg-slate-50 rounded-2xl border-2 border-blue-600 flex flex-col items-center gap-2 cursor-pointer">
-                                                <Sparkles className="w-5 h-5 text-blue-600" />
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-blue-600">Dynamic Light</span>
+                                            <div
+                                                onClick={() => handleSaveBranding({ ...branding, theme: 'light' })}
+                                                className={cn(
+                                                    "flex-1 p-4 rounded-2xl border-2 flex flex-col items-center gap-2 cursor-pointer transition-all",
+                                                    branding.theme === 'light' ? "bg-slate-50 border-blue-600" : "bg-white border-slate-100 opacity-50 hover:opacity-100"
+                                                )}
+                                            >
+                                                <Sparkles className={cn("w-5 h-5", branding.theme === 'light' ? "text-blue-600" : "text-slate-400")} />
+                                                <span className={cn("text-[10px] font-black uppercase tracking-widest", branding.theme === 'light' ? "text-blue-600" : "text-slate-400")}>Dynamic Light</span>
                                             </div>
-                                            <div className="flex-1 p-4 bg-slate-900 rounded-2xl border-2 border-slate-800 flex flex-col items-center gap-2 cursor-pointer opacity-50">
+                                            <div
+                                                // Functionality placeholder for Night Mode
+                                                className="flex-1 p-4 bg-slate-900 rounded-2xl border-2 border-slate-800 flex flex-col items-center gap-2 cursor-pointer opacity-50"
+                                            >
                                                 <Lock className="w-5 h-5 text-slate-600" />
                                                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Night (Coming)</span>
                                             </div>
@@ -336,15 +403,18 @@ export default function SettingsPage() {
                                     </div>
                                 </div>
 
-                                <div className="p-10 bg-gradient-to-br from-slate-900 to-indigo-950 rounded-[2.5rem] text-white relative overflow-hidden shadow-2xl">
-                                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/20 rounded-full blur-[100px]" />
-                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-400 mb-6">Signature Branding Preview</h3>
+                                <div className={cn(
+                                    "p-10 rounded-[2.5rem] text-white relative overflow-hidden shadow-2xl transition-all duration-500",
+                                    `bg-gradient-to-br from-${branding.accent === 'slate' ? 'gray' : branding.accent}-900 to-${branding.accent === 'slate' ? 'black' : branding.accent}-950`
+                                )}>
+                                    <div className={cn("absolute top-0 right-0 w-64 h-64 rounded-full blur-[100px] opacity-20", `bg-${branding.accent}-500`)} />
+                                    <h3 className={cn("text-[10px] font-black uppercase tracking-widest mb-6", `text-${branding.accent}-400`)}>Signature Branding Preview</h3>
                                     <div className="p-8 bg-white/5 border border-white/10 rounded-3xl backdrop-blur-xl">
                                         <div className="flex flex-col gap-4">
                                             <div className="flex justify-between items-end border-b border-white/10 pb-6">
                                                 <div>
                                                     <p className="text-3xl font-serif italic text-white">{profile?.full_name || 'Your Professional Name'}</p>
-                                                    <Badge className="bg-blue-600 text-white font-black uppercase text-[10px] tracking-widest px-3 py-1 mt-3">Verified {profile?.role || 'Agent'}</Badge>
+                                                    <Badge className={cn("text-white font-black uppercase text-[10px] tracking-widest px-3 py-1 mt-3", `bg-${branding.accent}-600`)}>Verified {profile?.role || 'Agent'}</Badge>
                                                 </div>
                                                 <CheckCircle2 className="w-10 h-10 text-white opacity-20" />
                                             </div>
@@ -389,24 +459,27 @@ function NavBtn({ active, onClick, icon: Icon, label, description }: any) {
     );
 }
 
-function ToggleSection({ title, description, enabled }: any) {
+function ToggleSection({ title, description, enabled, onToggle }: any) {
     return (
         <div className="flex items-center justify-between p-6 bg-slate-50 border border-slate-100 rounded-[2rem] hover:bg-white hover:shadow-xl transition-all duration-300">
             <div className="space-y-1">
                 <p className="text-sm font-black text-slate-900">{title}</p>
                 <p className="text-xs text-slate-500 font-medium leading-relaxed max-w-sm">{description}</p>
             </div>
-            <Switch defaultChecked={enabled} />
+            <Switch checked={enabled} onCheckedChange={onToggle} />
         </div>
     );
 }
 
-function ColorBall({ color, active }: any) {
+function ColorBall({ color, active, onClick }: any) {
     return (
-        <div className={cn(
-            "w-10 h-10 rounded-full cursor-pointer ring-offset-2 transition-all",
-            color,
-            active ? "ring-4 ring-blue-600" : "hover:scale-110"
-        )} />
+        <div
+            onClick={onClick}
+            className={cn(
+                "w-10 h-10 rounded-full cursor-pointer ring-offset-2 transition-all",
+                color,
+                active ? "ring-4 ring-blue-600 scale-110" : "hover:scale-110 opacity-70 hover:opacity-100"
+            )}
+        />
     );
 }
