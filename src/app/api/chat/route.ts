@@ -7,75 +7,74 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export async function POST(request: Request) {
     try {
-        const { message, history } = await request.json();
+        const { message, history = [] } = await request.json();
 
         if (!process.env.GEMINI_API_KEY) {
-            return NextResponse.json({ error: 'Gemini API key not configured' }, { status: 500 });
+            return NextResponse.json({ error: 'AI service not configured' }, { status: 503 });
         }
 
         const supabase = await createClient();
 
-        // Fetch all properties for context
+        // 1. Fetch Context: Properties
         const { data: properties } = await supabase
             .from('properties')
             .select(`
-        address, 
-        rent, 
-        bedrooms, 
-        bathrooms, 
-        status, 
-        lockbox_code, 
-        available_date,
-        description,
-        pet_policy,
-        buildings(name, amenities)
-      `);
+                id, address, rent, bedrooms, bathrooms, status, 
+                lockbox_code, available_date,
+                buildings (name)
+            `);
 
-        const propertyContext = properties?.map(p =>
-            `- ${p.address}: $${p.rent}/mo, ${p.bedrooms}BR/${p.bathrooms}BA, Status: ${p.status}, Lockbox: ${p.lockbox_code || 'N/A'}, Available: ${p.available_date || 'Now'}, Pets: ${p.pet_policy || 'Ask'}`
-        ).join('\n');
+        // 2. Fetch Context: Applications
+        const { data: applications } = await supabase
+            .from('applications')
+            .select('applicant_name, status, monthly_income, credit_score, properties(address)')
+            .order('created_at', { ascending: false })
+            .limit(10);
 
-        const systemPrompt = `You are PropFlow AI, an elite, highly intelligent real estate assistant.
-Your goal is to provide precise, professional, and instant information about properties and applications.
+        // Format data for AI
+        const propertyList = properties?.map((p: any) =>
+            `- ${p.address}: $${p.rent}/mo | ${p.bedrooms}BR/${p.bathrooms}BA | ${p.status} | Lockbox: ${p.lockbox_code || 'N/A'}`
+        ).join('\n') || 'No properties found.';
 
-CORE KNOWLEDGE BASE (Properties in System):
-${propertyContext || 'No property data currently available.'}
+        const appList = applications?.map((a: any) =>
+            `- ${a.applicant_name} applied for ${a.properties?.address || 'Unknown'} (${a.status})`
+        ).join('\n') || 'No recent applications.';
 
-OPERATIONAL GUIDELINES:
-1. LOCKBOX CODES: Only provide codes if specifically asked about a listing. Be direct: "The lockbox for [Address] is [Code]."
-2. AVAILABILITY: If a property status is 'rented' or 'maintenance', inform the user it is currently unavailable.
-3. INQUIRIES: If asked about available units, list them clearly with price and bed/bath count.
-4. TONE: Professional, executive, and helpful. Use bold text for key details like prices or addresses for readability.
-5. CONTEXT: Maintain continuity with the conversation history.
+        const systemPrompt = `You are PropFlow AI, an intelligent real estate assistant.
+        
+        CURRENT PORTFOLIO DATA:
+        ${propertyList}
 
-CONVERSATION HISTORY:
-${history?.slice(-5).map((m: any) => `${m.role.toUpperCase()}: ${m.content}`).join('\n') || 'Starting new session.'}
+        RECENT APPLICANTS:
+        ${appList}
 
-USER REQUEST: ${message}
+        YOUR ROLE:
+        - Answer questions about properties (rent, lockboxes, status).
+        - Summarize applicant data.
+        - Be concise and professional.
+        - If asked for a lockbox code, provide it directly.
+        
+        User Query: ${message}`;
 
-RESPONSIBILITY: If you cannot find the answer in the provided context, state: "I don't have that specific data in my current intelligence records, but I can help you with [alternative suggestion]."`;
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-        const model = genAI.getGenerativeModel({
-            model: 'gemini-1.5-flash',
-            generationConfig: {
-                temperature: 0.1, // Low temperature for high precision real estate data
-                maxOutputTokens: 500,
-            }
+        const chat = model.startChat({
+            history: history.map((msg: any) => ({
+                role: msg.role === 'assistant' ? 'model' : 'user',
+                parts: [{ text: msg.content }]
+            }))
         });
 
-        const result = await model.generateContent(systemPrompt);
-        const response = await result.response;
-        const text = response.text();
+        const result = await chat.sendMessage(systemPrompt);
+        const response = result.response.text();
 
-        if (!text) throw new Error('Empty response from AI');
-
-        return NextResponse.json({ response: text });
+        return NextResponse.json({
+            success: true,
+            response
+        });
 
     } catch (error: any) {
         console.error('Chat Error:', error);
-        return NextResponse.json({
-            error: 'Chat failed',
-            details: error.message
-        }, { status: 500 });
+        return NextResponse.json({ error: 'Chat failed', details: error.message }, { status: 500 });
     }
 }

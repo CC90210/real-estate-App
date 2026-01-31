@@ -165,12 +165,14 @@ export function DocumentGenerator({ properties, applications }: DocumentGenerato
                             )}
                         >
                             <div className="flex items-center gap-4">
-                                <div className={cn("p-2.5 rounded-lg", doc.color)}>
+                                <div className={cn("p-3 rounded-xl shrink-0 transition-colors duration-300",
+                                    selectedType === doc.id ? doc.color.replace('bg-', 'bg-opacity-20 ') : "bg-slate-50 text-slate-400"
+                                )}>
                                     <doc.icon className="w-5 h-5" />
                                 </div>
-                                <div className="flex-1">
-                                    <h3 className="font-bold text-slate-900 text-sm">{doc.title}</h3>
-                                    <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">{doc.description.split(': ')[0]}</p>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className={cn("font-bold text-sm truncate", selectedType === doc.id ? "text-slate-900" : "text-slate-600")}>{doc.title}</h3>
+                                    <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold truncate">{doc.description.split(': ')[0]}</p>
                                 </div>
                             </div>
                         </div>
@@ -450,26 +452,84 @@ function ApplicationSummaryForm({ properties, applications, onGenerate, isGenera
         }
     }, [profile]);
 
-    const propertyApps = applications.filter((a: any) => a.property_id === formData.propertyId);
+    const propertyApps = applications.filter((a: any) => {
+        // Ensure accurate ID matching regardless of type (string/UUID)
+        return String(a.property_id) === String(formData.propertyId);
+    });
 
     return (
-        <div className="space-y-6 max-w-2xl">
-            <Select value={formData.propertyId} onValueChange={(v) => setFormData({ ...formData, propertyId: v, applicantId: '' })}>
-                <SelectTrigger><SelectValue placeholder="Step 1: Select Property" /></SelectTrigger>
-                <SelectContent>
-                    {properties.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.address}</SelectItem>)}
-                </SelectContent>
-            </Select>
-            <Select value={formData.applicantId} onValueChange={(v) => setFormData({ ...formData, applicantId: v })}>
-                <SelectTrigger><SelectValue placeholder="Step 2: Select Applicant" /></SelectTrigger>
-                <SelectContent>
-                    {propertyApps.map((a: any) => <SelectItem key={a.id} value={a.id}>{a.applicant_name}</SelectItem>)}
-                </SelectContent>
-            </Select>
-            <Textarea value={formData.agentNote} onChange={(e) => setFormData({ ...formData, agentNote: e.target.value })} placeholder="Internal Agent Note (AI will use this)" rows={3} />
-            <Button onClick={() => onGenerate(formData)} className="w-full bg-amber-600 text-white" disabled={isGenerating || !formData.applicantId}>
-                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ShieldCheck className="w-4 h-4 mr-2" />}
-                Generate Executive Screening report
+        <div className="space-y-6 max-w-2xl bg-white rounded-xl p-1">
+            <div className="space-y-4">
+                <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-widest text-slate-500">Target Property</Label>
+                    <Select value={formData.propertyId} onValueChange={(v) => setFormData({ ...formData, propertyId: v, applicantId: '' })}>
+                        <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-200 focus:ring-2 focus:ring-blue-100">
+                            <SelectValue placeholder="Select Property to analyze..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {properties.map((p: any) => (
+                                <SelectItem key={p.id} value={p.id} className="font-medium">
+                                    {p.address}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-widest text-slate-500">Applicant Selection</Label>
+                    <Select
+                        value={formData.applicantId}
+                        onValueChange={(v) => setFormData({ ...formData, applicantId: v })}
+                        disabled={!formData.propertyId}
+                    >
+                        <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-200 focus:ring-2 focus:ring-amber-100">
+                            <SelectValue placeholder={!formData.propertyId ? "First select a property above" : "Select Applicant"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {propertyApps.length > 0 ? (
+                                propertyApps.map((a: any) => (
+                                    <SelectItem key={a.id} value={a.id} className="font-medium">
+                                        <div className="flex flex-col text-left">
+                                            <span>{a.applicant_name}</span>
+                                            <span className="text-[10px] text-slate-400 uppercase tracking-wider">{a.status}</span>
+                                        </div>
+                                    </SelectItem>
+                                ))
+                            ) : (
+                                <div className="p-4 text-center text-sm text-slate-500 font-medium italic">
+                                    No applicants found for this property.
+                                </div>
+                            )}
+                        </SelectContent>
+                    </Select>
+                    {formData.propertyId && propertyApps.length === 0 && (
+                        <p className="text-[10px] text-amber-600 font-bold bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 flex items-center gap-2">
+                            <span className="block w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                            No active applications found for this unit.
+                        </p>
+                    )}
+                </div>
+            </div>
+
+            <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-widest text-slate-500">Agent Context</Label>
+                <Textarea
+                    value={formData.agentNote}
+                    onChange={(e) => setFormData({ ...formData, agentNote: e.target.value })}
+                    placeholder="Add specific context for the AI (e.g., 'Verify employment stability', 'Check for pet deposit')..."
+                    rows={3}
+                    className="bg-slate-50 border-slate-200 focus:bg-white transition-colors resize-none rounded-xl"
+                />
+            </div>
+
+            <Button
+                onClick={() => onGenerate(formData)}
+                className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black uppercase tracking-widest text-xs shadow-xl shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                disabled={isGenerating || !formData.applicantId}
+            >
+                {isGenerating ? <Loader2 className="w-5 h-5 animate-spin mr-3" /> : <ShieldCheck className="w-5 h-5 mr-3 text-amber-500" />}
+                Generate Reporting
             </Button>
         </div>
     );

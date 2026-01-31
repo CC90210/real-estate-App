@@ -1,133 +1,121 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Application, ApplicationFormData } from '@/types/database';
-import { getApplications } from '@/lib/demo-data';
+import { createClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
 
-// Fetch all applications
-export function useApplications(status?: string) {
+export function useApplications() {
+    const supabase = createClient();
+
     return useQuery({
-        queryKey: ['applications', status],
+        queryKey: ['applications'],
         queryFn: async () => {
-            const allApps = await getApplications();
-            if (status && status !== 'all') {
-                return allApps.filter(a => a.status === status);
+            const { data, error } = await supabase
+                .from('applications')
+                .select(`
+                    *,
+                    properties (id, address, rent, bedrooms, bathrooms),
+                    agent:profiles!created_by(id, full_name, role)
+                `)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error("Error fetching applications:", error);
+                throw new Error("Failed to fetch applications");
             }
-            return allApps;
+            return data;
         },
-        staleTime: Infinity,
     });
 }
 
-// Fetch single application
-export function useApplication(applicationId: string) {
-    return useQuery({
-        queryKey: ['applications', applicationId],
-        queryFn: async () => {
-            const allApps = await getApplications();
-            const app = allApps.find(a => a.id === applicationId);
-            if (!app) throw new Error('Application not found');
-            return app;
-        },
-        enabled: !!applicationId,
-        staleTime: Infinity,
-    });
-}
-
-// Fetch applications for a specific property
-export function usePropertyApplications(propertyId: string) {
-    return useQuery({
-        queryKey: ['applications', 'property', propertyId],
-        queryFn: async () => {
-            const allApps = await getApplications();
-            return allApps.filter(a => a.property_id === propertyId);
-        },
-        enabled: !!propertyId,
-        staleTime: Infinity,
-    });
-}
-
-// Fetch applications created by an agent (Mock)
-export function useAgentApplications(agentId: string) {
-    return useQuery({
-        queryKey: ['applications', 'agent', agentId],
-        queryFn: async () => {
-            const allApps = await getApplications();
-            // Just return all apps for demo or random ones
-            return allApps;
-        },
-        enabled: !!agentId,
-        staleTime: Infinity,
-    });
-}
-
-// Create application (Mock)
-export function useCreateApplication() {
+export function useDeleteApplication() {
     const queryClient = useQueryClient();
+    const supabase = createClient();
 
     return useMutation({
-        mutationFn: async ({
-            propertyId,
-            agentId,
-            formData,
-        }: {
-            propertyId: string;
-            agentId: string;
-            formData: ApplicationFormData;
-        }) => {
-            console.log('Mock create application', propertyId, agentId, formData);
-            return {
-                id: 'new_mock_id',
-                property_id: propertyId,
-                status: 'new',
-                ...formData
-            } as any;
+        mutationFn: async (applicationId: string) => {
+            // First delete related activity log entries
+            const { error: logsError } = await supabase
+                .from('activity_log')
+                .delete()
+                .eq('entity_id', applicationId)
+                .eq('entity_type', 'application');
+
+            // Then delete the application
+            const { error } = await supabase
+                .from('applications')
+                .delete()
+                .eq('id', applicationId);
+
+            if (error) throw error;
+            return applicationId;
+        },
+        onMutate: async (applicationId) => {
+            await queryClient.cancelQueries({ queryKey: ['applications'] });
+            const previous = queryClient.getQueryData(['applications']);
+
+            queryClient.setQueryData(['applications'], (old: any[]) =>
+                old?.filter(a => a.id !== applicationId)
+            );
+
+            return { previous };
+        },
+        onError: (err, id, context) => {
+            queryClient.setQueryData(['applications'], context?.previous);
+            toast.error('Failed to delete application');
+        },
+        onSuccess: () => {
+            toast.success('Application deleted successfully');
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['applications'] });
+        },
+    });
+}
+
+export function useUpdateApplicationStatus() {
+    const queryClient = useQueryClient();
+    const supabase = createClient();
+
+    return useMutation({
+        mutationFn: async ({ id, status }: { id: string; status: string }) => {
+            const { data, error } = await supabase
+                .from('applications')
+                .update({ status, updated_at: new Date().toISOString() })
+                .eq('id', id)
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            // Log the activity
+            await supabase.from('activity_log').insert({
+                action: status === 'approved' ? 'APPLICATION_APPROVED' : 'APPLICATION_DENIED',
+                entity_type: 'application',
+                entity_id: id,
+                description: `Application status updated to ${status}`
+            });
+
+            return data;
+        },
+        onMutate: async ({ id, status }) => {
+            await queryClient.cancelQueries({ queryKey: ['applications'] });
+            const previous = queryClient.getQueryData(['applications']);
+
+            queryClient.setQueryData(['applications'], (old: any[]) =>
+                old?.map(a => a.id === id ? { ...a, status } : a)
+            );
+
+            return { previous };
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['applications'] });
+            queryClient.invalidateQueries({ queryKey: ['activity_log'] });
+            toast.success('Application status updated');
         },
-    });
-}
-
-// Update application status (Mock)
-export function useUpdateApplicationStatus() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: async ({
-            id,
-            status,
-        }: {
-            id: string;
-            status: 'approved' | 'denied' | 'withdrawn';
-        }) => {
-            console.log('Mock update status', id, status);
-            return { id, status } as any;
+        onError: (err, variables, context) => {
+            queryClient.setQueryData(['applications'], context?.previous);
+            toast.error('Failed to update status');
         },
-        onSuccess: (data) => {
-            queryClient.invalidateQueries({ queryKey: ['applications'] });
-            queryClient.invalidateQueries({ queryKey: ['applications', data.id] });
-        },
-    });
-}
-
-// Get application stats
-export function useApplicationStats() {
-    return useQuery({
-        queryKey: ['applications', 'stats'],
-        queryFn: async () => {
-            const data = await getApplications();
-
-            const stats = {
-                total: data.length,
-                pending: data.filter((a) => a.status === 'new' || a.screening_status === 'pending').length,
-                approved: data.filter((a) => a.status === 'approved').length,
-                denied: data.filter((a) => a.status === 'denied').length,
-                screeningComplete: data.filter((a) => a.screening_status === 'completed').length,
-            };
-
-            return stats;
-        },
-        staleTime: Infinity,
     });
 }

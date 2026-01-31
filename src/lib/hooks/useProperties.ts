@@ -1,84 +1,160 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Property, Landlord } from '@/types/database';
-import { getProperties, getProperty, getLandlords, getLandlord, getLandlordProperties } from '@/lib/demo-data';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
 
-// Fetch all properties
-export function useProperties() {
+export function useProperties(buildingId?: string) {
+    const supabase = createClient();
+
     return useQuery({
-        queryKey: ['properties'],
+        queryKey: ['properties', buildingId],
         queryFn: async () => {
-            return await getProperties();
+            let query = supabase
+                .from('properties')
+                .select(`
+                    *,
+                    buildings (id, name, address, amenities),
+                    landlords (id, name, email, phone)
+                `)
+                .order('created_at', { ascending: false });
+
+            if (buildingId) {
+                query = query.eq('building_id', buildingId);
+            }
+
+            const { data, error } = await query;
+            if (error) throw error;
+            return data;
         },
-        staleTime: Infinity,
+        staleTime: 30000,
     });
 }
 
-// Fetch single property
 export function useProperty(propertyId: string) {
+    const supabase = createClient();
+
     return useQuery({
         queryKey: ['properties', propertyId],
         queryFn: async () => {
-            const property = await getProperty(propertyId);
-            if (!property) throw new Error('Property not found');
-            return property;
+            const { data, error } = await supabase
+                .from('properties')
+                .select(`
+                    *,
+                    buildings (id, name, address, amenities),
+                    landlords (id, name, email, phone)
+                `)
+                .eq('id', propertyId)
+                .single();
+
+            if (error) throw error;
+            return data;
         },
         enabled: !!propertyId,
-        staleTime: Infinity,
     });
 }
 
-// Fetch all landlords
-export function useLandlords() {
-    return useQuery({
-        queryKey: ['landlords'],
-        queryFn: async () => {
-            return await getLandlords();
-        },
-        staleTime: Infinity,
-    });
-}
-
-// Fetch single landlord
-export function useLandlord(landlordId: string) {
-    return useQuery({
-        queryKey: ['landlords', landlordId],
-        queryFn: async () => {
-            const landlord = await getLandlord(landlordId);
-            if (!landlord) throw new Error('Landlord not found');
-            return landlord;
-        },
-        enabled: !!landlordId,
-        staleTime: Infinity,
-    });
-}
-
-// Fetch properties for a landlord
-export function useLandlordProperties(landlordId: string) {
-    return useQuery({
-        queryKey: ['properties', 'landlord', landlordId],
-        queryFn: async () => {
-            return await getLandlordProperties(landlordId);
-        },
-        enabled: !!landlordId,
-        staleTime: Infinity,
-    });
-}
-
-// Update property (Mock)
-export function useUpdateProperty() {
+export function useDeleteProperty() {
     const queryClient = useQueryClient();
+    const supabase = createClient();
 
     return useMutation({
-        mutationFn: async ({ id, ...updates }: Partial<Property> & { id: string }) => {
-            // In a real app we would call API
-            console.log('Mock update property', id, updates);
-            return { id, ...updates } as any;
+        mutationFn: async (propertyId: string) => {
+            const { error } = await supabase
+                .from('properties')
+                .delete()
+                .eq('id', propertyId);
+
+            if (error) throw error;
+            return propertyId;
         },
-        onSuccess: (data, variables) => {
+        onMutate: async (propertyId) => {
+            await queryClient.cancelQueries({ queryKey: ['properties'] });
+            const previousProperties = queryClient.getQueryData(['properties']);
+
+            queryClient.setQueryData(['properties'], (old: any[]) =>
+                old?.filter(p => p.id !== propertyId)
+            );
+
+            return { previousProperties };
+        },
+        onError: (err, propertyId, context) => {
+            queryClient.setQueryData(['properties'], context?.previousProperties);
+            toast.error('Failed to delete property');
+        },
+        onSuccess: () => {
+            toast.success('Property deleted successfully');
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['properties'] });
-            queryClient.invalidateQueries({ queryKey: ['properties', variables.id] });
+        },
+    });
+}
+
+export function useUpdateProperty() {
+    const queryClient = useQueryClient();
+    const supabase = createClient();
+
+    return useMutation({
+        mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
+            const { data, error } = await supabase
+                .from('properties')
+                .update({ ...updates }) // removed updated_at as it might be handled by db trigger or not exist in type
+                .eq('id', id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
+        },
+        onMutate: async ({ id, updates }) => {
+            await queryClient.cancelQueries({ queryKey: ['properties'] });
+            const previousProperties = queryClient.getQueryData(['properties']);
+
+            queryClient.setQueryData(['properties'], (old: any[]) =>
+                old?.map(p => p.id === id ? { ...p, ...updates } : p)
+            );
+
+            return { previousProperties };
+        },
+        onError: (err, variables, context) => {
+            queryClient.setQueryData(['properties'], context?.previousProperties);
+            toast.error('Failed to update property');
+        },
+        onSuccess: () => {
+            toast.success('Property updated successfully');
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['properties'] });
+        },
+    });
+}
+
+export function useCreateProperty() {
+    const queryClient = useQueryClient();
+    const supabase = createClient();
+
+    return useMutation({
+        mutationFn: async (newProperty: any) => {
+            const { data, error } = await supabase
+                .from('properties')
+                .insert(newProperty)
+                .select(`
+                    *,
+                    buildings (id, name, address),
+                    landlords (id, name)
+                `)
+                .single();
+
+            if (error) throw error;
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['properties'] });
+            toast.success('Property created successfully');
+        },
+        onError: (error: any) => {
+            toast.error('Failed to create property: ' + error.message);
         },
     });
 }
