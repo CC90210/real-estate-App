@@ -25,10 +25,24 @@ export default function DashboardLayout({
                 if (!session) {
                     router.push('/login');
                 } else {
-                    setIsAuthenticated(true);
+                    // Check Profile Integrity
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('id')
+                        .eq('id', session.user.id)
+                        .single();
+
+                    if (!profile) {
+                        router.push('/setup-profile');
+                    } else {
+                        setIsAuthenticated(true);
+                    }
                 }
             } catch (e) {
                 console.error("Auth check failed", e);
+                // On error, let the page load but it might fail later. 
+                // Or safer: assume unauthed.
+                router.push('/login');
             } finally {
                 setIsLoading(false);
             }
