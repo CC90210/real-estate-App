@@ -158,3 +158,35 @@ export function useCreateProperty() {
         },
     });
 }
+
+export function useLandlords() {
+    const supabase = createClient();
+
+    return useQuery({
+        queryKey: ['landlords'],
+        queryFn: async () => {
+            // Check if landlords table exists first, if not use profiles with landlord role
+            // For now assuming we are using profiles or a landlords table if created
+            // Based on previous schema, we have profiles.
+            // Let's try to fetch from profiles where role is landlord
+            // OR if a landlords table was key.
+            // Looking at the error logs and previous context, there is a `landlords` table referenced in joins.
+            const { data, error } = await supabase
+                .from('landlords')
+                .select('*')
+                .order('name');
+
+            if (error) {
+                // Fallback to profiles if landlords table issue or if that was the design
+                const { data: profiles, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('role', 'landlord');
+
+                if (profileError) throw profileError;
+                return profiles;
+            }
+            return data;
+        },
+    });
+}

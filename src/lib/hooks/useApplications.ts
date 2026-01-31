@@ -119,3 +119,28 @@ export function useUpdateApplicationStatus() {
         },
     });
 }
+
+export function useCreateApplication() {
+    const queryClient = useQueryClient();
+    const supabase = createClient();
+
+    return useMutation({
+        mutationFn: async (newApplication: any) => {
+            const { data, error } = await supabase
+                .from('applications')
+                .insert(newApplication)
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['applications'] });
+            toast.success('Application created successfully');
+        },
+        onError: (error: any) => {
+            toast.error('Failed to create application: ' + error.message);
+        },
+    });
+}
