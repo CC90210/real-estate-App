@@ -150,7 +150,13 @@ export function AddPropertyModal({ buildingId, buildingName, buildingAddress }: 
                                     {...register('unit_number')}
                                     className={`bg-white ${errors.unit_number ? "border-red-500 focus:ring-red-200" : "focus:ring-blue-200"}`}
                                 />
-                                {errors.unit_number && <p className="text-xs text-red-500">{errors.unit_number.message}</p>}
+                                {errors.unit_number && (
+                                    <p className="text-xs text-red-500">
+                                        {typeof errors.unit_number.message === 'string'
+                                            ? errors.unit_number.message
+                                            : "Unit number is required"}
+                                    </p>
+                                )}
                             </div>
 
                             <div className="space-y-2">
@@ -180,7 +186,13 @@ export function AddPropertyModal({ buildingId, buildingName, buildingAddress }: 
                                         </SelectContent>
                                     </Select>
                                 )}
-                                {errors.landlord_id && <p className="text-xs text-red-500">{errors.landlord_id.message}</p>}
+                                {errors.landlord_id && (
+                                    <p className="text-xs text-red-500">
+                                        {typeof errors.landlord_id.message === 'string'
+                                            ? errors.landlord_id.message
+                                            : "Landlord assignment is required"}
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -198,7 +210,13 @@ export function AddPropertyModal({ buildingId, buildingName, buildingAddress }: 
                                     className="pl-9"
                                 />
                             </div>
-                            {errors.rent && <p className="text-xs text-red-500">{errors.rent.message}</p>}
+                            {errors.rent && (
+                                <p className="text-xs text-red-500">
+                                    {typeof errors.rent.message === 'string'
+                                        ? errors.rent.message
+                                        : "Valid rent amount needed"}
+                                </p>
+                            )}
                         </div>
 
                         <div className="space-y-2">
