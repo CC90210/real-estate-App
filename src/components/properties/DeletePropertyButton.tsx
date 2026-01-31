@@ -31,35 +31,55 @@ export function DeletePropertyButton({ propertyId, propertyName }: DeletePropert
     const handleDelete = async () => {
         setIsLoading(true);
         try {
-            // Manual Cascade: Delete related applications and their logs
+            console.log("DeletePropertyButton: Deleting property", propertyId);
+
+            // Step 1: Manual Cascade Deletion (Client-Side)
+            // First, get all applications for this property
             const { data: apps } = await supabase
                 .from('applications')
                 .select('id')
                 .eq('property_id', propertyId);
 
-            if (apps && apps.length > 0) {
-                const appIds = apps.map(a => a.id);
-                // Delete logs for these apps
-                await supabase.from('activity_log').delete().in('entity_id', appIds).eq('entity_type', 'application');
-                // Delete apps
-                await supabase.from('applications').delete().in('id', appIds);
+            const appIds = apps?.map(a => a.id) || [];
+
+            if (appIds.length > 0) {
+                // Delete logs for these applications
+                await supabase
+                    .from('activity_log')
+                    .delete()
+                    .in('entity_id', appIds);
+
+                // Delete the applications themselves
+                await supabase
+                    .from('applications')
+                    .delete()
+                    .in('id', appIds);
             }
 
-            // Delete logs for this property
-            await supabase.from('activity_log').delete().eq('entity_id', propertyId).eq('entity_type', 'property');
+            // Step 2: Delete property logs
+            await supabase
+                .from('activity_log')
+                .delete()
+                .eq('entity_id', propertyId);
 
-            // Finally delete the property
+            // Step 3: Delete the property
             const { error } = await supabase
                 .from('properties')
                 .delete()
                 .eq('id', propertyId);
 
-            if (error) throw error;
+            if (error) {
+                console.error("Supabase delete error:", error);
+                throw error;
+            }
 
-            toast.success("Listing and related data deleted successfully");
+            toast.success("Listing deleted successfully");
             setIsOpen(false);
-            router.push('/areas');
+
+            // Force a hard refresh and navigation
             router.refresh();
+            router.replace('/areas');
+
         } catch (error: any) {
             console.error("Delete error:", error);
             toast.error("Failed to delete listing: " + error.message);
