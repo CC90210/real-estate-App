@@ -29,7 +29,24 @@ export default function SetupProfilePage() {
                 return;
             }
 
-            // Manual Self-Healing Insert
+            // 1. Create Company First (Manual Self-Healing)
+            const newCompanyId = crypto.randomUUID();
+            const { error: companyError } = await supabase
+                .from('companies')
+                .insert({
+                    id: newCompanyId,
+                    name: `${name || 'Agent'}'s Workspace`,
+                    created_at: new Date().toISOString()
+                });
+
+            if (companyError) {
+                console.error("Company Creation Failed:", companyError);
+                // Fallback: If company creation fails (maybe RLS?), try to find one or just proceed and hope?
+                // Actually, if this fails, profile creation will fail too. 
+                throw new Error("Could not initialize workspace: " + companyError.message);
+            }
+
+            // 2. Create Profile
             const { error } = await supabase
                 .from('profiles')
                 .insert({
@@ -37,7 +54,7 @@ export default function SetupProfilePage() {
                     email: user.email,
                     full_name: name || user.user_metadata?.full_name || 'Agent',
                     role: role,
-                    company_id: crypto.randomUUID(), // Client-side generated for emergency
+                    company_id: newCompanyId,
                     automation_webhook_id: crypto.randomUUID()
                 });
 
