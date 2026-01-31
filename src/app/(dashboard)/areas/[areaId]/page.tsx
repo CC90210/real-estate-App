@@ -5,6 +5,7 @@ import { ArrowLeft, Building, MapPin, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AddBuildingModal } from '@/components/areas/AddBuildingModal';
+import { DeleteAreaButton } from '@/components/areas/DeleteAreaButton';
 
 export default async function AreaDetailsPage({ params }: { params: { areaId: string } }) {
     const supabase = await createClient();
@@ -40,7 +41,10 @@ export default async function AreaDetailsPage({ params }: { params: { areaId: st
                     <h1 className="text-3xl font-bold tracking-tight text-slate-900">{area.name}</h1>
                     <p className="text-slate-500 mt-1 max-w-2xl">{area.description}</p>
                 </div>
-                <AddBuildingModal areaId={areaId} areaName={area.name} />
+                <div className="flex items-center gap-2">
+                    <DeleteAreaButton areaId={areaId} areaName={area.name} />
+                    <AddBuildingModal areaId={areaId} areaName={area.name} />
+                </div>
             </div>
 
             <div className="grid grid-cols-1 gap-6">

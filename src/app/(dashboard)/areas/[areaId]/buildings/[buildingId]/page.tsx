@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { AddPropertyModal } from '@/components/areas/AddPropertyModal';
+import { DeleteBuildingButton } from '@/components/areas/DeleteBuildingButton';
 
 // Types
 type PropertyStatus = 'available' | 'rented' | 'pending' | 'maintenance';
@@ -60,11 +61,14 @@ export default async function BuildingDetailsPage({ params }: { params: { areaId
                         <span className="text-blue-600 font-medium">{building.area?.name}</span>
                     </div>
                 </div>
-                <AddPropertyModal
-                    buildingId={buildingId}
-                    buildingName={building.name}
-                    buildingAddress={building.address}
-                />
+                <div className="flex items-center gap-2">
+                    <DeleteBuildingButton buildingId={buildingId} buildingName={building.name} redirectAreaId={areaId} />
+                    <AddPropertyModal
+                        buildingId={buildingId}
+                        buildingName={building.name}
+                        buildingAddress={building.address}
+                    />
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
