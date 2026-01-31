@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import { triggerAutomation } from '@/lib/automations/dispatcher';
 
 export function useApplications() {
     const supabase = createClient();
@@ -88,13 +89,25 @@ export function useUpdateApplicationStatus() {
 
             if (error) throw error;
 
-            // Log the activity
+            // Log activity
             await supabase.from('activity_log').insert({
                 action: status === 'approved' ? 'APPLICATION_APPROVED' : 'APPLICATION_DENIED',
                 entity_type: 'application',
                 entity_id: id,
                 description: `Application status updated to ${status}`
             });
+
+            // 🚀 TRIGGER AUTOMATION
+            // Check if we approved it, if so, trigger lease generation workflow
+            if (status === 'approved') {
+                await triggerAutomation('APPLICATION_STATUS_CHANGED', {
+                    application_id: id,
+                    new_status: status,
+                    action: 'START_LEASE_DRAFTING',
+                    applicant_email: data.applicant_email,
+                    property_id: data.property_id
+                });
+            }
 
             return data;
         },
@@ -108,10 +121,10 @@ export function useUpdateApplicationStatus() {
 
             return { previous };
         },
-        onSuccess: () => {
+        onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['applications'] });
             queryClient.invalidateQueries({ queryKey: ['activity_log'] });
-            toast.success('Application status updated');
+            toast.success(`Application ${variables.status}`);
         },
         onError: (err, variables, context) => {
             queryClient.setQueryData(['applications'], context?.previous);
@@ -133,6 +146,17 @@ export function useCreateApplication() {
                 .single();
 
             if (error) throw error;
+
+            // 🚀 TRIGGER AUTOMATION
+            // Generate unique tracking URL for this applicant
+            const trackingId = data.id;
+            await triggerAutomation('APPLICATION_SUBMITTED', {
+                ...newApplication,
+                application_id: trackingId,
+                webhook_callback_url: `${window.location.origin}/api/webhooks/automation-callback`,
+                tracking_id: trackingId
+            });
+
             return data;
         },
         onSuccess: () => {
