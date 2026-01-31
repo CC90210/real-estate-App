@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { AddAreaModal } from '@/components/areas/AddAreaModal';
 import { AreasList } from '@/components/areas/AreasList';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AreasPage() {
     const supabase = await createClient();
 

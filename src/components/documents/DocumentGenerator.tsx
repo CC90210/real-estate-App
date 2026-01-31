@@ -165,8 +165,9 @@ export function DocumentGenerator({ properties, applications }: DocumentGenerato
                             )}
                         >
                             <div className="flex items-center gap-5">
-                                <div className={cn("p-4 rounded-2xl shrink-0 transition-colors duration-300 shadow-sm",
-                                    selectedType === doc.id ? doc.color : "bg-slate-50 text-slate-400 group-hover:bg-slate-100"
+                                <div className={cn("p-4 rounded-2xl shrink-0 transition-all duration-300 shadow-sm",
+                                    doc.color,
+                                    selectedType !== doc.id && "opacity-70 grayscale-[0.3] group-hover:opacity-100 group-hover:grayscale-0"
                                 )}>
                                     <doc.icon className="w-6 h-6" />
                                 </div>

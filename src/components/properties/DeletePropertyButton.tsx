@@ -26,9 +26,29 @@ export function DeletePropertyButton({ propertyId, propertyName }: DeletePropert
     const router = useRouter();
     const supabase = createClient();
 
+    const [isOpen, setIsOpen] = useState(false);
+
     const handleDelete = async () => {
         setIsLoading(true);
         try {
+            // Manual Cascade: Delete related applications and their logs
+            const { data: apps } = await supabase
+                .from('applications')
+                .select('id')
+                .eq('property_id', propertyId);
+
+            if (apps && apps.length > 0) {
+                const appIds = apps.map(a => a.id);
+                // Delete logs for these apps
+                await supabase.from('activity_log').delete().in('entity_id', appIds).eq('entity_type', 'application');
+                // Delete apps
+                await supabase.from('applications').delete().in('id', appIds);
+            }
+
+            // Delete logs for this property
+            await supabase.from('activity_log').delete().eq('entity_id', propertyId).eq('entity_type', 'property');
+
+            // Finally delete the property
             const { error } = await supabase
                 .from('properties')
                 .delete()
@@ -36,8 +56,9 @@ export function DeletePropertyButton({ propertyId, propertyName }: DeletePropert
 
             if (error) throw error;
 
-            toast.success("Listing deleted successfully");
-            router.push('/areas'); // Redirect to areas since the building might be empty or hard to track back easily without buildingId
+            toast.success("Listing and related data deleted successfully");
+            setIsOpen(false);
+            router.push('/areas');
             router.refresh();
         } catch (error: any) {
             console.error("Delete error:", error);
@@ -48,7 +69,7 @@ export function DeletePropertyButton({ propertyId, propertyName }: DeletePropert
     };
 
     return (
-        <Dialog>
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
                 <Button variant="ghost" size="icon" className="text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors">
                     <Trash2 className="w-5 h-5" />
@@ -68,7 +89,7 @@ export function DeletePropertyButton({ propertyId, propertyName }: DeletePropert
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter className="mt-6 gap-2 sm:gap-0">
-                    <Button variant="outline" onClick={() => (document.querySelector('[data-state="open"]')?.parentElement?.querySelector('button[aria-label="Close"]') as any)?.click()}>
+                    <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isLoading}>
                         Cancel
                     </Button>
                     <Button

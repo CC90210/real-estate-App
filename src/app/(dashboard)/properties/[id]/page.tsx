@@ -10,6 +10,8 @@ import { EditPropertyModal } from '@/components/properties/EditPropertyModal';
 import { DeletePropertyButton } from '@/components/properties/DeletePropertyButton';
 // We need client component for interactivity (modal trigger)
 
+export const dynamic = 'force-dynamic';
+
 export default async function PropertyDetailsPage({ params }: { params: { id: string } }) {
     const supabase = await createClient();
     const { id } = await params;

@@ -10,6 +10,8 @@ import { AddPropertyModal } from '@/components/areas/AddPropertyModal';
 // Types
 type PropertyStatus = 'available' | 'rented' | 'pending' | 'maintenance';
 
+export const dynamic = 'force-dynamic';
+
 export default async function BuildingDetailsPage({ params }: { params: { areaId: string, buildingId: string } }) {
     const supabase = await createClient();
     const { areaId, buildingId } = await params;
