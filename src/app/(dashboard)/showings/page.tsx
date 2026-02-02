@@ -29,9 +29,12 @@ import {
 import { Plus, Calendar, Clock, MapPin, Search } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 
+import { useCompanyId } from '@/lib/hooks/useCompanyId'
+
 export default function ShowingsPage() {
     const supabase = createClient()
     const queryClient = useQueryClient()
+    const { companyId } = useCompanyId()
     const [dialogOpen, setDialogOpen] = useState(false)
     const [selectedDate, setSelectedDate] = useState<string>('')
     const [formData, setFormData] = useState({
@@ -54,6 +57,7 @@ export default function ShowingsPage() {
                     *,
                     property:properties(address, unit_number)
                 `)
+                .eq('company_id', companyId)
                 .order('scheduled_date')
 
             if (error) throw error
