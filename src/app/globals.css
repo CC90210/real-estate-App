@@ -149,6 +149,89 @@ h6 {
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
+
+/* Premium Animations */
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes pulse-soft {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 3s ease-in-out infinite;
+}
+
+.shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Premium Gradients */
+.bg-premium-gradient {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%);
+}
+
+.bg-glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.border-premium {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, #1e293b 0%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Layout Utilities */
+.section-padding {
+  @apply py-20 lg:py-32;
+}
+
+.container-tight {
+  @apply max-w-5xl mx-auto px-4 sm:px-6;
+}
+
 /* Glass Effect for Light Mode */
 .glass {
   background: rgba(255, 255, 255, 0.85);
@@ -170,36 +253,40 @@ h6 {
   background: hsl(var(--muted-foreground) / 0.5);
   border-radius: 4px;
 }
+
 /* src/app/globals.css - Responsive Additions */
 
 /* Ensure proper padding on mobile */
 @media (max-width: 640px) {
-    .container {
-        padding-left: 1rem;
-        padding-right: 1rem;
-    }
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
 }
 
 /* Fix overflow on narrow screens */
 .truncate {
-    max-width: 100%;
+  max-width: 100%;
 }
 
 /* Ensure cards don't overflow */
 .card {
-    max-width: 100%;
-    overflow: hidden;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 /* Better touch targets on mobile */
 @media (max-width: 768px) {
-    button, a {
-        min-height: 44px;
-    }
+
+  button,
+  a {
+    min-height: 44px;
+  }
 }
 
 /* Prevent unwanted horizontal scroll */
-html, body {
-    max-width: 100vw;
-    overflow-x: hidden;
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
 }

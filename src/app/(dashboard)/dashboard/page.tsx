@@ -14,11 +14,38 @@ import {
     Plus,
     TrendingUp,
     Clock,
+
     CheckCircle,
-    FileText
+    FileText,
+    Sparkles,
+    ArrowRight
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
+
+function CheckListItem({ title, description, href, completed }: any) {
+    return (
+        <Link href={href}>
+            <div className={`p-4 rounded-xl border transition-all h-full ${completed ? 'bg-white/50 border-green-100 opacity-80' : 'bg-white border-blue-100 hover:border-blue-400 hover:shadow-md'
+                }`}>
+                <div className="flex items-center gap-2 mb-2">
+                    {completed ? (
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                    ) : (
+                        <div className="h-5 w-5 rounded-full border-2 border-blue-200" />
+                    )}
+                    <h3 className={`font-bold text-sm ${completed ? 'line-through text-slate-400' : 'text-slate-900'}`}>{title}</h3>
+                </div>
+                <p className="text-xs text-slate-500 leading-relaxed">{description}</p>
+                {!completed && (
+                    <div className="mt-3 flex items-center gap-1 text-[10px] font-black text-blue-600 uppercase tracking-widest">
+                        Configure <ArrowRight className="h-3 w-3" />
+                    </div>
+                )}
+            </div>
+        </Link>
+    )
+}
 
 export default function DashboardPage() {
     const { user, profile, company } = useAuth()
@@ -113,6 +140,46 @@ export default function DashboardPage() {
                     </Button>
                 </div>
             </div>
+
+            {/* Onboarding Checklist (Show if low property count) */}
+            {(stats?.totalProperties || 0) < 3 && (
+                <Card className="border-blue-100 bg-blue-50/30">
+                    <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <Sparkles className="h-5 w-5 text-blue-600" />
+                            Getting Started with PropFlow
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <CheckListItem
+                                title="Define your Areas"
+                                description="Create regions or neighborhoods you manage."
+                                href="/areas"
+                                completed={(stats?.totalProperties || 0) > 0}
+                            />
+                            <CheckListItem
+                                title="Add Buildings"
+                                description="Organize units within specific buildings."
+                                href="/properties"
+                                completed={(stats?.totalProperties || 0) > 0}
+                            />
+                            <CheckListItem
+                                title="List Properties"
+                                description="Create your first unit listings."
+                                href="/properties/new"
+                                completed={(stats?.totalProperties || 0) > 0}
+                            />
+                            <CheckListItem
+                                title="Invite Team"
+                                description="Add agents or landlords to your company."
+                                href="/settings/team"
+                                completed={(stats?.teamMembers || 0) > 1}
+                            />
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Stats Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
