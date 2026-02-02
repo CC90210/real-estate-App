@@ -83,14 +83,18 @@ export default function SignupPage() {
             if (profileError) throw profileError
 
             // 4. Create default automation subscription (inactive)
-            await supabase
-                .from('automation_subscriptions')
-                .insert({
-                    company_id: company.id,
-                    is_active: false,
-                    tier: 'none'
-                })
-                .catch(console.error) // Don't fail if this fails
+            // 4. Create default automation subscription (inactive)
+            try {
+                await supabase
+                    .from('automation_subscriptions')
+                    .insert({
+                        company_id: company.id,
+                        is_active: false,
+                        tier: 'none'
+                    })
+            } catch (e) {
+                console.error("Failed to create default subscription", e)
+            }
 
             toast.success('Account created successfully!')
 
