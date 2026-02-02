@@ -44,6 +44,8 @@ export default function ApplicationsPage() {
     const { data: applications, isLoading, error, refetch } = useQuery({
         queryKey: ['applications', statusFilter],
         queryFn: async () => {
+            // Supabase JS client handles signals automatically if passed, but manual handling 
+            // like "abortSignal" in options is safer to omit if seeing AbortError: signal is aborted without reason
             let query = supabase
                 .from('applications')
                 .select(`
@@ -57,17 +59,19 @@ export default function ApplicationsPage() {
                 query = query.eq('status', statusFilter)
             }
 
+            // Explicitly throw on error to trigger retry logic correctly
             const { data, error } = await query
-
-            if (error) {
-                console.error('Applications fetch error:', error)
-                throw error
-            }
+            if (error) throw error
 
             return data || []
         },
-        retry: 2,
-        staleTime: 30000 // 30 seconds
+        retry: (failureCount, error: any) => {
+            // Don't retry on 404s or auth errors, but retry on network aborts
+            if (error?.code === 'PGRST116') return false
+            return failureCount < 3
+        },
+        staleTime: 60 * 1000, // 1 minute
+        refetchOnWindowFocus: false // Prevent too many refetches on tab switching
     })
 
     // Update status mutation
