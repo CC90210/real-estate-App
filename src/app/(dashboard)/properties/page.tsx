@@ -9,14 +9,13 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, Filter, BedDouble, Bath, Plus, MapPin, User, ArrowRight, Building2, Home } from 'lucide-react';
+import { Search, Filter, BedDouble, Bath, Plus, MapPin, User, ArrowRight, Building2, Home, TrendingUp, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Property, Landlord } from '@/types/database';
-
 import { useRouter } from 'next/navigation';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { cn } from '@/lib/utils';
 
 export default function PropertiesPage() {
     const { data: properties, isLoading, error } = useProperties();
@@ -43,7 +42,7 @@ export default function PropertiesPage() {
     }).sort((a, b) => {
         if (priceSort === 'asc') return a.rent - b.rent;
         if (priceSort === 'desc') return b.rent - a.rent;
-        return 0; // default (updated_at usually)
+        return 0;
     });
 
     const getLandlordName = (id: string | null) => {
@@ -53,112 +52,96 @@ export default function PropertiesPage() {
 
     const StatusBadge = ({ status }: { status: string }) => {
         const styles = {
-            available: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800',
-            pending: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800',
-            rented: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800',
-            off_market: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400',
-            maintenance: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+            available: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+            pending: 'bg-amber-50 text-amber-600 border-amber-100',
+            rented: 'bg-blue-50 text-blue-600 border-blue-100',
+            off_market: 'bg-slate-50 text-slate-500 border-slate-100',
+            maintenance: 'bg-rose-50 text-rose-600 border-rose-100',
         };
         // @ts-ignore
         const style = styles[status] || styles.off_market;
         return (
-            <Badge variant="outline" className={`${style} capitalize font-medium rounded-full px-3 py-0.5`}>
+            <Badge variant="outline" className={cn("capitalize font-black text-[10px] tracking-widest rounded-xl px-3 py-1 bg-white/90 backdrop-blur-md shadow-sm", style)}>
                 {status.replace('_', ' ')}
             </Badge>
         );
     };
 
-    // 1. Loading State
     if (isLoading) {
         return (
-            <div className="space-y-8 animate-pulse">
+            <div className="p-10 space-y-10">
                 <div className="flex justify-between items-center">
-                    <div className="space-y-2">
-                        <Skeleton className="h-8 w-48" />
-                        <Skeleton className="h-4 w-96" />
+                    <div className="space-y-4">
+                        <Skeleton className="h-10 w-48 rounded-xl" />
+                        <Skeleton className="h-4 w-96 rounded-lg" />
                     </div>
-                    <Skeleton className="h-10 w-32" />
+                    <Skeleton className="h-14 w-40 rounded-2xl" />
                 </div>
-                <Skeleton className="h-20 w-full rounded-xl" />
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[1, 2, 3, 4, 5, 6].map((i) => (
-                        <div key={i} className="space-y-3">
-                            <Skeleton className="h-48 w-full rounded-xl" />
-                            <div className="space-y-2">
-                                <Skeleton className="h-4 w-3/4" />
-                                <Skeleton className="h-4 w-1/2" />
-                            </div>
-                        </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {[1, 2, 3].map((i) => (
+                        <Skeleton key={i} className="h-[400px] w-full rounded-[2.5rem]" />
                     ))}
                 </div>
             </div>
         )
     }
 
-    // 2. Error State
     if (error) {
         return (
-            <ErrorState
-                title="Failed to load properties"
-                message={(error as Error).message}
-                onRetry={() => window.location.reload()}
-                className="mt-12 mx-auto max-w-lg"
-            />
-        )
-    }
-
-    // 3. Empty State (No properties at all)
-    if (!properties || properties.length === 0) {
-        return (
-            <EmptyState
-                icon={Home}
-                title="No properties yet"
-                description="Add your first property to start managing your portfolio."
-                action={
-                    <Button onClick={() => router.push('/areas')} className="gap-2">
-                        <Plus className="w-4 h-4" /> Add Property
-                    </Button>
-                }
-                className="mt-12 mx-auto max-w-lg"
-            />
+            <div className="p-10">
+                <ErrorState
+                    title="Failed to load portfolio"
+                    message={(error as Error).message}
+                    onRetry={() => window.location.reload()}
+                    className="mx-auto max-w-lg"
+                />
+            </div>
         )
     }
 
     return (
-        <div className="space-y-8 animate-fade-in">
+        <div className="relative p-6 lg:p-10 space-y-10">
+            {/* Decoration */}
+            <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-blue-50/50 rounded-full blur-[120px] -z-10 animate-pulse-soft" />
+
             {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Properties</h1>
-                    <p className="text-muted-foreground mt-1">
-                        Manage your property portfolio ({filteredProperties?.length || 0})
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-blue-600 font-black text-[10px] uppercase tracking-[0.2em] mb-1">
+                        <Home className="h-3 w-3" />
+                        <span>Asset Management</span>
+                    </div>
+                    <h1 className="text-4xl font-black tracking-tight text-slate-900">Infrastructure</h1>
+                    <p className="text-slate-500 font-medium">
+                        Strategic oversight of your property portfolio ({filteredProperties?.length || 0} units)
                     </p>
                 </div>
                 <Link href="/areas">
-                    <Button className="gradient-bg text-white shadow-lg shadow-primary/20 gap-2">
-                        <Plus className="w-4 h-4" />
-                        Add Unit (via Areas)
+                    <Button className="h-14 px-8 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-xl shadow-blue-500/20 gap-2 font-bold transition-all hover:scale-105 active:scale-95">
+                        <Plus className="w-5 h-5" />
+                        Provision Asset
                     </Button>
                 </Link>
             </div>
 
             {/* Filters */}
-            <Card className="border-none shadow-sm p-4 bg-muted/40">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Card className="bg-white/80 backdrop-blur-xl border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 p-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="relative group">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                         <Input
-                            placeholder="Search address, neighborhood..."
-                            className="pl-9 bg-background border-none shadow-sm"
+                            placeholder="Search coordinates..."
+                            className="h-12 pl-12 bg-slate-50 border-transparent focus:bg-white focus:border-blue-400 transition-all rounded-xl font-medium"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger className="bg-background border-none shadow-sm">
+                        <SelectTrigger className="h-12 bg-slate-50 border-transparent text-slate-600 font-bold rounded-xl">
+                            <Filter className="w-4 h-4 mr-2 opacity-50" />
                             <SelectValue placeholder="Status" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="rounded-xl border-slate-100 shadow-2xl">
                             <SelectItem value="all">All Statuses</SelectItem>
                             <SelectItem value="available">Available</SelectItem>
                             <SelectItem value="pending">Pending</SelectItem>
@@ -167,38 +150,40 @@ export default function PropertiesPage() {
                         </SelectContent>
                     </Select>
                     <Select value={bedsFilter} onValueChange={setBedsFilter}>
-                        <SelectTrigger className="bg-background border-none shadow-sm">
-                            <SelectValue placeholder="Bedrooms" />
+                        <SelectTrigger className="h-12 bg-slate-50 border-transparent text-slate-600 font-bold rounded-xl">
+                            <BedDouble className="w-4 h-4 mr-2 opacity-50" />
+                            <SelectValue placeholder="Format" />
                         </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Any Bedrooms</SelectItem>
+                        <SelectContent className="rounded-xl border-slate-100 shadow-2xl">
+                            <SelectItem value="all">Any Capacity</SelectItem>
                             <SelectItem value="1">1 Bedroom</SelectItem>
                             <SelectItem value="2">2 Bedrooms</SelectItem>
                             <SelectItem value="3+">3+ Bedrooms</SelectItem>
                         </SelectContent>
                     </Select>
                     <Select value={priceSort} onValueChange={setPriceSort}>
-                        <SelectTrigger className="bg-background border-none shadow-sm">
-                            <SelectValue placeholder="Price" />
+                        <SelectTrigger className="h-12 bg-slate-50 border-transparent text-slate-600 font-bold rounded-xl">
+                            <TrendingUp className="w-4 h-4 mr-2 opacity-50" />
+                            <SelectValue placeholder="Financials" />
                         </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="default">Sort by: Default</SelectItem>
-                            <SelectItem value="asc">Price: Low to High</SelectItem>
-                            <SelectItem value="desc">Price: High to Low</SelectItem>
+                        <SelectContent className="rounded-xl border-slate-100 shadow-2xl">
+                            <SelectItem value="default">Default Analytics</SelectItem>
+                            <SelectItem value="asc">Yield: Low to High</SelectItem>
+                            <SelectItem value="desc">Yield: High to Low</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
             </Card>
 
             {/* Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {filteredProperties && filteredProperties.length === 0 ? (
-                    <div className="col-span-full py-12">
-                        <EmptyState
-                            title="No properties found"
-                            description="Try adjusting your filters or search terms."
-                            className="bg-transparent border-none shadow-none"
-                        />
+                    <div className="col-span-full py-20 bg-white/50 backdrop-blur-md rounded-[3rem] border-2 border-dashed border-slate-100 flex flex-col items-center justify-center">
+                        <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mb-6">
+                            <Search className="w-8 h-8 text-slate-200" />
+                        </div>
+                        <h3 className="text-2xl font-black text-slate-900">No records matching query</h3>
+                        <p className="text-slate-500 font-medium mt-2">Adjust your tactical parameters and try again.</p>
                     </div>
                 ) : (
                     <AnimatePresence>
@@ -206,77 +191,95 @@ export default function PropertiesPage() {
                             <motion.div
                                 key={property.id}
                                 layout
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95 }}
-                                transition={{ duration: 0.2, delay: index * 0.05 }}
+                                transition={{ duration: 0.4, delay: index * 0.05 }}
                             >
-                                <Link href={`/properties/${property.id}`}>
-                                    <Card className="card-hover border-none shadow-sm overflow-hidden group h-full flex flex-col">
-                                        <div className="relative h-48 bg-muted overflow-hidden">
+                                <Link href={`/properties/${property.id}`} className="group block">
+                                    <Card className="relative bg-white rounded-[2.5rem] border-slate-100/60 shadow-lg shadow-slate-200/50 hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 overflow-hidden h-full flex flex-col hover:-translate-y-2">
+
+                                        <div className="relative h-56 bg-slate-100 overflow-hidden">
                                             {property.photos?.[0] ? (
                                                 <img
                                                     src={property.photos[0]}
                                                     alt={property.address}
-                                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                                     loading="lazy"
                                                 />
                                             ) : (
-                                                <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-muted-foreground">
-                                                    <Building2 className="w-10 h-10 opacity-20" />
+                                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
+                                                    <Building2 className="w-16 h-16 text-slate-300 transition-transform group-hover:scale-110" />
                                                 </div>
                                             )}
-                                            <div className="absolute top-3 right-3">
+
+                                            <div className="absolute top-4 right-4 z-10">
                                                 <StatusBadge status={property.status} />
                                             </div>
-                                            <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/60 to-transparent text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <p className="text-xs font-medium flex items-center gap-1">
-                                                    View Details <ArrowRight className="w-3 h-3" />
-                                                </p>
+
+                                            <div className="absolute top-4 left-4">
+                                                <div className="px-3 py-1.5 rounded-xl bg-black/40 backdrop-blur-md text-[10px] font-black text-white uppercase tracking-widest shadow-lg">
+                                                    ID: {property.id.slice(0, 5)}
+                                                </div>
                                             </div>
+
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                         </div>
-                                        <CardContent className="p-5 flex-1 flex flex-col">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <h3 className="font-semibold text-lg line-clamp-1">{property.address}</h3>
-                                                <p className="font-bold text-lg text-primary">
-                                                    ${property.rent.toLocaleString()}
-                                                </p>
-                                            </div>
 
-                                            <div className="text-sm text-muted-foreground mb-4 flex items-center gap-1">
-                                                <MapPin className="w-3 h-3" />
-                                                {property.neighborhood ? `${property.neighborhood}, ${property.city}` : property.city}
-                                            </div>
-
-                                            <div className="grid grid-cols-3 gap-2 py-3 border-t border-b border-dashed border-gray-100 dark:border-gray-800 mb-4">
-                                                <div className="flex flex-col items-center justify-center text-center">
-                                                    <span className="text-sm font-semibold">{property.bedrooms}</span>
-                                                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                                        <BedDouble className="w-3 h-3" /> Beds
-                                                    </span>
-                                                </div>
-                                                <div className="flex flex-col items-center justify-center text-center border-l border-r border-gray-100 dark:border-gray-800">
-                                                    <span className="text-sm font-semibold">{property.bathrooms}</span>
-                                                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                                        <Bath className="w-3 h-3" /> Baths
-                                                    </span>
-                                                </div>
-                                                <div className="flex flex-col items-center justify-center text-center">
-                                                    <span className="text-sm font-semibold">{property.square_feet || '-'}</span>
-                                                    <span className="text-xs text-muted-foreground">Sq Ft</span>
+                                        <CardContent className="p-8 flex-1 flex flex-col">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className="space-y-1">
+                                                    <h3 className="font-black text-xl text-slate-900 group-hover:text-blue-600 transition-colors tracking-tight line-clamp-1">
+                                                        {property.address}
+                                                    </h3>
+                                                    <div className="flex items-center text-slate-400 font-bold text-[10px] uppercase tracking-widest">
+                                                        <MapPin className="w-3 h-3 mr-1.5 text-blue-500" />
+                                                        {property.city}
+                                                    </div>
                                                 </div>
                                             </div>
 
-                                            <div className="mt-auto flex items-center justify-between text-xs text-muted-foreground">
-                                                <span className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded-md">
-                                                    <User className="w-3 h-3" />
-                                                    {getLandlordName(property.landlord_id)}
-                                                </span>
-                                                {property.available_date && (
-                                                    <span className={property.status === 'available' ? 'text-green-600 dark:text-green-400 font-medium' : ''}>
-                                                        {new Date(property.available_date) <= new Date() ? 'Available Now' : `Avail: ${new Date(property.available_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`}
+                                            <div className="flex items-baseline gap-1 mb-8">
+                                                <span className="text-3xl font-black text-slate-900">${property.rent.toLocaleString()}</span>
+                                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">/ Month</span>
+                                            </div>
+
+                                            <div className="grid grid-cols-3 gap-4 py-6 border-t border-slate-50">
+                                                <div className="flex flex-col items-center">
+                                                    <div className="h-10 w-10 bg-slate-50 rounded-xl flex items-center justify-center mb-2 group-hover:bg-blue-50 transition-colors">
+                                                        <BedDouble className="w-4 h-4 text-slate-400 group-hover:text-blue-600" />
+                                                    </div>
+                                                    <span className="text-sm font-black text-slate-900">{property.bedrooms}</span>
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Beds</span>
+                                                </div>
+                                                <div className="flex flex-col items-center">
+                                                    <div className="h-10 w-10 bg-slate-50 rounded-xl flex items-center justify-center mb-2 group-hover:bg-emerald-50 transition-colors">
+                                                        <Bath className="w-4 h-4 text-slate-400 group-hover:text-emerald-600" />
+                                                    </div>
+                                                    <span className="text-sm font-black text-slate-900">{property.bathrooms}</span>
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Baths</span>
+                                                </div>
+                                                <div className="flex flex-col items-center">
+                                                    <div className="h-10 w-10 bg-slate-50 rounded-xl flex items-center justify-center mb-2 group-hover:bg-indigo-50 transition-colors">
+                                                        <Sparkles className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
+                                                    </div>
+                                                    <span className="text-sm font-black text-slate-900">{property.square_feet || '-'}</span>
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sq Ft</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-auto pt-6 border-t border-slate-50 flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">
+                                                        <User className="w-4 h-4 text-slate-400" />
+                                                    </div>
+                                                    <span className="text-xs font-black text-slate-600 truncate max-w-[120px]">
+                                                        {getLandlordName(property.landlord_id)}
                                                     </span>
-                                                )}
+                                                </div>
+                                                <div className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                                                    <ArrowRight className="w-5 h-5" />
+                                                </div>
                                             </div>
                                         </CardContent>
                                     </Card>

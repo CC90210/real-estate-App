@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { useCompanyId } from '@/lib/hooks/useCompanyId'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -29,49 +30,49 @@ import {
     XCircle,
     Clock,
     AlertTriangle,
-    RefreshCw
+    RefreshCw,
+    ArrowRight,
+    ClipboardList,
+    Shield
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import Link from 'next/link'
+import { motion, AnimatePresence } from 'framer-motion'
+import { cn } from '@/lib/utils'
 
 export default function ApplicationsPage() {
     const supabase = createClient()
     const queryClient = useQueryClient()
+    const { companyId, isLoading: isCompanyLoading } = useCompanyId()
     const [searchTerm, setSearchTerm] = useState('')
     const [statusFilter, setStatusFilter] = useState('all')
 
-    // Fetch applications with SAFE property join
+    // Fetch applications with security filter
     const { data: applications, isLoading, error, refetch } = useQuery({
-        queryKey: ['applications', statusFilter],
+        queryKey: ['applications', statusFilter, companyId],
         queryFn: async () => {
-            // Supabase JS client handles signals automatically if passed, but manual handling 
-            // like "abortSignal" in options is safer to omit if seeing AbortError: signal is aborted without reason
+            if (!companyId) return []
+
             let query = supabase
                 .from('applications')
                 .select(`
                     *,
                     property:properties(id, address, unit_number, rent)
                 `)
+                .eq('company_id', companyId)
                 .order('created_at', { ascending: false })
 
-            // Filter by status
             if (statusFilter && statusFilter !== 'all') {
                 query = query.eq('status', statusFilter)
             }
 
-            // Explicitly throw on error to trigger retry logic correctly
             const { data, error } = await query
             if (error) throw error
-
             return data || []
         },
-        retry: (failureCount, error: any) => {
-            // Don't retry on 404s or auth errors, but retry on network aborts
-            if (error?.code === 'PGRST116') return false
-            return failureCount < 3
-        },
-        staleTime: 60 * 1000, // 1 minute
-        refetchOnWindowFocus: false // Prevent too many refetches on tab switching
+        enabled: !!companyId,
+        retry: 3,
+        staleTime: 60 * 1000,
     })
 
     // Update status mutation
@@ -86,364 +87,271 @@ export default function ApplicationsPage() {
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', id)
+                .eq('company_id', companyId) // Security
                 .select()
                 .single()
 
             if (error) throw error
 
-            // Log activity (safe)
-            try {
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('company_id')
-                    .eq('id', user?.id)
-                    .single()
-
-                if (profile?.company_id) {
-                    await supabase.from('activity_log').insert({
-                        company_id: profile.company_id,
-                        user_id: user?.id,
-                        action: status === 'approved' ? 'approved' : status === 'denied' ? 'denied' : 'updated',
-                        entity_type: 'application',
-                        entity_id: id,
-                        metadata: { new_status: status }
-                    })
-                }
-            } catch (e) {
-                console.error('Activity log failed:', e)
+            // Log activity
+            if (companyId) {
+                await supabase.from('activity_log').insert({
+                    company_id: companyId,
+                    user_id: user?.id,
+                    action: status === 'approved' ? 'approved' : status === 'denied' ? 'denied' : 'updated',
+                    entity_type: 'application',
+                    entity_id: id,
+                    details: { new_status: status }
+                })
             }
 
             return data
         },
-        // OPTIMISTIC UPDATE - UI changes immediately
-        onMutate: async ({ id, status }) => {
-            // Cancel outgoing refetches
-            await queryClient.cancelQueries({ queryKey: ['applications'] })
-
-            // Snapshot current data
-            const previousData = queryClient.getQueryData(['applications'])
-
-            // Optimistically update
-            queryClient.setQueryData(['applications'], (old: any) => {
-                if (!old) return old
-                return old.map((app: any) =>
-                    app.id === id ? { ...app, status } : app
-                )
-            })
-
-            return { previousData }
-        },
-        onError: (err, variables, context) => {
-            // Rollback on error
-            if (context?.previousData) {
-                queryClient.setQueryData(['applications'], context.previousData)
-            }
-            toast.error('Failed to update application')
-            console.error(err)
-        },
         onSuccess: () => {
-            toast.success('Application updated!')
-        },
-        onSettled: () => {
-            // Always refetch to ensure consistency
+            toast.success('Protocol updated successfully')
             queryClient.invalidateQueries({ queryKey: ['applications'] })
+        },
+        onError: (err: any) => {
+            toast.error('Failed to update protocol', { description: err.message })
         }
     })
 
-    // Filter applications by search term
     const filteredApplications = applications?.filter(app => {
         if (!searchTerm) return true
         const search = searchTerm.toLowerCase()
-
-        // Handle potentially null/undefined properties safely
         const applicantName = app.applicant_name?.toLowerCase() || ''
         const applicantEmail = app.applicant_email?.toLowerCase() || ''
 
-        // Safe property access - property might be null, or an array if join inferred wrong
         let address = ''
         if (app.property) {
-            if (Array.isArray(app.property)) {
-                address = app.property[0]?.address?.toLowerCase() || ''
-            } else {
-                address = (app.property as any)?.address?.toLowerCase() || ''
-            }
+            address = (Array.isArray(app.property) ? app.property[0]?.address : (app.property as any)?.address)?.toLowerCase() || ''
         }
 
-        return (
-            applicantName.includes(search) ||
-            applicantEmail.includes(search) ||
-            address.includes(search)
-        )
+        return applicantName.includes(search) || applicantEmail.includes(search) || address.includes(search)
     })
 
-    // Loading state
-    if (isLoading) {
+    if (isLoading || isCompanyLoading) {
         return (
-            <div className="p-6 space-y-4">
+            <div className="p-10 space-y-10">
                 <div className="flex justify-between items-center">
-                    <Skeleton className="h-8 w-48" />
-                    <Skeleton className="h-10 w-32" />
+                    <div className="space-y-4">
+                        <Skeleton className="h-10 w-48 rounded-xl" />
+                        <Skeleton className="h-4 w-96 rounded-lg" />
+                    </div>
                 </div>
-                <div className="flex gap-4">
-                    <Skeleton className="h-10 flex-1" />
-                    <Skeleton className="h-10 w-40" />
-                </div>
-                <div className="space-y-3">
-                    {[1, 2, 3, 4, 5].map(i => (
-                        <Skeleton key={i} className="h-32 w-full" />
+                <div className="space-y-6">
+                    {[1, 2, 3].map(i => (
+                        <Skeleton key={i} className="h-40 w-full rounded-[2.5rem]" />
                     ))}
                 </div>
             </div>
         )
     }
 
-    // Error state
     if (error) {
         return (
-            <div className="p-6">
-                <div className="flex flex-col items-center justify-center py-12">
-                    <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
-                    <h2 className="text-xl font-semibold mb-2">Failed to load applications</h2>
-                    <p className="text-gray-500 mb-4">{(error as Error).message}</p>
-                    <Button onClick={() => refetch()}>
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Try Again
-                    </Button>
+            <div className="p-10 flex flex-col items-center justify-center min-h-[60vh] text-center">
+                <div className="h-20 w-20 bg-rose-50 rounded-[2rem] flex items-center justify-center mb-6">
+                    <AlertTriangle className="h-10 w-10 text-rose-500" />
                 </div>
+                <h2 className="text-2xl font-black text-slate-900 mb-2">Retrieval Interrupted</h2>
+                <p className="text-slate-500 font-medium mb-8 max-w-md">{(error as Error).message}</p>
+                <Button onClick={() => refetch()} className="bg-slate-900 text-white rounded-xl">
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Re-establish Connection
+                </Button>
             </div>
         )
     }
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="relative p-6 lg:p-10 space-y-10">
+            {/* Decoration */}
+            <div className="absolute top-0 left-0 w-[40rem] h-[40rem] bg-indigo-50/50 rounded-full blur-[120px] -z-10 animate-pulse" />
+
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold">Applications</h1>
-                    <p className="text-gray-500">
-                        {filteredApplications?.length || 0} application{filteredApplications?.length !== 1 ? 's' : ''}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-indigo-600 font-black text-[10px] uppercase tracking-[0.2em] mb-1">
+                        <ClipboardList className="h-3 w-3" />
+                        <span>Tactical Screening</span>
+                    </div>
+                    <h1 className="text-4xl font-black tracking-tight text-slate-900">Applications</h1>
+                    <p className="text-slate-500 font-medium">
+                        Managed tenant screening pipeline ({filteredApplications?.length || 0} active protocols)
                     </p>
                 </div>
             </div>
 
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-4">
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                        placeholder="Search by name, email, or address..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10"
-                    />
+            <Card className="bg-white/80 backdrop-blur-xl border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 p-6">
+                <div className="flex flex-col sm:flex-row gap-6">
+                    <div className="relative flex-1 group">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                        <Input
+                            placeholder="Identify applicant or coordinate..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="h-14 pl-12 bg-slate-50 border-transparent focus:bg-white focus:border-indigo-400 transition-all rounded-xl font-medium"
+                        />
+                    </div>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="h-14 w-full sm:w-64 bg-slate-50 border-transparent text-slate-600 font-bold rounded-xl">
+                            <Filter className="h-4 w-4 mr-3 opacity-50" />
+                            <SelectValue placeholder="Protocol Status" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-slate-100 shadow-2xl">
+                            <SelectItem value="all">All Channels</SelectItem>
+                            <SelectItem value="new">Incoming</SelectItem>
+                            <SelectItem value="submitted">Submitted</SelectItem>
+                            <SelectItem value="screening">Analysis</SelectItem>
+                            <SelectItem value="pending_landlord">Review Pending</SelectItem>
+                            <SelectItem value="approved">Clearnace Issued</SelectItem>
+                            <SelectItem value="denied">Rejected</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-full sm:w-48">
-                        <Filter className="h-4 w-4 mr-2" />
-                        <SelectValue placeholder="Filter by status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Status</SelectItem>
-                        <SelectItem value="new">New</SelectItem>
-                        <SelectItem value="submitted">Submitted</SelectItem>
-                        <SelectItem value="screening">Screening</SelectItem>
-                        <SelectItem value="pending_landlord">Pending Landlord</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
-                        <SelectItem value="denied">Denied</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
+            </Card>
 
-            {/* Applications List */}
+            {/* List */}
             {!filteredApplications || filteredApplications.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 rounded-lg">
-                    <User className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-1">No applications found</h3>
-                    <p className="text-gray-500">
-                        {searchTerm || statusFilter !== 'all'
-                            ? 'Try adjusting your filters'
-                            : 'Applications will appear here when submitted'
-                        }
-                    </p>
+                <div className="flex flex-col items-center justify-center p-20 text-center bg-white/50 backdrop-blur-md rounded-[3rem] border-2 border-dashed border-slate-200">
+                    <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mb-6">
+                        <User className="h-8 w-8 text-slate-200" />
+                    </div>
+                    <h3 className="text-2xl font-black text-slate-900">No active applications</h3>
+                    <p className="text-slate-500 font-medium mt-2 max-w-sm">No protocols matching your current synchronization criteria.</p>
                 </div>
             ) : (
-                <div className="space-y-4">
-                    {filteredApplications.map(app => (
-                        <ApplicationCard
-                            key={app.id}
-                            application={app}
-                            onApprove={() => updateStatus.mutate({ id: app.id, status: 'approved' })}
-                            onDeny={() => updateStatus.mutate({ id: app.id, status: 'denied' })}
-                            isUpdating={updateStatus.isPending}
-                        />
-                    ))}
+                <div className="grid grid-cols-1 gap-6">
+                    <AnimatePresence>
+                        {filteredApplications.map((app, idx) => (
+                            <motion.div
+                                key={app.id}
+                                layout
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ duration: 0.4, delay: idx * 0.05 }}
+                            >
+                                <ApplicationCard
+                                    application={app}
+                                    onApprove={() => updateStatus.mutate({ id: app.id, status: 'approved' })}
+                                    onDeny={() => updateStatus.mutate({ id: app.id, status: 'denied' })}
+                                    isUpdating={updateStatus.isPending}
+                                />
+                            </motion.div>
+                        ))}
+                    </AnimatePresence>
                 </div>
             )}
         </div>
     )
 }
 
-// Application Card Component with NULL SAFETY
-function ApplicationCard({
-    application,
-    onApprove,
-    onDeny,
-    isUpdating
-}: {
-    application: any
-    onApprove: () => void
-    onDeny: () => void
-    isUpdating: boolean
-}) {
-    const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
-        new: { label: 'New', color: 'bg-blue-100 text-blue-700', icon: Clock },
-        submitted: { label: 'Submitted', color: 'bg-blue-100 text-blue-700', icon: Clock },
-        screening: { label: 'Screening', color: 'bg-amber-100 text-amber-700', icon: Clock },
-        pending_landlord: { label: 'Pending Review', color: 'bg-purple-100 text-purple-700', icon: Clock },
-        approved: { label: 'Approved', color: 'bg-green-100 text-green-700', icon: CheckCircle },
-        denied: { label: 'Denied', color: 'bg-red-100 text-red-700', icon: XCircle }
+function ApplicationCard({ application, onApprove, onDeny, isUpdating }: any) {
+    const statusConfig: any = {
+        new: { label: 'New', color: 'bg-blue-50 text-blue-600 border-blue-100', icon: Clock },
+        submitted: { label: 'Submitted', color: 'bg-indigo-50 text-indigo-600 border-indigo-100', icon: Clock },
+        screening: { label: 'Analysis', color: 'bg-amber-50 text-amber-600 border-amber-100', icon: Shield },
+        pending_landlord: { label: 'Awaiting Review', color: 'bg-purple-50 text-purple-600 border-purple-100', icon: User },
+        approved: { label: 'Cleared', color: 'bg-emerald-50 text-emerald-600 border-emerald-100', icon: CheckCircle },
+        denied: { label: 'Rejected', color: 'bg-rose-50 text-rose-600 border-rose-100', icon: XCircle }
     }
 
     const status = statusConfig[application.status] || statusConfig.new
     const StatusIcon = status.icon
     const canTakeAction = ['new', 'submitted', 'screening', 'pending_landlord'].includes(application.status)
 
-    // SAFE property access
-    // Handle array or object
     let property: any = application.property
-    if (Array.isArray(property)) {
-        property = property[0]
-    }
-
-    const propertyAddress = property?.address || 'Property not found'
-    const propertyUnit = property?.unit_number
-    const propertyRent = property?.rent
+    if (Array.isArray(property)) property = property[0]
 
     return (
-        <Card className="overflow-hidden">
-            <CardContent className="p-0">
-                <div className="flex flex-col lg:flex-row">
-                    {/* Main Info */}
-                    <div className="flex-1 p-4 lg:p-6">
-                        <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                                <div className="h-12 w-12 bg-gray-100 rounded-full flex items-center justify-center">
-                                    <User className="h-6 w-6 text-gray-500" />
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold text-lg">
-                                        {application.applicant_name || 'Unknown Applicant'}
-                                    </h3>
-                                    <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${status.color}`}>
-                                        <StatusIcon className="h-3 w-3" />
-                                        {status.label}
-                                    </div>
+        <Card className="group relative bg-white/80 backdrop-blur-md rounded-[2.5rem] border-slate-100 shadow-lg shadow-slate-200/40 hover:shadow-2xl hover:shadow-indigo-500/10 transition-all duration-500 overflow-hidden">
+            <div className="flex flex-col lg:flex-row">
+                <div className="flex-1 p-8">
+                    <div className="flex items-start justify-between mb-8">
+                        <div className="flex items-center gap-4">
+                            <div className="h-16 w-16 bg-slate-50 rounded-[1.5rem] flex items-center justify-center group-hover:bg-indigo-50 transition-colors">
+                                <User className="h-8 w-8 text-slate-300 group-hover:text-indigo-400" />
+                            </div>
+                            <div>
+                                <h3 className="text-2xl font-black text-slate-900 tracking-tight group-hover:text-indigo-600 transition-colors">
+                                    {application.applicant_name}
+                                </h3>
+                                <div className={cn("inline-flex items-center gap-2 px-3 py-1 rounded-xl border mt-2 text-[10px] font-black uppercase tracking-widest", status.color)}>
+                                    <StatusIcon className="h-3 w-3" />
+                                    {status.label}
                                 </div>
                             </div>
-                            <span className="text-xs text-gray-400">
-                                {application.created_at
-                                    ? formatDistanceToNow(new Date(application.created_at), { addSuffix: true })
-                                    : 'Unknown date'
-                                }
-                            </span>
                         </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                            {/* Email */}
-                            {application.applicant_email && (
-                                <div className="flex items-center gap-2 text-gray-600">
-                                    <Mail className="h-4 w-4 flex-shrink-0" />
-                                    <span className="truncate">{application.applicant_email}</span>
-                                </div>
-                            )}
-
-                            {/* Phone */}
-                            {application.applicant_phone && (
-                                <div className="flex items-center gap-2 text-gray-600">
-                                    <Phone className="h-4 w-4 flex-shrink-0" />
-                                    <span>{application.applicant_phone}</span>
-                                </div>
-                            )}
-
-                            {/* Income */}
-                            {application.monthly_income && (
-                                <div className="flex items-center gap-2 text-gray-600">
-                                    <DollarSign className="h-4 w-4 flex-shrink-0" />
-                                    <span>${Number(application.monthly_income).toLocaleString()}/mo income</span>
-                                </div>
-                            )}
-
-                            {/* Move-in date */}
-                            {application.move_in_date && (
-                                <div className="flex items-center gap-2 text-gray-600">
-                                    <Calendar className="h-4 w-4 flex-shrink-0" />
-                                    <span>Move-in: {new Date(application.move_in_date).toLocaleDateString()}</span>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Property Info - SAFE */}
-                        <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                            <div className="flex items-center gap-2">
-                                <Building2 className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                                <span className="font-medium">
-                                    {propertyAddress}
-                                    {propertyUnit && ` #${propertyUnit}`}
-                                </span>
-                                {propertyRent && (
-                                    <>
-                                        <span className="text-gray-400">•</span>
-                                        <span className="text-green-600 font-medium">
-                                            ${Number(propertyRent).toLocaleString()}/mo
-                                        </span>
-                                    </>
-                                )}
+                        <div className="text-right">
+                            <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Log Issued</div>
+                            <div className="text-xs font-bold text-slate-500 bg-slate-50 px-3 py-1 rounded-lg">
+                                {application.created_at ? formatDistanceToNow(new Date(application.created_at), { addSuffix: true }) : '---'}
                             </div>
-                            {!property && (
-                                <p className="text-xs text-amber-600 mt-1">
-                                    ⚠️ The property associated with this application may have been removed
-                                </p>
-                            )}
                         </div>
+                    </div>
 
-                        {/* Credit Score if available */}
-                        {application.credit_score && (
-                            <div className="mt-3">
-                                <span className="text-sm text-gray-500">Credit Score: </span>
-                                <span className={`font-bold ${application.credit_score >= 700 ? 'text-green-600' :
-                                    application.credit_score >= 600 ? 'text-amber-600' :
-                                        'text-red-600'
-                                    }`}>
-                                    {application.credit_score}
-                                </span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <InfoItem icon={Mail} label="Contact Email" value={application.applicant_email} />
+                        <InfoItem icon={Phone} label="Contact Phone" value={application.applicant_phone || '---'} />
+                        <InfoItem icon={DollarSign} label="Monthly Income" value={application.monthly_income ? `$${Number(application.monthly_income).toLocaleString()}` : '---'} />
+                        <InfoItem icon={Calendar} label="Move-in Target" value={application.move_in_date ? new Date(application.move_in_date).toLocaleDateString() : '---'} />
+                    </div>
+
+                    <div className="p-4 rounded-[1.5rem] bg-slate-50 border border-slate-100/60 flex items-center gap-4 group-hover:bg-slate-100/50 transition-colors">
+                        <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                            <Building2 className="h-5 w-5 text-indigo-500" />
+                        </div>
+                        <div className="flex-1">
+                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Target Infrastructure</div>
+                            <div className="text-sm font-black text-slate-700">
+                                {property?.address || '---'} {property?.unit_number && `(Slot #${property.unit_number})`}
+                            </div>
+                        </div>
+                        {property?.rent && (
+                            <div className="text-right">
+                                <div className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Target Yield</div>
+                                <div className="text-lg font-black text-slate-900">${Number(property.rent).toLocaleString()}</div>
                             </div>
                         )}
                     </div>
-
-                    {/* Actions */}
-                    {canTakeAction && (
-                        <div className="flex lg:flex-col gap-2 p-4 lg:p-6 lg:border-l bg-gray-50 lg:bg-transparent">
-                            <Button
-                                onClick={onApprove}
-                                disabled={isUpdating}
-                                className="flex-1 lg:flex-none bg-green-600 hover:bg-green-700"
-                            >
-                                <CheckCircle className="h-4 w-4 mr-2" />
-                                Approve
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={onDeny}
-                                disabled={isUpdating}
-                                className="flex-1 lg:flex-none border-red-200 text-red-600 hover:bg-red-50"
-                            >
-                                <XCircle className="h-4 w-4 mr-2" />
-                                Deny
-                            </Button>
-                        </div>
-                    )}
                 </div>
-            </CardContent>
+
+                {canTakeAction && (
+                    <div className="flex lg:flex-col gap-3 p-8 lg:border-l border-slate-100 bg-slate-50/50">
+                        <Button
+                            onClick={onApprove}
+                            disabled={isUpdating}
+                            className="flex-1 lg:flex-none h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-lg shadow-emerald-500/20 font-black transition-all hover:scale-105"
+                        >
+                            <CheckCircle className="h-5 w-5 mr-3" />
+                            Issue Clearance
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={onDeny}
+                            disabled={isUpdating}
+                            className="flex-1 lg:flex-none h-14 border-rose-100 bg-white text-rose-600 hover:bg-rose-50 rounded-2xl font-black transition-all hover:scale-105"
+                        >
+                            <XCircle className="h-5 w-5 mr-3" />
+                            Reject Protocol
+                        </Button>
+                    </div>
+                )}
+            </div>
         </Card>
+    )
+}
+
+function InfoItem({ icon: Icon, label, value }: any) {
+    return (
+        <div className="space-y-1">
+            <div className="flex items-center gap-2 text-[10px] font-black text-slate-300 uppercase tracking-widest">
+                <Icon className="h-3 w-3" />
+                {label}
+            </div>
+            <div className="text-sm font-bold text-slate-600 truncate">{value}</div>
+        </div>
     )
 }

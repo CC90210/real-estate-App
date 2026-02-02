@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/hooks/useAuth';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +28,7 @@ interface AddBuildingModalProps {
 }
 
 export function AddBuildingModal({ areaId, areaName }: AddBuildingModalProps) {
+    const { company, profile } = useAuth();
     const [open, setOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
@@ -42,6 +44,11 @@ export function AddBuildingModal({ areaId, areaName }: AddBuildingModalProps) {
     });
 
     const onSubmit = async (data: BuildingFormValues) => {
+        if (!company?.id) {
+            toast.error("Company profile not loaded");
+            return;
+        }
+
         setIsLoading(true);
         try {
             const { error } = await supabase
@@ -50,6 +57,7 @@ export function AddBuildingModal({ areaId, areaName }: AddBuildingModalProps) {
                     name: data.name,
                     address: data.address,
                     area_id: data.area_id,
+                    company_id: company.id,
                     amenities: [] // Default empty
                 });
 
@@ -57,8 +65,12 @@ export function AddBuildingModal({ areaId, areaName }: AddBuildingModalProps) {
 
             // Log activity
             await supabase.from('activity_log').insert({
+                company_id: company.id,
+                user_id: profile?.id,
                 action: 'BUILDING_CREATED',
-                description: `Added building ${data.name} to ${areaName}`
+                entity_type: 'building',
+                entity_id: '00000000-0000-0000-0000-000000000000',
+                details: { name: data.name, area: areaName }
             });
 
             toast.success(`${data.name} added to ${areaName}`);

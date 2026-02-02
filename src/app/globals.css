@@ -27,9 +27,9 @@
   --muted: 210 40% 96.1%;
   --muted-foreground: 215.4 16.3% 46.9%;
 
-  /* Accent - Purple/Indigo #8b5cf6 */
-  --accent: 259 87% 66%;
-  --accent-foreground: 0 0% 100%;
+  /* Accent - Soft Blue #e0f2fe */
+  --accent: 210 100% 97%;
+  --accent-foreground: 222.2 47.4% 11.2%;
 
   /* Destructive - Red */
   --destructive: 0 84.2% 60.2%;

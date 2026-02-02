@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/hooks/useAuth';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,8 @@ export function AddAreaModal() {
     const [uploading, setUploading] = useState(false);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
+
+    const { user, profile, company } = useAuth();
     const router = useRouter();
     const supabase = createClient();
 
@@ -41,12 +44,12 @@ export function AddAreaModal() {
     });
 
     const onImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!e.target.files || e.target.files.length === 0) return;
+        if (!e.target.files || e.target.files.length === 0 || !company?.id) return;
 
         setUploading(true);
         const file = e.target.files[0];
         const fileExt = file.name.split('.').pop();
-        const fileName = `area-${Date.now()}.${fileExt}`;
+        const fileName = `${company.id}/area-${Date.now()}.${fileExt}`;
         const filePath = `areas/${fileName}`;
 
         try {
@@ -71,6 +74,11 @@ export function AddAreaModal() {
     };
 
     const onSubmit = async (data: AreaFormValues) => {
+        if (!company?.id) {
+            toast.error("Company profile not loaded. Please wait.");
+            return;
+        }
+
         setIsLoading(true);
         try {
             const { error } = await supabase
@@ -78,15 +86,20 @@ export function AddAreaModal() {
                 .insert({
                     name: data.name,
                     description: data.description,
-                    image_url: data.image_url
+                    image_url: data.image_url,
+                    company_id: company.id
                 });
 
             if (error) throw error;
 
             // Log activity
             await supabase.from('activity_log').insert({
+                company_id: company.id,
+                user_id: profile?.id,
                 action: 'AREA_CREATED',
-                description: `Created new area: ${data.name}`
+                entity_type: 'area',
+                entity_id: '00000000-0000-0000-0000-000000000000', // Placeholder for now or actual ID if returned
+                details: { name: data.name }
             });
 
             toast.success("Area created successfully");
@@ -95,6 +108,7 @@ export function AddAreaModal() {
             setPreviewUrl(null);
             router.refresh();
         } catch (error: any) {
+            console.error("Creation error:", error);
             toast.error("Creation failed: " + error.message);
         } finally {
             setIsLoading(false);
