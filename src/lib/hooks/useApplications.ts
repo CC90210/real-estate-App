@@ -4,14 +4,17 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { triggerAutomation } from '@/lib/automations/dispatcher';
+import { useCompanyId } from './useCompanyId';
+import { applicationSchema } from '@/lib/schemas/application-schema';
 
 export function useApplications() {
     const supabase = createClient();
+    const { companyId } = useCompanyId();
 
     return useQuery({
-        queryKey: ['applications'],
+        queryKey: ['applications', companyId],
         queryFn: async () => {
-            const { data, error } = await supabase
+            let query = supabase
                 .from('applications')
                 .select(`
                     *,
@@ -20,12 +23,19 @@ export function useApplications() {
                 `)
                 .order('created_at', { ascending: false });
 
+            if (companyId) {
+                query = query.eq('company_id', companyId);
+            }
+
+            const { data, error } = await query;
+
             if (error) {
                 console.error("Error fetching applications:", error);
                 throw new Error("Failed to fetch applications");
             }
             return data;
         },
+        enabled: !!companyId,
     });
 }
 
@@ -136,22 +146,34 @@ export function useUpdateApplicationStatus() {
 export function useCreateApplication() {
     const queryClient = useQueryClient();
     const supabase = createClient();
+    const { companyId } = useCompanyId();
 
     return useMutation({
         mutationFn: async (newApplication: any) => {
+            // Validate input
+            const validationResult = applicationSchema.safeParse(newApplication);
+            if (!validationResult.success) {
+                throw new Error(validationResult.error.issues[0].message);
+            }
+
+            // Ensure company_id is set
+            const applicationData = {
+                ...validationResult.data,
+                company_id: companyId,
+            };
+
             const { data, error } = await supabase
                 .from('applications')
-                .insert(newApplication)
+                .insert(applicationData)
                 .select()
                 .single();
 
             if (error) throw error;
 
-            // 🚀 TRIGGER AUTOMATION
-            // Generate unique tracking URL for this applicant
+            // Trigger automation
             const trackingId = data.id;
             await triggerAutomation('APPLICATION_SUBMITTED', {
-                ...newApplication,
+                ...applicationData,
                 application_id: trackingId,
                 webhook_callback_url: `${window.location.origin}/api/webhooks/automation-callback`,
                 tracking_id: trackingId

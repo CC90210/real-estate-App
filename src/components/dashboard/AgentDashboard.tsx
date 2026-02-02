@@ -14,9 +14,14 @@ interface AgentDashboardProps {
         dealsClosed: number;
     };
     recentApps: any[];
+    commissionData?: {
+        pending: number;
+        paid: number;
+    };
+    recentActivity?: any[];
 }
 
-export function AgentDashboard({ profile, stats, recentApps }: AgentDashboardProps) {
+export function AgentDashboard({ profile, stats, recentApps, commissionData, recentActivity }: AgentDashboardProps) {
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             {/* Header */}
@@ -70,15 +75,23 @@ export function AgentDashboard({ profile, stats, recentApps }: AgentDashboardPro
                 <div className="md:col-span-2 space-y-6">
                     <Card className="border-none shadow-sm">
                         <CardHeader>
-                            <CardTitle>Priority Tasks</CardTitle>
-                            <CardDescription>Your daily to-do list based on lead activity.</CardDescription>
+                            <CardTitle>Recent Activity</CardTitle>
+                            <CardDescription>Your latest activity and updates.</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
-                                {/* Mock Tasks */}
-                                <TaskItem text="Follow up with John Doe re: Unit 402" time="10:00 AM" type="Call" />
-                                <TaskItem text="Showing at 88 Harbour St" time="2:30 PM" type="Showing" />
-                                <TaskItem text="Send lease agreement to Sarah Smith" time="4:00 PM" type="Doc" />
+                                {recentActivity && recentActivity.length > 0 ? (
+                                    recentActivity.map((activity: any) => (
+                                        <TaskItem
+                                            key={activity.id}
+                                            text={activity.description || activity.action}
+                                            time={new Date(activity.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            type={activity.action?.includes('APPLICATION') ? 'Doc' : activity.action?.includes('SHOWING') ? 'Showing' : 'Call'}
+                                        />
+                                    ))
+                                ) : (
+                                    <p className="text-sm text-slate-500 italic py-4">No recent activity.</p>
+                                )}
                             </div>
                         </CardContent>
                     </Card>
@@ -127,19 +140,29 @@ export function AgentDashboard({ profile, stats, recentApps }: AgentDashboardPro
                             <div>
                                 <div className="flex justify-between text-sm mb-1">
                                     <span className="text-slate-300">Pending</span>
-                                    <span className="font-mono">$3,400</span>
+                                    <span className="font-mono">${(commissionData?.pending || 0).toLocaleString()}</span>
                                 </div>
                                 <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                                    <div className="h-full bg-amber-500 w-[60%]"></div>
+                                    <div
+                                        className="h-full bg-amber-500 transition-all duration-500"
+                                        style={{
+                                            width: `${Math.min(100, ((commissionData?.pending || 0) / Math.max(1, (commissionData?.pending || 0) + (commissionData?.paid || 0))) * 100)}%`
+                                        }}
+                                    ></div>
                                 </div>
                             </div>
                             <div>
                                 <div className="flex justify-between text-sm mb-1">
                                     <span className="text-slate-300">Closed (MTD)</span>
-                                    <span className="font-mono text-emerald-400">$6,200</span>
+                                    <span className="font-mono text-emerald-400">${(commissionData?.paid || 0).toLocaleString()}</span>
                                 </div>
                                 <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                                    <div className="h-full bg-emerald-500 w-[85%]"></div>
+                                    <div
+                                        className="h-full bg-emerald-500 transition-all duration-500"
+                                        style={{
+                                            width: `${Math.min(100, ((commissionData?.paid || 0) / Math.max(1, (commissionData?.pending || 0) + (commissionData?.paid || 0))) * 100)}%`
+                                        }}
+                                    ></div>
                                 </div>
                             </div>
                         </div>

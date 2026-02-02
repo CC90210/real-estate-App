@@ -1,6 +1,6 @@
-
 import { createClient } from '@/lib/supabase/server';
 import { DocumentGenerator } from '@/components/documents/DocumentGenerator';
+import { DocumentHistory } from '@/components/documents/DocumentHistory';
 
 export default async function DocumentsPage() {
     const supabase = await createClient();
@@ -20,7 +20,7 @@ export default async function DocumentsPage() {
         .order('created_at', { ascending: false });
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight text-slate-900">Document Generator</h1>
                 <p className="text-slate-500 mt-2">Create professional real estate documents in seconds.</p>
@@ -30,6 +30,8 @@ export default async function DocumentsPage() {
                 properties={properties || []}
                 applications={applications || []}
             />
+
+            <DocumentHistory limit={10} />
         </div>
     );
 }

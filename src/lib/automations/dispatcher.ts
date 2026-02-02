@@ -1,3 +1,5 @@
+import crypto from 'crypto';
+
 export type AutomationEventType =
     | 'APPLICATION_SUBMITTED'
     | 'APPLICATION_STATUS_CHANGED'
@@ -30,11 +32,26 @@ export async function triggerAutomation(
 
         console.log(`[📦 DISPATCHING]`, JSON.stringify(envelope, null, 2));
 
-        // 2. Dispatch to n8n (or other IPaaS)
+        // 2. Generate HMAC signature for webhook security
+        const webhookSecret = process.env.WEBHOOK_SECRET;
+        const bodyString = JSON.stringify(envelope);
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json'
+        };
+
+        if (webhookSecret) {
+            const signature = crypto
+                .createHmac('sha256', webhookSecret)
+                .update(bodyString)
+                .digest('hex');
+            headers['X-PropFlow-Signature'] = signature;
+        }
+
+        // 3. Dispatch to n8n (or other IPaaS)
         const response = await fetch(WEBHOOK_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(envelope)
+            headers,
+            body: bodyString
         });
 
         if (!response.ok) {

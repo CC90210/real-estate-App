@@ -1,12 +1,16 @@
 'use client';
 
 import { Sidebar, MobileNav } from '@/components/layout/Sidebar';
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
+import { CommandPalette } from '@/components/CommandPalette';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Loader2 } from 'lucide-react';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
+import { useProperties } from '@/lib/hooks/useProperties';
 
 export default function DashboardLayout({
     children,
@@ -62,23 +66,39 @@ export default function DashboardLayout({
     if (!isAuthenticated) return null;
 
     return (
-        <div className="flex h-screen bg-[#f8fafc]">
-            {/* Desktop Sidebar */}
-            <div className="hidden lg:block w-64 h-full fixed left-0 top-0 bottom-0 z-50">
-                <Sidebar className="h-full w-full" />
-            </div>
+        <ErrorBoundary>
+            <div className="flex h-screen bg-[#f8fafc]">
+                {/* Desktop Sidebar */}
+                <div className="hidden lg:block w-64 h-full fixed left-0 top-0 bottom-0 z-50">
+                    <Sidebar className="h-full w-full" />
+                </div>
 
-            {/* Main Content Area */}
-            <div className="flex-1 flex flex-col lg:pl-64 min-h-screen w-full">
-                <MobileNav />
-                <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-                    <div className="max-w-7xl mx-auto w-full space-y-6">
-                        <Breadcrumbs />
-                        {children}
-                    </div>
-                </main>
-                <ChatPanel />
+                {/* Main Content Area */}
+                <div className="flex-1 flex flex-col lg:pl-64 min-h-screen w-full">
+                    <MobileNav />
+                    <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-20 lg:pb-8 overflow-y-auto">
+                        <div className="max-w-7xl mx-auto w-full space-y-6">
+                            <Breadcrumbs />
+                            <ErrorBoundary>
+                                {children}
+                            </ErrorBoundary>
+                        </div>
+                    </main>
+                    <ChatPanel />
+                </div>
+
+                {/* Mobile Bottom Navigation */}
+                <MobileBottomNav />
+
+                {/* Command Palette (Cmd+K) */}
+                <CommandPaletteWrapper />
             </div>
-        </div>
+        </ErrorBoundary>
     );
+}
+
+// Separate component to use hooks
+function CommandPaletteWrapper() {
+    const { data: properties } = useProperties();
+    return <CommandPalette properties={properties || []} />;
 }

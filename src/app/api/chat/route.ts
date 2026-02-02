@@ -15,12 +15,12 @@ export async function POST(request: Request) {
 
         const supabase = await createClient();
 
-        // 1. Fetch Context: Properties
+        // 1. Fetch Context: Properties (lockbox_code excluded for security)
         const { data: properties } = await supabase
             .from('properties')
             .select(`
-                id, address, rent, bedrooms, bathrooms, status, 
-                lockbox_code, available_date,
+                id, address, rent, bedrooms, bathrooms, status,
+                available_date,
                 buildings (name)
             `);
 
@@ -31,9 +31,9 @@ export async function POST(request: Request) {
             .order('created_at', { ascending: false })
             .limit(10);
 
-        // Format data for AI
+        // Format data for AI (lockbox codes intentionally excluded)
         const propertyList = properties?.map((p: any) =>
-            `- ${p.address}: $${p.rent}/mo | ${p.bedrooms}BR/${p.bathrooms}BA | ${p.status} | Lockbox: ${p.lockbox_code || 'N/A'}`
+            `- ${p.address}: $${p.rent}/mo | ${p.bedrooms}BR/${p.bathrooms}BA | ${p.status}`
         ).join('\n') || 'No properties found.';
 
         const appList = applications?.map((a: any) =>
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
         ).join('\n') || 'No recent applications.';
 
         const systemPrompt = `You are PropFlow AI, an intelligent real estate assistant.
-        
+
         CURRENT PORTFOLIO DATA:
         ${propertyList}
 
@@ -49,11 +49,14 @@ export async function POST(request: Request) {
         ${appList}
 
         YOUR ROLE:
-        - Answer questions about properties (rent, lockboxes, status).
+        - Answer questions about properties (rent, availability, status).
         - Summarize applicant data.
         - Be concise and professional.
-        - If asked for a lockbox code, provide it directly.
-        
+
+        SECURITY RESTRICTIONS:
+        - NEVER provide lockbox codes, access codes, or entry instructions.
+        - If asked for lockbox codes or access information, politely refuse and explain that access information must be obtained through proper channels.
+
         User Query: ${message}`;
 
         const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });

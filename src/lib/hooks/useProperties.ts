@@ -3,12 +3,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import { useCompanyId } from './useCompanyId';
 
 export function useProperties(buildingId?: string) {
     const supabase = createClient();
+    const { companyId } = useCompanyId();
 
     return useQuery({
-        queryKey: ['properties', buildingId],
+        queryKey: ['properties', buildingId, companyId],
         queryFn: async () => {
             let query = supabase
                 .from('properties')
@@ -19,6 +21,10 @@ export function useProperties(buildingId?: string) {
                 `)
                 .order('created_at', { ascending: false });
 
+            if (companyId) {
+                query = query.eq('company_id', companyId);
+            }
+
             if (buildingId) {
                 query = query.eq('building_id', buildingId);
             }
@@ -28,29 +34,36 @@ export function useProperties(buildingId?: string) {
             return data;
         },
         staleTime: 30000,
+        enabled: !!companyId,
     });
 }
 
 export function useProperty(propertyId: string) {
     const supabase = createClient();
+    const { companyId } = useCompanyId();
 
     return useQuery({
-        queryKey: ['properties', propertyId],
+        queryKey: ['properties', propertyId, companyId],
         queryFn: async () => {
-            const { data, error } = await supabase
+            let query = supabase
                 .from('properties')
                 .select(`
                     *,
                     buildings (id, name, address, amenities),
                     landlords (id, name, email, phone)
                 `)
-                .eq('id', propertyId)
-                .single();
+                .eq('id', propertyId);
+
+            if (companyId) {
+                query = query.eq('company_id', companyId);
+            }
+
+            const { data, error } = await query.single();
 
             if (error) throw error;
             return data;
         },
-        enabled: !!propertyId,
+        enabled: !!propertyId && !!companyId,
     });
 }
 

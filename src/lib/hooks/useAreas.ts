@@ -3,14 +3,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import { useCompanyId } from './useCompanyId';
 
 export function useAreas() {
     const supabase = createClient();
+    const { companyId } = useCompanyId();
 
     return useQuery({
-        queryKey: ['areas'],
+        queryKey: ['areas', companyId],
         queryFn: async () => {
-            const { data, error } = await supabase
+            let query = supabase
                 .from('areas')
                 .select(`
                     *,
@@ -21,6 +23,12 @@ export function useAreas() {
                     )
                 `)
                 .order('name');
+
+            if (companyId) {
+                query = query.eq('company_id', companyId);
+            }
+
+            const { data, error } = await query;
 
             if (error) throw error;
 
@@ -33,18 +41,20 @@ export function useAreas() {
                     acc + (b.properties?.filter((p: any) => p.status === 'available').length || 0), 0) || 0
             }));
         },
+        enabled: !!companyId,
     });
 }
 
 export function useCreateArea() {
     const queryClient = useQueryClient();
     const supabase = createClient();
+    const { companyId } = useCompanyId();
 
     return useMutation({
         mutationFn: async (newArea: { name: string; description?: string }) => {
             const { data, error } = await supabase
                 .from('areas')
-                .insert(newArea)
+                .insert({ ...newArea, company_id: companyId })
                 .select()
                 .single();
 

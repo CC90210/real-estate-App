@@ -15,19 +15,22 @@ interface LandlordDashboardProps {
         pendingRent: number;
     };
     recentApps: any[];
+    revenueHistory?: { month: string; revenue: number }[];
 }
 
-export function LandlordDashboard({ profile, stats, recentApps }: LandlordDashboardProps) {
+export function LandlordDashboard({ profile, stats, recentApps, revenueHistory }: LandlordDashboardProps) {
 
-    // Mock Data for Logic/Visuals
-    const revenueData = [
-        { name: 'Jan', revenue: 12400 },
-        { name: 'Feb', revenue: 14200 },
-        { name: 'Mar', revenue: 13800 },
-        { name: 'Apr', revenue: 16500 },
-        { name: 'May', revenue: 18200 },
-        { name: 'Jun', revenue: stats.totalRevenue || 19000 },
-    ];
+    // Use real data if available, fallback to mock
+    const revenueData = revenueHistory && revenueHistory.length > 0
+        ? revenueHistory.map(r => ({ name: r.month, revenue: r.revenue }))
+        : [
+            { name: 'Jan', revenue: 0 },
+            { name: 'Feb', revenue: 0 },
+            { name: 'Mar', revenue: 0 },
+            { name: 'Apr', revenue: 0 },
+            { name: 'May', revenue: 0 },
+            { name: 'Jun', revenue: stats.totalRevenue || 0 },
+        ];
 
     return (
         <div className="space-y-8 animate-in fade-in duration-700">

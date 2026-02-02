@@ -1,7 +1,7 @@
-
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@/lib/supabase/server';
+import { generateDocumentSchema } from '@/lib/schemas/document-schema';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -13,6 +13,21 @@ export async function POST(request: Request) {
         const applicantId = formData.get('applicantId') as string;
         const customFields = JSON.parse(formData.get('customFields') as string || '{}');
         const image = formData.get('image') as File | null;
+
+        // Validate input
+        const validationResult = generateDocumentSchema.safeParse({
+            type,
+            propertyId: propertyId || undefined,
+            applicantId: applicantId && applicantId !== 'none' ? applicantId : undefined,
+            customFields,
+        });
+
+        if (!validationResult.success) {
+            return NextResponse.json(
+                { error: 'Validation failed', details: validationResult.error.issues },
+                { status: 400 }
+            );
+        }
 
         if (!process.env.GEMINI_API_KEY) {
             return NextResponse.json({ error: 'Gemini API key not configured' }, { status: 500 });
@@ -148,9 +163,52 @@ export async function POST(request: Request) {
             if (type === 'application_summary') documentData.aiAnalysis = "The applicant demonstrates stable financial metrics and a clear intent for the property. Recommended for final verification process.";
         }
 
+        // Persist document to database
+        const { data: { user } } = await supabase.auth.getUser();
+        let savedDocumentId = null;
+
+        if (user) {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('company_id')
+                .eq('id', user.id)
+                .single();
+
+            if (profile?.company_id) {
+                // Generate document title based on type
+                const titles: Record<string, string> = {
+                    'property_summary': `Property Summary - ${documentData.property?.address || 'Unknown'}`,
+                    'lease_proposal': `Lease Proposal - ${customFields.tenantName || 'Unknown Tenant'}`,
+                    'showing_sheet': `Showing Sheet - ${documentData.property?.address || 'Unknown'}`,
+                    'application_summary': `Application Summary - ${documentData.application?.applicant_name || 'Unknown'}`,
+                };
+
+                const { data: savedDoc, error: saveError } = await supabase
+                    .from('documents')
+                    .insert({
+                        type,
+                        title: titles[type] || `Document - ${type}`,
+                        content: documentData,
+                        property_id: propertyId || null,
+                        application_id: (applicantId && applicantId !== 'none') ? applicantId : null,
+                        company_id: profile.company_id,
+                        created_by: user.id,
+                    })
+                    .select('id')
+                    .single();
+
+                if (!saveError && savedDoc) {
+                    savedDocumentId = savedDoc.id;
+                } else if (saveError) {
+                    console.error('Failed to persist document:', saveError);
+                }
+            }
+        }
+
         return NextResponse.json({
             success: true,
-            document: documentData
+            document: documentData,
+            documentId: savedDocumentId
         });
 
     } catch (error: any) {
