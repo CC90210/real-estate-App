@@ -189,8 +189,8 @@ export default function DocumentsPage() {
                                             setSelectedApplication('')
                                         }}
                                         className={`p-4 rounded-lg border-2 text-left transition-all ${isSelected
-                                                ? 'border-blue-500 bg-blue-50'
-                                                : 'border-gray-200 hover:border-gray-300'
+                                            ? 'border-blue-500 bg-blue-50'
+                                            : 'border-gray-200 hover:border-gray-300'
                                             }`}
                                     >
                                         <div className={`h-10 w-10 rounded-lg ${type.color} flex items-center justify-center mb-3`}>
@@ -251,11 +251,14 @@ export default function DocumentsPage() {
                                                 <SelectValue placeholder="Choose an application..." />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {applications?.map(a => (
-                                                    <SelectItem key={a.id} value={a.id}>
-                                                        {a.applicant_name} - {a.property?.address || 'No property' || 'Unknown Property'}
-                                                    </SelectItem>
-                                                ))}
+                                                {applications?.map((a: any) => {
+                                                    const property = Array.isArray(a.property) ? a.property[0] : a.property
+                                                    return (
+                                                        <SelectItem key={a.id} value={a.id}>
+                                                            {a.applicant_name} - {property?.address || 'No property'}
+                                                        </SelectItem>
+                                                    )
+                                                })}
                                             </SelectContent>
                                         </Select>
                                     </div>
