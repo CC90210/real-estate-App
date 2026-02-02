@@ -67,15 +67,30 @@ export function useProperty(propertyId: string) {
     });
 }
 
+// Helper for consistent logging
+async function logActivity(supabase: any, { companyId, action, entityType, entityId, metadata }: any) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !companyId) return;
+
+    await supabase.from('activity_log').insert({
+        company_id: companyId,
+        user_id: user.id,
+        action,
+        entity_type: entityType,
+        entity_id: entityId,
+        metadata
+    });
+}
+
 export function useDeleteProperty() {
     const queryClient = useQueryClient();
     const supabase = createClient();
+    const { companyId } = useCompanyId();
 
     return useMutation({
         mutationFn: async (propertyId: string) => {
             console.log(`[useDeleteProperty] Deleting: ${propertyId}`);
 
-            // DB handles cascading deletes (apps, logs) automatically now.
             const { error } = await supabase
                 .from('properties')
                 .delete()
@@ -85,6 +100,15 @@ export function useDeleteProperty() {
                 console.error('Supabase Delete Error:', error);
                 throw error;
             }
+
+            await logActivity(supabase, {
+                companyId,
+                action: 'deleted',
+                entityType: 'property',
+                entityId: propertyId,
+                metadata: { id: propertyId }
+            });
+
             return propertyId;
         },
         onMutate: async (propertyId) => {
@@ -117,17 +141,27 @@ export function useDeleteProperty() {
 export function useUpdateProperty() {
     const queryClient = useQueryClient();
     const supabase = createClient();
+    const { companyId } = useCompanyId();
 
     return useMutation({
         mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
             const { data, error } = await supabase
                 .from('properties')
-                .update({ ...updates }) // removed updated_at as it might be handled by db trigger or not exist in type
+                .update({ ...updates })
                 .eq('id', id)
                 .select()
                 .single();
 
             if (error) throw error;
+
+            await logActivity(supabase, {
+                companyId,
+                action: 'updated',
+                entityType: 'property',
+                entityId: id,
+                metadata: { updates }
+            });
+
             return data;
         },
         onMutate: async ({ id, updates }) => {
@@ -156,12 +190,17 @@ export function useUpdateProperty() {
 export function useCreateProperty() {
     const queryClient = useQueryClient();
     const supabase = createClient();
+    const { companyId } = useCompanyId();
 
     return useMutation({
         mutationFn: async (newProperty: any) => {
             const { data, error } = await supabase
                 .from('properties')
-                .insert(newProperty)
+                .insert({
+                    ...newProperty,
+                    company_id: companyId,
+                    status: newProperty.status || 'available'
+                })
                 .select(`
                     *,
                     buildings (id, name, address),
@@ -170,6 +209,15 @@ export function useCreateProperty() {
                 .single();
 
             if (error) throw error;
+
+            await logActivity(supabase, {
+                companyId,
+                action: 'created',
+                entityType: 'property',
+                entityId: data.id,
+                metadata: { address: data.address }
+            });
+
             return data;
         },
         onSuccess: () => {
@@ -188,12 +236,6 @@ export function useLandlords() {
     return useQuery({
         queryKey: ['landlords'],
         queryFn: async () => {
-            // Check if landlords table exists first, if not use profiles with landlord role
-            // For now assuming we are using profiles or a landlords table if created
-            // Based on previous schema, we have profiles.
-            // Let's try to fetch from profiles where role is landlord
-            // OR if a landlords table was key.
-            // Looking at the error logs and previous context, there is a `landlords` table referenced in joins.
             const { data, error } = await supabase
                 .from('landlords')
                 .select('*')

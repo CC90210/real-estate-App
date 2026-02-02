@@ -40,7 +40,8 @@ export default async function DashboardPage() {
         const { data: myProperties } = await supabase
             .from('properties')
             .select('rent, status, created_at')
-            .eq('landlord_id', user.id);
+            .eq('landlord_id', user.id)
+            .eq('company_id', profile.company_id);
 
         const totalRevenue = myProperties?.reduce((sum, p) => sum + (Number(p.rent) || 0), 0) || 0;
         const totalUnits = myProperties?.length || 0;
@@ -51,6 +52,7 @@ export default async function DashboardPage() {
         const { data: myApps } = await supabase
             .from('applications')
             .select('*, properties!inner(landlord_id, address)')
+            .eq('company_id', profile.company_id)
             .eq('properties.landlord_id', user.id)
             .order('created_at', { ascending: false })
             .limit(5);
@@ -85,8 +87,17 @@ export default async function DashboardPage() {
 
     // --- ADMIN LOGIC ---
     if (profile.role === 'admin') {
-        const { count: totalUsers } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
-        const { data: logs } = await supabase.from('activity_log').select('*').order('created_at', { ascending: false }).limit(10);
+        const { count: totalUsers } = await supabase
+            .from('profiles')
+            .select('*', { count: 'exact', head: true })
+            .eq('company_id', profile.company_id);
+
+        const { data: logs } = await supabase
+            .from('activity_log')
+            .select('*')
+            .eq('company_id', profile.company_id)
+            .order('created_at', { ascending: false })
+            .limit(10);
 
         return (
             <AdminDashboard
@@ -106,12 +117,14 @@ export default async function DashboardPage() {
     const { count: activeLeads } = await supabase
         .from('applications')
         .select('*', { count: 'exact', head: true })
+        .eq('company_id', profile.company_id)
         .neq('status', 'approved')
         .neq('status', 'rejected');
 
     const { data: recentApps } = await supabase
         .from('applications')
         .select('*, properties(address)')
+        .eq('company_id', profile.company_id)
         .order('created_at', { ascending: false })
         .limit(5);
 
@@ -119,6 +132,7 @@ export default async function DashboardPage() {
     const { count: showingsScheduled } = await supabase
         .from('showings')
         .select('*', { count: 'exact', head: true })
+        .eq('company_id', profile.company_id)
         .eq('status', 'scheduled')
         .gte('scheduled_date', today);
 
@@ -126,6 +140,7 @@ export default async function DashboardPage() {
     const { count: dealsClosed } = await supabase
         .from('applications')
         .select('*', { count: 'exact', head: true })
+        .eq('company_id', profile.company_id)
         .eq('status', 'approved')
         .gte('updated_at', startOfMonth)
         .lte('updated_at', endOfMonth);
@@ -134,6 +149,8 @@ export default async function DashboardPage() {
     const { data: agentCommissions } = await supabase
         .from('commissions')
         .select('amount, status')
+        // Commissions are already user-specific but also company-specific conceptually
+        .eq('company_id', profile.company_id)
         .eq('agent_id', user.id)
         .gte('earned_date', startOfMonth)
         .lte('earned_date', endOfMonth);
@@ -150,6 +167,7 @@ export default async function DashboardPage() {
     const { data: recentActivity } = await supabase
         .from('activity_log')
         .select('*')
+        .eq('company_id', profile.company_id)
         .order('created_at', { ascending: false })
         .limit(5);
 

@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard,
-    Building2,
-    Users,
+    Home,
+    ClipboardList,
     FileText,
     Settings
 } from 'lucide-react';
@@ -18,14 +18,14 @@ const navItems = [
         icon: LayoutDashboard,
     },
     {
-        label: 'Portfolio',
-        href: '/areas',
-        icon: Building2,
+        label: 'Properties',
+        href: '/properties',
+        icon: Home,
     },
     {
         label: 'Apps',
         href: '/applications',
-        icon: Users,
+        icon: ClipboardList,
     },
     {
         label: 'Docs',

@@ -9,14 +9,19 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, Filter, BedDouble, Bath, Plus, MapPin, User, ArrowRight, Building2 } from 'lucide-react';
+import { Search, Filter, BedDouble, Bath, Plus, MapPin, User, ArrowRight, Building2, Home } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Property, Landlord } from '@/types/database';
 
+import { useRouter } from 'next/navigation';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
+
 export default function PropertiesPage() {
-    const { data: properties, isLoading } = useProperties();
+    const { data: properties, isLoading, error } = useProperties();
     const { data: landlords } = useLandlords();
+    const router = useRouter();
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [bedsFilter, setBedsFilter] = useState('all');
@@ -62,6 +67,62 @@ export default function PropertiesPage() {
             </Badge>
         );
     };
+
+    // 1. Loading State
+    if (isLoading) {
+        return (
+            <div className="space-y-8 animate-pulse">
+                <div className="flex justify-between items-center">
+                    <div className="space-y-2">
+                        <Skeleton className="h-8 w-48" />
+                        <Skeleton className="h-4 w-96" />
+                    </div>
+                    <Skeleton className="h-10 w-32" />
+                </div>
+                <Skeleton className="h-20 w-full rounded-xl" />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                        <div key={i} className="space-y-3">
+                            <Skeleton className="h-48 w-full rounded-xl" />
+                            <div className="space-y-2">
+                                <Skeleton className="h-4 w-3/4" />
+                                <Skeleton className="h-4 w-1/2" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )
+    }
+
+    // 2. Error State
+    if (error) {
+        return (
+            <ErrorState
+                title="Failed to load properties"
+                message={(error as Error).message}
+                onRetry={() => window.location.reload()}
+                className="mt-12 mx-auto max-w-lg"
+            />
+        )
+    }
+
+    // 3. Empty State (No properties at all)
+    if (!properties || properties.length === 0) {
+        return (
+            <EmptyState
+                icon={Home}
+                title="No properties yet"
+                description="Add your first property to start managing your portfolio."
+                action={
+                    <Button onClick={() => router.push('/areas')} className="gap-2">
+                        <Plus className="w-4 h-4" /> Add Property
+                    </Button>
+                }
+                className="mt-12 mx-auto max-w-lg"
+            />
+        )
+    }
 
     return (
         <div className="space-y-8 animate-fade-in">
@@ -131,16 +192,14 @@ export default function PropertiesPage() {
 
             {/* Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {isLoading ? (
-                    [1, 2, 3, 4, 5, 6].map((i) => (
-                        <div key={i} className="space-y-3">
-                            <Skeleton className="h-48 w-full rounded-xl" />
-                            <div className="space-y-2">
-                                <Skeleton className="h-4 w-3/4" />
-                                <Skeleton className="h-4 w-1/2" />
-                            </div>
-                        </div>
-                    ))
+                {filteredProperties && filteredProperties.length === 0 ? (
+                    <div className="col-span-full py-12">
+                        <EmptyState
+                            title="No properties found"
+                            description="Try adjusting your filters or search terms."
+                            className="bg-transparent border-none shadow-none"
+                        />
+                    </div>
                 ) : (
                     <AnimatePresence>
                         {filteredProperties?.map((property, index) => (

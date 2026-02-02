@@ -17,14 +17,23 @@ import {
     X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useProperties } from '@/lib/hooks/useProperties';
+import { useApplications } from '@/lib/hooks/useApplications';
 
 interface CommandPaletteProps {
-    properties?: any[];
+    properties?: any[]; // Kept for retro-compatibility if used elsewhere, but we'll prefer hooks
 }
 
-export function CommandPalette({ properties = [] }: CommandPaletteProps) {
+export function CommandPalette({ properties: propsProperties = [] }: CommandPaletteProps) {
     const [open, setOpen] = useState(false);
     const router = useRouter();
+
+    // Fetch data for command palette
+    const { data: fetchedProperties } = useProperties();
+    const { data: applications } = useApplications();
+
+    // Use fetched properties if available, otherwise fall back to props
+    const properties = fetchedProperties || propsProperties;
 
     // Toggle the menu when Cmd+K / Ctrl+K is pressed
     useEffect(() => {
@@ -132,19 +141,39 @@ export function CommandPalette({ properties = [] }: CommandPaletteProps) {
                         </Command.Group>
 
                         {/* Properties */}
-                        {properties.length > 0 && (
+                        {properties && properties.length > 0 && (
                             <Command.Group heading="Properties" className="px-2 py-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mt-2">
                                 {properties.slice(0, 5).map((property: any) => (
                                     <Command.Item
                                         key={property.id}
                                         value={`property ${property.address}`}
-                                        onSelect={() => runCommand(() => router.push(`/areas?property=${property.id}`))}
+                                        onSelect={() => runCommand(() => router.push(`/properties/${property.id}`))}
                                         className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-slate-700 hover:bg-slate-100 data-[selected=true]:bg-blue-50 data-[selected=true]:text-blue-600 transition-colors"
                                     >
                                         <Home className="w-5 h-5 text-slate-400" />
                                         <div className="flex-1 min-w-0">
                                             <span className="font-medium truncate block">{property.address}</span>
                                             <span className="text-xs text-slate-400">${property.rent}/mo</span>
+                                        </div>
+                                    </Command.Item>
+                                ))}
+                            </Command.Group>
+                        )}
+
+                        {/* Applications */}
+                        {applications && applications.length > 0 && (
+                            <Command.Group heading="Applications" className="px-2 py-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mt-2">
+                                {applications.slice(0, 5).map((app: any) => (
+                                    <Command.Item
+                                        key={app.id}
+                                        value={`application ${app.applicant_name}`}
+                                        onSelect={() => runCommand(() => router.push(`/applications/${app.id}`))}
+                                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-slate-700 hover:bg-slate-100 data-[selected=true]:bg-blue-50 data-[selected=true]:text-blue-600 transition-colors"
+                                    >
+                                        <Users className="w-5 h-5 text-slate-400" />
+                                        <div className="flex-1 min-w-0">
+                                            <span className="font-medium truncate block">{app.applicant_name}</span>
+                                            <span className="text-xs text-slate-400">{app.status} • {app.properties?.address}</span>
                                         </div>
                                     </Command.Item>
                                 ))}
