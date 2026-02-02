@@ -38,17 +38,68 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized', details: 'User not authenticated' }, { status: 401 });
         }
 
-        const { data: profile } = await supabase
+        // Fetch user profile
+        let { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .select('company_id, company:companies(id, name, logo_url, address, phone, email)')
+            .select('company_id, full_name, email')
             .eq('id', user.id)
             .single();
 
-        if (!profile?.company_id) {
-            return NextResponse.json({ error: 'Setup Required', details: 'User profile or company not found' }, { status: 400 });
+        // Self-healing: If profile doesn't exist, create it
+        if (profileError || !profile) {
+            console.log('Profile not found, attempting to create...');
+            const { data: newProfile, error: createProfileError } = await supabase
+                .from('profiles')
+                .insert({
+                    id: user.id,
+                    email: user.email,
+                    full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'
+                })
+                .select('company_id, full_name, email')
+                .single();
+
+            if (createProfileError) {
+                console.error('Failed to create profile:', createProfileError);
+                return NextResponse.json({ error: 'Profile Setup Failed', details: 'Could not create user profile. Please contact support.' }, { status: 500 });
+            }
+            profile = newProfile;
         }
 
-        const company = profile.company as any;
+        // Self-healing: If profile has no company_id, create a company
+        let companyId = profile?.company_id;
+        if (!companyId) {
+            console.log('Company not found for profile, creating company...');
+            const companyName = `${profile?.full_name || 'User'}'s Company`;
+            const { data: newCompany, error: companyError } = await supabase
+                .from('companies')
+                .insert({ name: companyName })
+                .select('id, name')
+                .single();
+
+            if (companyError || !newCompany) {
+                console.error('Failed to create company:', companyError);
+                return NextResponse.json({ error: 'Company Setup Failed', details: 'Could not create company. Please contact support.' }, { status: 500 });
+            }
+
+            // Link the company to the profile
+            const { error: linkError } = await supabase
+                .from('profiles')
+                .update({ company_id: newCompany.id })
+                .eq('id', user.id);
+
+            if (linkError) {
+                console.error('Failed to link company to profile:', linkError);
+            }
+
+            companyId = newCompany.id;
+        }
+
+        // Fetch full company details
+        const { data: company } = await supabase
+            .from('companies')
+            .select('id, name, logo_url, address, phone, email')
+            .eq('id', companyId)
+            .single();
 
         // Initialize document data with company branding
         let documentData: any = {
@@ -130,7 +181,7 @@ export async function POST(request: Request) {
                 content: documentData,
                 property_id: propertyId || null,
                 application_id: (applicantId && applicantId !== 'none') ? applicantId : null,
-                company_id: profile.company_id,
+                company_id: companyId,
                 created_by: user.id,
             })
             .select('id')
