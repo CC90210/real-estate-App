@@ -223,10 +223,17 @@ export async function POST(request: Request) {
         });
 
     } catch (error: any) {
-        console.error('Document Generation Error:', error);
+        console.error('Document Generation Critical Failure:', error);
+
+        // Determine explicit error for frontend
+        let errorMessage = error.message || 'Unknown error occurred';
+        if (errorMessage.includes('Gemini API key')) errorMessage = 'AI Service Config Error: Missing API Key';
+        if (errorMessage.includes('Database Error')) errorMessage = 'Database Persist Error: ' + errorMessage;
+
         return NextResponse.json({
             error: 'Document generation failed',
-            details: error.message
+            details: errorMessage,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         }, { status: 500 });
     }
 }

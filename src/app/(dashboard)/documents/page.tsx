@@ -139,8 +139,9 @@ export default function DocumentsPage() {
             })
 
             if (!response.ok) {
-                const error = await response.json()
-                throw new Error(error.message || 'Failed to generate document')
+                const errorData = await response.json()
+                const errorMessage = errorData.details || errorData.error || 'Failed to generate document';
+                throw new Error(errorMessage)
             }
 
             const result = await response.json()
@@ -154,7 +155,7 @@ export default function DocumentsPage() {
             }
 
         } catch (error: any) {
-            console.error(error)
+            console.error('Generation Failed:', error)
             toast.error(error.message || 'Failed to generate document')
         } finally {
             setIsGenerating(false)
