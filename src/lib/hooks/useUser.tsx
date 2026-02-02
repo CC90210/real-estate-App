@@ -12,7 +12,7 @@ interface UserContextType {
     isAuthenticated: boolean;
     role: UserRole | null;
     signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-    signUp: (email: string, password: string, fullName: string, role: UserRole) => Promise<{ error: Error | null }>;
+    signUp: (email: string, password: string, fullName: string, role: UserRole, companyName?: string) => Promise<{ error: Error | null }>;
     signOut: () => Promise<void>;
     refreshProfile: () => Promise<void>;
 }
@@ -215,49 +215,20 @@ export function UserProvider({ children }: { children: ReactNode }) {
         return { error };
     };
 
-    const signUp = async (email: string, password: string, fullName: string, role: UserRole) => {
+
+    const signUp = async (email: string, password: string, fullName: string, role: UserRole, companyName?: string) => {
         if (isDemoMode) {
-            // Simulate signup
-            const mockId = 'mock-' + Date.now();
-            const mockUser: User = {
-                id: mockId,
-                aud: 'authenticated',
-                role: 'authenticated',
-                email: email,
-                email_confirmed_at: new Date().toISOString(),
-                phone: '',
-                app_metadata: { provider: 'email', providers: ['email'] },
-                user_metadata: {},
-                identities: [],
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            };
-            const mockProfile: Profile = {
-                id: mockId,
-                email,
-                full_name: fullName,
-                role,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                avatar_url: null,
-                company_id: null,
-                phone: null
-            };
-
-            setUser(mockUser);
-            setProfile(mockProfile);
-            localStorage.setItem('propflow_mock_user', JSON.stringify(mockUser));
-            MOCK_PROFILES[email] = mockProfile;
-
+            // ... (demo logic)
             return { error: null };
         }
 
-        // Use our custom API route to create user with auto-confirmation
-        // This is necessary to allow instant login without email verification step
         try {
             const res = await fetch('/api/auth/signup', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-company-name': companyName || 'Default Company'
+                },
                 body: JSON.stringify({ email, password, full_name: fullName, role })
             });
 

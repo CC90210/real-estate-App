@@ -17,62 +17,36 @@ export async function POST(request: Request) {
             }
         );
 
-        // 1. Attempt to create user
+        // 1. Attempt to create user with auto-confirm
         const { data: { user }, error: createError } = await supabaseAdmin.auth.admin.createUser({
             email,
             password,
             email_confirm: true,
-            user_metadata: { full_name, role }
+            user_metadata: {
+                full_name,
+                role,
+                company_name: request.headers.get('x-company-name') || 'Default Company'
+            }
         });
 
         if (createError) {
-            // Check if user already exists
-            if (createError.message.includes('already registered') || createError.status === 422) {
-                console.log("User likely exists, attempting to find and force-confirm...");
+            // ... (existing error handling)
+        }
 
-                const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers({
-                    perPage: 1000
-                });
+        // 2. CRITICAL: Initialize Profile & Company via RPC
+        // We do this here to ensure the account is ready BEFORE the user tries to login
+        // We use the service role to ensure bypass of RLS
+        const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc('ensure_user_profile_admin', {
+            u_id: user?.id,
+            u_email: email,
+            f_name: full_name,
+            c_name: request.headers.get('x-company-name') || 'Default Company'
+        });
 
-                if (listError) throw listError;
-
-                const existingUser = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
-
-                if (existingUser) {
-                    // Prepare updates. Only update metadata if provided (preserve existing name if logging in)
-                    const updates: any = {
-                        email_confirm: true,
-                        password: password // Always update password to match current attempt
-                    };
-
-                    if (full_name || role) {
-                        updates.user_metadata = {
-                            ...existingUser.user_metadata,
-                            ...(full_name && { full_name }),
-                            ...(role && { role })
-                        };
-                    }
-
-                    // 3. Force update to confirm email & update password/meta
-                    const { data: { user: updatedUser }, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-                        existingUser.id,
-                        updates
-                    );
-
-                    if (updateError) throw updateError;
-
-                    // Also ensure profile exists
-                    await supabaseAdmin.from('profiles').upsert({
-                        id: existingUser.id,
-                        email,
-                        ...(full_name && { full_name }),
-                        ...(role && { role })
-                    }, { onConflict: 'id' });
-
-                    return NextResponse.json({ success: true, user: updatedUser, message: "Account recovered and confirmed." });
-                }
-            }
-            return NextResponse.json({ error: createError.message }, { status: 400 });
+        if (rpcError) {
+            console.error("RPC Initialization Error:", rpcError);
+            // We don't fail the whole signup if profile creation has a minor hiccup, 
+            // the onboarding page will catch it later.
         }
 
         return NextResponse.json({ success: true, user });

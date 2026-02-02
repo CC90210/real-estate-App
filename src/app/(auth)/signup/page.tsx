@@ -7,12 +7,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
+
 import { Loader2, Building2, Eye, EyeOff, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
+import { useUser } from '@/lib/hooks/useUser'
 
 export default function SignupPage() {
     const router = useRouter()
-    const supabase = createClient()
+    const { signUp } = useUser()
 
     const [formData, setFormData] = useState({
         email: '',
@@ -41,75 +43,31 @@ export default function SignupPage() {
 
         setIsLoading(true)
 
+
         try {
-            // 1. Create auth user with metadata (Triggers DB Automation)
-            const { data: authData, error: authError } = await supabase.auth.signUp({
-                email: formData.email,
-                password: formData.password,
-                options: {
-                    data: {
-                        full_name: formData.fullName,
-                        job_title: formData.jobTitle,
-                        company_name: formData.companyName
-                    }
-                }
-            })
+            // Use the centralized signUp method which handles API call and auto-login
+            const { error: signUpError } = await signUp(
+                formData.email.toLowerCase(),
+                formData.password,
+                formData.fullName,
+                'agent',
+                formData.companyName
+            );
 
-            if (authError) throw authError
+            if (signUpError) throw signUpError;
 
-            // 2. SELF-HEALING / DOUBLE CHECK
-            // We immediately call our RPC function to ensure the profile exists.
-            // If the trigger worked, this function will simply return "Profile already exists".
-            // If the trigger failed silently, this function will CREATE it.
-            if (authData.user) {
-                // Wait small delay to allow trigger to fire first (race condition handling)
-                await new Promise(r => setTimeout(r, 1000))
+            // Success! One single notification.
+            toast.success('Welcome to PropFlow!', {
+                description: 'Setting up your workspace...',
+                duration: 4000
+            });
 
-                const { data: rpcData, error: rpcError } = await supabase.rpc('ensure_user_profile')
-
-                if (rpcError) {
-                    console.error('Self-healing failed:', rpcError)
-                    // We don't block flow here because maybe user isn't fully authenticated yet 
-                    // (if email confirm is strict)
-                } else {
-                    console.log('Self-healing result:', rpcData)
-                    if (rpcData?.status === 'error') {
-                        console.error('Detailed RPC Error:', rpcData.message)
-                        // Optional: could throw here if we want to show error
-                    }
-                }
-            }
-
-            toast.success('Account created successfully!')
-
-            if (authData.session) {
-                router.push('/dashboard')
-            } else {
-                toast.info('Please verify your email address.', {
-                    duration: 6000,
-                    description: "We've sent a confirmation link to your inbox."
-                })
-                router.push('/login')
-            }
-
+            router.push('/onboarding');
         } catch (error: any) {
             console.error('Signup error:', error)
-
-            // DETAILED ERROR NOTIFICATION
-            const errorMsg = error.message || 'Unknown error'
-            const errorDetails = error.stack || JSON.stringify(error)
-
             toast.error('Signup Failed', {
-                description: (
-                    <div className="flex flex-col gap-2">
-                        <span>{errorMsg}</span>
-                        <div className="text-xs bg-red-100 p-2 rounded text-red-900 font-mono overflow-auto max-h-20">
-                            {errorDetails.slice(0, 150)}...
-                        </div>
-                        <span className="text-xs italic">Please screenshot this for support.</span>
-                    </div>
-                ),
-                duration: 10000, // Stay longer
+                description: error.message || 'Please check your information and try again.',
+                duration: 5000,
             })
         } finally {
             setIsLoading(false)
