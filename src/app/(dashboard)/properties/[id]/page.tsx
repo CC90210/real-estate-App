@@ -5,6 +5,7 @@ import { ArrowLeft, Home, BedDouble, Bath, Square, Calendar, MapPin, Key, Shield
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { PropertyAutomations } from '@/components/automations/PropertyAutomations';
 import { GenerateAdButton } from '@/components/properties/GenerateAdButton';
 import { EditPropertyModal } from '@/components/properties/EditPropertyModal';
 import { DeletePropertyButton } from '@/components/properties/DeletePropertyButton';
@@ -134,6 +135,8 @@ export default async function PropertyDetailsPage({ params }: { params: { id: st
                         </div>
                     </div>
 
+
+
                     <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl shadow-lg p-6 text-white">
                         <div className="flex items-center gap-2 mb-4">
                             <Shield className="w-5 h-5 text-amber-400" />
@@ -149,6 +152,9 @@ export default async function PropertyDetailsPage({ params }: { params: { id: st
                             This code is strictly for authorized agents and maintenance personnel. Do not share with applicants.
                         </p>
                     </div>
+
+                    {/* Automations Panel */}
+                    <PropertyAutomations property={property} />
                 </div>
             </div>
 
