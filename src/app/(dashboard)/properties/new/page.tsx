@@ -85,6 +85,19 @@ export default function NewPropertyPage() {
         setIsSubmitting(true)
 
         try {
+            // Get user and company context first
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error("Authentication required")
+
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('company_id')
+                .eq('id', user.id)
+                .single()
+
+            if (!profile?.company_id) throw new Error("Company profile not found")
+
+            // Proceed with provisioning using company_id
             let finalAreaId = selectedAreaId
             let finalBuildingId = selectedBuildingId
 
@@ -93,7 +106,10 @@ export default function NewPropertyPage() {
                 if (!newAreaName) throw new Error("Area name is required")
                 const { data: area, error } = await supabase
                     .from('areas')
-                    .insert({ name: newAreaName })
+                    .insert({
+                        name: newAreaName,
+                        company_id: profile.company_id
+                    })
                     .select()
                     .single()
                 if (error) throw error
@@ -108,7 +124,8 @@ export default function NewPropertyPage() {
                     .insert({
                         area_id: finalAreaId,
                         name: newBuildingName,
-                        address: newBuildingAddress
+                        address: newBuildingAddress,
+                        company_id: profile.company_id
                     })
                     .select()
                     .single()
@@ -121,6 +138,7 @@ export default function NewPropertyPage() {
                 .from('properties')
                 .insert({
                     building_id: finalBuildingId,
+                    company_id: profile.company_id,
                     unit_number: unitNumber || 'Main',
                     bedrooms: parseInt(bedrooms) || 0,
                     bathrooms: parseFloat(bathrooms) || 1,
@@ -134,16 +152,9 @@ export default function NewPropertyPage() {
             toast.success("Property provisioned successfully!")
 
             // Log activity
-            const { data: { user } } = await supabase.auth.getUser()
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('company_id')
-                .eq('id', user?.id)
-                .single()
-
             await supabase.from('activity_log').insert({
-                company_id: profile?.company_id, // Might be null if RLS handles it or trigger
-                user_id: user?.id,
+                company_id: profile.company_id,
+                user_id: user.id,
                 action: 'created',
                 entity_type: 'properties',
                 details: { address: newBuildingAddress || 'New Property' }
@@ -153,6 +164,7 @@ export default function NewPropertyPage() {
             router.refresh()
 
         } catch (error: any) {
+            console.error(error)
             toast.error("Failed to create property", { description: error.message })
         } finally {
             setIsSubmitting(false)
