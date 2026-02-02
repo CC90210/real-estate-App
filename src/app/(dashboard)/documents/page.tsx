@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
@@ -61,7 +61,13 @@ export default function DocumentsPage() {
     const [selectedType, setSelectedType] = useState<string | null>(null)
     const [selectedProperty, setSelectedProperty] = useState<string>('')
     const [selectedApplication, setSelectedApplication] = useState<string>('')
+    const [customFields, setCustomFields] = useState<any>({})
     const [isGenerating, setIsGenerating] = useState(false)
+
+    // Reset custom fields when type changes
+    useEffect(() => {
+        setCustomFields({})
+    }, [selectedType, selectedProperty, selectedApplication])
 
     // Fetch properties for dropdown
     const { data: properties, error: propError } = useQuery({
@@ -118,14 +124,15 @@ export default function DocumentsPage() {
 
         setIsGenerating(true)
         try {
+            const formData = new FormData()
+            formData.append('type', selectedType)
+            if (selectedProperty) formData.append('propertyId', selectedProperty)
+            if (selectedApplication) formData.append('applicantId', selectedApplication)
+            formData.append('customFields', JSON.stringify(customFields))
+
             const response = await fetch('/api/generate-document', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    type: selectedType,
-                    propertyId: selectedProperty || undefined,
-                    applicationId: selectedApplication || undefined
-                })
+                body: formData
             })
 
             if (!response.ok) {
@@ -222,11 +229,11 @@ export default function DocumentsPage() {
                                 {/* Property Selector */}
                                 {needsProperty && (
                                     <div>
-                                        <label className="text-sm font-medium mb-2 block">
+                                        <label className="text-sm font-medium mb-2 block uppercase text-xs tracking-wider text-slate-500">
                                             Select Property *
                                         </label>
                                         <Select value={selectedProperty} onValueChange={setSelectedProperty}>
-                                            <SelectTrigger>
+                                            <SelectTrigger className="h-10">
                                                 <SelectValue placeholder="Choose a property..." />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -243,11 +250,11 @@ export default function DocumentsPage() {
                                 {/* Application Selector */}
                                 {needsApplication && (
                                     <div>
-                                        <label className="text-sm font-medium mb-2 block">
+                                        <label className="text-sm font-medium mb-2 block uppercase text-xs tracking-wider text-slate-500">
                                             Select Application *
                                         </label>
                                         <Select value={selectedApplication} onValueChange={setSelectedApplication}>
-                                            <SelectTrigger>
+                                            <SelectTrigger className="h-10">
                                                 <SelectValue placeholder="Choose an application..." />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -264,15 +271,130 @@ export default function DocumentsPage() {
                                     </div>
                                 )}
 
+                                {/* --- Dynamic Custom Fields --- */}
+
+                                {/* Showing Sheet Fields */}
+                                {selectedType === 'showing_sheet' && (
+                                    <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+                                        <div>
+                                            <label className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1 block">Showing Notes</label>
+                                            <textarea
+                                                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[80px]"
+                                                placeholder="e.g. emphasize the natural light in the living room..."
+                                                value={customFields.notes || ''}
+                                                onChange={e => setCustomFields({ ...customFields, notes: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1 block">Access Instructions</label>
+                                            <input
+                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                placeholder="e.g. Lockbox code 1234..."
+                                                value={customFields.accessNotes || ''}
+                                                onChange={e => setCustomFields({ ...customFields, accessNotes: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Lease Proposal Fields */}
+                                {selectedType === 'lease_proposal' && (
+                                    <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+                                        <div>
+                                            <label className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1 block">Tenant Name *</label>
+                                            <input
+                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                                placeholder="e.g. John Doe"
+                                                value={customFields.tenantName || ''}
+                                                onChange={e => setCustomFields({ ...customFields, tenantName: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1 block">Offer Rent ($)</label>
+                                                <input
+                                                    type="number"
+                                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                                    placeholder="2500"
+                                                    value={customFields.offerRent || ''}
+                                                    onChange={e => setCustomFields({ ...customFields, offerRent: e.target.value })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1 block">Term (Months)</label>
+                                                <input
+                                                    type="number"
+                                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                                    placeholder="12"
+                                                    value={customFields.leaseTerm || ''}
+                                                    onChange={e => setCustomFields({ ...customFields, leaseTerm: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1 block">Special Conditions</label>
+                                            <textarea
+                                                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[60px]"
+                                                placeholder="e.g. Pets allowed with deposit..."
+                                                value={customFields.conditions || ''}
+                                                onChange={e => setCustomFields({ ...customFields, conditions: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Application Summary Fields */}
+                                {selectedType === 'application_summary' && (
+                                    <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+                                        <div>
+                                            <label className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1 block">Internal Agent Notes</label>
+                                            <textarea
+                                                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px]"
+                                                placeholder="e.g. Verified income via paystubs, seems reliable..."
+                                                value={customFields.agentNote || ''}
+                                                onChange={e => setCustomFields({ ...customFields, agentNote: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Property Summary (Marketing) Fields */}
+                                {selectedType === 'property_summary' && (
+                                    <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+                                        <div>
+                                            <label className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1 block">Highlight Features</label>
+                                            <textarea
+                                                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px]"
+                                                placeholder="e.g. Newly renovated kitchen, rooftop access, proximity to subway..."
+                                                value={customFields.highlightFeatures || ''}
+                                                onChange={e => setCustomFields({ ...customFields, highlightFeatures: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Generate Button */}
                                 <Button
                                     onClick={handleGenerate}
-                                    disabled={isGenerating || (needsProperty && !selectedProperty) || (needsApplication && !selectedApplication)}
-                                    className="w-full"
-                                    size="lg"
+                                    disabled={
+                                        isGenerating ||
+                                        (needsProperty && !selectedProperty) ||
+                                        (needsApplication && !selectedApplication) ||
+                                        (selectedType === 'lease_proposal' && (!customFields.tenantName || !customFields.offerRent))
+                                    }
+                                    className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-widest shadow-lg shadow-blue-200 mt-4"
                                 >
-                                    {isGenerating ? 'Generating...' : 'Generate Document'}
-                                    <ChevronRight className="h-4 w-4 ml-2" />
+                                    {isGenerating ? (
+                                        <>
+                                            <div className="h-4 w-4 border-2 border-white/50 border-t-white rounded-full animate-spin mr-2" />
+                                            Generating...
+                                        </>
+                                    ) : (
+                                        <>
+                                            Generate Document
+                                            <ChevronRight className="h-4 w-4 ml-2" />
+                                        </>
+                                    )}
                                 </Button>
                             </div>
                         )}
