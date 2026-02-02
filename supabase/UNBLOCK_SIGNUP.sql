@@ -71,23 +71,36 @@ BEGIN
     IF curr_user_id IS NULL THEN
         RETURN jsonb_build_object('status', 'error', 'message', 'Not authenticated');
     END IF;
+    
+    -- Check for existing profile
     SELECT id INTO existing_profile_id FROM public.profiles WHERE id = curr_user_id;
     IF existing_profile_id IS NOT NULL THEN
+        -- Ensure company_id is present, if not, try to fix it
+        UPDATE public.profiles SET role = 'admin' WHERE id = curr_user_id AND role IS NULL;
         RETURN jsonb_build_object('status', 'success', 'message', 'Profile already exists');
     END IF;
+
     SELECT raw_user_meta_data INTO curr_meta FROM auth.users WHERE id = curr_user_id;
     c_name := curr_meta->>'company_name';
     j_title := curr_meta->>'job_title';
     f_name := curr_meta->>'full_name';
+    
     IF c_name IS NULL THEN c_name := 'My Company'; END IF;
     IF f_name IS NULL THEN f_name := 'New User'; END IF;
+
+    -- 1. Create Company
     INSERT INTO public.companies (name, email, trial_ends_at)
     VALUES (c_name, curr_email, now() + interval '14 days')
     RETURNING id INTO new_company_id;
+
+    -- 2. Create Profile (User who signs up is ALWAYS Admin)
     INSERT INTO public.profiles (id, email, full_name, job_title, role, company_id)
     VALUES (curr_user_id, curr_email, f_name, j_title, 'admin', new_company_id);
+
+    -- 3. Create Subscription
     INSERT INTO public.automation_subscriptions (company_id, is_active, tier)
     VALUES (new_company_id, false, 'none');
+
     RETURN jsonb_build_object('status', 'success', 'message', 'Profile created successfully via RPC');
 EXCEPTION WHEN OTHERS THEN
     RETURN jsonb_build_object('status', 'error', 'message', SQLERRM);
@@ -95,7 +108,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- 4. CREATE THE SELF-HEALING FUNCTION (RPC) - ADMIN LEVEL (For API usage)
-CREATE OR REPLACE FUNCTION public.ensure_user_profile_admin(u_id uuid, u_email text, f_name text, c_name text)
+CREATE OR REPLACE FUNCTION public.ensure_user_profile_admin(u_id uuid, u_email text, f_name text, c_name text, j_title text DEFAULT NULL)
 RETURNS jsonb AS $$
 DECLARE
     new_company_id uuid;
@@ -103,6 +116,8 @@ DECLARE
 BEGIN
     SELECT id INTO existing_profile_id FROM public.profiles WHERE id = u_id;
     IF existing_profile_id IS NOT NULL THEN
+        -- Just ensure role is admin
+        UPDATE public.profiles SET role = 'admin' WHERE id = u_id AND (role IS NULL OR role = '');
         RETURN jsonb_build_object('status', 'success', 'message', 'Profile already exists');
     END IF;
 
@@ -112,8 +127,8 @@ BEGIN
     RETURNING id INTO new_company_id;
 
     -- 2. Create Profile
-    INSERT INTO public.profiles (id, email, full_name, role, company_id)
-    VALUES (u_id, u_email, COALESCE(f_name, 'New User'), 'admin', new_company_id);
+    INSERT INTO public.profiles (id, email, full_name, job_title, role, company_id)
+    VALUES (u_id, u_email, COALESCE(f_name, 'New User'), j_title, 'admin', new_company_id);
 
     -- 3. Create Subscription
     INSERT INTO public.automation_subscriptions (company_id, is_active, tier)
@@ -125,7 +140,7 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- 5. RESET RLS POLICIES
+-- 5. RESET RLS POLICIES (Make them more permissive for creation)
 ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow signup inserts" ON public.companies;
 CREATE POLICY "Allow signup inserts" ON public.companies FOR INSERT TO authenticated WITH CHECK (true);
@@ -144,7 +159,7 @@ GRANT ALL ON TABLE public.companies TO postgres, anon, authenticated, service_ro
 GRANT ALL ON TABLE public.profiles TO postgres, anon, authenticated, service_role;
 GRANT ALL ON TABLE public.automation_subscriptions TO postgres, anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.ensure_user_profile() TO anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.ensure_user_profile_admin(uuid, text, text, text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.ensure_user_profile_admin(uuid, text, text, text, text) TO service_role;
 
 -- 7. REFRESH SCHEMA CACHE
 NOTIFY pgrst, 'reload schema';

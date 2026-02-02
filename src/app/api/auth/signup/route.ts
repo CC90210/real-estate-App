@@ -4,7 +4,8 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
     try {
-        const { email, password, full_name, role } = await request.json();
+
+        const { email, password, full_name, role, job_title } = await request.json();
         const companyName = request.headers.get('x-company-name') || 'Default Company';
 
         const supabaseAdmin = createServerClient(
@@ -26,7 +27,8 @@ export async function POST(request: Request) {
             user_metadata: {
                 full_name,
                 role,
-                company_name: companyName
+                company_name: companyName,
+                job_title: job_title
             }
         });
 
@@ -50,7 +52,8 @@ export async function POST(request: Request) {
                                 ...existingUser.user_metadata,
                                 full_name,
                                 role,
-                                company_name: companyName
+                                company_name: companyName,
+                                job_title: job_title
                             }
                         }
                     );
@@ -74,7 +77,8 @@ export async function POST(request: Request) {
             u_id: user.id,
             u_email: email,
             f_name: full_name,
-            c_name: companyName
+            c_name: companyName,
+            j_title: job_title
         });
 
         if (rpcError) {

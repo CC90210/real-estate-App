@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2, AlertCircle, RefreshCw, Building2, Sparkles } from 'lucide-react'
@@ -13,24 +13,46 @@ export default function OnboardingPage() {
     const [status, setStatus] = useState<'loading' | 'error' | 'success'>('loading')
     const [errorDetails, setErrorDetails] = useState<string | null>(null)
     const [attempts, setAttempts] = useState(0)
+    const checkInProgress = useRef(false)
 
     useEffect(() => {
+        // Prevent multiple concurrent checks
+        if (checkInProgress.current) return
+        checkInProgress.current = true
+
         const runOnboardingCheck = async () => {
             try {
+                // Small delay to allow session to stabilize and prevent race conditions with auth state
+                await new Promise(r => setTimeout(r, 500))
+
                 // 1. Get current user
                 const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-                if (userError || !user) {
+                if (userError) {
+                    // Handle specific abort/network errors gracefully
+                    if (userError.message.includes('aborted')) {
+                        console.log('User check aborted, retrying...')
+                        checkInProgress.current = false
+                        return
+                    }
+                    throw userError
+                }
+
+                if (!user) {
                     router.push('/login')
                     return
                 }
 
                 // 2. Check if profile exists
-                const { data: profile } = await supabase
+                const { data: profile, error: profileError } = await supabase
                     .from('profiles')
                     .select('id, company_id')
                     .eq('id', user.id)
                     .maybeSingle()
+
+                if (profileError && !profileError.message.includes('aborted')) {
+                    throw profileError
+                }
 
                 if (profile && profile.company_id) {
                     setStatus('success')
@@ -39,9 +61,14 @@ export default function OnboardingPage() {
                 }
 
                 // 3. If no profile, try to run "ensure_user_profile" RPC
+                // This is our 'Self-Healing' protocol
                 const { data: rpcData, error: rpcError } = await supabase.rpc('ensure_user_profile')
 
                 if (rpcError) {
+                    if (rpcError.message.includes('aborted')) {
+                        checkInProgress.current = false
+                        return
+                    }
                     throw new Error(`Self-healing RPC failed: ${rpcError.message}`)
                 }
 
@@ -65,12 +92,21 @@ export default function OnboardingPage() {
 
             } catch (err: any) {
                 console.error('Onboarding Error:', err)
-                setErrorDetails(err.message || 'An unknown error occurred')
-                setStatus('error')
+                // Filter out mundane abort errors from the UI
+                if (!err.message?.includes('aborted')) {
+                    setErrorDetails(err.message || 'An unknown error occurred')
+                    setStatus('error')
+                }
+            } finally {
+                checkInProgress.current = false
             }
         }
 
         runOnboardingCheck()
+
+        return () => {
+            checkInProgress.current = false
+        }
     }, [attempts, router, supabase])
 
     return (

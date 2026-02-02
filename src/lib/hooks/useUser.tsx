@@ -12,7 +12,7 @@ interface UserContextType {
     isAuthenticated: boolean;
     role: UserRole | null;
     signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-    signUp: (email: string, password: string, fullName: string, role: UserRole, companyName?: string) => Promise<{ error: Error | null }>;
+    signUp: (email: string, password: string, fullName: string, role: UserRole, companyName?: string, jobTitle?: string) => Promise<{ error: Error | null }>;
     signOut: () => Promise<void>;
     refreshProfile: () => Promise<void>;
 }
@@ -216,7 +216,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     };
 
 
-    const signUp = async (email: string, password: string, fullName: string, role: UserRole, companyName?: string) => {
+    const signUp = async (email: string, password: string, fullName: string, role: UserRole, companyName?: string, jobTitle?: string) => {
         if (isDemoMode) {
             // ... (demo logic)
             return { error: null };
@@ -229,7 +229,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
                     'Content-Type': 'application/json',
                     'x-company-name': companyName || 'Default Company'
                 },
-                body: JSON.stringify({ email, password, full_name: fullName, role })
+                body: JSON.stringify({
+                    email,
+                    password,
+                    full_name: fullName,
+                    role,
+                    job_title: jobTitle
+                })
             });
 
             const data = await res.json();

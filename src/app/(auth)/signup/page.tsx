@@ -51,7 +51,8 @@ export default function SignupPage() {
                 formData.password,
                 formData.fullName,
                 'agent',
-                formData.companyName
+                formData.companyName,
+                formData.jobTitle
             );
 
             if (signUpError) throw signUpError;
