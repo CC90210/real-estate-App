@@ -1,191 +1,334 @@
-import { createClient } from '@/lib/supabase/server';
-import { AgentDashboard } from '@/components/dashboard/AgentDashboard';
-import { LandlordDashboard } from '@/components/dashboard/LandlordDashboard';
-import { AdminDashboard } from '@/components/dashboard/AdminDashboard';
-import { redirect } from 'next/navigation';
+'use client'
 
-export const dynamic = 'force-dynamic';
+import { useQuery } from '@tanstack/react-query'
+import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/hooks/useAuth'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+    Building2,
+    Home,
+    ClipboardList,
+    Users,
+    Plus,
+    TrendingUp,
+    Clock,
+    CheckCircle,
+    FileText
+} from 'lucide-react'
+import Link from 'next/link'
+import { formatDistanceToNow } from 'date-fns'
 
-// Helper to get current month date range
-function getCurrentMonthRange() {
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-    const today = now.toISOString().split('T')[0];
-    return { startOfMonth, endOfMonth, today };
-}
+export default function DashboardPage() {
+    const { user, profile, company } = useAuth()
+    const supabase = createClient()
 
-export default async function DashboardPage() {
-    const supabase = await createClient();
-    const { startOfMonth, endOfMonth, today } = getCurrentMonthRange();
+    // Fetch dashboard stats
+    const { data: stats, isLoading: statsLoading } = useQuery({
+        queryKey: ['dashboard-stats', company?.id],
+        queryFn: async () => {
+            const [
+                { count: totalProperties },
+                { count: availableProperties },
+                { count: totalApplications },
+                { count: pendingApplications },
+                { count: teamMembers }
+            ] = await Promise.all([
+                supabase.from('properties').select('*', { count: 'exact', head: true }),
+                supabase.from('properties').select('*', { count: 'exact', head: true }).eq('status', 'available'),
+                supabase.from('applications').select('*', { count: 'exact', head: true }),
+                supabase.from('applications').select('*', { count: 'exact', head: true }).in('status', ['submitted', 'screening', 'pending_landlord']),
+                supabase.from('profiles').select('*', { count: 'exact', head: true })
+            ])
 
-    // 1. Authenticate & Get Profile (The "Session-Injection" foundation)
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) redirect('/login');
+            return {
+                totalProperties: totalProperties || 0,
+                availableProperties: availableProperties || 0,
+                totalApplications: totalApplications || 0,
+                pendingApplications: pendingApplications || 0,
+                teamMembers: teamMembers || 0
+            }
+        },
+        enabled: !!company?.id
+    })
 
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+    // Fetch recent activity
+    const { data: recentActivity } = useQuery({
+        queryKey: ['recent-activity', company?.id],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from('activity_log')
+                .select(`
+                    *,
+                    user:profiles(full_name, avatar_url)
+                `)
+                .order('created_at', { ascending: false })
+                .limit(10)
+            return data || []
+        },
+        enabled: !!company?.id
+    })
 
-    if (!profile) return <div>Profile not found. Please contact support.</div>;
+    // Fetch recent applications
+    const { data: recentApplications } = useQuery({
+        queryKey: ['recent-applications-dashboard', company?.id],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from('applications')
+                .select(`
+                    id,
+                    applicant_name,
+                    status,
+                    created_at,
+                    property:properties(address)
+                `)
+                .order('created_at', { ascending: false })
+                .limit(5)
+            return data || []
+        },
+        enabled: !!company?.id
+    })
 
-    // 2. Role-Based Data Fetching (Server-Side Efficiency)
-    // ----------------------------------------------------
-
-    // --- LANDLORD LOGIC ---
-    if (profile.role === 'landlord') {
-        // Fetch Financials
-        const { data: myProperties } = await supabase
-            .from('properties')
-            .select('rent, status, created_at')
-            .eq('landlord_id', user.id)
-            .eq('company_id', profile.company_id);
-
-        const totalRevenue = myProperties?.reduce((sum, p) => sum + (Number(p.rent) || 0), 0) || 0;
-        const totalUnits = myProperties?.length || 0;
-        const occupiedCount = myProperties?.filter(p => p.status === 'rented').length || 0;
-        const occupancyRate = totalUnits > 0 ? Math.round((occupiedCount / totalUnits) * 100) : 0;
-
-        // Fetch Applications for MY properties
-        const { data: myApps } = await supabase
-            .from('applications')
-            .select('*, properties!inner(landlord_id, address)')
-            .eq('company_id', profile.company_id)
-            .eq('properties.landlord_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(5);
-
-        // Calculate revenue by month (last 6 months)
-        const now = new Date();
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const revenueHistory = [];
-
-        for (let i = 5; i >= 0; i--) {
-            const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const monthName = months[monthDate.getMonth()];
-            // For now, use total revenue as a baseline (in real app, would aggregate from rent_payments)
-            const monthRevenue = i === 0 ? totalRevenue : Math.round(totalRevenue * (0.85 + Math.random() * 0.3));
-            revenueHistory.push({ month: monthName, revenue: monthRevenue });
-        }
-
-        return (
-            <LandlordDashboard
-                profile={profile}
-                stats={{
-                    totalRevenue,
-                    occupancyRate,
-                    totalUnits,
-                    pendingRent: 0 // Placeholder until we have rent_payments table
-                }}
-                recentApps={myApps || []}
-                revenueHistory={revenueHistory}
-            />
-        );
+    if (statsLoading) {
+        return <DashboardSkeleton />
     }
-
-    // --- ADMIN LOGIC ---
-    if (profile.role === 'admin') {
-        const { count: totalUsers } = await supabase
-            .from('profiles')
-            .select('*', { count: 'exact', head: true })
-            .eq('company_id', profile.company_id);
-
-        const { data: logs } = await supabase
-            .from('activity_log')
-            .select('*')
-            .eq('company_id', profile.company_id)
-            .order('created_at', { ascending: false })
-            .limit(10);
-
-        return (
-            <AdminDashboard
-                profile={profile}
-                stats={{
-                    totalUsers: totalUsers || 0,
-                    systemHealth: 'Operational',
-                    activeWebhooks: 3 // Mock config count
-                }}
-                logs={logs || []}
-            />
-        );
-    }
-
-    // --- AGENT LOGIC (Default) ---
-    // Fetch Active Leads (Apps in 'screening' or 'new')
-    const { count: activeLeads } = await supabase
-        .from('applications')
-        .select('*', { count: 'exact', head: true })
-        .eq('company_id', profile.company_id)
-        .neq('status', 'approved')
-        .neq('status', 'rejected');
-
-    const { data: recentApps } = await supabase
-        .from('applications')
-        .select('*, properties(address)')
-        .eq('company_id', profile.company_id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-    // Fetch real showings count for today onwards
-    const { count: showingsScheduled } = await supabase
-        .from('showings')
-        .select('*', { count: 'exact', head: true })
-        .eq('company_id', profile.company_id)
-        .eq('status', 'scheduled')
-        .gte('scheduled_date', today);
-
-    // Fetch deals closed this month (approved applications)
-    const { count: dealsClosed } = await supabase
-        .from('applications')
-        .select('*', { count: 'exact', head: true })
-        .eq('company_id', profile.company_id)
-        .eq('status', 'approved')
-        .gte('updated_at', startOfMonth)
-        .lte('updated_at', endOfMonth);
-
-    // Fetch commission data for agent
-    const { data: agentCommissions } = await supabase
-        .from('commissions')
-        .select('amount, status')
-        // Commissions are already user-specific but also company-specific conceptually
-        .eq('company_id', profile.company_id)
-        .eq('agent_id', user.id)
-        .gte('earned_date', startOfMonth)
-        .lte('earned_date', endOfMonth);
-
-    const pendingCommission = agentCommissions
-        ?.filter(c => c.status === 'pending')
-        .reduce((sum, c) => sum + Number(c.amount), 0) || 0;
-
-    const paidCommission = agentCommissions
-        ?.filter(c => c.status === 'paid' || c.status === 'approved')
-        .reduce((sum, c) => sum + Number(c.amount), 0) || 0;
-
-    // Fetch recent activity for tasks
-    const { data: recentActivity } = await supabase
-        .from('activity_log')
-        .select('*')
-        .eq('company_id', profile.company_id)
-        .order('created_at', { ascending: false })
-        .limit(5);
 
     return (
-        <AgentDashboard
-            profile={profile}
-            stats={{
-                activeLeads: activeLeads || 0,
-                showingsScheduled: showingsScheduled || 0,
-                pendingApps: activeLeads || 0,
-                dealsClosed: dealsClosed || 0
-            }}
-            recentApps={recentApps || []}
-            commissionData={{
-                pending: pendingCommission,
-                paid: paidCommission
-            }}
-            recentActivity={recentActivity || []}
-        />
-    );
+        <div className="p-6 space-y-6">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">
+                        Welcome back{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''}
+                    </h1>
+                    <p className="text-gray-500">{company?.name || 'Your Dashboard'}</p>
+                </div>
+                <div className="flex gap-2">
+                    <Button asChild>
+                        <Link href="/properties/new">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Property
+                        </Link>
+                    </Button>
+                </div>
+            </div>
+
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatCard
+                    title="Total Properties"
+                    value={stats?.totalProperties || 0}
+                    subtitle={`${stats?.availableProperties || 0} available`}
+                    icon={Home}
+                    iconColor="text-blue-600"
+                    iconBg="bg-blue-100"
+                />
+                <StatCard
+                    title="Applications"
+                    value={stats?.totalApplications || 0}
+                    subtitle={`${stats?.pendingApplications || 0} pending review`}
+                    icon={ClipboardList}
+                    iconColor="text-amber-600"
+                    iconBg="bg-amber-100"
+                />
+                <StatCard
+                    title="Team Members"
+                    value={stats?.teamMembers || 0}
+                    subtitle="Active users"
+                    icon={Users}
+                    iconColor="text-green-600"
+                    iconBg="bg-green-100"
+                />
+                <StatCard
+                    title="Available Units"
+                    value={stats?.availableProperties || 0}
+                    subtitle="Ready to lease"
+                    icon={CheckCircle}
+                    iconColor="text-emerald-600"
+                    iconBg="bg-emerald-100"
+                />
+            </div>
+
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Recent Applications */}
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <CardTitle className="text-lg">Recent Applications</CardTitle>
+                        <Button variant="ghost" size="sm" asChild>
+                            <Link href="/applications">View all</Link>
+                        </Button>
+                    </CardHeader>
+                    <CardContent>
+                        {recentApplications && recentApplications.length > 0 ? (
+                            <div className="space-y-3">
+                                {recentApplications.map(app => (
+                                    <div key={app.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
+                                        <div>
+                                            <p className="font-medium">{app.applicant_name}</p>
+                                            <p className="text-sm text-gray-500">{app.property?.address}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <StatusBadge status={app.status} />
+                                            <p className="text-xs text-gray-400 mt-1">
+                                                {formatDistanceToNow(new Date(app.created_at), { addSuffix: true })}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-center text-gray-500 py-8">No applications yet</p>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Recent Activity */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg">Recent Activity</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {recentActivity && recentActivity.length > 0 ? (
+                            <div className="space-y-3">
+                                {recentActivity.map(activity => (
+                                    <div key={activity.id} className="flex items-start gap-3">
+                                        <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-medium">
+                                            {activity.user?.full_name?.[0] || '?'}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm">
+                                                <span className="font-medium">{activity.user?.full_name || 'Someone'}</span>
+                                                {' '}{formatAction(activity.action)}{' '}
+                                                <span className="text-gray-600">{activity.entity_type}</span>
+                                            </p>
+                                            <p className="text-xs text-gray-400">
+                                                {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-center text-gray-500 py-8">No activity yet</p>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Quick Actions (Admin Only) */}
+            {profile?.role === 'admin' && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg">Quick Actions</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <QuickAction
+                                href="/properties/new"
+                                icon={Home}
+                                label="Add Property"
+                            />
+                            <QuickAction
+                                href="/settings/team"
+                                icon={Users}
+                                label="Invite Team"
+                            />
+                            <QuickAction
+                                href="/documents"
+                                icon={FileText}
+                                label="Generate Doc"
+                            />
+                            <QuickAction
+                                href="/approvals"
+                                icon={CheckCircle}
+                                label="Review Apps"
+                            />
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+        </div>
+    )
+}
+
+// Helper Components
+
+function StatCard({ title, value, subtitle, icon: Icon, iconColor, iconBg }: any) {
+    return (
+        <Card>
+            <CardContent className="p-4">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <p className="text-sm text-gray-500">{title}</p>
+                        <p className="text-2xl font-bold mt-1">{value}</p>
+                        <p className="text-xs text-gray-400 mt-1">{subtitle}</p>
+                    </div>
+                    <div className={`p-2 rounded-lg ${iconBg}`}>
+                        <Icon className={`h-5 w-5 ${iconColor}`} />
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
+
+function QuickAction({ href, icon: Icon, label }: any) {
+    return (
+        <Link
+            href={href}
+            className="flex flex-col items-center gap-2 p-4 rounded-lg border hover:bg-gray-50 transition-colors"
+        >
+            <Icon className="h-6 w-6 text-gray-600" />
+            <span className="text-sm font-medium">{label}</span>
+        </Link>
+    )
+}
+
+function StatusBadge({ status }: any) {
+    const config: Record<string, { label: string; class: string }> = {
+        submitted: { label: 'New', class: 'bg-blue-100 text-blue-700' },
+        screening: { label: 'Screening', class: 'bg-amber-100 text-amber-700' },
+        pending_landlord: { label: 'Pending', class: 'bg-purple-100 text-purple-700' },
+        approved: { label: 'Approved', class: 'bg-green-100 text-green-700' },
+        denied: { label: 'Denied', class: 'bg-red-100 text-red-700' }
+    }
+    const c = config[status] || { label: status, class: 'bg-gray-100 text-gray-700' }
+    return (
+        <span className={`text-xs px-2 py-1 rounded-full ${c.class}`}>
+            {c.label}
+        </span>
+    )
+}
+
+function formatAction(action: string): string {
+    const actions: Record<string, string> = {
+        created: 'created',
+        updated: 'updated',
+        deleted: 'deleted',
+        approved: 'approved',
+        denied: 'denied'
+    }
+    return actions[action] || action
+}
+
+function DashboardSkeleton() {
+    return (
+        <div className="p-6 space-y-6">
+            <div className="space-y-2">
+                <Skeleton className="h-8 w-64" />
+                <Skeleton className="h-4 w-48" />
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[1, 2, 3, 4].map(i => (
+                    <Skeleton key={i} className="h-28" />
+                ))}
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Skeleton className="h-64" />
+                <Skeleton className="h-64" />
+            </div>
+        </div>
+    )
 }

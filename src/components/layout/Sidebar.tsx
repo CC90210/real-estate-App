@@ -24,15 +24,15 @@ import { useState } from 'react';
 import { useUser } from '@/lib/hooks/useUser';
 
 const navItems = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Areas', href: '/areas', icon: MapPin },
-    { name: 'Properties', href: '/properties', icon: Home },
-    { name: 'Applications', href: '/applications', icon: ClipboardList },
-    { name: 'Approvals', href: '/approvals', icon: CheckCircle },
-    { name: 'Documents', href: '/documents', icon: FileText },
-    { name: 'Landlords', href: '/landlords', icon: Users },
-    { name: 'Automations', href: '/automations', icon: Zap },
-    { name: 'Settings', href: '/settings', icon: Settings },
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'agent', 'landlord'] },
+    { name: 'Areas', href: '/areas', icon: MapPin, roles: ['admin', 'agent'] },
+    { name: 'Properties', href: '/properties', icon: Home, roles: ['admin', 'agent', 'landlord'] },
+    { name: 'Applications', href: '/applications', icon: ClipboardList, roles: ['admin', 'agent', 'landlord'] },
+    { name: 'Approvals', href: '/approvals', icon: CheckCircle, roles: ['admin', 'landlord'] },
+    { name: 'Documents', href: '/documents', icon: FileText, roles: ['admin', 'agent'] },
+    { name: 'Landlords', href: '/landlords', icon: Users, roles: ['admin', 'agent'] },
+    { name: 'Automations', href: '/automations', icon: Zap, roles: ['admin', 'agent'] },
+    { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'agent', 'landlord'] },
 ];
 
 export function Sidebar({ className }: { className?: string }) {
@@ -46,13 +46,13 @@ export function Sidebar({ className }: { className?: string }) {
         router.push('/login');
     };
 
-    const filteredNavItems = navItems.filter(item => {
-        if (item.name === 'Approvals' && role !== 'landlord' && role !== 'admin') return false;
-        // Optionally restrict Landlords or Automations if needed, but per prompt only Approvals was restricted.
-        // Prompt says "Only be accessible to admins and landlords" for Approvals.
-        // Automations is upsell, so visible to all usually.
-        return true;
-    });
+    // Filter based on user role
+    // Default to 'agent' if role is null to avoid crashing, though auth guard usually prevents this
+    const userRole = role || 'agent';
+
+    const filteredNavItems = navItems.filter(item =>
+        item.roles.includes(userRole)
+    );
 
     return (
         <aside className={cn("flex flex-col h-full bg-[#fcfdfe] border-r border-slate-200/60 shadow-[1px_0_10px_rgba(0,0,0,0.02)]", className)}>
