@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { Loader2, Building2, Eye, EyeOff, AlertTriangle } from 'lucide-react'
+import { Loader2, Building2, Eye, EyeOff } from 'lucide-react'
 import Link from 'next/link'
 
 export default function SignupPage() {
@@ -20,7 +20,7 @@ export default function SignupPage() {
         confirmPassword: '',
         fullName: '',
         companyName: '',
-        jobTitle: '' // Added job title
+        jobTitle: ''
     })
     const [isLoading, setIsLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
@@ -42,118 +42,44 @@ export default function SignupPage() {
         setIsLoading(true)
 
         try {
-            // 1. Create auth user
+            // 1. Create auth user with ALL required metadata
+            //    The backend Trigger (on_auth_user_created) will handle
+            //    creating the Profile, Company, and Subscription automatically.
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email: formData.email,
                 password: formData.password,
                 options: {
                     data: {
                         full_name: formData.fullName,
-                        job_title: formData.jobTitle
+                        job_title: formData.jobTitle,
+                        company_name: formData.companyName // Passed here for the Trigger to use
                     }
                 }
             })
 
             if (authError) throw authError
 
-            if (!authData.user) {
-                throw new Error('Failed to create account')
-            }
-
-            // 2. Create company with Fallback Logic
-            let company = null
-
-            // Try inserting with email first
-            const { data: companyWithEmail, error: companyErrorWithEmail } = await supabase
-                .from('companies')
-                .insert({
-                    name: formData.companyName,
-                    email: formData.email,
-                    trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
-                })
-                .select()
-                .single()
-
-            if (companyErrorWithEmail) {
-                console.warn('Company email insert failed, retrying without email logic...', companyErrorWithEmail)
-
-                // Fallback: Try inserting WITHOUT email (schema might be missing column)
-                const { data: companyWithoutEmail, error: companyErrorWithoutEmail } = await supabase
-                    .from('companies')
-                    .insert({
-                        name: formData.companyName,
-                        trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
-                    })
-                    .select()
-                    .single()
-
-                if (companyErrorWithoutEmail) {
-                    // If both fail, throw the first error as it's more descriptive of intent
-                    throw companyErrorWithEmail
-                }
-
-                company = companyWithoutEmail
-            } else {
-                company = companyWithEmail
-            }
-
-            if (!company) throw new Error('Failed to create company record')
-
-            // 3. Create profile
-            const { error: profileError } = await supabase
-                .from('profiles')
-                .insert({
-                    id: authData.user.id,
-                    email: formData.email,
-                    full_name: formData.fullName,
-                    role: 'admin',
-                    company_id: company.id,
-                    // job_title: formData.jobTitle // Can try to add this if schema allows, else skip
-                })
-
-            if (profileError) {
-                console.error('Profile creation error:', profileError)
-                // Don't throw here? If profile fails, user exists but can't login properly.
-                // Better to throw.
-                throw profileError
-            }
-
-            // 4. Create default automation subscription (inactive)
-            try {
-                await supabase
-                    .from('automation_subscriptions')
-                    .insert({
-                        company_id: company.id,
-                        is_active: false,
-                        tier: 'none'
-                    })
-            } catch (e) {
-                console.error("Failed to create default subscription (non-fatal)", e)
-            }
+            // Note: We no longer manually insert into 'companies' or 'profiles' here.
+            // This prevents RLS errors and ensures atomic creation via the database trigger.
 
             toast.success('Account created successfully!')
 
-            // Check if email confirmation is required
+            // Check if email confirmation is required (session will be null if so)
             if (authData.session) {
+                // Auto-confirmed? Go to dashboard
                 router.push('/dashboard')
             } else {
+                // Standard flow: Check email
                 toast.info('Please check your email to confirm your account')
+                // Redirect to login to force them to sign in after confirming
                 router.push('/login')
             }
 
         } catch (error: any) {
             console.error('Signup error:', error)
-
-            // Specific handling for schema errors
-            if (error.message?.includes('schema') || error.code === 'PGRST204') {
-                toast.error('Database Schema Error', {
-                    description: 'Please run the provided SQL script in Supabase to fix missing columns.'
-                })
-            } else {
-                toast.error('Signup failed', {
-                    description: error.message
-                })
-            }
+            toast.error('Signup failed', {
+                description: error.message
+            })
         } finally {
             setIsLoading(false)
         }
