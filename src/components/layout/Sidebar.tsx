@@ -4,16 +4,16 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard,
-    Map,
-    Building2,
+    MapPin,
+    Home,
+    ClipboardList,
+    CheckCircle,
     FileText,
     Users,
+    Zap,
     Settings,
     LogOut,
     Menu,
-    ShieldCheck,
-    CheckSquare,
-    Zap
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -24,41 +24,15 @@ import { useState } from 'react';
 import { useUser } from '@/lib/hooks/useUser';
 
 const navItems = [
-    {
-        label: 'Dashboard',
-        href: '/dashboard',
-        icon: LayoutDashboard,
-    },
-    {
-        label: 'Areas',
-        href: '/areas',
-        icon: Map,
-    },
-    {
-        label: 'Applications',
-        href: '/applications',
-        icon: Users,
-    },
-    {
-        label: 'Approvals',
-        href: '/landlord/applications',
-        icon: CheckSquare,
-    },
-    {
-        label: 'Documents',
-        href: '/documents',
-        icon: FileText,
-    },
-    {
-        label: 'System',
-        href: '/admin',
-        icon: ShieldCheck,
-    },
-    {
-        label: 'Settings',
-        href: '/settings',
-        icon: Settings,
-    },
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { name: 'Areas', href: '/areas', icon: MapPin },
+    { name: 'Properties', href: '/properties', icon: Home },
+    { name: 'Applications', href: '/applications', icon: ClipboardList },
+    { name: 'Approvals', href: '/approvals', icon: CheckCircle },
+    { name: 'Documents', href: '/documents', icon: FileText },
+    { name: 'Landlords', href: '/landlords', icon: Users },
+    { name: 'Automations', href: '/automations', icon: Zap },
+    { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
 export function Sidebar({ className }: { className?: string }) {
@@ -73,8 +47,10 @@ export function Sidebar({ className }: { className?: string }) {
     };
 
     const filteredNavItems = navItems.filter(item => {
-        if (item.label === 'Approvals' && role !== 'landlord' && role !== 'admin') return false;
-        if (item.label === 'System' && role !== 'admin') return false;
+        if (item.name === 'Approvals' && role !== 'landlord' && role !== 'admin') return false;
+        // Optionally restrict Landlords or Automations if needed, but per prompt only Approvals was restricted.
+        // Prompt says "Only be accessible to admins and landlords" for Approvals.
+        // Automations is upsell, so visible to all usually.
         return true;
     });
 
@@ -110,8 +86,8 @@ export function Sidebar({ className }: { className?: string }) {
                                     <div className="absolute left-0 w-1 h-5 bg-blue-600 rounded-r-full" />
                                 )}
                                 <item.icon className={cn("w-5 h-5 transition-transform group-hover:scale-110", isActive ? "text-blue-600" : "text-slate-400 group-hover:text-slate-600")} />
-                                <span>{item.label}</span>
-                                {item.label === 'Applications' && (
+                                <span>{item.name}</span>
+                                {item.name === 'Applications' && (
                                     <div className="ml-auto px-1.5 py-0.5 rounded-md bg-blue-50 text-[10px] font-black text-blue-600 border border-blue-100">NEW</div>
                                 )}
                             </div>
