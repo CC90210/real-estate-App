@@ -167,7 +167,7 @@ export default function DashboardPage() {
                                     <div key={app.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
                                         <div>
                                             <p className="font-medium">{app.applicant_name}</p>
-                                            <p className="text-sm text-gray-500">{app.property?.address}</p>
+                                            <p className="text-sm text-gray-500">{Array.isArray(app.property) ? app.property[0]?.address : (app.property as any)?.address}</p>
                                         </div>
                                         <div className="text-right">
                                             <StatusBadge status={app.status} />
