@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 export async function POST(request: Request) {
     try {
         const { email, password, full_name, role } = await request.json();
+        const companyName = request.headers.get('x-company-name') || 'Default Company';
 
         const supabaseAdmin = createServerClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,40 +19,76 @@ export async function POST(request: Request) {
         );
 
         // 1. Attempt to create user with auto-confirm
-        const { data: { user }, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        let { data: { user }, error: createError } = await supabaseAdmin.auth.admin.createUser({
             email,
             password,
             email_confirm: true,
             user_metadata: {
                 full_name,
                 role,
-                company_name: request.headers.get('x-company-name') || 'Default Company'
+                company_name: companyName
             }
         });
 
+        // 2. Handle existing user (Smart Recovery)
         if (createError) {
-            // ... (existing error handling)
+            if (createError.message.includes('already registered') || createError.status === 422) {
+                // User exists, let's find them
+                const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+                if (listError) throw listError;
+
+
+                const existingUser = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+                if (existingUser) {
+                    // Update the existing user to match the new password and metadata
+                    const { data: { user: updatedUser }, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+                        existingUser.id,
+                        {
+                            password: password,
+                            email_confirm: true,
+                            user_metadata: {
+                                ...existingUser.user_metadata,
+                                full_name,
+                                role,
+                                company_name: companyName
+                            }
+                        }
+                    );
+                    if (updateError) throw updateError;
+                    user = updatedUser;
+                } else {
+                    throw new Error("User exists but could not be located.");
+                }
+            } else {
+                throw createError;
+            }
         }
 
-        // 2. CRITICAL: Initialize Profile & Company via RPC
-        // We do this here to ensure the account is ready BEFORE the user tries to login
-        // We use the service role to ensure bypass of RLS
+        if (!user) {
+            throw new Error("Failed to create or recover user account.");
+        }
+
+        // 3. CRITICAL: Initialize Profile & Company via RPC (Admin Level)
+        // This ensures the database is ready for the session
         const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc('ensure_user_profile_admin', {
-            u_id: user?.id,
+            u_id: user.id,
             u_email: email,
             f_name: full_name,
-            c_name: request.headers.get('x-company-name') || 'Default Company'
+            c_name: companyName
         });
 
         if (rpcError) {
             console.error("RPC Initialization Error:", rpcError);
-            // We don't fail the whole signup if profile creation has a minor hiccup, 
-            // the onboarding page will catch it later.
         }
 
-        return NextResponse.json({ success: true, user });
+        return NextResponse.json({
+            success: true,
+            user,
+            message: createError ? "Account updated and ready." : "Account created."
+        });
+
     } catch (error: any) {
         console.error("Signup API Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error.message }, { status: 400 });
     }
 }
