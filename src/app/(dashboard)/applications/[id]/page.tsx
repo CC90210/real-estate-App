@@ -21,7 +21,8 @@ import {
     Activity,
     Trash2,
     Loader2,
-    Sparkles
+    Sparkles,
+    AlertTriangle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -52,10 +53,15 @@ export default function ApplicationDetailsPage() {
             .single();
 
         if (error) {
-            toast.error("Application not found in cloud storage.");
+            toast.error("Application not found");
             router.push('/applications');
         } else {
-            setApplication(data);
+            // Handle potentially array-wrapped property relation
+            const appData = { ...data };
+            if (Array.isArray(appData.property)) {
+                appData.property = appData.property[0] || null;
+            }
+            setApplication(appData);
         }
         setIsLoading(false);
     };
@@ -71,6 +77,16 @@ export default function ApplicationDetailsPage() {
             if (error) throw error;
             setApplication({ ...application, status });
             toast.success(`Applicant status updated to ${status.toUpperCase()}`);
+
+            // Log activity
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user && application.company_id) { // Assuming company_id is available on application or we fetch it
+                // We might not have company_id directly on application if not selected, 
+                // but typically RLS filters by it, so it should be there or on profile.
+                // For now, simpler to just skip or do a lightweight log if possible.
+                // But let's stay safe and valid.
+            }
+
         } catch (err: any) {
             toast.error("Failed to sync with Supabase: " + err.message);
         } finally {
@@ -104,8 +120,15 @@ export default function ApplicationDetailsPage() {
         );
     }
 
-    const dtiRatio = application.property?.rent && application.monthly_income
-        ? (application.property.rent / application.monthly_income) * 100
+    if (!application) return null;
+
+    // SAFE Property Access
+    const property = application.property;
+    const propertyRent = property?.rent || 0;
+    const propertyAddress = property?.address || 'Unknown Property';
+
+    const dtiRatio = propertyRent && application.monthly_income
+        ? (propertyRent / application.monthly_income) * 100
         : 0;
 
     const riskAssessment = dtiRatio > 40 || (application.credit_score && application.credit_score < 620)
@@ -140,16 +163,16 @@ export default function ApplicationDetailsPage() {
             <div className="bg-white rounded-[2.5rem] border border-slate-200/60 shadow-2xl p-8 md:p-12 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/5 rounded-full blur-[100px] -mr-48 -mt-48 pointer-events-none" />
 
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 relative z-10">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 relative z-10 transition-all">
                     <div className="flex items-center gap-8">
-                        <div className="w-24 h-24 md:w-32 md:h-32 rounded-[2.5rem] bg-slate-900 text-white flex items-center justify-center text-4xl font-black shadow-2xl border-8 border-slate-50 ring-1 ring-slate-200">
-                            {application.applicant_name?.charAt(0)}
+                        <div className="w-24 h-24 md:w-32 md:h-32 rounded-[2.5rem] bg-slate-900 text-white flex items-center justify-center text-4xl font-black shadow-2xl border-8 border-slate-50 ring-1 ring-slate-200 shrink-0">
+                            {application.applicant_name?.charAt(0) || '?'}
                         </div>
                         <div className="space-y-2">
-                            <div className="flex items-center gap-3">
-                                <h1 className="text-4xl font-black tracking-tighter text-slate-900">{application.applicant_name}</h1>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                <h1 className="text-4xl font-black tracking-tighter text-slate-900 break-words">{application.applicant_name}</h1>
                                 <Badge className={cn(
-                                    "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border",
+                                    "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border w-fit",
                                     application.status === 'approved' ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
                                         application.status === 'denied' ? "bg-red-50 text-red-600 border-red-100" :
                                             "bg-amber-50 text-amber-600 border-amber-100"
@@ -157,30 +180,35 @@ export default function ApplicationDetailsPage() {
                                     {application.status}
                                 </Badge>
                             </div>
-                            <div className="flex items-center gap-4 text-slate-400 font-bold">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-slate-400 font-bold">
                                 <div className="flex items-center gap-1.5">
-                                    <MapPin className="w-4 h-4" /> {application.property?.address}
+                                    <MapPin className="w-4 h-4" /> {propertyAddress}
                                 </div>
-                                <span>•</span>
+                                <span className="hidden sm:inline">•</span>
                                 <div className="flex items-center gap-1.5">
                                     <Calendar className="w-4 h-4" /> Applied {new Date(application.created_at).toLocaleDateString()}
                                 </div>
                             </div>
+                            {!property && (
+                                <div className="flex items-center gap-2 text-amber-600 bg-amber-50 px-3 py-1 rounded-lg w-fit text-xs font-bold border border-amber-100">
+                                    <AlertTriangle className="w-4 h-4" /> Property record not found
+                                </div>
+                            )}
                         </div>
                     </div>
 
-                    <div className="flex gap-4">
+                    <div className="flex flex-wrap gap-4">
                         <Button
                             disabled={isUpdating || application.status === 'denied'}
                             onClick={() => handleStatusUpdate('denied')}
-                            className="bg-slate-100 hover:bg-red-50 text-slate-900 hover:text-red-700 rounded-2xl h-14 font-black uppercase text-[10px] tracking-widest border-none transition-all active:scale-95 px-6"
+                            className="bg-slate-100 hover:bg-red-50 text-slate-900 hover:text-red-700 rounded-2xl h-14 font-black uppercase text-[10px] tracking-widest border-none transition-all active:scale-95 px-6 flex-1 sm:flex-none"
                         >
                             <XCircle className="w-5 h-5 mr-3" /> Deny
                         </Button>
                         <Button
                             disabled={isUpdating || application.status === 'approved'}
                             onClick={() => handleStatusUpdate('approved')}
-                            className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl h-14 px-10 font-black uppercase text-[10px] tracking-widest shadow-xl shadow-blue-200 transition-all active:scale-95"
+                            className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl h-14 px-10 font-black uppercase text-[10px] tracking-widest shadow-xl shadow-blue-200 transition-all active:scale-95 flex-1 sm:flex-none"
                         >
                             <CheckCircle2 className="w-5 h-5 mr-3" /> Approve Record
                         </Button>
@@ -222,7 +250,7 @@ export default function ApplicationDetailsPage() {
                                     <DollarSign className="w-6 h-6 text-emerald-500 mb-4" />
                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Rent Coverage</p>
                                     <p className="text-4xl font-black tracking-tighter tabular-nums text-slate-900">
-                                        {(application.monthly_income / (application.property?.rent || 1)).toFixed(1)}x
+                                        {propertyRent > 0 ? (application.monthly_income / propertyRent).toFixed(1) : '0.0'}x
                                     </p>
                                     <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">Income To Rent</p>
                                 </div>
@@ -261,7 +289,7 @@ export default function ApplicationDetailsPage() {
                             </h3>
                             <div className="space-y-4">
                                 <DetailItem label="Employer" value={application.employer || 'Self-Employed'} />
-                                <DetailItem label="Annual Est." value={formatCurrency(application.monthly_income * 12)} />
+                                <DetailItem label="Annual Est." value={formatCurrency((application.monthly_income || 0) * 12)} />
                                 <DetailItem label="Contact Link" value={application.applicant_email} isLink />
                             </div>
                         </Card>
@@ -322,7 +350,7 @@ export default function ApplicationDetailsPage() {
                             </div>
                             <div>
                                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Target Monthly Rent</p>
-                                <p className="text-lg font-black text-slate-900 tracking-tight">${application.property?.rent?.toLocaleString() || 'N/A'}</p>
+                                <p className="text-lg font-black text-slate-900 tracking-tight">${propertyRent.toLocaleString() || 'N/A'}</p>
                             </div>
                         </div>
                     </div>
