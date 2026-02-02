@@ -65,11 +65,10 @@ export default function ShowingsPage() {
     const { data: properties } = useQuery({
         queryKey: ['properties-simple'],
         queryFn: async () => {
-            // Note: Make sure 'address' and 'unit_number' are selected
             const { data } = await supabase
                 .from('properties')
                 .select('id, address, unit_number')
-                .eq('status', 'available')
+                .order('address')
             return data || []
         }
     })
@@ -127,6 +126,10 @@ export default function ShowingsPage() {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
+        if (!formData.property_id) {
+            toast.error("Please select a property")
+            return
+        }
         createShowing.mutate(formData)
     }
 
