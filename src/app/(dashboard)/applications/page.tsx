@@ -91,36 +91,62 @@ export default function ApplicationsPage() {
 
             if (error) throw error
 
-            // Log activity
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('company_id')
-                .eq('id', user?.id)
-                .single()
+            // Log activity (safe)
+            try {
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('company_id')
+                    .eq('id', user?.id)
+                    .single()
 
-            if (profile?.company_id) {
-                const { error: logError } = await supabase.from('activity_log').insert({
-                    company_id: profile.company_id,
-                    user_id: user?.id,
-                    action: status === 'approved' ? 'approved' : status === 'denied' ? 'denied' : 'updated',
-                    entity_type: 'application',
-                    entity_id: id,
-                    metadata: { new_status: status }
-                })
-                if (logError) console.error('Activity log failed:', logError)
+                if (profile?.company_id) {
+                    await supabase.from('activity_log').insert({
+                        company_id: profile.company_id,
+                        user_id: user?.id,
+                        action: status === 'approved' ? 'approved' : status === 'denied' ? 'denied' : 'updated',
+                        entity_type: 'application',
+                        entity_id: id,
+                        metadata: { new_status: status }
+                    })
+                }
+            } catch (e) {
+                console.error('Activity log failed:', e)
             }
 
             return data
         },
+        // OPTIMISTIC UPDATE - UI changes immediately
+        onMutate: async ({ id, status }) => {
+            // Cancel outgoing refetches
+            await queryClient.cancelQueries({ queryKey: ['applications'] })
+
+            // Snapshot current data
+            const previousData = queryClient.getQueryData(['applications'])
+
+            // Optimistically update
+            queryClient.setQueryData(['applications'], (old: any) => {
+                if (!old) return old
+                return old.map((app: any) =>
+                    app.id === id ? { ...app, status } : app
+                )
+            })
+
+            return { previousData }
+        },
+        onError: (err, variables, context) => {
+            // Rollback on error
+            if (context?.previousData) {
+                queryClient.setQueryData(['applications'], context.previousData)
+            }
+            toast.error('Failed to update application')
+            console.error(err)
+        },
         onSuccess: () => {
             toast.success('Application updated!')
-            queryClient.invalidateQueries({ queryKey: ['applications'] })
         },
-        onError: (error: any) => {
-            console.error('Update error:', error)
-            toast.error('Failed to update application', {
-                description: error.message
-            })
+        onSettled: () => {
+            // Always refetch to ensure consistency
+            queryClient.invalidateQueries({ queryKey: ['applications'] })
         }
     })
 
