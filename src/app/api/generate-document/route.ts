@@ -101,7 +101,9 @@ export async function POST(request: Request) {
                 Address: ${documentData.property.address}
                 Rent: $${documentData.property.rent}/mo
                 Specs: ${documentData.property.bedrooms}BR/${documentData.property.bathrooms}BA
+                Target Audience: ${customFields.targetAudience || 'General Renters'}
                 Context: ${customFields.highlightFeatures || ''}
+                Call To Action: ${customFields.callToAction || 'Schedule a viewing today'}
                 Description: ${documentData.property.description}
                 
                 Format: Return ONLY the highlight paragraph. No extra text.`;
@@ -145,6 +147,8 @@ export async function POST(request: Request) {
                 Credit: ${documentData.application.credit_score}
                 Property Rent: $${documentData.property?.rent}/mo
                 Agent Notes: ${customFields.agentNote || ''}
+                Recommendation: ${customFields.recommendation || 'Review Needed'}
+                Risk Factors: ${customFields.riskFactors || 'Standard verification required'}
                 
                 Context: Target 3x rent-to-income ratio.
                 Tone: Objective, professional, risk-aware.

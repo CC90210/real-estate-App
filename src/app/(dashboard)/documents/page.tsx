@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { toast } from 'sonner'
 import {
     Select,
     SelectContent,
@@ -57,6 +59,7 @@ const documentTypes = [
 ]
 
 export default function DocumentsPage() {
+    const router = useRouter()
     const supabase = createClient()
     const [selectedType, setSelectedType] = useState<string | null>(null)
     const [selectedProperty, setSelectedProperty] = useState<string>('')
@@ -141,12 +144,18 @@ export default function DocumentsPage() {
             }
 
             const result = await response.json()
-            alert('Document generated successfully!')
-            refetch()
+            toast.success('Document generated successfully!')
+
+            // Redirect to view the document
+            if (result.documentId) {
+                router.push(`/documents/${result.documentId}`)
+            } else {
+                refetch()
+            }
 
         } catch (error: any) {
             console.error(error)
-            alert(error.message || 'Failed to generate document')
+            toast.error(error.message || 'Failed to generate document')
         } finally {
             setIsGenerating(false)
         }
@@ -347,6 +356,32 @@ export default function DocumentsPage() {
                                 {selectedType === 'application_summary' && (
                                     <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
                                         <div>
+                                            <label className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1 block">Recommendation</label>
+                                            <Select
+                                                value={customFields.recommendation}
+                                                onValueChange={(v) => setCustomFields({ ...customFields, recommendation: v })}
+                                            >
+                                                <SelectTrigger className="h-10">
+                                                    <SelectValue placeholder="Select Status" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Strong Approve">Strong Approve</SelectItem>
+                                                    <SelectItem value="Approve">Approve</SelectItem>
+                                                    <SelectItem value="Conditional">Conditional</SelectItem>
+                                                    <SelectItem value="Deny">Deny</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1 block">Risk Factors</label>
+                                            <input
+                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                                placeholder="e.g. Low credit score, irregular income..."
+                                                value={customFields.riskFactors || ''}
+                                                onChange={e => setCustomFields({ ...customFields, riskFactors: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
                                             <label className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1 block">Internal Agent Notes</label>
                                             <textarea
                                                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px]"
@@ -361,6 +396,24 @@ export default function DocumentsPage() {
                                 {/* Property Summary (Marketing) Fields */}
                                 {selectedType === 'property_summary' && (
                                     <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+                                        <div>
+                                            <label className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1 block">Target Audience</label>
+                                            <input
+                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                                placeholder="e.g. Young Professionals, Families..."
+                                                value={customFields.targetAudience || ''}
+                                                onChange={e => setCustomFields({ ...customFields, targetAudience: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1 block">Call To Action</label>
+                                            <input
+                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                                placeholder="e.g. Schedule a private viewing today"
+                                                value={customFields.callToAction || ''}
+                                                onChange={e => setCustomFields({ ...customFields, callToAction: e.target.value })}
+                                            />
+                                        </div>
                                         <div>
                                             <label className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1 block">Highlight Features</label>
                                             <textarea
