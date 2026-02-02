@@ -162,14 +162,7 @@ export default function NewPropertyPage() {
 
             toast.success("Property provisioned successfully!")
 
-            // Log activity
-            await supabase.from('activity_log').insert({
-                company_id: profile.company_id,
-                user_id: user.id,
-                action: 'created',
-                entity_type: 'properties',
-                details: { address: newBuildingAddress || 'New Property' }
-            })
+            // Activity logging is handled by DB trigger on 'properties' table
 
             router.push('/properties')
             router.refresh()
