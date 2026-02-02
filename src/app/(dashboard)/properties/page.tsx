@@ -124,7 +124,7 @@ export default function PropertiesPage() {
                         <Upload className="w-5 h-5 mr-2" />
                         Import
                     </Button>
-                    <Link href="/areas">
+                    <Link href="/properties/new">
                         <Button className="h-14 px-8 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-xl shadow-blue-500/20 gap-2 font-bold transition-all hover:scale-105 active:scale-95">
                             <Plus className="w-5 h-5" />
                             Provision Asset
