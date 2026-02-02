@@ -29,6 +29,7 @@ export default function NewInvoicePage() {
     const router = useRouter()
     const supabase = createClient()
     const [isLoading, setIsLoading] = useState(false)
+    const [company, setCompany] = useState<any>(null)
     const [properties, setProperties] = useState<any[]>([])
 
     // Form State
@@ -41,17 +42,30 @@ export default function NewInvoicePage() {
         { id: '1', description: 'Rent for ' + new Date().toLocaleString('default', { month: 'long' }), amount: 0, quantity: 1 }
     ])
 
-    // Load properties on mount
+    // Load properties and company on mount
     useEffect(() => {
-        const fetchProperties = async () => {
-            const { data } = await supabase
+        const fetchData = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('company_id, company:companies(name, logo_url)')
+                .eq('id', user.id)
+                .single()
+
+            if (profile?.company) {
+                setCompany(profile.company)
+            }
+
+            const { data: props } = await supabase
                 .from('properties')
                 .select('id, address, unit_number')
                 .order('address')
 
-            if (data) setProperties(data)
+            if (props) setProperties(props)
         }
-        fetchProperties()
+        fetchData()
     }, [])
 
     const addItem = () => {
@@ -147,8 +161,19 @@ export default function NewInvoicePage() {
             </div>
 
             <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden">
-                <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-8">
-                    <CardTitle className="text-2xl font-black text-slate-900">New Invoice</CardTitle>
+                <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-8 flex flex-row justify-between items-start">
+                    <div>
+                        <CardTitle className="text-2xl font-black text-slate-900 mb-2">New Invoice</CardTitle>
+                        <p className="text-slate-500 font-medium text-sm">Create and issue payment request</p>
+                    </div>
+                    {company && (
+                        <div className="text-right">
+                            {company.logo_url && (
+                                <img src={company.logo_url} alt="Logo" className="h-12 w-auto object-contain mb-2 ml-auto" />
+                            )}
+                            <p className="font-bold text-slate-900 uppercase tracking-wide">{company.name}</p>
+                        </div>
+                    )}
                 </CardHeader>
                 <CardContent className="p-8 space-y-8">
                     {/* Recipient Info */}
