@@ -167,6 +167,20 @@ export default function LandlordsPage() {
         setFormData({ name: '', email: '', phone: '' })
     }
 
+    const confirmDelete = (landlord: Landlord) => {
+        setLandlordToDelete(landlord)
+        setDeleteDialogOpen(true)
+    }
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        if (editingLandlord) {
+            updateLandlord.mutate({ id: editingLandlord.id, data: formData })
+        } else {
+            createLandlord.mutate(formData)
+        }
+    }
+
     const filteredLandlords = landlords?.filter(l => {
         if (!searchTerm) return true
         const search = searchTerm.toLowerCase()
