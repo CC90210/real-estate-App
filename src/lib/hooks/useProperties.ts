@@ -68,7 +68,7 @@ export function useProperty(propertyId: string) {
 }
 
 // Helper for consistent logging
-async function logActivity(supabase: any, { companyId, action, entityType, entityId, metadata }: any) {
+async function logActivity(supabase: any, { companyId, action, entityType, entityId, details }: any) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user || !companyId) return;
 
@@ -78,7 +78,7 @@ async function logActivity(supabase: any, { companyId, action, entityType, entit
         action,
         entity_type: entityType,
         entity_id: entityId,
-        metadata
+        details
     });
 }
 
@@ -106,7 +106,7 @@ export function useDeleteProperty() {
                 action: 'deleted',
                 entityType: 'property',
                 entityId: propertyId,
-                metadata: { id: propertyId }
+                details: { id: propertyId }
             });
 
             return propertyId;
@@ -159,7 +159,7 @@ export function useUpdateProperty() {
                 action: 'updated',
                 entityType: 'property',
                 entityId: id,
-                metadata: { updates }
+                details: { updates }
             });
 
             return data;
@@ -215,7 +215,7 @@ export function useCreateProperty() {
                 action: 'created',
                 entityType: 'property',
                 entityId: data.id,
-                metadata: { address: data.address }
+                details: { address: data.address }
             });
 
             return data;
