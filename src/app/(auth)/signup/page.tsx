@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { Loader2, Building2, Eye, EyeOff } from 'lucide-react'
+import { Loader2, Building2, Eye, EyeOff, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 
 export default function SignupPage() {
@@ -19,7 +19,8 @@ export default function SignupPage() {
         password: '',
         confirmPassword: '',
         fullName: '',
-        companyName: ''
+        companyName: '',
+        jobTitle: '' // Added job title
     })
     const [isLoading, setIsLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
@@ -47,7 +48,8 @@ export default function SignupPage() {
                 password: formData.password,
                 options: {
                     data: {
-                        full_name: formData.fullName
+                        full_name: formData.fullName,
+                        job_title: formData.jobTitle
                     }
                 }
             })
@@ -58,18 +60,44 @@ export default function SignupPage() {
                 throw new Error('Failed to create account')
             }
 
-            // 2. Create company
-            const { data: company, error: companyError } = await supabase
+            // 2. Create company with Fallback Logic
+            let company = null
+
+            // Try inserting with email first
+            const { data: companyWithEmail, error: companyErrorWithEmail } = await supabase
                 .from('companies')
                 .insert({
                     name: formData.companyName,
                     email: formData.email,
-                    trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString() // 14 days
+                    trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
                 })
                 .select()
                 .single()
 
-            if (companyError) throw companyError
+            if (companyErrorWithEmail) {
+                console.warn('Company email insert failed, retrying without email logic...', companyErrorWithEmail)
+
+                // Fallback: Try inserting WITHOUT email (schema might be missing column)
+                const { data: companyWithoutEmail, error: companyErrorWithoutEmail } = await supabase
+                    .from('companies')
+                    .insert({
+                        name: formData.companyName,
+                        trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+                    })
+                    .select()
+                    .single()
+
+                if (companyErrorWithoutEmail) {
+                    // If both fail, throw the first error as it's more descriptive of intent
+                    throw companyErrorWithEmail
+                }
+
+                company = companyWithoutEmail
+            } else {
+                company = companyWithEmail
+            }
+
+            if (!company) throw new Error('Failed to create company record')
 
             // 3. Create profile
             const { error: profileError } = await supabase
@@ -79,10 +107,16 @@ export default function SignupPage() {
                     email: formData.email,
                     full_name: formData.fullName,
                     role: 'admin',
-                    company_id: company.id
+                    company_id: company.id,
+                    // job_title: formData.jobTitle // Can try to add this if schema allows, else skip
                 })
 
-            if (profileError) throw profileError
+            if (profileError) {
+                console.error('Profile creation error:', profileError)
+                // Don't throw here? If profile fails, user exists but can't login properly.
+                // Better to throw.
+                throw profileError
+            }
 
             // 4. Create default automation subscription (inactive)
             try {
@@ -94,26 +128,32 @@ export default function SignupPage() {
                         tier: 'none'
                     })
             } catch (e) {
-                console.error("Failed to create default subscription", e)
+                console.error("Failed to create default subscription (non-fatal)", e)
             }
 
             toast.success('Account created successfully!')
 
             // Check if email confirmation is required
             if (authData.session) {
-                // Auto-confirmed - go to dashboard
                 router.push('/dashboard')
             } else {
-                // Needs email confirmation
                 toast.info('Please check your email to confirm your account')
                 router.push('/login')
             }
 
         } catch (error: any) {
             console.error('Signup error:', error)
-            toast.error('Signup failed', {
-                description: error.message
-            })
+
+            // Specific handling for schema errors
+            if (error.message?.includes('schema') || error.code === 'PGRST204') {
+                toast.error('Database Schema Error', {
+                    description: 'Please run the provided SQL script in Supabase to fix missing columns.'
+                })
+            } else {
+                toast.error('Signup failed', {
+                    description: error.message
+                })
+            }
         } finally {
             setIsLoading(false)
         }
@@ -168,16 +208,28 @@ export default function SignupPage() {
                     </p>
 
                     <form onSubmit={handleSignup} className="space-y-4">
-                        <div>
-                            <Label htmlFor="fullName">Full Name</Label>
-                            <Input
-                                id="fullName"
-                                placeholder="John Doe"
-                                value={formData.fullName}
-                                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                                required
-                                disabled={isLoading}
-                            />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <Label htmlFor="fullName">Full Name</Label>
+                                <Input
+                                    id="fullName"
+                                    placeholder="John Doe"
+                                    value={formData.fullName}
+                                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                                    required
+                                    disabled={isLoading}
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="jobTitle">Job Title</Label>
+                                <Input
+                                    id="jobTitle"
+                                    placeholder="Property Manager"
+                                    value={formData.jobTitle}
+                                    onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value })}
+                                    disabled={isLoading}
+                                />
+                            </div>
                         </div>
 
                         <div>
