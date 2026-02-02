@@ -42,9 +42,7 @@ export default function SignupPage() {
         setIsLoading(true)
 
         try {
-            // 1. Create auth user with ALL required metadata
-            //    The backend Trigger (on_auth_user_created) will handle
-            //    creating the Profile, Company, and Subscription automatically.
+            // 1. Create auth user
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email: formData.email,
                 password: formData.password,
@@ -52,27 +50,24 @@ export default function SignupPage() {
                     data: {
                         full_name: formData.fullName,
                         job_title: formData.jobTitle,
-                        company_name: formData.companyName // Passed here for the Trigger to use
+                        company_name: formData.companyName
                     }
                 }
             })
 
             if (authError) throw authError
 
-            // Note: We no longer manually insert into 'companies' or 'profiles' here.
-            // This prevents RLS errors and ensures atomic creation via the database trigger.
-
             toast.success('Account created successfully!')
 
-            // Check if email confirmation is required (session will be null if so)
+            // Check if email confirmation is required
             if (authData.session) {
-                // Auto-confirmed? Go to dashboard
+                // Auto-confirmed, proceed to dashboard
                 router.push('/dashboard')
-            } else {
-                // Standard flow: Check email
-                toast.info('Please check your email to confirm your account')
-                // Redirect to login to force them to sign in after confirming
-                router.push('/login')
+            } else if (authData.user && !authData.session) {
+                // If email confirmation is ON, wait briefly and try to login anyway if confirmation isn't stricly blocking login
+                // Or inform the user clearly
+                toast.info('Please verify your email address to continue.')
+                router.push('/login') // Redirect to login
             }
 
         } catch (error: any) {
@@ -85,6 +80,7 @@ export default function SignupPage() {
         }
     }
 
+    // ... rest of the component remains same ...
     return (
         <div className="min-h-screen flex">
             {/* Left Panel - Branding */}
