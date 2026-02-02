@@ -95,14 +95,15 @@ export default function ApplicationsPage() {
                 .single()
 
             if (profile?.company_id) {
-                await supabase.from('activity_log').insert({
+                const { error: logError } = await supabase.from('activity_log').insert({
                     company_id: profile.company_id,
                     user_id: user?.id,
                     action: status === 'approved' ? 'approved' : status === 'denied' ? 'denied' : 'updated',
                     entity_type: 'application',
                     entity_id: id,
                     metadata: { new_status: status }
-                }).catch(console.error) // Don't fail if activity log fails
+                })
+                if (logError) console.error('Activity log failed:', logError)
             }
 
             return data
@@ -380,8 +381,8 @@ function ApplicationCard({
                             <div className="mt-3">
                                 <span className="text-sm text-gray-500">Credit Score: </span>
                                 <span className={`font-bold ${application.credit_score >= 700 ? 'text-green-600' :
-                                        application.credit_score >= 600 ? 'text-amber-600' :
-                                            'text-red-600'
+                                    application.credit_score >= 600 ? 'text-amber-600' :
+                                        'text-red-600'
                                     }`}>
                                     {application.credit_score}
                                 </span>
