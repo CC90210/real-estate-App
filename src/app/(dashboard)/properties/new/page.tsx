@@ -134,11 +134,22 @@ export default function NewPropertyPage() {
             }
 
             // 3. Create Property
+            // 3. Create Property
+            // Derive address from building
+            let finalBuildingAddress = newBuildingAddress
+            if (selectedBuildingId !== 'new') {
+                const selectedBuilding = buildings.find(b => b.id === selectedBuildingId)
+                if (selectedBuilding) {
+                    finalBuildingAddress = selectedBuilding.address
+                }
+            }
+
             const { error: propError } = await supabase
                 .from('properties')
                 .insert({
                     building_id: finalBuildingId,
                     company_id: profile.company_id,
+                    address: finalBuildingAddress, // Denormalized address field required by DB
                     unit_number: unitNumber || 'Main',
                     bedrooms: parseInt(bedrooms) || 0,
                     bathrooms: parseFloat(bathrooms) || 1,
