@@ -201,12 +201,19 @@ export async function POST(request: Request) {
                     .select('id')
                     .single();
 
-                if (!saveError && savedDoc) {
-                    savedDocumentId = savedDoc.id;
-                } else if (saveError) {
+                if (saveError) {
                     console.error('Failed to persist document:', saveError);
+                    throw new Error(`Database Error: ${saveError.message}`);
                 }
+
+                if (savedDoc) {
+                    savedDocumentId = savedDoc.id;
+                }
+            } else {
+                throw new Error('User profile or company ID not found');
             }
+        } else {
+            throw new Error('User not authenticated');
         }
 
         return NextResponse.json({
