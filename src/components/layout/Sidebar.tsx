@@ -14,6 +14,8 @@ import {
     Settings,
     LogOut,
     Menu,
+    Calendar,
+    Receipt,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -29,6 +31,8 @@ const navItems = [
     { name: 'Properties', href: '/properties', icon: Home, roles: ['admin', 'agent', 'landlord'] },
     { name: 'Applications', href: '/applications', icon: ClipboardList, roles: ['admin', 'agent', 'landlord'] },
     { name: 'Approvals', href: '/approvals', icon: CheckCircle, roles: ['admin', 'landlord'] },
+    { name: 'Showings', href: '/showings', icon: Calendar, roles: ['admin', 'agent'] },
+    { name: 'Invoices', href: '/invoices', icon: Receipt, roles: ['admin', 'landlord'] },
     { name: 'Documents', href: '/documents', icon: FileText, roles: ['admin', 'agent'] },
     { name: 'Landlords', href: '/landlords', icon: Users, roles: ['admin', 'agent'] },
     { name: 'Automations', href: '/automations', icon: Zap, roles: ['admin', 'agent'] },

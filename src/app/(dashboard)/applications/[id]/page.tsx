@@ -28,6 +28,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { ApplicationDocuments } from '@/components/applications/ApplicationDocuments';
 import { toast } from 'sonner';
 import { cn, formatCurrency } from '@/lib/utils';
 
@@ -332,6 +333,8 @@ export default function ApplicationDetailsPage() {
                             </Link>
                         </div>
                     </Card>
+
+                    <ApplicationDocuments applicationId={application.id} />
 
                     {/* Quick Access Sidebar */}
                     <div className={cn("p-10 rounded-[2.5rem] border flex flex-col gap-8 transition-all duration-500", riskAssessment.bg, riskAssessment.border)}>

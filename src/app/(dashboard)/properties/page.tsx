@@ -16,6 +16,8 @@ import { useRouter } from 'next/navigation';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { cn } from '@/lib/utils';
+import { PropertyImport } from '@/components/properties/PropertyImport';
+import { Upload } from 'lucide-react';
 
 export default function PropertiesPage() {
     const { data: properties, isLoading, error } = useProperties();
@@ -25,6 +27,7 @@ export default function PropertiesPage() {
     const [statusFilter, setStatusFilter] = useState('all');
     const [bedsFilter, setBedsFilter] = useState('all');
     const [priceSort, setPriceSort] = useState('default');
+    const [importDialogOpen, setImportDialogOpen] = useState(false);
 
     // Filter Logic
     const filteredProperties = properties?.filter(property => {
@@ -116,13 +119,20 @@ export default function PropertiesPage() {
                         Strategic oversight of your property portfolio ({filteredProperties?.length || 0} units)
                     </p>
                 </div>
-                <Link href="/areas">
-                    <Button className="h-14 px-8 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-xl shadow-blue-500/20 gap-2 font-bold transition-all hover:scale-105 active:scale-95">
-                        <Plus className="w-5 h-5" />
-                        Provision Asset
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setImportDialogOpen(true)} className="h-14 px-6 rounded-2xl border-slate-200 text-slate-600 font-bold hover:bg-slate-50">
+                        <Upload className="w-5 h-5 mr-2" />
+                        Import
                     </Button>
-                </Link>
+                    <Link href="/areas">
+                        <Button className="h-14 px-8 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-xl shadow-blue-500/20 gap-2 font-bold transition-all hover:scale-105 active:scale-95">
+                            <Plus className="w-5 h-5" />
+                            Provision Asset
+                        </Button>
+                    </Link>
+                </div>
             </div>
+            <PropertyImport open={importDialogOpen} onOpenChange={setImportDialogOpen} />
 
             {/* Filters */}
             <Card className="bg-white/80 backdrop-blur-xl border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 p-6">
