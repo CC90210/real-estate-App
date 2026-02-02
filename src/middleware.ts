@@ -1,22 +1,123 @@
-
-import { type NextRequest } from 'next/server'
-import { updateSession } from '@/lib/supabase/middleware'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-    return await updateSession(request)
+    let response = NextResponse.next({
+        request: {
+            headers: request.headers,
+        },
+    })
+
+    const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                get(name: string) {
+                    return request.cookies.get(name)?.value
+                },
+                set(name: string, value: string, options: CookieOptions) {
+                    request.cookies.set({
+                        name,
+                        value,
+                        ...options,
+                    })
+                    response = NextResponse.next({
+                        request: {
+                            headers: request.headers,
+                        },
+                    })
+                    response.cookies.set({
+                        name,
+                        value,
+                        ...options,
+                    })
+                },
+                remove(name: string, options: CookieOptions) {
+                    request.cookies.set({
+                        name,
+                        value: '',
+                        ...options,
+                    })
+                    response = NextResponse.next({
+                        request: {
+                            headers: request.headers,
+                        },
+                    })
+                    response.cookies.set({
+                        name,
+                        value: '',
+                        ...options,
+                    })
+                },
+            },
+        }
+    )
+
+    // Get the session
+    const { data: { session } } = await supabase.auth.getSession()
+
+    const pathname = request.nextUrl.pathname
+
+    // Public routes that don't require auth
+    // Add landing page "/" to public routes
+    const publicRoutes = ['/', '/login', '/signup', '/forgot-password', '/reset-password']
+    const isPublicRoute = publicRoutes.includes(pathname) || pathname.startsWith('/join/') || pathname.startsWith('/auth/')
+
+    // Auth callback route
+    if (pathname.startsWith('/auth/callback')) {
+        return response
+    }
+
+    // If no session and trying to access protected route
+    if (!session && !isPublicRoute) {
+        const redirectUrl = new URL('/login', request.url)
+        redirectUrl.searchParams.set('redirect', pathname)
+        return NextResponse.redirect(redirectUrl)
+    }
+
+    // If has session and on public route (except home), redirect to dashboard
+    if (session && (pathname === '/login' || pathname === '/signup')) {
+        return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+
+    // If has session, verify profile exists
+    if (session && !isPublicRoute) {
+        // Skip profile check for onboarding to avoid loops
+        if (pathname.startsWith('/onboarding')) {
+            return response
+        }
+
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('id, company_id')
+            .eq('id', session.user.id)
+            .single()
+
+        // No profile - redirect to onboarding
+        if (!profile) {
+            return NextResponse.redirect(new URL('/onboarding', request.url))
+        }
+
+        // No company - redirect to onboarding
+        if (profile && !profile.company_id) {
+            return NextResponse.redirect(new URL('/onboarding', request.url))
+        }
+    }
+
+    return response
 }
 
 export const config = {
     matcher: [
         /*
-         * Match all request paths except for the ones starting with:
+         * Match all request paths except:
          * - _next/static (static files)
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
-         * - api/ (API routes - optional to exclude, but usually good to keep for auth protection if needed, 
-         *   though here we only really care about protecting pages or refreshing session)
-         *   Actually, let's include everything but assets.
+         * - public folder
+         * - api routes
          */
-        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|api).*)',
     ],
 }

@@ -1,254 +1,275 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Building2, Eye, EyeOff, Loader2, Mail, Lock, User } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useUser } from '@/lib/hooks/useUser';
-import { toast } from 'sonner';
-import { UserRole } from '@/types/database';
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { toast } from 'sonner'
+import { Loader2, Building2 } from 'lucide-react'
+import Link from 'next/link'
 
 export default function SignupPage() {
-    const router = useRouter();
-    const { signUp } = useUser();
-    const [fullName, setFullName] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const [role, setRole] = useState<UserRole>('agent');
-    const [showPassword, setShowPassword] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
+    const router = useRouter()
+    const supabase = createClient()
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const [formData, setFormData] = useState({
+        email: '',
+        password: '',
+        confirmPassword: '',
+        fullName: '',
+        companyName: ''
+    })
+    const [isLoading, setIsLoading] = useState(false)
 
-        if (password !== confirmPassword) {
-            toast.error('Passwords do not match');
-            return;
+    const handleSignup = async (e: React.FormEvent) => {
+        e.preventDefault()
+
+        if (formData.password !== formData.confirmPassword) {
+            toast.error('Passwords do not match')
+            return
         }
 
-        if (password.length < 6) {
-            toast.error('Password must be at least 6 characters');
-            return;
+        if (formData.password.length < 8) {
+            toast.error('Password must be at least 8 characters')
+            return
         }
 
-        setIsLoading(true);
+        setIsLoading(true)
 
         try {
-            const { error } = await signUp(email, password, fullName, role);
+            // 1. Create auth user
+            const { data: authData, error: authError } = await supabase.auth.signUp({
+                email: formData.email,
+                password: formData.password,
+                options: {
+                    data: {
+                        full_name: formData.fullName
+                    }
+                }
+            })
 
-            if (error) {
-                toast.error('Signup failed', {
-                    description: error.message,
-                });
-            } else {
-                toast.success('Account created successfully!', {
-                    description: 'If email confirmation is enabled, please check your inbox. Otherwise, you can log in now.',
-                    duration: 5000,
-                });
+            if (authError) throw authError
 
-                // Optional: Attempt auto-login if no confirmation required? 
-                // But better to redirect to login to be safe.
-                router.push('/login');
+            if (!authData.user) {
+                throw new Error('Failed to create account')
             }
+
+            // 2. Create company
+            const { data: company, error: companyError } = await supabase
+                .from('companies')
+                .insert({
+                    name: formData.companyName,
+                    email: formData.email,
+                    trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString() // 14 days
+                })
+                .select()
+                .single()
+
+            if (companyError) throw companyError
+
+            // 3. Create profile
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .insert({
+                    id: authData.user.id,
+                    email: formData.email,
+                    full_name: formData.fullName,
+                    role: 'admin',
+                    company_id: company.id
+                })
+
+            if (profileError) throw profileError
+
+            // 4. Create default automation subscription (inactive)
+            await supabase
+                .from('automation_subscriptions')
+                .insert({
+                    company_id: company.id,
+                    is_active: false,
+                    tier: 'none'
+                })
+                .catch(console.error) // Don't fail if this fails
+
+            toast.success('Account created successfully!')
+
+            // Check if email confirmation is required
+            if (authData.session) {
+                // Auto-confirmed - go to dashboard
+                router.push('/dashboard')
+            } else {
+                // Needs email confirmation
+                toast.info('Please check your email to confirm your account')
+                router.push('/login')
+            }
+
         } catch (error: any) {
+            console.error('Signup error:', error)
             toast.error('Signup failed', {
-                description: error.message || 'An unexpected error occurred',
-            });
+                description: error.message
+            })
         } finally {
-            setIsLoading(false);
+            setIsLoading(false)
         }
-    };
+    }
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-            {/* Animated Background */}
-            <div className="fixed inset-0 -z-10">
-                <div className="absolute inset-0 gradient-bg opacity-5 dark:opacity-10" />
-                <motion.div
-                    className="absolute top-1/4 -right-32 w-96 h-96 rounded-full blur-3xl opacity-20"
-                    style={{ background: 'linear-gradient(135deg, #1e3a5f, #2a5082)' }}
-                    animate={{ x: [0, -30, 0], y: [0, 20, 0] }}
-                    transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-                />
-                <motion.div
-                    className="absolute bottom-1/4 -left-32 w-96 h-96 rounded-full blur-3xl opacity-20"
-                    style={{ background: 'linear-gradient(135deg, #c9a227, #e0b942)' }}
-                    animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
-                    transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-                />
+        <div className="min-h-screen flex">
+            {/* Left Panel - Branding */}
+            <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-blue-800 p-12 flex-col justify-between">
+                <div>
+                    <div className="flex items-center gap-3 text-white">
+                        <div className="h-10 w-10 bg-white/20 rounded-lg flex items-center justify-center">
+                            <Building2 className="h-6 w-6" />
+                        </div>
+                        <span className="text-xl font-bold">PropFlow</span>
+                    </div>
+                </div>
+
+                <div>
+                    <h1 className="text-4xl font-bold text-white mb-6">
+                        Start managing properties smarter today.
+                    </h1>
+                    <p className="text-blue-100 text-lg mb-8">
+                        Join thousands of property managers who've simplified their workflow with PropFlow.
+                    </p>
+                    <div className="space-y-3">
+                        <Feature text="14-day free trial" />
+                        <Feature text="No credit card required" />
+                        <Feature text="Cancel anytime" />
+                    </div>
+                </div>
+
+                <p className="text-blue-200 text-sm">
+                    © 2026 PropFlow Inc. All rights reserved.
+                </p>
             </div>
 
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="w-full max-w-md"
-            >
-                {/* Logo */}
-                <Link href="/" className="flex items-center justify-center gap-2 mb-8">
-                    <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: 'spring', duration: 0.5 }}
-                        className="w-12 h-12 rounded-xl gradient-bg flex items-center justify-center"
-                    >
-                        <Building2 className="w-7 h-7 text-white" />
-                    </motion.div>
-                    <span className="text-2xl font-bold gradient-text">PropFlow</span>
-                </Link>
+            {/* Right Panel - Signup Form */}
+            <div className="flex-1 flex items-center justify-center p-8">
+                <div className="w-full max-w-md">
+                    {/* Mobile Logo */}
+                    <div className="lg:hidden flex items-center gap-3 mb-8">
+                        <div className="h-10 w-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                            <Building2 className="h-6 w-6 text-white" />
+                        </div>
+                        <span className="text-xl font-bold">PropFlow</span>
+                    </div>
 
-                <Card className="glass shadow-2xl border-0">
-                    <CardHeader className="text-center pb-2">
-                        <CardTitle className="text-2xl">Create an account</CardTitle>
-                        <CardDescription>
-                            Get started with PropFlow today
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="fullName">Full Name</Label>
-                                <div className="relative">
-                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                    <Input
-                                        id="fullName"
-                                        type="text"
-                                        placeholder="John Doe"
-                                        value={fullName}
-                                        onChange={(e) => setFullName(e.target.value)}
-                                        className="pl-10"
-                                        required
-                                        disabled={isLoading}
-                                    />
-                                </div>
-                            </div>
+                    <h2 className="text-2xl font-bold mb-2">Create your account</h2>
+                    <p className="text-gray-500 mb-8">
+                        Start your 14-day free trial. No credit card required.
+                    </p>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="email">Email</Label>
-                                <div className="relative">
-                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                    <Input
-                                        id="email"
-                                        type="email"
-                                        placeholder="you@example.com"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        className="pl-10"
-                                        required
-                                        disabled={isLoading}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="role">Role</Label>
-                                <Select
-                                    value={role}
-                                    onValueChange={(value) => setRole(value as UserRole)}
-                                    disabled={isLoading}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select your role" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="agent">Agent</SelectItem>
-                                        <SelectItem value="landlord">Landlord</SelectItem>
-                                        <SelectItem value="admin">Administrator</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <p className="text-xs text-muted-foreground">
-                                    This determines what features you can access
-                                </p>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="password">Password</Label>
-                                <div className="relative">
-                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                    <Input
-                                        id="password"
-                                        type={showPassword ? 'text' : 'password'}
-                                        placeholder="••••••••"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        className="pl-10 pr-10"
-                                        required
-                                        disabled={isLoading}
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                                    >
-                                        {showPassword ? (
-                                            <EyeOff className="w-4 h-4" />
-                                        ) : (
-                                            <Eye className="w-4 h-4" />
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                                <div className="relative">
-                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                    <Input
-                                        id="confirmPassword"
-                                        type={showPassword ? 'text' : 'password'}
-                                        placeholder="••••••••"
-                                        value={confirmPassword}
-                                        onChange={(e) => setConfirmPassword(e.target.value)}
-                                        className="pl-10"
-                                        required
-                                        disabled={isLoading}
-                                    />
-                                </div>
-                            </div>
-
-                            <Button
-                                type="submit"
-                                className="w-full gradient-bg text-white btn-press"
+                    <form onSubmit={handleSignup} className="space-y-4">
+                        <div>
+                            <Label htmlFor="fullName">Full Name</Label>
+                            <Input
+                                id="fullName"
+                                placeholder="John Doe"
+                                value={formData.fullName}
+                                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                                required
                                 disabled={isLoading}
-                            >
-                                {isLoading ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                        Creating account...
-                                    </>
-                                ) : (
-                                    'Create Account'
-                                )}
-                            </Button>
+                            />
+                        </div>
 
-                            <p className="text-center text-xs text-muted-foreground">
-                                By signing up, you agree to our{' '}
-                                <Link href="/terms" className="text-primary hover:underline">
-                                    Terms of Service
-                                </Link>{' '}
-                                and{' '}
-                                <Link href="/privacy" className="text-primary hover:underline">
-                                    Privacy Policy
-                                </Link>
-                            </p>
-                        </form>
+                        <div>
+                            <Label htmlFor="companyName">Company Name</Label>
+                            <Input
+                                id="companyName"
+                                placeholder="Your Real Estate Agency"
+                                value={formData.companyName}
+                                onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                                required
+                                disabled={isLoading}
+                            />
+                        </div>
 
-                        <p className="text-center text-sm text-muted-foreground mt-6">
-                            Already have an account?{' '}
-                            <Link href="/login" className="text-primary hover:underline font-medium">
-                                Sign in
-                            </Link>
-                        </p>
-                    </CardContent>
-                </Card>
-            </motion.div>
+                        <div>
+                            <Label htmlFor="email">Work Email</Label>
+                            <Input
+                                id="email"
+                                type="email"
+                                placeholder="you@company.com"
+                                value={formData.email}
+                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                required
+                                disabled={isLoading}
+                            />
+                        </div>
+
+                        <div>
+                            <Label htmlFor="password">Password</Label>
+                            <Input
+                                id="password"
+                                type="password"
+                                placeholder="Min. 8 characters"
+                                value={formData.password}
+                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                required
+                                minLength={8}
+                                disabled={isLoading}
+                            />
+                        </div>
+
+                        <div>
+                            <Label htmlFor="confirmPassword">Confirm Password</Label>
+                            <Input
+                                id="confirmPassword"
+                                type="password"
+                                placeholder="Confirm your password"
+                                value={formData.confirmPassword}
+                                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                                required
+                                disabled={isLoading}
+                            />
+                        </div>
+
+                        <Button
+                            type="submit"
+                            className="w-full"
+                            size="lg"
+                            disabled={isLoading}
+                        >
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Creating account...
+                                </>
+                            ) : (
+                                'Start Free Trial'
+                            )}
+                        </Button>
+                    </form>
+
+                    <p className="text-center text-sm text-gray-500 mt-6">
+                        Already have an account?{' '}
+                        <Link href="/login" className="text-blue-600 hover:underline font-medium">
+                            Sign in
+                        </Link>
+                    </p>
+
+                    <p className="text-center text-xs text-gray-400 mt-4">
+                        By signing up, you agree to our{' '}
+                        <Link href="/terms" className="underline">Terms of Service</Link>
+                        {' '}and{' '}
+                        <Link href="/privacy" className="underline">Privacy Policy</Link>
+                    </p>
+                </div>
+            </div>
         </div>
-    );
+    )
+}
+
+function Feature({ text }: { text: string }) {
+    return (
+        <div className="flex items-center gap-2 text-white">
+            <svg className="h-5 w-5 text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            {text}
+        </div>
+    )
 }
