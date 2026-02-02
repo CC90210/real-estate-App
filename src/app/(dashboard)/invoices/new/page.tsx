@@ -117,14 +117,22 @@ export default function NewInvoicePage() {
                 created_by: user?.id
             }
 
-            const { error } = await supabase
+            const { data: savedInvoice, error } = await supabase
                 .from('invoices')
                 .insert(invoiceData)
+                .select('id')
+                .single()
 
             if (error) throw error
 
             toast.success(`Invoice ${status === 'sent' ? 'created and marked as sent' : 'saved as draft'}`)
-            router.push('/invoices')
+
+            // Redirect to the new invoice viewer
+            if (savedInvoice?.id) {
+                router.push(`/invoices/${savedInvoice.id}`)
+            } else {
+                router.push('/invoices')
+            }
         } catch (error: any) {
             toast.error('Failed to create invoice', { description: error.message })
         } finally {

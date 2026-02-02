@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@/lib/supabase/server';
 import { generateDocumentSchema } from '@/lib/schemas/document-schema';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+// ============================================================================
+// PRODUCTION DOCUMENT GENERATOR - NO EXTERNAL AI DEPENDENCIES
+// Uses structured templates with dynamic company branding
+// ============================================================================
 
 export async function POST(request: Request) {
     try {
@@ -12,7 +14,6 @@ export async function POST(request: Request) {
         const propertyId = formData.get('propertyId') as string;
         const applicantId = formData.get('applicantId') as string;
         const customFields = JSON.parse(formData.get('customFields') as string || '{}');
-        const image = formData.get('image') as File | null;
 
         // Validate input
         const validationResult = generateDocumentSchema.safeParse({
@@ -29,55 +30,53 @@ export async function POST(request: Request) {
             );
         }
 
-        if (!process.env.GEMINI_API_KEY) {
-            return NextResponse.json({ error: 'Gemini API key not configured' }, { status: 500 });
-        }
-
         const supabase = await createClient();
 
-        let documentData: any = { type, generatedAt: new Date().toISOString() };
-        let imageUrl = null;
-
-        // Handle image upload if provided
-        if (image) {
-            try {
-                const bytes = await image.arrayBuffer();
-                const buffer = Buffer.from(bytes);
-                const fileName = `documents/${Date.now()}-${image.name.replace(/\s+/g, '_')}`;
-
-                const { data: uploadData, error: uploadError } = await supabase.storage
-                    .from('property-images')
-                    .upload(fileName, buffer, {
-                        contentType: image.type,
-                        upsert: true
-                    });
-
-                if (!uploadError && uploadData) {
-                    const { data: { publicUrl } } = supabase.storage
-                        .from('property-images')
-                        .getPublicUrl(fileName);
-                    imageUrl = publicUrl;
-                } else {
-                    console.error('Storage Upload Error:', uploadError);
-                }
-            } catch (imageErr) {
-                console.error('Image Processing Error:', imageErr);
-            }
+        // Get authenticated user and company info
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized', details: 'User not authenticated' }, { status: 401 });
         }
 
-        // Fetch property data
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('company_id, company:companies(id, name, logo_url, address, phone, email)')
+            .eq('id', user.id)
+            .single();
+
+        if (!profile?.company_id) {
+            return NextResponse.json({ error: 'Setup Required', details: 'User profile or company not found' }, { status: 400 });
+        }
+
+        const company = profile.company as any;
+
+        // Initialize document data with company branding
+        let documentData: any = {
+            type,
+            generatedAt: new Date().toISOString(),
+            company: {
+                name: company?.name || 'PropFlow Client',
+                logo_url: company?.logo_url || null,
+                address: company?.address || '',
+                phone: company?.phone || '',
+                email: company?.email || ''
+            }
+        };
+
+        // Fetch property data if provided
         if (propertyId) {
             const { data: property } = await supabase
                 .from('properties')
-                .select('*, buildings(*)')
+                .select('*, buildings(name, address)')
                 .eq('id', propertyId)
                 .single();
 
-            documentData.property = property;
-            documentData.imageUrl = imageUrl || (property?.photos?.[0]);
+            if (property) {
+                documentData.property = property;
+            }
         }
 
-        // Fetch application data
+        // Fetch application data if provided
         if (applicantId && applicantId !== 'none') {
             const { data: application } = await supabase
                 .from('applications')
@@ -85,155 +84,305 @@ export async function POST(request: Request) {
                 .eq('id', applicantId)
                 .single();
 
-            documentData.application = application;
+            if (application) {
+                documentData.application = application;
+            }
         }
 
-        // Add custom fields
+        // Add custom fields from form
         documentData.customFields = customFields;
 
-        // Generate AI-enhanced content
-        try {
-            const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        // ====================================================================
+        // TEMPLATE-BASED CONTENT GENERATION (No AI Required)
+        // ====================================================================
 
-            if (type === 'property_summary' && documentData.property) {
-                const prompt = `Write a compelling 3-sentence marketing highlight for this property. 
-                Focus on the best features and lifestyle benefits. Be specific and avoid generic phrases.
-                Address: ${documentData.property.address}
-                Rent: $${documentData.property.rent}/mo
-                Specs: ${documentData.property.bedrooms}BR/${documentData.property.bathrooms}BA
-                Target Audience: ${customFields.targetAudience || 'General Renters'}
-                Context: ${customFields.highlightFeatures || ''}
-                Call To Action: ${customFields.callToAction || 'Schedule a viewing today'}
-                Description: ${documentData.property.description}
-                
-                Format: Return ONLY the highlight paragraph. No extra text.`;
-
-                const result = await model.generateContent(prompt);
-                documentData.aiHighlight = result.response.text().trim().replace(/^"(.*)"$/, '$1');
-            }
-
-            if (type === 'lease_proposal') {
-                const prompt = `Write a professional, welcoming opening paragraph (3-4 sentences) for a formal real estate lease proposal. 
-                Tenant: ${customFields.tenantName || 'Prospective Tenant'}
-                Property: ${documentData.property?.address || 'the property'}
-                Terms: $${customFields.offerRent}/mo for ${customFields.leaseTerm} months.
-                Conditions: ${customFields.conditions || 'Standard lease terms'}
-                Tone: Professional, elite, welcoming.
-                
-                Format: Return ONLY the opening paragraph. No conversational fillers.`;
-
-                const result = await model.generateContent(prompt);
-                documentData.aiIntro = result.response.text().trim().replace(/^"(.*)"$/, '$1');
-            }
-
-            if (type === 'showing_sheet' && documentData.property) {
-                const prompt = `Generate 3 specific, expert "Agent Talking Points" for a property showing. 
-                Focus on value-adds that aren't immediately obvious.
-                Property: ${documentData.property.address}
-                Specs: ${documentData.property.bedrooms}BR/${documentData.property.bathrooms}BA
-                Context: ${customFields.notes || ''}
-                Access: ${customFields.accessNotes || ''}
-                
-                Format: Return as a bulleted list of 3 points. No extra text.`;
-
-                const result = await model.generateContent(prompt);
-                documentData.aiTalkingPoints = result.response.text().trim();
-            }
-
-            if (type === 'application_summary' && documentData.application) {
-                const prompt = `Write a 2-3 sentence internal "Risk & Suitability Executive Summary" for a landlord regarding this rental applicant.
-                Applicant: ${documentData.application.applicant_name}
-                Income: $${documentData.application.monthly_income}/mo
-                Credit: ${documentData.application.credit_score}
-                Property Rent: $${documentData.property?.rent}/mo
-                Agent Notes: ${customFields.agentNote || ''}
-                Recommendation: ${customFields.recommendation || 'Review Needed'}
-                Risk Factors: ${customFields.riskFactors || 'Standard verification required'}
-                
-                Context: Target 3x rent-to-income ratio.
-                Tone: Objective, professional, risk-aware.
-                
-                Format: Return ONLY the summary paragraph. No extra text.`;
-
-                const result = await model.generateContent(prompt);
-                documentData.aiAnalysis = result.response.text().trim().replace(/^"(.*)"$/, '$1');
-            }
-        } catch (aiError) {
-            console.error('AI Generation Error (Non-fatal):', aiError);
-            // Fallback content if AI fails, so the document can still be generated
-            if (type === 'property_summary') documentData.aiHighlight = "This premium property offers exceptional value and modern living in a highly sought-after location.";
-            if (type === 'lease_proposal') documentData.aiIntro = `We are pleased to present this formal lease proposal for ${documentData.property?.address || 'the property'}. We have carefully reviewed your application and look forward to the possibility of welcoming you as a tenant.`;
-            if (type === 'showing_sheet') documentData.aiTalkingPoints = "- High-quality finishes throughout\n- Optimized floor plan for modern living\n- Quiet and well-maintained building environment";
-            if (type === 'application_summary') documentData.aiAnalysis = "The applicant demonstrates stable financial metrics and a clear intent for the property. Recommended for final verification process.";
+        switch (type) {
+            case 'property_summary':
+                documentData.content = generatePropertySummary(documentData);
+                break;
+            case 'lease_proposal':
+                documentData.content = generateLeaseProposal(documentData);
+                break;
+            case 'showing_sheet':
+                documentData.content = generateShowingSheet(documentData);
+                break;
+            case 'application_summary':
+                documentData.content = generateApplicationSummary(documentData);
+                break;
+            default:
+                documentData.content = { title: 'Document', sections: [] };
         }
 
-        // Persist document to database
-        const { data: { user } } = await supabase.auth.getUser();
-        let savedDocumentId = null;
+        // Generate document title
+        const titles: Record<string, string> = {
+            'property_summary': `Property Summary - ${documentData.property?.address || 'Unknown'}`,
+            'lease_proposal': `Lease Proposal - ${customFields.tenantName || 'Prospective Tenant'}`,
+            'showing_sheet': `Showing Sheet - ${documentData.property?.address || 'Unknown'}`,
+            'application_summary': `Application Summary - ${documentData.application?.applicant_name || 'Unknown'}`,
+        };
 
-        if (user) {
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('company_id')
-                .eq('id', user.id)
-                .single();
+        // Persist to database
+        const { data: savedDoc, error: saveError } = await supabase
+            .from('documents')
+            .insert({
+                type,
+                title: titles[type] || `Document - ${type}`,
+                content: documentData,
+                property_id: propertyId || null,
+                application_id: (applicantId && applicantId !== 'none') ? applicantId : null,
+                company_id: profile.company_id,
+                created_by: user.id,
+            })
+            .select('id')
+            .single();
 
-            if (profile?.company_id) {
-                // Generate document title based on type
-                const titles: Record<string, string> = {
-                    'property_summary': `Property Summary - ${documentData.property?.address || 'Unknown'}`,
-                    'lease_proposal': `Lease Proposal - ${customFields.tenantName || 'Unknown Tenant'}`,
-                    'showing_sheet': `Showing Sheet - ${documentData.property?.address || 'Unknown'}`,
-                    'application_summary': `Application Summary - ${documentData.application?.applicant_name || 'Unknown'}`,
-                };
-
-                const { data: savedDoc, error: saveError } = await supabase
-                    .from('documents')
-                    .insert({
-                        type,
-                        title: titles[type] || `Document - ${type}`,
-                        content: documentData,
-                        property_id: propertyId || null,
-                        application_id: (applicantId && applicantId !== 'none') ? applicantId : null,
-                        company_id: profile.company_id,
-                        created_by: user.id,
-                    })
-                    .select('id')
-                    .single();
-
-                if (saveError) {
-                    console.error('Failed to persist document:', saveError);
-                    throw new Error(`Database Error: ${saveError.message}`);
-                }
-
-                if (savedDoc) {
-                    savedDocumentId = savedDoc.id;
-                }
-            } else {
-                throw new Error('User profile or company ID not found');
-            }
-        } else {
-            throw new Error('User not authenticated');
+        if (saveError) {
+            console.error('Database Error:', saveError);
+            return NextResponse.json({ error: 'Database Error', details: saveError.message }, { status: 500 });
         }
 
         return NextResponse.json({
             success: true,
             document: documentData,
-            documentId: savedDocumentId
+            documentId: savedDoc.id
         });
 
     } catch (error: any) {
         console.error('Document Generation Critical Failure:', error);
-
-        // Determine explicit error for frontend
-        let errorMessage = error.message || 'Unknown error occurred';
-        if (errorMessage.includes('Gemini API key')) errorMessage = 'AI Service Config Error: Missing API Key';
-        if (errorMessage.includes('Database Error')) errorMessage = 'Database Persist Error: ' + errorMessage;
-
         return NextResponse.json({
             error: 'Document generation failed',
-            details: errorMessage,
-            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            details: error.message || 'An unexpected error occurred'
         }, { status: 500 });
     }
+}
+
+// ============================================================================
+// TEMPLATE GENERATORS
+// ============================================================================
+
+function generatePropertySummary(data: any) {
+    const { property, customFields, company } = data;
+    const p = property || {};
+
+    return {
+        title: 'Property Marketing Summary',
+        subtitle: p.address || 'Property Details',
+        sections: [
+            {
+                type: 'header',
+                content: {
+                    companyName: company.name,
+                    companyLogo: company.logo_url,
+                    documentDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                }
+            },
+            {
+                type: 'hero',
+                content: {
+                    address: p.address || 'Address Not Specified',
+                    unit: p.unit_number || '',
+                    rent: p.rent ? `$${p.rent.toLocaleString()}/month` : 'Contact for pricing',
+                    specs: `${p.bedrooms || 0} Bed | ${p.bathrooms || 0} Bath | ${p.square_feet || 'N/A'} sqft`
+                }
+            },
+            {
+                type: 'highlights',
+                title: 'Property Highlights',
+                items: [
+                    customFields.highlightFeatures || p.description || 'Modern living space with premium finishes',
+                    `Target Audience: ${customFields.targetAudience || 'Discerning renters seeking quality'}`,
+                ]
+            },
+            {
+                type: 'cta',
+                content: customFields.callToAction || 'Schedule your private showing today. Contact us for availability.'
+            },
+            {
+                type: 'footer',
+                content: {
+                    companyName: company.name,
+                    phone: company.phone,
+                    email: company.email,
+                    address: company.address
+                }
+            }
+        ]
+    };
+}
+
+function generateLeaseProposal(data: any) {
+    const { property, customFields, company } = data;
+    const p = property || {};
+
+    return {
+        title: 'Formal Lease Proposal',
+        subtitle: `Prepared for ${customFields.tenantName || 'Prospective Tenant'}`,
+        sections: [
+            {
+                type: 'header',
+                content: {
+                    companyName: company.name,
+                    companyLogo: company.logo_url,
+                    documentDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                }
+            },
+            {
+                type: 'intro',
+                content: `We are pleased to present this formal lease proposal for the property located at ${p.address || 'the specified address'}. This proposal outlines the key terms and conditions for your consideration.`
+            },
+            {
+                type: 'terms',
+                title: 'Proposed Lease Terms',
+                items: [
+                    { label: 'Property Address', value: `${p.address || 'TBD'} ${p.unit_number ? '#' + p.unit_number : ''}` },
+                    { label: 'Monthly Rent', value: `$${customFields.offerRent || p.rent || 'TBD'}` },
+                    { label: 'Lease Duration', value: `${customFields.leaseTerm || 12} Months` },
+                    { label: 'Proposed Start Date', value: customFields.startDate || 'Upon Agreement' },
+                    { label: 'Security Deposit', value: `$${customFields.offerRent || p.rent || 'TBD'} (One Month)` },
+                ]
+            },
+            {
+                type: 'conditions',
+                title: 'Special Conditions',
+                content: customFields.conditions || 'Standard lease terms apply. Subject to credit and background verification.'
+            },
+            {
+                type: 'signatures',
+                title: 'Agreement',
+                fields: ['Landlord/Agent Signature', 'Tenant Signature', 'Date']
+            },
+            {
+                type: 'footer',
+                content: {
+                    companyName: company.name,
+                    phone: company.phone,
+                    email: company.email,
+                    address: company.address
+                }
+            }
+        ]
+    };
+}
+
+function generateShowingSheet(data: any) {
+    const { property, customFields, company } = data;
+    const p = property || {};
+
+    return {
+        title: 'Property Showing Sheet',
+        subtitle: 'Agent Reference Document',
+        sections: [
+            {
+                type: 'header',
+                content: {
+                    companyName: company.name,
+                    companyLogo: company.logo_url,
+                    documentDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                }
+            },
+            {
+                type: 'property_details',
+                title: 'Property Information',
+                items: [
+                    { label: 'Address', value: p.address || 'N/A' },
+                    { label: 'Unit', value: p.unit_number || 'N/A' },
+                    { label: 'Bedrooms', value: p.bedrooms || 'N/A' },
+                    { label: 'Bathrooms', value: p.bathrooms || 'N/A' },
+                    { label: 'Rent', value: p.rent ? `$${p.rent.toLocaleString()}/mo` : 'N/A' },
+                    { label: 'Available', value: p.available_date || 'Immediately' },
+                ]
+            },
+            {
+                type: 'talking_points',
+                title: 'Key Talking Points',
+                items: [
+                    '✓ Highlight the natural lighting and open floor plan',
+                    '✓ Mention proximity to transit, schools, or amenities',
+                    '✓ Point out recent renovations or premium finishes',
+                    customFields.notes ? `✓ ${customFields.notes}` : null
+                ].filter(Boolean)
+            },
+            {
+                type: 'access',
+                title: 'Access Instructions (Confidential)',
+                content: customFields.accessNotes || 'Contact office for lockbox code or key pickup.'
+            },
+            {
+                type: 'footer',
+                content: {
+                    companyName: company.name,
+                    phone: company.phone,
+                    email: company.email,
+                    address: company.address
+                }
+            }
+        ]
+    };
+}
+
+function generateApplicationSummary(data: any) {
+    const { application, property, customFields, company } = data;
+    const app = application || {};
+    const p = property || {};
+
+    // Calculate rent-to-income ratio
+    const monthlyIncome = app.monthly_income || 0;
+    const rent = p.rent || 0;
+    const ratio = monthlyIncome > 0 ? (monthlyIncome / rent).toFixed(1) : 'N/A';
+    const ratioStatus = parseFloat(ratio) >= 3 ? 'PASS' : parseFloat(ratio) >= 2 ? 'REVIEW' : 'FAIL';
+
+    return {
+        title: 'Rental Application Summary',
+        subtitle: `Applicant: ${app.applicant_name || 'Unknown'}`,
+        sections: [
+            {
+                type: 'header',
+                content: {
+                    companyName: company.name,
+                    companyLogo: company.logo_url,
+                    documentDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                }
+            },
+            {
+                type: 'recommendation',
+                status: customFields.recommendation || 'Review Needed',
+                content: `This summary provides an overview of the applicant's qualifications for ${p.address || 'the property'}.`
+            },
+            {
+                type: 'applicant_profile',
+                title: 'Applicant Profile',
+                items: [
+                    { label: 'Full Name', value: app.applicant_name || 'N/A' },
+                    { label: 'Email', value: app.email || 'N/A' },
+                    { label: 'Phone', value: app.phone || 'N/A' },
+                    { label: 'Current Address', value: app.current_address || 'N/A' },
+                ]
+            },
+            {
+                type: 'financials',
+                title: 'Financial Assessment',
+                items: [
+                    { label: 'Monthly Income', value: `$${monthlyIncome.toLocaleString()}` },
+                    { label: 'Credit Score', value: app.credit_score || 'Not Provided' },
+                    { label: 'Target Rent', value: `$${rent.toLocaleString()}` },
+                    { label: 'Income-to-Rent Ratio', value: `${ratio}x`, status: ratioStatus },
+                ]
+            },
+            {
+                type: 'risk_assessment',
+                title: 'Risk Assessment',
+                riskFactors: customFields.riskFactors || 'Standard verification required.',
+                agentNotes: customFields.agentNote || 'No additional notes provided.'
+            },
+            {
+                type: 'footer',
+                content: {
+                    companyName: company.name,
+                    phone: company.phone,
+                    email: company.email,
+                    address: company.address
+                }
+            }
+        ]
+    };
 }
