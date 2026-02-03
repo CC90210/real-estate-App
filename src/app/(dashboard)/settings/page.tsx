@@ -116,16 +116,30 @@ export default function SettingsPage() {
     };
 
     const handleSaveBranding = async (newBranding: any) => {
+        if (!profile?.id) {
+            toast.error("Profile not loaded yet. Please wait.");
+            return;
+        }
+
         setBranding(newBranding);
+
         const { error } = await supabase
             .from('profiles')
             .update({ branding: newBranding, updated_at: new Date().toISOString() })
             .eq('id', profile.id);
 
         if (error) {
-            toast.error("Failed to save branding");
+            console.error('Branding save error:', error);
+            toast.error("Failed to save branding settings");
         } else {
-            toast.success("Branding updated");
+            // More specific toast based on what changed
+            if (newBranding.accent !== branding.accent) {
+                toast.success(`Accent color changed to ${newBranding.accent}`);
+            } else if (newBranding.theme !== branding.theme) {
+                toast.success(`Theme changed to ${newBranding.theme}`);
+            } else {
+                toast.success("Branding preferences saved");
+            }
         }
     };
 
@@ -670,25 +684,42 @@ export default function SettingsPage() {
                                     </div>
                                 </div>
 
-                                {/* Fixed Signature Branding Preview */}
-                                <div className={cn(
-                                    "p-10 rounded-[2.5rem] relative overflow-hidden shadow-2xl transition-all duration-500 bg-gradient-to-br",
-                                    activeAccent.gradient
-                                )}>
-                                    <div className={cn("absolute top-0 right-0 w-64 h-64 rounded-full blur-[100px] opacity-20", activeAccent.preview)} />
-                                    <h3 className={cn("text-[10px] font-black uppercase tracking-widest mb-6", activeAccent.text)}>Signature Branding Preview</h3>
-                                    <div className="p-8 bg-white/10 border border-white/20 rounded-3xl backdrop-blur-xl">
-                                        <div className="flex flex-col gap-4">
-                                            <div className="flex justify-between items-end border-b border-white/20 pb-6">
-                                                <div>
-                                                    <p className="text-3xl font-serif italic text-white">{profile?.full_name || 'Your Professional Name'}</p>
-                                                    <Badge className={cn("text-white font-black uppercase text-[10px] tracking-widest px-3 py-1 mt-3", activeAccent.badge)}>Verified {profile?.role || 'Agent'}</Badge>
+                                {/* Signature Branding Preview - with guaranteed contrast */}
+                                <div className="relative p-10 rounded-[2.5rem] overflow-hidden shadow-2xl transition-all duration-500">
+                                    {/* Base dark background for guaranteed contrast */}
+                                    <div className="absolute inset-0 bg-slate-900" />
+
+                                    {/* Gradient overlay based on accent */}
+                                    <div className={cn(
+                                        "absolute inset-0 bg-gradient-to-br opacity-90",
+                                        activeAccent.gradient
+                                    )} />
+
+                                    {/* Decorative blur */}
+                                    <div className={cn("absolute top-0 right-0 w-64 h-64 rounded-full blur-[100px] opacity-30", activeAccent.preview)} />
+
+                                    {/* Content - relative to sit above backgrounds */}
+                                    <div className="relative z-10">
+                                        <h3 className={cn("text-[10px] font-black uppercase tracking-widest mb-6", activeAccent.text)}>
+                                            Signature Branding Preview
+                                        </h3>
+                                        <div className="p-8 bg-white/10 border border-white/20 rounded-3xl backdrop-blur-xl">
+                                            <div className="flex flex-col gap-4">
+                                                <div className="flex justify-between items-end border-b border-white/20 pb-6">
+                                                    <div>
+                                                        <p className="text-3xl font-serif italic text-white drop-shadow-lg">
+                                                            {profile?.full_name || 'Your Professional Name'}
+                                                        </p>
+                                                        <Badge className={cn("text-white font-black uppercase text-[10px] tracking-widest px-3 py-1 mt-3", activeAccent.badge)}>
+                                                            Verified {profile?.role || 'Agent'}
+                                                        </Badge>
+                                                    </div>
+                                                    <CheckCircle2 className="w-10 h-10 text-white/40" />
                                                 </div>
-                                                <CheckCircle2 className="w-10 h-10 text-white opacity-30" />
-                                            </div>
-                                            <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-white/40 pt-2">
-                                                <p>PropFlow Intelligence</p>
-                                                <p>© 2026 Platform Secured</p>
+                                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-white/50 pt-2">
+                                                    <p>PropFlow Intelligence</p>
+                                                    <p>© 2026 Platform Secured</p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

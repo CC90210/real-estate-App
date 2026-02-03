@@ -31,7 +31,7 @@ import { cn } from '@/lib/utils'
 
 interface SearchResult {
     id: string
-    type: 'property' | 'application' | 'area' | 'building' | 'showing' | 'invoice' | 'document' | 'landlord'
+    type: 'property' | 'application' | 'area' | 'building' | 'showing' | 'invoice' | 'document' | 'landlord' | 'team'
     title: string
     subtitle: string
     icon: any
@@ -82,169 +82,207 @@ export function QuickFind({ open, onOpenChange }: QuickFindProps) {
         if (!company?.id) return
         setIsSearching(true)
 
+        const searchPattern = `%${searchQuery}%`
+        const allResults: SearchResult[] = []
+
         try {
-            const searchPattern = `%${searchQuery}%`
-            const allResults: SearchResult[] = []
-
             // Search Properties
-            const { data: properties } = await supabase
-                .from('properties')
-                .select('id, address, unit_number, status, rent')
-                .eq('company_id', company.id)
-                .or(`address.ilike.${searchPattern},unit_number.ilike.${searchPattern}`)
-                .limit(5)
+            try {
+                const { data: properties } = await supabase
+                    .from('properties')
+                    .select('id, address, unit_number, status, rent')
+                    .eq('company_id', company.id)
+                    .or(`address.ilike.${searchPattern},unit_number.ilike.${searchPattern}`)
+                    .limit(5)
 
-            properties?.forEach(p => {
-                allResults.push({
-                    id: p.id,
-                    type: 'property',
-                    title: p.address || 'Property',
-                    subtitle: `Unit ${p.unit_number || 'N/A'} • $${p.rent?.toLocaleString() || 0}/mo • ${p.status}`,
-                    icon: Home,
-                    href: `/properties/${p.id}`,
-                    gradient: 'from-blue-500 to-blue-600'
+                properties?.forEach((p: any) => {
+                    allResults.push({
+                        id: p.id,
+                        type: 'property',
+                        title: p.address || 'Property',
+                        subtitle: `Unit ${p.unit_number || 'N/A'} • $${p.rent?.toLocaleString() || 0}/mo • ${p.status}`,
+                        icon: Home,
+                        href: `/properties/${p.id}`,
+                        gradient: 'from-blue-500 to-blue-600'
+                    })
                 })
-            })
+            } catch (e) { console.warn('Properties search failed:', e) }
 
             // Search Applications
-            const { data: applications } = await supabase
-                .from('applications')
-                .select('id, applicant_name, applicant_email, status')
-                .eq('company_id', company.id)
-                .or(`applicant_name.ilike.${searchPattern},applicant_email.ilike.${searchPattern}`)
-                .limit(5)
+            try {
+                const { data: applications } = await supabase
+                    .from('applications')
+                    .select('id, applicant_name, applicant_email, status')
+                    .eq('company_id', company.id)
+                    .or(`applicant_name.ilike.${searchPattern},applicant_email.ilike.${searchPattern}`)
+                    .limit(5)
 
-            applications?.forEach(a => {
-                allResults.push({
-                    id: a.id,
-                    type: 'application',
-                    title: a.applicant_name,
-                    subtitle: `${a.applicant_email} • Status: ${a.status}`,
-                    icon: ClipboardList,
-                    href: `/applications/${a.id}`,
-                    gradient: 'from-indigo-500 to-indigo-600'
+                applications?.forEach((a: any) => {
+                    allResults.push({
+                        id: a.id,
+                        type: 'application',
+                        title: a.applicant_name || 'Unknown',
+                        subtitle: `${a.applicant_email} • Status: ${a.status}`,
+                        icon: ClipboardList,
+                        href: `/applications/${a.id}`,
+                        gradient: 'from-indigo-500 to-indigo-600'
+                    })
                 })
-            })
+            } catch (e) { console.warn('Applications search failed:', e) }
 
             // Search Areas
-            const { data: areas } = await supabase
-                .from('areas')
-                .select('id, name, city')
-                .eq('company_id', company.id)
-                .or(`name.ilike.${searchPattern},city.ilike.${searchPattern}`)
-                .limit(5)
+            try {
+                const { data: areas } = await supabase
+                    .from('areas')
+                    .select('id, name, city')
+                    .eq('company_id', company.id)
+                    .or(`name.ilike.${searchPattern},city.ilike.${searchPattern}`)
+                    .limit(5)
 
-            areas?.forEach(a => {
-                allResults.push({
-                    id: a.id,
-                    type: 'area',
-                    title: a.name,
-                    subtitle: a.city || 'Area',
-                    icon: MapPin,
-                    href: `/areas/${a.id}`,
-                    gradient: 'from-emerald-500 to-emerald-600'
+                areas?.forEach((a: any) => {
+                    allResults.push({
+                        id: a.id,
+                        type: 'area',
+                        title: a.name || 'Area',
+                        subtitle: a.city || 'Area',
+                        icon: MapPin,
+                        href: `/areas/${a.id}`,
+                        gradient: 'from-emerald-500 to-emerald-600'
+                    })
                 })
-            })
+            } catch (e) { console.warn('Areas search failed:', e) }
 
             // Search Buildings
-            const { data: buildings } = await supabase
-                .from('buildings')
-                .select('id, name, address')
-                .eq('company_id', company.id)
-                .or(`name.ilike.${searchPattern},address.ilike.${searchPattern}`)
-                .limit(5)
+            try {
+                const { data: buildings } = await supabase
+                    .from('buildings')
+                    .select('id, name, address')
+                    .eq('company_id', company.id)
+                    .or(`name.ilike.${searchPattern},address.ilike.${searchPattern}`)
+                    .limit(5)
 
-            buildings?.forEach(b => {
-                allResults.push({
-                    id: b.id,
-                    type: 'building',
-                    title: b.name || b.address,
-                    subtitle: b.address || 'Building',
-                    icon: Building2,
-                    href: `/buildings/${b.id}`,
-                    gradient: 'from-violet-500 to-violet-600'
+                buildings?.forEach((b: any) => {
+                    allResults.push({
+                        id: b.id,
+                        type: 'building',
+                        title: b.name || b.address || 'Building',
+                        subtitle: b.address || 'Building',
+                        icon: Building2,
+                        href: `/buildings/${b.id}`,
+                        gradient: 'from-violet-500 to-violet-600'
+                    })
                 })
-            })
+            } catch (e) { console.warn('Buildings search failed:', e) }
 
             // Search Showings
-            const { data: showings } = await supabase
-                .from('showings')
-                .select('id, visitor_name, visitor_email, scheduled_date')
-                .eq('company_id', company.id)
-                .or(`visitor_name.ilike.${searchPattern},visitor_email.ilike.${searchPattern}`)
-                .limit(5)
+            try {
+                const { data: showings } = await supabase
+                    .from('showings')
+                    .select('id, visitor_name, visitor_email, scheduled_date')
+                    .eq('company_id', company.id)
+                    .or(`visitor_name.ilike.${searchPattern},visitor_email.ilike.${searchPattern}`)
+                    .limit(5)
 
-            showings?.forEach(s => {
-                allResults.push({
-                    id: s.id,
-                    type: 'showing',
-                    title: s.visitor_name || 'Showing',
-                    subtitle: `${s.visitor_email || ''} • ${s.scheduled_date ? new Date(s.scheduled_date).toLocaleDateString() : ''}`,
-                    icon: Calendar,
-                    href: `/showings`,
-                    gradient: 'from-amber-500 to-amber-600'
+                showings?.forEach((s: any) => {
+                    allResults.push({
+                        id: s.id,
+                        type: 'showing',
+                        title: s.visitor_name || 'Showing',
+                        subtitle: `${s.visitor_email || ''} • ${s.scheduled_date ? new Date(s.scheduled_date).toLocaleDateString() : ''}`,
+                        icon: Calendar,
+                        href: `/showings`,
+                        gradient: 'from-amber-500 to-amber-600'
+                    })
                 })
-            })
+            } catch (e) { console.warn('Showings search failed:', e) }
 
             // Search Invoices
-            const { data: invoices } = await supabase
-                .from('invoices')
-                .select('id, invoice_number, tenant_name, amount')
-                .eq('company_id', company.id)
-                .or(`invoice_number.ilike.${searchPattern},tenant_name.ilike.${searchPattern}`)
-                .limit(5)
+            try {
+                const { data: invoices } = await supabase
+                    .from('invoices')
+                    .select('id, invoice_number, tenant_name, amount')
+                    .eq('company_id', company.id)
+                    .or(`invoice_number.ilike.${searchPattern},tenant_name.ilike.${searchPattern}`)
+                    .limit(5)
 
-            invoices?.forEach(i => {
-                allResults.push({
-                    id: i.id,
-                    type: 'invoice',
-                    title: `Invoice ${i.invoice_number || i.id.slice(0, 8)}`,
-                    subtitle: `${i.tenant_name || 'Tenant'} • $${i.amount?.toLocaleString() || 0}`,
-                    icon: Receipt,
-                    href: `/invoices/${i.id}`,
-                    gradient: 'from-cyan-500 to-cyan-600'
+                invoices?.forEach((i: any) => {
+                    allResults.push({
+                        id: i.id,
+                        type: 'invoice',
+                        title: `Invoice ${i.invoice_number || i.id?.slice(0, 8) || ''}`,
+                        subtitle: `${i.tenant_name || 'Tenant'} • $${i.amount?.toLocaleString() || 0}`,
+                        icon: Receipt,
+                        href: `/invoices/${i.id}`,
+                        gradient: 'from-cyan-500 to-cyan-600'
+                    })
                 })
-            })
+            } catch (e) { console.warn('Invoices search failed:', e) }
 
             // Search Documents
-            const { data: documents } = await supabase
-                .from('documents')
-                .select('id, title, type')
-                .eq('company_id', company.id)
-                .ilike('title', searchPattern)
-                .limit(5)
+            try {
+                const { data: documents } = await supabase
+                    .from('documents')
+                    .select('id, title, type')
+                    .eq('company_id', company.id)
+                    .ilike('title', searchPattern)
+                    .limit(5)
 
-            documents?.forEach(d => {
-                allResults.push({
-                    id: d.id,
-                    type: 'document',
-                    title: d.title,
-                    subtitle: `Type: ${d.type || 'Document'}`,
-                    icon: FileText,
-                    href: `/documents/${d.id}`,
-                    gradient: 'from-rose-500 to-rose-600'
+                documents?.forEach((d: any) => {
+                    allResults.push({
+                        id: d.id,
+                        type: 'document',
+                        title: d.title || 'Document',
+                        subtitle: `Type: ${d.type || 'Document'}`,
+                        icon: FileText,
+                        href: `/documents/${d.id}`,
+                        gradient: 'from-rose-500 to-rose-600'
+                    })
                 })
-            })
+            } catch (e) { console.warn('Documents search failed:', e) }
 
-            // Search Landlords
-            const { data: landlords } = await supabase
-                .from('landlords')
-                .select('id, name, email')
-                .eq('company_id', company.id)
-                .or(`name.ilike.${searchPattern},email.ilike.${searchPattern}`)
-                .limit(5)
+            // Search Landlords (external landlord records)
+            try {
+                const { data: landlords } = await supabase
+                    .from('landlords')
+                    .select('id, name, email')
+                    .eq('company_id', company.id)
+                    .or(`name.ilike.${searchPattern},email.ilike.${searchPattern}`)
+                    .limit(5)
 
-            landlords?.forEach(l => {
-                allResults.push({
-                    id: l.id,
-                    type: 'landlord',
-                    title: l.name,
-                    subtitle: l.email || 'Landlord',
-                    icon: Users,
-                    href: `/landlords/${l.id}`,
-                    gradient: 'from-purple-500 to-purple-600'
+                landlords?.forEach((l: any) => {
+                    allResults.push({
+                        id: l.id,
+                        type: 'landlord',
+                        title: l.name || 'Landlord',
+                        subtitle: l.email || 'Landlord',
+                        icon: Users,
+                        href: `/landlords/${l.id}`,
+                        gradient: 'from-purple-500 to-purple-600'
+                    })
                 })
-            })
+            } catch (e) { console.warn('Landlords search failed:', e) }
+
+            // Search Team Members (profiles in same company)
+            try {
+                const { data: teamMembers } = await supabase
+                    .from('profiles')
+                    .select('id, full_name, email, role')
+                    .eq('company_id', company.id)
+                    .or(`full_name.ilike.${searchPattern},email.ilike.${searchPattern}`)
+                    .limit(5)
+
+                teamMembers?.forEach((t: any) => {
+                    allResults.push({
+                        id: t.id,
+                        type: 'team' as any,
+                        title: t.full_name || t.email || 'Team Member',
+                        subtitle: `${t.role ? t.role.charAt(0).toUpperCase() + t.role.slice(1) : 'User'} • ${t.email || ''}`,
+                        icon: Users,
+                        href: `/settings`,
+                        gradient: 'from-slate-500 to-slate-600'
+                    })
+                })
+            } catch (e) { console.warn('Team members search failed:', e) }
 
             setResults(allResults)
             setSelectedIndex(0)
