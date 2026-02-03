@@ -24,6 +24,16 @@ export default function SettingsPage() {
     const [showPasswords, setShowPasswords] = useState(false);
     const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
 
+    // Company branding data for documents
+    const [companyData, setCompanyData] = useState<any>({
+        name: '',
+        logo_url: '',
+        address: '',
+        phone: '',
+        email: '',
+        tagline: ''
+    });
+
     useEffect(() => {
         fetchProfile();
     }, []);
@@ -31,17 +41,40 @@ export default function SettingsPage() {
     const fetchProfile = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-            const { data } = await supabase
+            // Fetch profile
+            const { data: profileData } = await supabase
                 .from('profiles')
-                .select('*')
+                .select('*, company_id')
                 .eq('id', user.id)
                 .single();
-            setProfile(data);
-            if (data?.preferences) {
-                setPreferences(data.preferences);
+
+            setProfile(profileData);
+
+            if (profileData?.preferences) {
+                setPreferences(profileData.preferences);
             }
-            if (data?.branding) {
-                setBranding(data.branding);
+            if (profileData?.branding) {
+                setBranding(profileData.branding);
+            }
+
+            // Fetch company data for branding
+            if (profileData?.company_id) {
+                const { data: company } = await supabase
+                    .from('companies')
+                    .select('*')
+                    .eq('id', profileData.company_id)
+                    .single();
+
+                if (company) {
+                    setCompanyData({
+                        name: company.name || '',
+                        logo_url: company.logo_url || '',
+                        address: company.address || '',
+                        phone: company.phone || '',
+                        email: company.email || '',
+                        tagline: company.tagline || ''
+                    });
+                }
             }
         }
         setIsLoading(false);
@@ -84,6 +117,37 @@ export default function SettingsPage() {
             toast.error("Failed to save branding");
         } else {
             toast.success("Branding updated");
+        }
+    };
+
+    // Save company branding to the COMPANIES table (for document generation)
+    const handleSaveCompanyBranding = async () => {
+        if (!profile?.company_id) {
+            toast.error("No company linked to your profile");
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const { error } = await supabase
+                .from('companies')
+                .update({
+                    name: companyData.name,
+                    logo_url: companyData.logo_url,
+                    address: companyData.address,
+                    phone: companyData.phone,
+                    email: companyData.email,
+                    tagline: companyData.tagline,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', profile.company_id);
+
+            if (error) throw error;
+            toast.success("Company branding saved! This will appear on all documents.");
+        } catch (error: any) {
+            toast.error("Failed to save company branding: " + error.message);
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -362,9 +426,83 @@ export default function SettingsPage() {
                                 <CardTitle className="text-2xl font-black text-slate-900 flex items-center gap-3">
                                     <Palette className="w-8 h-8 text-indigo-600" /> Branding & UI
                                 </CardTitle>
-                                <CardDescription className="text-slate-400 font-medium">Customize the aesthetic experience of your Intelligence Workspace.</CardDescription>
+                                <CardDescription className="text-slate-400 font-medium">
+                                    This data appears on ALL generated documents, invoices, and proposals.
+                                </CardDescription>
                             </CardHeader>
                             <CardContent className="p-10 space-y-10">
+                                {/* COMPANY IDENTITY - Critical for Documents */}
+                                <div className="p-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-[2rem] border border-blue-100">
+                                    <div className="flex items-center gap-3 mb-6">
+                                        <div className="p-3 bg-blue-600 rounded-2xl">
+                                            <Sparkles className="w-5 h-5 text-white" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-black text-slate-900">Company Identity</h3>
+                                            <p className="text-xs text-blue-600 font-bold uppercase tracking-widest">Used in document headers & footers</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-3 md:col-span-2">
+                                            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-1">Company Name *</Label>
+                                            <Input
+                                                value={companyData.name}
+                                                onChange={(e) => setCompanyData({ ...companyData, name: e.target.value })}
+                                                className="h-14 rounded-2xl bg-white border-blue-100 focus:ring-4 focus:ring-blue-100 font-bold px-6 text-lg"
+                                                placeholder="NostalgicAI, Remax Toronto, etc."
+                                            />
+                                        </div>
+                                        <div className="space-y-3">
+                                            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-1">Business Phone</Label>
+                                            <Input
+                                                value={companyData.phone}
+                                                onChange={(e) => setCompanyData({ ...companyData, phone: e.target.value })}
+                                                className="h-14 rounded-2xl bg-white border-blue-100 focus:ring-4 focus:ring-blue-100 font-mono px-6"
+                                                placeholder="+1 (416) 555-0123"
+                                            />
+                                        </div>
+                                        <div className="space-y-3">
+                                            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-1">Business Email</Label>
+                                            <Input
+                                                value={companyData.email}
+                                                onChange={(e) => setCompanyData({ ...companyData, email: e.target.value })}
+                                                className="h-14 rounded-2xl bg-white border-blue-100 focus:ring-4 focus:ring-blue-100 px-6"
+                                                placeholder="contact@yourcompany.com"
+                                            />
+                                        </div>
+                                        <div className="space-y-3 md:col-span-2">
+                                            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-1">Business Address</Label>
+                                            <Input
+                                                value={companyData.address}
+                                                onChange={(e) => setCompanyData({ ...companyData, address: e.target.value })}
+                                                className="h-14 rounded-2xl bg-white border-blue-100 focus:ring-4 focus:ring-blue-100 px-6"
+                                                placeholder="123 Main Street, Suite 100, Toronto, ON M5V 1A1"
+                                            />
+                                        </div>
+                                        <div className="space-y-3 md:col-span-2">
+                                            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-1">Logo URL (Optional)</Label>
+                                            <Input
+                                                value={companyData.logo_url}
+                                                onChange={(e) => setCompanyData({ ...companyData, logo_url: e.target.value })}
+                                                className="h-14 rounded-2xl bg-white border-blue-100 focus:ring-4 focus:ring-blue-100 px-6 font-mono text-sm"
+                                                placeholder="https://yoursite.com/logo.png"
+                                            />
+                                            <p className="text-[10px] text-slate-400 ml-1">Upload your logo to a service like Imgur, Cloudinary, or your website and paste the URL here.</p>
+                                        </div>
+                                    </div>
+
+                                    <Button
+                                        onClick={handleSaveCompanyBranding}
+                                        disabled={isSaving || !companyData.name}
+                                        className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[11px] shadow-xl shadow-blue-200 mt-8"
+                                    >
+                                        {isSaving ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Save className="w-5 h-5 mr-2" />}
+                                        Save Company Branding
+                                    </Button>
+                                </div>
+
+                                <Separator />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                                     <div className="space-y-6">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Workspace Accent</p>
