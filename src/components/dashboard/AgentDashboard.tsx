@@ -1,4 +1,5 @@
-'use client'
+
+import { cn } from '@/lib/utils'
 
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
