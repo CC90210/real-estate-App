@@ -91,9 +91,6 @@ export function Sidebar({ className }: { className?: string }) {
                                 )}
                                 <item.icon className={cn("w-5 h-5 transition-transform group-hover:scale-110", isActive ? "text-blue-600" : "text-slate-400 group-hover:text-slate-600")} />
                                 <span>{item.name}</span>
-                                {item.name === 'Applications' && (
-                                    <div className="ml-auto px-1.5 py-0.5 rounded-md bg-blue-50 text-[10px] font-black text-blue-600 border border-blue-100">NEW</div>
-                                )}
                             </div>
                         </Link>
                     );
