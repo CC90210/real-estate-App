@@ -7,33 +7,27 @@ export const metadata: Metadata = {
     description: 'PropFlow Privacy Policy - How we collect, use, and protect your data',
 }
 
+import { PublicNavbar } from '@/components/layout/PublicNavbar'
+
 export default function PrivacyPolicyPage() {
     const lastUpdated = 'February 3, 2026'
 
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <header className="bg-white border-b sticky top-0 z-50">
-                <div className="max-w-4xl mx-auto px-4 py-4">
-                    <Link href="/" className="flex items-center gap-2 text-gray-600 hover:text-gray-900 font-bold transition-colors">
-                        <ArrowLeft className="h-4 w-4" />
-                        Back to Home
-                    </Link>
-                </div>
-            </header>
+            <PublicNavbar />
 
             {/* Content */}
-            <main className="max-w-4xl mx-auto px-4 py-12">
-                <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 md:p-16">
+            <main className="max-w-4xl mx-auto px-4 pt-32 pb-12">
+                <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-6 sm:p-8 md:p-16">
                     <div className="flex items-center gap-3 mb-10">
-                        <div className="h-12 w-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
-                            <Shield className="h-7 w-7 text-white" />
+                        <div className="h-10 w-10 sm:h-12 sm:w-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
+                            <Shield className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
                         </div>
-                        <span className="text-2xl font-black tracking-tight">PropFlow</span>
+                        <span className="text-xl sm:text-2xl font-black tracking-tight">PropFlow</span>
                     </div>
 
-                    <h1 className="text-4xl font-black tracking-tight text-slate-900 mb-2">Privacy Policy</h1>
-                    <p className="text-slate-500 font-medium mb-10 italic">Last updated: {lastUpdated}</p>
+                    <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 mb-2">Privacy Policy</h1>
+                    <p className="text-sm sm:text-base text-slate-500 font-medium mb-10 italic">Last updated: {lastUpdated}</p>
 
                     {/* Security Badge */}
                     <div className="bg-emerald-50 border border-emerald-100 rounded-[1.5rem] p-6 mb-12 flex flex-col sm:flex-row items-center gap-6">

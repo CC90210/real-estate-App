@@ -2,7 +2,9 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Building2, CheckCircle, ArrowRight, Zap, Shield, Sparkles, Star } from 'lucide-react';
+import { PublicNavbar } from '@/components/layout/PublicNavbar';
+import { PublicFooter } from '@/components/layout/PublicFooter';
+import { Building2, ArrowRight, Zap, Shield, Sparkles, Star } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export default function HomePage() {
@@ -14,41 +16,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#fdfeff] text-slate-900 selection:bg-blue-100 selection:text-blue-900">
-      {/* Premium Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-slate-200/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <div className="flex items-center gap-3 group pointer-events-auto">
-              <div className="h-10 w-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200 group-hover:scale-110 transition-transform duration-300">
-                <Building2 className="h-6 w-6 text-white" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xl font-black tracking-tight leading-none">PropFlow</span>
-                <span className="text-[10px] uppercase tracking-widest font-bold text-blue-600 opacity-80 mt-1">Intelligence</span>
-              </div>
-            </div>
-
-            <div className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-600 uppercase tracking-widest">
-              <Link href="/features" className="hover:text-blue-600 transition-colors">Features</Link>
-              <Link href="/solutions" className="hover:text-blue-600 transition-colors">Solutions</Link>
-              <Link href="/pricing" className="hover:text-blue-600 transition-colors">Pricing</Link>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Link href="/login">
-                <Button variant="ghost" className="font-bold text-slate-600 hover:text-blue-600">
-                  Sign In
-                </Button>
-              </Link>
-              <Link href="/contact">
-                <Button className="font-bold px-6 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 rounded-xl">
-                  Request Access
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <PublicNavbar />
 
       <main className="pt-20">
         {/* Floating Background Elements */}
@@ -134,29 +102,7 @@ export default function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-slate-50 border-t border-slate-200 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-8">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <Building2 className="h-5 w-5 text-white" />
-              </div>
-              <span className="text-lg font-black tracking-tight">PropFlow</span>
-            </div>
-
-            <div className="flex gap-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-              <Link href="/terms" className="hover:text-blue-600 transition-colors">Terms</Link>
-              <Link href="/privacy" className="hover:text-blue-600 transition-colors">Privacy</Link>
-              <Link href="/pricing" className="hover:text-blue-600 transition-colors">Pricing</Link>
-              <Link href="/contact" className="hover:text-blue-600 transition-colors">Contact</Link>
-            </div>
-
-            <p className="text-xs font-bold text-slate-400">
-              © 2026 PropFlow Intelligence. Built for high performance.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }
