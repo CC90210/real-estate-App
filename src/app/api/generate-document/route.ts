@@ -225,14 +225,7 @@ function generatePropertySummary(data: any) {
         title: 'Property Marketing Summary',
         subtitle: p.address || 'Property Details',
         sections: [
-            {
-                type: 'header',
-                content: {
-                    companyName: company.name,
-                    companyLogo: company.logo_url,
-                    documentDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-                }
-            },
+            // NOTE: No 'header' section - the document viewer adds branded header
             {
                 type: 'hero',
                 content: {
@@ -253,16 +246,8 @@ function generatePropertySummary(data: any) {
             {
                 type: 'cta',
                 content: customFields.callToAction || 'Schedule your private showing today. Contact us for availability.'
-            },
-            {
-                type: 'footer',
-                content: {
-                    companyName: company.name,
-                    phone: company.phone,
-                    email: company.email,
-                    address: company.address
-                }
             }
+            // NOTE: No 'footer' section - the document viewer adds branded footer
         ]
     };
 }
@@ -271,18 +256,19 @@ function generateLeaseProposal(data: any) {
     const { property, customFields, company } = data;
     const p = property || {};
 
+    // Format the start date nicely if provided
+    const startDateFormatted = customFields.startDate
+        ? new Date(customFields.startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+        : 'Upon Agreement';
+
+    // Use custom security deposit or fallback to rent
+    const securityDeposit = customFields.securityDeposit || customFields.offerRent || p.rent || 'TBD';
+
     return {
         title: 'Formal Lease Proposal',
         subtitle: `Prepared for ${customFields.tenantName || 'Prospective Tenant'}`,
         sections: [
-            {
-                type: 'header',
-                content: {
-                    companyName: company.name,
-                    companyLogo: company.logo_url,
-                    documentDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-                }
-            },
+            // NOTE: No 'header' section - the document viewer adds branded header
             {
                 type: 'intro',
                 content: `We are pleased to present this formal lease proposal for the property located at ${p.address || 'the specified address'}. This proposal outlines the key terms and conditions for your consideration.`
@@ -292,10 +278,10 @@ function generateLeaseProposal(data: any) {
                 title: 'Proposed Lease Terms',
                 items: [
                     { label: 'Property Address', value: `${p.address || 'TBD'} ${p.unit_number ? '#' + p.unit_number : ''}` },
-                    { label: 'Monthly Rent', value: `$${customFields.offerRent || p.rent || 'TBD'}` },
+                    { label: 'Monthly Rent', value: `$${Number(customFields.offerRent || p.rent || 0).toLocaleString()}` },
                     { label: 'Lease Duration', value: `${customFields.leaseTerm || 12} Months` },
-                    { label: 'Proposed Start Date', value: customFields.startDate || 'Upon Agreement' },
-                    { label: 'Security Deposit', value: `$${customFields.offerRent || p.rent || 'TBD'} (One Month)` },
+                    { label: 'Proposed Start Date', value: startDateFormatted },
+                    { label: 'Security Deposit', value: `$${Number(securityDeposit).toLocaleString()}` },
                 ]
             },
             {
@@ -307,16 +293,8 @@ function generateLeaseProposal(data: any) {
                 type: 'signatures',
                 title: 'Agreement',
                 fields: ['Landlord/Agent Signature', 'Tenant Signature', 'Date']
-            },
-            {
-                type: 'footer',
-                content: {
-                    companyName: company.name,
-                    phone: company.phone,
-                    email: company.email,
-                    address: company.address
-                }
             }
+            // NOTE: No 'footer' section - the document viewer adds branded footer
         ]
     };
 }
@@ -329,14 +307,7 @@ function generateShowingSheet(data: any) {
         title: 'Property Showing Sheet',
         subtitle: 'Agent Reference Document',
         sections: [
-            {
-                type: 'header',
-                content: {
-                    companyName: company.name,
-                    companyLogo: company.logo_url,
-                    documentDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-                }
-            },
+            // NOTE: No 'header' section - the document viewer adds branded header
             {
                 type: 'property_details',
                 title: 'Property Information',
@@ -363,16 +334,8 @@ function generateShowingSheet(data: any) {
                 type: 'access',
                 title: 'Access Instructions (Confidential)',
                 content: customFields.accessNotes || 'Contact office for lockbox code or key pickup.'
-            },
-            {
-                type: 'footer',
-                content: {
-                    companyName: company.name,
-                    phone: company.phone,
-                    email: company.email,
-                    address: company.address
-                }
             }
+            // NOTE: No 'footer' section - the document viewer adds branded footer
         ]
     };
 }
@@ -392,14 +355,7 @@ function generateApplicationSummary(data: any) {
         title: 'Rental Application Summary',
         subtitle: `Applicant: ${app.applicant_name || 'Unknown'}`,
         sections: [
-            {
-                type: 'header',
-                content: {
-                    companyName: company.name,
-                    companyLogo: company.logo_url,
-                    documentDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-                }
-            },
+            // NOTE: No 'header' section - the document viewer adds branded header
             {
                 type: 'recommendation',
                 status: customFields.recommendation || 'Review Needed',
@@ -430,16 +386,8 @@ function generateApplicationSummary(data: any) {
                 title: 'Risk Assessment',
                 riskFactors: customFields.riskFactors || 'Standard verification required.',
                 agentNotes: customFields.agentNote || 'No additional notes provided.'
-            },
-            {
-                type: 'footer',
-                content: {
-                    companyName: company.name,
-                    phone: company.phone,
-                    email: company.email,
-                    address: company.address
-                }
             }
+            // NOTE: No 'footer' section - the document viewer adds branded footer
         ]
     };
 }

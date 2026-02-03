@@ -340,7 +340,7 @@ function LeaseProposalForm({ properties, onGenerate, isGenerating, profile }: an
         tenantPhone: '',
         offerRent: '',
         leaseTerm: '12',
-        moveInDate: '',
+        startDate: '',
         securityDeposit: '',
         conditions: '',
         includePetClause: false,
@@ -356,6 +356,9 @@ function LeaseProposalForm({ properties, onGenerate, isGenerating, profile }: an
         validUntil: ''
     });
 
+    // Sync with selected property rent
+    const selectedProperty = properties.find((p: any) => p.id === formData.propertyId);
+
     useEffect(() => {
         if (profile) {
             setFormData(prev => ({
@@ -366,23 +369,136 @@ function LeaseProposalForm({ properties, onGenerate, isGenerating, profile }: an
         }
     }, [profile]);
 
+    // Auto-fill rent and deposit when property selected
+    useEffect(() => {
+        if (selectedProperty?.rent) {
+            setFormData(prev => ({
+                ...prev,
+                offerRent: prev.offerRent || selectedProperty.rent.toString(),
+                securityDeposit: prev.securityDeposit || selectedProperty.rent.toString(),
+            }));
+        }
+    }, [selectedProperty]);
+
     return (
         <div className="space-y-6 max-w-2xl">
-            <Select value={formData.propertyId} onValueChange={(v) => setFormData({ ...formData, propertyId: v })}>
-                <SelectTrigger><SelectValue placeholder="Select Property" /></SelectTrigger>
-                <SelectContent>
-                    {properties.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.address}</SelectItem>)}
-                </SelectContent>
-            </Select>
-            <Input value={formData.tenantName} onChange={(e) => setFormData({ ...formData, tenantName: e.target.value })} placeholder="Tenant Name" />
-            <div className="grid grid-cols-2 gap-4">
-                <Input type="number" value={formData.offerRent} onChange={(e) => setFormData({ ...formData, offerRent: e.target.value })} placeholder="Offer Rent" />
-                <Input type="date" value={formData.moveInDate} onChange={(e) => setFormData({ ...formData, moveInDate: e.target.value })} />
+            {/* Property Selection */}
+            <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-widest text-slate-500">Property *</Label>
+                <Select value={formData.propertyId} onValueChange={(v) => setFormData({ ...formData, propertyId: v })}>
+                    <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Select Property" /></SelectTrigger>
+                    <SelectContent>
+                        {properties.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.address}</SelectItem>)}
+                    </SelectContent>
+                </Select>
             </div>
-            <Textarea value={formData.conditions} onChange={(e) => setFormData({ ...formData, conditions: e.target.value })} placeholder="Special Conditions" rows={3} />
-            <Button onClick={() => onGenerate(formData)} className="w-full bg-slate-900 text-white" disabled={isGenerating}>
+
+            {/* Tenant Information */}
+            <div className="bg-slate-50 rounded-xl p-6 space-y-4">
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                    <User className="w-4 h-4" /> Tenant Details
+                </p>
+                <Input
+                    value={formData.tenantName}
+                    onChange={(e) => setFormData({ ...formData, tenantName: e.target.value })}
+                    placeholder="Full Legal Name *"
+                    className="h-12 rounded-xl"
+                />
+                <div className="grid grid-cols-2 gap-4">
+                    <Input
+                        type="email"
+                        value={formData.tenantEmail}
+                        onChange={(e) => setFormData({ ...formData, tenantEmail: e.target.value })}
+                        placeholder="Email Address"
+                        className="h-12 rounded-xl"
+                    />
+                    <Input
+                        type="tel"
+                        value={formData.tenantPhone}
+                        onChange={(e) => setFormData({ ...formData, tenantPhone: e.target.value })}
+                        placeholder="Phone Number"
+                        className="h-12 rounded-xl"
+                    />
+                </div>
+            </div>
+
+            {/* Financial Terms */}
+            <div className="bg-blue-50 rounded-xl p-6 space-y-4">
+                <p className="text-xs font-bold uppercase tracking-widest text-blue-600 flex items-center gap-2">
+                    <DollarSign className="w-4 h-4" /> Financial Terms
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label className="text-xs text-slate-500">Monthly Rent *</Label>
+                        <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                            <Input
+                                type="number"
+                                value={formData.offerRent}
+                                onChange={(e) => setFormData({ ...formData, offerRent: e.target.value })}
+                                placeholder="0.00"
+                                className="h-12 rounded-xl pl-8"
+                            />
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-xs text-slate-500">Security Deposit *</Label>
+                        <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                            <Input
+                                type="number"
+                                value={formData.securityDeposit}
+                                onChange={(e) => setFormData({ ...formData, securityDeposit: e.target.value })}
+                                placeholder="0.00"
+                                className="h-12 rounded-xl pl-8"
+                            />
+                        </div>
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label className="text-xs text-slate-500">Lease Term</Label>
+                        <Select value={formData.leaseTerm} onValueChange={(v) => setFormData({ ...formData, leaseTerm: v })}>
+                            <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="6">6 Months</SelectItem>
+                                <SelectItem value="12">12 Months</SelectItem>
+                                <SelectItem value="18">18 Months</SelectItem>
+                                <SelectItem value="24">24 Months</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-xs text-slate-500">Proposed Start Date *</Label>
+                        <Input
+                            type="date"
+                            value={formData.startDate}
+                            onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                            className="h-12 rounded-xl"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* Special Conditions */}
+            <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-widest text-slate-500">Special Conditions (Optional)</Label>
+                <Textarea
+                    value={formData.conditions}
+                    onChange={(e) => setFormData({ ...formData, conditions: e.target.value })}
+                    placeholder="e.g., Pets allowed with deposit, parking included, utilities included..."
+                    rows={3}
+                    className="rounded-xl"
+                />
+            </div>
+
+            <Button
+                onClick={() => onGenerate(formData)}
+                className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black uppercase tracking-widest text-xs"
+                disabled={isGenerating || !formData.propertyId || !formData.tenantName || !formData.offerRent}
+            >
                 {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <FileSignature className="w-4 h-4 mr-2" />}
-                Build Premium Lease Proposal
+                Generate Lease Proposal
             </Button>
         </div>
     );

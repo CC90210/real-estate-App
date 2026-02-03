@@ -1,11 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, Printer } from 'lucide-react'
+import { ArrowLeft, Printer, PenLine, Check } from 'lucide-react'
 import { format } from 'date-fns'
 
 // ============================================================================
@@ -150,18 +151,19 @@ export default function DocumentViewPage() {
                         </div>
                     )}
 
-                    {/* BRANDED FOOTER */}
-                    <div className="print-footer mt-auto pt-12 border-t-2 border-slate-900">
-                        <div className="flex justify-between items-end">
-                            <div>
-                                <p className="text-sm font-bold text-slate-900">{company?.name || 'PropFlow'}</p>
-                                <p className="text-xs text-slate-400">{company?.address}</p>
+                    {/* PROFESSIONAL FOOTER - No website URL */}
+                    <div className="print-footer mt-auto pt-10 border-t border-slate-200">
+                        <div className="flex justify-between items-center text-xs text-slate-400">
+                            <div className="flex items-center gap-4">
+                                {company?.logo_url && (
+                                    <img src={company.logo_url} alt="" className="h-6 w-auto opacity-50" />
+                                )}
+                                <span className="font-medium">{company?.name || 'PropFlow'}</span>
                             </div>
                             <div className="text-right">
-                                <p className="text-xs text-slate-400">{company?.phone} | {company?.email}</p>
-                                <p className="text-[10px] text-slate-300 uppercase tracking-widest mt-2">
-                                    Confidential &bull; {new Date().getFullYear()}
-                                </p>
+                                <span className="uppercase tracking-widest text-[10px]">
+                                    Confidential • {format(new Date(document.created_at), 'yyyy')}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -256,16 +258,8 @@ function RenderSection({ section, company }: { section: any; company: any }) {
             );
 
         case 'signatures':
-            return (
-                <div className="mt-16 pt-8 border-t border-slate-200 flex justify-between gap-12">
-                    {section.fields?.map((field: string, i: number) => (
-                        <div key={i} className="flex-1 space-y-12">
-                            <div className="border-b border-slate-300 h-px w-full" />
-                            <p className="text-xs uppercase tracking-wider text-slate-400">{field}</p>
-                        </div>
-                    ))}
-                </div>
-            );
+            return <SignatureSection section={section} />;
+
 
         case 'property_details':
         case 'applicant_profile':
@@ -346,4 +340,122 @@ function RenderSection({ section, company }: { section: any; company: any }) {
         default:
             return null;
     }
+}
+
+// ============================================================================
+// INTERACTIVE SIGNATURE SECTION
+// ============================================================================
+
+function SignatureSection({ section }: { section: any }) {
+    const [signatures, setSignatures] = useState<Record<number, { name: string; date: string } | null>>({});
+    const [editingIndex, setEditingIndex] = useState<number | null>(null);
+    const [inputValue, setInputValue] = useState('');
+
+    const handleSign = (index: number) => {
+        if (signatures[index]) return; // Already signed
+        setEditingIndex(index);
+        setInputValue('');
+    };
+
+    const confirmSignature = (index: number) => {
+        if (inputValue.trim()) {
+            setSignatures(prev => ({
+                ...prev,
+                [index]: {
+                    name: inputValue.trim(),
+                    date: format(new Date(), 'MMM dd, yyyy')
+                }
+            }));
+        }
+        setEditingIndex(null);
+        setInputValue('');
+    };
+
+    const cancelSignature = () => {
+        setEditingIndex(null);
+        setInputValue('');
+    };
+
+    return (
+        <div className="mt-16 pt-8 border-t-2 border-slate-900">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-8">
+                Agreement & Signatures
+            </h3>
+            <div className="grid grid-cols-3 gap-8">
+                {section.fields?.map((field: string, i: number) => (
+                    <div key={i} className="space-y-3">
+                        {signatures[i] ? (
+                            // Signed state
+                            <div className="space-y-2">
+                                <div className="h-20 flex items-end pb-2">
+                                    <p className="text-2xl font-serif italic text-slate-900">
+                                        {signatures[i]?.name}
+                                    </p>
+                                </div>
+                                <div className="border-t border-slate-300 pt-2 flex items-center gap-2">
+                                    <Check className="w-3 h-3 text-green-600" />
+                                    <span className="text-xs text-slate-500">{field}</span>
+                                </div>
+                                {field.toLowerCase().includes('date') && (
+                                    <p className="text-sm text-slate-600">{signatures[i]?.date}</p>
+                                )}
+                            </div>
+                        ) : editingIndex === i ? (
+                            // Editing state
+                            <div className="space-y-2">
+                                <div className="h-20 flex items-end">
+                                    <input
+                                        type="text"
+                                        autoFocus
+                                        value={inputValue}
+                                        onChange={(e) => setInputValue(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') confirmSignature(i);
+                                            if (e.key === 'Escape') cancelSignature();
+                                        }}
+                                        placeholder="Type your full name..."
+                                        className="w-full text-xl font-serif italic border-b-2 border-blue-500 bg-transparent outline-none pb-1 text-slate-900 placeholder:text-slate-300"
+                                    />
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => confirmSignature(i)}
+                                        className="px-3 py-1 bg-blue-600 text-white text-xs rounded-md font-medium hover:bg-blue-700 transition-colors"
+                                    >
+                                        Confirm
+                                    </button>
+                                    <button
+                                        onClick={cancelSignature}
+                                        className="px-3 py-1 bg-slate-100 text-slate-600 text-xs rounded-md font-medium hover:bg-slate-200 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                                <p className="text-xs uppercase tracking-wider text-slate-400">{field}</p>
+                            </div>
+                        ) : (
+                            // Empty state - click to sign
+                            <div
+                                onClick={() => handleSign(i)}
+                                className="cursor-pointer group"
+                            >
+                                <div className="h-20 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center gap-1 hover:border-blue-400 hover:bg-blue-50/50 transition-all print:border-transparent print:bg-transparent">
+                                    <PenLine className="w-5 h-5 text-slate-300 group-hover:text-blue-500 transition-colors print:hidden" />
+                                    <span className="text-[10px] uppercase tracking-wider text-slate-400 group-hover:text-blue-600 transition-colors print:hidden">
+                                        Click to sign
+                                    </span>
+                                </div>
+                                <div className="border-t border-slate-300 pt-2 mt-2">
+                                    <p className="text-xs uppercase tracking-wider text-slate-400">{field}</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+            <p className="text-[10px] text-slate-400 italic mt-8 print:hidden">
+                By signing above, all parties acknowledge and agree to the terms outlined in this document.
+            </p>
+        </div>
+    );
 }
