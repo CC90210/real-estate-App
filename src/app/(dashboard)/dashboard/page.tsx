@@ -1,11 +1,13 @@
 'use client'
 
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { QuickFind, useQuickFind } from '@/components/QuickFind'
 import {
     Building2,
     Home,
@@ -113,6 +115,7 @@ function CheckListItem({ title, description, href, completed, index, icon: Icon 
 export default function DashboardPage() {
     const { user, profile, company } = useAuth()
     const supabase = createClient()
+    const { open: quickFindOpen, setOpen: setQuickFindOpen } = useQuickFind()
 
     // Fetch dashboard stats with real trends
     const { data: stats, isLoading: statsLoading } = useQuery({
@@ -251,8 +254,14 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right duration-700">
-                    <Button variant="outline" className="h-12 px-6 rounded-2xl border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition-all bg-white/80 backdrop-blur-sm shadow-lg shadow-slate-100">
-                        <Search className="h-4 w-4 mr-2" /> Quick Find
+                    <Button
+                        variant="outline"
+                        onClick={() => setQuickFindOpen(true)}
+                        className="h-12 px-6 rounded-2xl border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition-all bg-white/80 backdrop-blur-sm shadow-lg shadow-slate-100"
+                    >
+                        <Search className="h-4 w-4 mr-2" />
+                        Quick Find
+                        <kbd className="ml-2 px-1.5 py-0.5 bg-slate-100 rounded text-[10px] font-mono hidden lg:inline">⌘K</kbd>
                     </Button>
                     <Button asChild className="h-12 px-8 rounded-2xl bg-gradient-to-r from-blue-600 via-blue-600 to-indigo-600 hover:from-blue-700 hover:via-blue-700 hover:to-indigo-700 text-white font-bold shadow-xl shadow-blue-500/25 transition-all hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-blue-500/30 border-0">
                         <Link href="/properties/new">
@@ -261,6 +270,9 @@ export default function DashboardPage() {
                     </Button>
                 </div>
             </div>
+
+            {/* Quick Find Modal */}
+            <QuickFind open={quickFindOpen} onOpenChange={setQuickFindOpen} />
 
             {/* Daily Quote Card */}
             <div className="animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '100ms' }}>

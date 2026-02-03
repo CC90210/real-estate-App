@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,15 +10,26 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { User, Shield, Bell, Palette, Save, Loader2, Sparkles, CheckCircle2, Lock, Eye, EyeOff } from 'lucide-react';
+import { User, Shield, Bell, Palette, Save, Loader2, Sparkles, CheckCircle2, Lock, Eye, EyeOff, Upload, Image as ImageIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+// Define accent colors with static classes - Tailwind can't use dynamic class names
+const accentColors = [
+    { name: 'blue', bg: 'bg-blue-600', ring: 'ring-blue-600', gradient: 'from-blue-900 to-blue-950', preview: 'bg-blue-500', text: 'text-blue-400', badge: 'bg-blue-600' },
+    { name: 'indigo', bg: 'bg-indigo-600', ring: 'ring-indigo-600', gradient: 'from-indigo-900 to-indigo-950', preview: 'bg-indigo-500', text: 'text-indigo-400', badge: 'bg-indigo-600' },
+    { name: 'emerald', bg: 'bg-emerald-600', ring: 'ring-emerald-600', gradient: 'from-emerald-900 to-emerald-950', preview: 'bg-emerald-500', text: 'text-emerald-400', badge: 'bg-emerald-600' },
+    { name: 'rose', bg: 'bg-rose-600', ring: 'ring-rose-600', gradient: 'from-rose-900 to-rose-950', preview: 'bg-rose-500', text: 'text-rose-400', badge: 'bg-rose-600' },
+    { name: 'slate', bg: 'bg-slate-600', ring: 'ring-slate-600', gradient: 'from-slate-800 to-slate-950', preview: 'bg-slate-500', text: 'text-slate-400', badge: 'bg-slate-600' },
+];
 
 export default function SettingsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [isUploadingLogo, setIsUploadingLogo] = useState(false);
     const [profile, setProfile] = useState<any>(null);
     const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'notifications' | 'branding'>('profile');
     const supabase = createClient();
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Security State
     const [showPasswords, setShowPasswords] = useState(false);
@@ -92,7 +103,6 @@ export default function SettingsPage() {
 
     const handleSavePreferences = async (newPrefs: any) => {
         setPreferences(newPrefs);
-        // Debounce or immediate save
         const { error } = await supabase
             .from('profiles')
             .update({ preferences: newPrefs, updated_at: new Date().toISOString() })
@@ -100,7 +110,6 @@ export default function SettingsPage() {
 
         if (error) {
             toast.error("Failed to save preferences");
-            // Revert state if needed (omitted for brevity)
         } else {
             toast.success("Preferences saved");
         }
@@ -118,6 +127,61 @@ export default function SettingsPage() {
         } else {
             toast.success("Branding updated");
         }
+    };
+
+    // Handle logo upload
+    const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        // Validate file
+        if (!file.type.startsWith('image/')) {
+            toast.error('Please select an image file');
+            return;
+        }
+
+        if (file.size > 2 * 1024 * 1024) {
+            toast.error('Image must be less than 2MB');
+            return;
+        }
+
+        setIsUploadingLogo(true);
+        try {
+            // Upload to Supabase Storage
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${profile.company_id}-logo-${Date.now()}.${fileExt}`;
+            const filePath = `company-logos/${fileName}`;
+
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('logos')
+                .upload(filePath, file, { upsert: true });
+
+            if (uploadError) {
+                // If bucket doesn't exist, try creating it or use a different approach
+                console.error('Upload error:', uploadError);
+                toast.error('Upload failed. Please try again.');
+                return;
+            }
+
+            // Get public URL
+            const { data: urlData } = supabase.storage
+                .from('logos')
+                .getPublicUrl(filePath);
+
+            const logoUrl = urlData.publicUrl;
+            setCompanyData({ ...companyData, logo_url: logoUrl });
+            toast.success('Logo uploaded successfully!');
+        } catch (error: any) {
+            console.error('Upload error:', error);
+            toast.error('Failed to upload logo');
+        } finally {
+            setIsUploadingLogo(false);
+        }
+    };
+
+    // Remove logo
+    const handleRemoveLogo = () => {
+        setCompanyData({ ...companyData, logo_url: '' });
     };
 
     // Save company branding to the COMPANIES table (for document generation)
@@ -190,6 +254,10 @@ export default function SettingsPage() {
         }
     };
 
+    // Get accent color config
+    const getAccentColor = (name: string) => accentColors.find(c => c.name === name) || accentColors[0];
+    const activeAccent = getAccentColor(branding.accent);
+
     if (isLoading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
@@ -200,7 +268,7 @@ export default function SettingsPage() {
     }
 
     return (
-        <div className="max-w-6xl mx-auto space-y-12 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+        <div className="max-w-6xl mx-auto space-y-12 pb-20 p-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
                     <div className="flex items-center gap-2 mb-3">
@@ -495,15 +563,59 @@ export default function SettingsPage() {
                                                 placeholder="123 Main Street, Suite 100, Toronto, ON M5V 1A1"
                                             />
                                         </div>
+
+                                        {/* Logo Upload Section */}
                                         <div className="space-y-3 md:col-span-2">
-                                            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-1">Logo URL (Optional)</Label>
-                                            <Input
-                                                value={companyData.logo_url}
-                                                onChange={(e) => setCompanyData({ ...companyData, logo_url: e.target.value })}
-                                                className="h-14 rounded-2xl bg-white border-blue-100 focus:ring-4 focus:ring-blue-100 px-6 font-mono text-sm"
-                                                placeholder="https://yoursite.com/logo.png"
+                                            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-1">Company Logo</Label>
+                                            <input
+                                                ref={fileInputRef}
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleLogoUpload}
+                                                className="hidden"
                                             />
-                                            <p className="text-[10px] text-slate-400 ml-1">Upload your logo to a service like Imgur, Cloudinary, or your website and paste the URL here.</p>
+
+                                            {companyData.logo_url ? (
+                                                <div className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-blue-100">
+                                                    <div className="h-16 w-16 rounded-xl bg-slate-100 flex items-center justify-center overflow-hidden">
+                                                        <img
+                                                            src={companyData.logo_url}
+                                                            alt="Company Logo"
+                                                            className="h-full w-full object-contain"
+                                                        />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <p className="font-bold text-slate-900 text-sm">Logo uploaded</p>
+                                                        <p className="text-xs text-slate-400 truncate max-w-[200px]">{companyData.logo_url.split('/').pop()}</p>
+                                                    </div>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={handleRemoveLogo}
+                                                        className="text-rose-500 hover:text-rose-600 hover:bg-rose-50"
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                    disabled={isUploadingLogo}
+                                                    className="w-full h-20 rounded-2xl border-2 border-dashed border-blue-200 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all flex flex-col items-center justify-center gap-2"
+                                                >
+                                                    {isUploadingLogo ? (
+                                                        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                                                    ) : (
+                                                        <>
+                                                            <Upload className="h-6 w-6 text-blue-500" />
+                                                            <span className="text-xs font-bold text-slate-600">
+                                                                Click to upload logo (PNG, JPG up to 2MB)
+                                                            </span>
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            )}
                                         </div>
                                     </div>
 
@@ -522,12 +634,15 @@ export default function SettingsPage() {
                                     <div className="space-y-6">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Workspace Accent</p>
                                         <div className="flex gap-4">
-                                            {['blue', 'indigo', 'slate', 'emerald', 'rose'].map((color) => (
-                                                <ColorBall
-                                                    key={color}
-                                                    color={`bg-${color}-600`}
-                                                    active={branding.accent === color}
-                                                    onClick={() => handleSaveBranding({ ...branding, accent: color })}
+                                            {accentColors.map((color) => (
+                                                <button
+                                                    key={color.name}
+                                                    onClick={() => handleSaveBranding({ ...branding, accent: color.name })}
+                                                    className={cn(
+                                                        "w-10 h-10 rounded-full cursor-pointer ring-offset-2 transition-all",
+                                                        color.bg,
+                                                        branding.accent === color.name ? `ring-4 ${color.ring} scale-110` : "hover:scale-110 opacity-70 hover:opacity-100"
+                                                    )}
                                                 />
                                             ))}
                                         </div>
@@ -546,7 +661,6 @@ export default function SettingsPage() {
                                                 <span className={cn("text-[10px] font-black uppercase tracking-widest", branding.theme === 'light' ? "text-blue-600" : "text-slate-400")}>Dynamic Light</span>
                                             </div>
                                             <div
-                                                // Functionality placeholder for Night Mode
                                                 className="flex-1 p-4 bg-slate-900 rounded-2xl border-2 border-slate-800 flex flex-col items-center gap-2 cursor-pointer opacity-50"
                                             >
                                                 <Lock className="w-5 h-5 text-slate-600" />
@@ -556,22 +670,23 @@ export default function SettingsPage() {
                                     </div>
                                 </div>
 
+                                {/* Fixed Signature Branding Preview */}
                                 <div className={cn(
-                                    "p-10 rounded-[2.5rem] text-white relative overflow-hidden shadow-2xl transition-all duration-500",
-                                    `bg-gradient-to-br from-${branding.accent === 'slate' ? 'gray' : branding.accent}-900 to-${branding.accent === 'slate' ? 'black' : branding.accent}-950`
+                                    "p-10 rounded-[2.5rem] relative overflow-hidden shadow-2xl transition-all duration-500 bg-gradient-to-br",
+                                    activeAccent.gradient
                                 )}>
-                                    <div className={cn("absolute top-0 right-0 w-64 h-64 rounded-full blur-[100px] opacity-20", `bg-${branding.accent}-500`)} />
-                                    <h3 className={cn("text-[10px] font-black uppercase tracking-widest mb-6", `text-${branding.accent}-400`)}>Signature Branding Preview</h3>
-                                    <div className="p-8 bg-white/5 border border-white/10 rounded-3xl backdrop-blur-xl">
+                                    <div className={cn("absolute top-0 right-0 w-64 h-64 rounded-full blur-[100px] opacity-20", activeAccent.preview)} />
+                                    <h3 className={cn("text-[10px] font-black uppercase tracking-widest mb-6", activeAccent.text)}>Signature Branding Preview</h3>
+                                    <div className="p-8 bg-white/10 border border-white/20 rounded-3xl backdrop-blur-xl">
                                         <div className="flex flex-col gap-4">
-                                            <div className="flex justify-between items-end border-b border-white/10 pb-6">
+                                            <div className="flex justify-between items-end border-b border-white/20 pb-6">
                                                 <div>
                                                     <p className="text-3xl font-serif italic text-white">{profile?.full_name || 'Your Professional Name'}</p>
-                                                    <Badge className={cn("text-white font-black uppercase text-[10px] tracking-widest px-3 py-1 mt-3", `bg-${branding.accent}-600`)}>Verified {profile?.role || 'Agent'}</Badge>
+                                                    <Badge className={cn("text-white font-black uppercase text-[10px] tracking-widest px-3 py-1 mt-3", activeAccent.badge)}>Verified {profile?.role || 'Agent'}</Badge>
                                                 </div>
-                                                <CheckCircle2 className="w-10 h-10 text-white opacity-20" />
+                                                <CheckCircle2 className="w-10 h-10 text-white opacity-30" />
                                             </div>
-                                            <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-white/30 pt-2">
+                                            <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-[0.3em] text-white/40 pt-2">
                                                 <p>PropFlow Intelligence</p>
                                                 <p>© 2026 Platform Secured</p>
                                             </div>
@@ -621,18 +736,5 @@ function ToggleSection({ title, description, enabled, onToggle }: any) {
             </div>
             <Switch checked={enabled} onCheckedChange={onToggle} />
         </div>
-    );
-}
-
-function ColorBall({ color, active, onClick }: any) {
-    return (
-        <div
-            onClick={onClick}
-            className={cn(
-                "w-10 h-10 rounded-full cursor-pointer ring-offset-2 transition-all",
-                color,
-                active ? "ring-4 ring-blue-600 scale-110" : "hover:scale-110 opacity-70 hover:opacity-100"
-            )}
-        />
     );
 }
