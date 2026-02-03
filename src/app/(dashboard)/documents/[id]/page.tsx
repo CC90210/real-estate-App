@@ -179,20 +179,9 @@ export default function DocumentViewPage() {
 
 function RenderSection({ section, company }: { section: any; company: any }) {
     switch (section.type) {
+        // Header is now rendered by the document viewer's branded header - skip duplicate
         case 'header':
-            return (
-                <div className="flex justify-between items-start mb-12 border-b border-slate-900/10 pb-8">
-                    <div>
-                        {section.content.companyLogo && (
-                            <img src={section.content.companyLogo} alt="Logo" className="h-12 mb-3" />
-                        )}
-                        <h1 className="text-2xl font-bold tracking-tight text-slate-900 uppercase">{section.content.companyName}</h1>
-                    </div>
-                    <div className="text-right text-xs text-slate-400 space-y-1">
-                        <p>{section.content.documentDate}</p>
-                    </div>
-                </div>
-            );
+            return null;
 
         case 'hero':
             return (
@@ -329,13 +318,9 @@ function RenderSection({ section, company }: { section: any; company: any }) {
                 </div>
             );
 
+        // Footer is now rendered by the document viewer's branded footer - skip duplicate
         case 'footer':
-            return (
-                <div className="mt-12 pt-6 border-t border-slate-100 text-xs text-slate-400 flex justify-between">
-                    <p>{section.content.companyName}</p>
-                    <p>{section.content.phone} | {section.content.email}</p>
-                </div>
-            );
+            return null;
 
         default:
             return null;

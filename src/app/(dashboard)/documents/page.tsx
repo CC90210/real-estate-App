@@ -385,69 +385,175 @@ export default function DocumentsPage() {
 
                                 {/* --- Dynamic Custom Fields --- */}
 
-                                {/* Showing Sheet Fields */}
+                                {/* Showing Sheet Fields - COMPREHENSIVE */}
                                 {selectedType === 'showing_sheet' && (
                                     <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Showing Notes</label>
-                                            <textarea
-                                                className="w-full rounded-xl border border-slate-200 bg-white/50 px-4 py-3 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all min-h-[100px] resize-none"
-                                                placeholder="e.g. emphasize the natural light in the living room..."
-                                                value={customFields.notes || ''}
-                                                onChange={e => setCustomFields({ ...customFields, notes: e.target.value })}
-                                            />
+                                        {/* Showing Schedule */}
+                                        <div className="bg-blue-50 rounded-xl p-4 space-y-3">
+                                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Showing Schedule</p>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-bold text-slate-500 uppercase">Date *</label>
+                                                    <input
+                                                        type="date"
+                                                        className="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                                        value={customFields.showingDate || ''}
+                                                        onChange={e => setCustomFields({ ...customFields, showingDate: e.target.value })}
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-bold text-slate-500 uppercase">Time *</label>
+                                                    <input
+                                                        type="time"
+                                                        className="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                                        value={customFields.showingTime || ''}
+                                                        onChange={e => setCustomFields({ ...customFields, showingTime: e.target.value })}
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Access Instructions</label>
-                                            <input
-                                                className="flex h-12 w-full rounded-xl border border-slate-200 bg-white/50 px-4 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                                placeholder="e.g. Lockbox code 1234..."
-                                                value={customFields.accessNotes || ''}
-                                                onChange={e => setCustomFields({ ...customFields, accessNotes: e.target.value })}
-                                            />
+
+                                        {/* Client Information */}
+                                        <div className="bg-slate-50 rounded-xl p-4 space-y-3">
+                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Client Details</p>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <input
+                                                    className="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                                    placeholder="Client Name"
+                                                    value={customFields.clientName || ''}
+                                                    onChange={e => setCustomFields({ ...customFields, clientName: e.target.value })}
+                                                />
+                                                <input
+                                                    type="tel"
+                                                    className="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                                    placeholder="Client Phone"
+                                                    value={customFields.clientPhone || ''}
+                                                    onChange={e => setCustomFields({ ...customFields, clientPhone: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Access & Notes */}
+                                        <div className="space-y-3">
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Access Instructions (Confidential)</label>
+                                                <input
+                                                    className="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                                    placeholder="e.g. Lockbox code #1234, key at office..."
+                                                    value={customFields.accessNotes || ''}
+                                                    onChange={e => setCustomFields({ ...customFields, accessNotes: e.target.value })}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Key Talking Points</label>
+                                                <textarea
+                                                    className="w-full rounded-xl border border-slate-200 bg-white/50 px-4 py-3 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all min-h-[80px] resize-none"
+                                                    placeholder="e.g. Emphasize natural lighting, new appliances, proximity to transit..."
+                                                    value={customFields.notes || ''}
+                                                    onChange={e => setCustomFields({ ...customFields, notes: e.target.value })}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 )}
 
-                                {/* Lease Proposal Fields */}
+                                {/* Lease Proposal Fields - COMPREHENSIVE */}
                                 {selectedType === 'lease_proposal' && (
                                     <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Tenant Name *</label>
+                                        {/* Tenant Information */}
+                                        <div className="bg-slate-50 rounded-xl p-4 space-y-3">
+                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Tenant Details</p>
                                             <input
-                                                className="flex h-12 w-full rounded-xl border border-slate-200 bg-white/50 px-4 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
-                                                placeholder="e.g. John Doe"
+                                                className="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                                placeholder="Full Legal Name *"
                                                 value={customFields.tenantName || ''}
                                                 onChange={e => setCustomFields({ ...customFields, tenantName: e.target.value })}
                                             />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Offer Rent ($)</label>
+                                            <div className="grid grid-cols-2 gap-3">
                                                 <input
-                                                    type="number"
-                                                    className="flex h-12 w-full rounded-xl border border-slate-200 bg-white/50 px-4 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
-                                                    placeholder="2500"
-                                                    value={customFields.offerRent || ''}
-                                                    onChange={e => setCustomFields({ ...customFields, offerRent: e.target.value })}
+                                                    type="email"
+                                                    className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                                    placeholder="Email Address"
+                                                    value={customFields.tenantEmail || ''}
+                                                    onChange={e => setCustomFields({ ...customFields, tenantEmail: e.target.value })}
                                                 />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Term (Months)</label>
                                                 <input
-                                                    type="number"
-                                                    className="flex h-12 w-full rounded-xl border border-slate-200 bg-white/50 px-4 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
-                                                    placeholder="12"
-                                                    value={customFields.leaseTerm || ''}
-                                                    onChange={e => setCustomFields({ ...customFields, leaseTerm: e.target.value })}
+                                                    type="tel"
+                                                    className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                                    placeholder="Phone Number"
+                                                    value={customFields.tenantPhone || ''}
+                                                    onChange={e => setCustomFields({ ...customFields, tenantPhone: e.target.value })}
                                                 />
                                             </div>
                                         </div>
+
+                                        {/* Financial Terms */}
+                                        <div className="bg-emerald-50 rounded-xl p-4 space-y-3">
+                                            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Financial Terms</p>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-bold text-slate-500 uppercase">Monthly Rent *</label>
+                                                    <div className="relative">
+                                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                                                        <input
+                                                            type="number"
+                                                            className="flex h-12 w-full rounded-xl border border-slate-200 bg-white pl-8 pr-4 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                                            placeholder="2500"
+                                                            value={customFields.offerRent || ''}
+                                                            onChange={e => setCustomFields({ ...customFields, offerRent: e.target.value })}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-bold text-slate-500 uppercase">Security Deposit *</label>
+                                                    <div className="relative">
+                                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                                                        <input
+                                                            type="number"
+                                                            className="flex h-12 w-full rounded-xl border border-slate-200 bg-white pl-8 pr-4 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                                            placeholder="2500"
+                                                            value={customFields.securityDeposit || ''}
+                                                            onChange={e => setCustomFields({ ...customFields, securityDeposit: e.target.value })}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-bold text-slate-500 uppercase">Lease Term</label>
+                                                    <Select
+                                                        value={customFields.leaseTerm || '12'}
+                                                        onValueChange={(v) => setCustomFields({ ...customFields, leaseTerm: v })}
+                                                    >
+                                                        <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-white font-medium">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="rounded-xl">
+                                                            <SelectItem value="6">6 Months</SelectItem>
+                                                            <SelectItem value="12">12 Months</SelectItem>
+                                                            <SelectItem value="18">18 Months</SelectItem>
+                                                            <SelectItem value="24">24 Months</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-bold text-slate-500 uppercase">Proposed Start Date *</label>
+                                                    <input
+                                                        type="date"
+                                                        className="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                                        value={customFields.startDate || ''}
+                                                        onChange={e => setCustomFields({ ...customFields, startDate: e.target.value })}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Special Conditions */}
                                         <div className="space-y-2">
                                             <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Special Conditions</label>
                                             <textarea
                                                 className="w-full rounded-xl border border-slate-200 bg-white/50 px-4 py-3 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all min-h-[80px] resize-none"
-                                                placeholder="e.g. Pets allowed with deposit..."
+                                                placeholder="e.g. Pets allowed with deposit, parking included, utilities..."
                                                 value={customFields.conditions || ''}
                                                 onChange={e => setCustomFields({ ...customFields, conditions: e.target.value })}
                                             />
@@ -455,40 +561,92 @@ export default function DocumentsPage() {
                                     </div>
                                 )}
 
-                                {/* Application Summary Fields */}
+                                {/* Application Summary Fields - COMPREHENSIVE */}
                                 {selectedType === 'application_summary' && (
                                     <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Recommendation</label>
-                                            <Select
-                                                value={customFields.recommendation}
-                                                onValueChange={(v) => setCustomFields({ ...customFields, recommendation: v })}
-                                            >
-                                                <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-white/50 font-medium">
-                                                    <SelectValue placeholder="Select Status" />
-                                                </SelectTrigger>
-                                                <SelectContent className="rounded-xl">
-                                                    <SelectItem value="Strong Approve" className="rounded-lg">✅ Strong Approve</SelectItem>
-                                                    <SelectItem value="Approve" className="rounded-lg">👍 Approve</SelectItem>
-                                                    <SelectItem value="Conditional" className="rounded-lg">⚠️ Conditional</SelectItem>
-                                                    <SelectItem value="Deny" className="rounded-lg">❌ Deny</SelectItem>
-                                                </SelectContent>
-                                            </Select>
+                                        {/* Verification Options */}
+                                        <div className="bg-violet-50 rounded-xl p-4 space-y-3">
+                                            <p className="text-[10px] font-black text-violet-600 uppercase tracking-widest">Include in Report</p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {['Credit Score', 'Income Verification', 'Background Check', 'Rental History', 'Employment'].map(item => (
+                                                    <button
+                                                        key={item}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const current = customFields.includeItems || [];
+                                                            if (current.includes(item)) {
+                                                                setCustomFields({ ...customFields, includeItems: current.filter((i: string) => i !== item) });
+                                                            } else {
+                                                                setCustomFields({ ...customFields, includeItems: [...current, item] });
+                                                            }
+                                                        }}
+                                                        className={cn(
+                                                            "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                                                            (customFields.includeItems || []).includes(item)
+                                                                ? "bg-violet-600 text-white"
+                                                                : "bg-white border border-violet-200 text-violet-600 hover:bg-violet-100"
+                                                        )}
+                                                    >
+                                                        {item}
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
+
+                                        {/* Recommendation & Risk */}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Recommendation *</label>
+                                                <Select
+                                                    value={customFields.recommendation}
+                                                    onValueChange={(v) => setCustomFields({ ...customFields, recommendation: v })}
+                                                >
+                                                    <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-white font-medium">
+                                                        <SelectValue placeholder="Select..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl">
+                                                        <SelectItem value="Strong Approve" className="rounded-lg">✅ Strong Approve</SelectItem>
+                                                        <SelectItem value="Approve" className="rounded-lg">👍 Approve</SelectItem>
+                                                        <SelectItem value="Conditional" className="rounded-lg">⚠️ Conditional</SelectItem>
+                                                        <SelectItem value="Deny" className="rounded-lg">❌ Deny</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Risk Level</label>
+                                                <Select
+                                                    value={customFields.riskLevel}
+                                                    onValueChange={(v) => setCustomFields({ ...customFields, riskLevel: v })}
+                                                >
+                                                    <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-white font-medium">
+                                                        <SelectValue placeholder="Select..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl">
+                                                        <SelectItem value="Low">🟢 Low Risk</SelectItem>
+                                                        <SelectItem value="Medium">🟡 Medium Risk</SelectItem>
+                                                        <SelectItem value="High">🔴 High Risk</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+
+                                        {/* Risk Factors */}
                                         <div className="space-y-2">
-                                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Risk Factors</label>
+                                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Risk Factors (if any)</label>
                                             <input
-                                                className="flex h-12 w-full rounded-xl border border-slate-200 bg-white/50 px-4 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all"
-                                                placeholder="e.g. Low credit score, irregular income..."
+                                                className="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all"
+                                                placeholder="e.g. Low credit score, irregular income history..."
                                                 value={customFields.riskFactors || ''}
                                                 onChange={e => setCustomFields({ ...customFields, riskFactors: e.target.value })}
                                             />
                                         </div>
+
+                                        {/* Agent Notes */}
                                         <div className="space-y-2">
                                             <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Internal Agent Notes</label>
                                             <textarea
-                                                className="w-full rounded-xl border border-slate-200 bg-white/50 px-4 py-3 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all min-h-[100px] resize-none"
-                                                placeholder="e.g. Verified income via paystubs, seems reliable..."
+                                                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all min-h-[80px] resize-none"
+                                                placeholder="e.g. Verified income via paystubs, spoke with previous landlord..."
                                                 value={customFields.agentNote || ''}
                                                 onChange={e => setCustomFields({ ...customFields, agentNote: e.target.value })}
                                             />
@@ -496,34 +654,72 @@ export default function DocumentsPage() {
                                     </div>
                                 )}
 
-                                {/* Property Summary (Marketing) Fields */}
+                                {/* Property Summary (Marketing) Fields - COMPREHENSIVE */}
                                 {selectedType === 'property_summary' && (
                                     <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        {/* Marketing Tone */}
+                                        <div className="bg-amber-50 rounded-xl p-4 space-y-3">
+                                            <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Marketing Style</p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {['Luxury', 'Modern', 'Family-Friendly', 'Investment', 'Urban'].map(style => (
+                                                    <button
+                                                        key={style}
+                                                        type="button"
+                                                        onClick={() => setCustomFields({ ...customFields, marketingStyle: style })}
+                                                        className={cn(
+                                                            "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                                                            customFields.marketingStyle === style
+                                                                ? "bg-amber-600 text-white"
+                                                                : "bg-white border border-amber-200 text-amber-700 hover:bg-amber-100"
+                                                        )}
+                                                    >
+                                                        {style}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Target & Availability */}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Target Audience</label>
+                                                <input
+                                                    className="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                                                    placeholder="e.g. Young Professionals, Families..."
+                                                    value={customFields.targetAudience || ''}
+                                                    onChange={e => setCustomFields({ ...customFields, targetAudience: e.target.value })}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Available Date</label>
+                                                <input
+                                                    type="date"
+                                                    className="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                                                    value={customFields.availableDate || ''}
+                                                    onChange={e => setCustomFields({ ...customFields, availableDate: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Highlight Features */}
                                         <div className="space-y-2">
-                                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Target Audience</label>
-                                            <input
-                                                className="flex h-12 w-full rounded-xl border border-slate-200 bg-white/50 px-4 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
-                                                placeholder="e.g. Young Professionals, Families..."
-                                                value={customFields.targetAudience || ''}
-                                                onChange={e => setCustomFields({ ...customFields, targetAudience: e.target.value })}
+                                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Key Features to Highlight</label>
+                                            <textarea
+                                                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all min-h-[80px] resize-none"
+                                                placeholder="e.g. Newly renovated kitchen, rooftop access, proximity to transit, in-unit laundry..."
+                                                value={customFields.highlightFeatures || ''}
+                                                onChange={e => setCustomFields({ ...customFields, highlightFeatures: e.target.value })}
                                             />
                                         </div>
+
+                                        {/* Call to Action */}
                                         <div className="space-y-2">
                                             <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Call To Action</label>
                                             <input
-                                                className="flex h-12 w-full rounded-xl border border-slate-200 bg-white/50 px-4 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
-                                                placeholder="e.g. Schedule a private viewing today"
+                                                className="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                                                placeholder="e.g. Schedule a private viewing today!"
                                                 value={customFields.callToAction || ''}
                                                 onChange={e => setCustomFields({ ...customFields, callToAction: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Highlight Features</label>
-                                            <textarea
-                                                className="w-full rounded-xl border border-slate-200 bg-white/50 px-4 py-3 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all min-h-[100px] resize-none"
-                                                placeholder="e.g. Newly renovated kitchen, rooftop access, proximity to subway..."
-                                                value={customFields.highlightFeatures || ''}
-                                                onChange={e => setCustomFields({ ...customFields, highlightFeatures: e.target.value })}
                                             />
                                         </div>
                                     </div>
