@@ -10,12 +10,15 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { FilePlus, Loader2, AlertTriangle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import { useAccentColor } from '@/lib/hooks/useAccentColor';
+import { cn } from '@/lib/utils';
 
 export function NewApplicationModal({ propertyId }: { propertyId: string }) {
     const [open, setOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [property, setProperty] = useState<any>(null);
     const supabase = createClient();
+    const { colors } = useAccentColor();
 
     // Form State
     const [formData, setFormData] = useState({
@@ -78,9 +81,9 @@ export function NewApplicationModal({ propertyId }: { propertyId: string }) {
             <DialogTrigger asChild>
                 <Button
                     variant="outline"
-                    className="rounded-full bg-white hover:bg-slate-50 border-slate-200"
+                    className={cn("rounded-full bg-white transition-all", `hover:${colors.bgLight}`, colors.border)}
                 >
-                    <FilePlus className="w-4 h-4 mr-2" />
+                    <FilePlus className={cn("w-4 h-4 mr-2", colors.text)} />
                     New Application
                 </Button>
             </DialogTrigger>
@@ -184,7 +187,11 @@ export function NewApplicationModal({ propertyId }: { propertyId: string }) {
 
                 <div className="flex justify-end gap-2">
                     <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-                    <Button onClick={handleSubmit} disabled={isLoading}>
+                    <Button
+                        onClick={handleSubmit}
+                        disabled={isLoading}
+                        className={cn("text-white", colors.bg, `hover:${colors.bgHover}`)}
+                    >
                         {isLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                         Create Application
                     </Button>

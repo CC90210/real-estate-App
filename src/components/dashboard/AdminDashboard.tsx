@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/useAuth'
+import { useAccentColor } from '@/lib/hooks/useAccentColor'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -26,6 +27,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatDistanceToNow, format } from 'date-fns'
+import { cn } from '@/lib/utils'
 import {
     StatCard,
     QuickActionCard,
@@ -44,6 +46,7 @@ interface AdminDashboardProps {
 export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
     const { user, profile, company } = useAuth()
     const supabase = createClient()
+    const { colors } = useAccentColor()
 
     // Fetch dashboard stats with real trends
     const { data: stats, isLoading: statsLoading } = useQuery({
@@ -171,7 +174,7 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                         <span>{today}</span>
                     </div>
                     <h1 className="text-4xl lg:text-5xl font-black tracking-tight text-slate-900 animate-in fade-in slide-in-from-left duration-700">
-                        {getGreeting()}, <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent">
+                        {getGreeting()}, <span className={cn("bg-gradient-to-r bg-clip-text text-transparent", colors.gradient)}>
                             {profile?.full_name?.split(' ')[0] || 'Admin'}
                         </span>
                     </h1>
@@ -191,7 +194,7 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                         Quick Find
                         <kbd className="ml-2 px-1.5 py-0.5 bg-slate-100 rounded text-[10px] font-mono hidden lg:inline">⌘K</kbd>
                     </Button>
-                    <Button asChild className="h-12 px-8 rounded-2xl bg-gradient-to-r from-blue-600 via-blue-600 to-indigo-600 hover:from-blue-700 hover:via-blue-700 hover:to-indigo-700 text-white font-bold shadow-xl shadow-blue-500/25 transition-all hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-blue-500/30 border-0">
+                    <Button asChild className={cn("h-12 px-8 rounded-2xl text-white font-bold shadow-xl transition-all hover:-translate-y-0.5 hover:shadow-2xl border-0 bg-gradient-to-r", colors.gradient, colors.shadow)}>
                         <Link href="/properties/new">
                             <Plus className="h-5 w-5 mr-2" /> Add Property
                         </Link>
@@ -201,7 +204,7 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
 
             {/* Daily Quote Card */}
             <div className="animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '100ms' }}>
-                <div className="relative overflow-hidden p-6 bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 rounded-3xl shadow-2xl shadow-blue-500/20">
+                <div className={cn("relative overflow-hidden p-6 rounded-3xl shadow-2xl bg-gradient-to-r", colors.gradient, colors.shadow)}>
                     <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
                     <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
                     <div className="relative flex items-start gap-4">
@@ -249,7 +252,7 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                     value={stats?.teamMembers || 0}
                     subtitle="Active users"
                     icon={Users}
-                    gradient="from-violet-500 to-violet-600"
+                    gradient={colors.gradient}
                     href="/settings"
                 />
             </div>
@@ -345,7 +348,7 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                 <Card className="lg:col-span-3 rounded-[2rem] border-slate-100/50 bg-white/70 backdrop-blur-xl shadow-xl shadow-slate-200/30 overflow-hidden">
                     <CardHeader className="p-6 pb-4 flex flex-row items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200">
+                            <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br", colors.gradient, colors.shadow)}>
                                 <ClipboardList className="h-5 w-5 text-white" />
                             </div>
                             <div>
@@ -353,7 +356,7 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                                 <p className="text-sm text-slate-500">Latest tenant applications</p>
                             </div>
                         </div>
-                        <Button variant="ghost" size="sm" asChild className="font-bold text-indigo-600 hover:bg-indigo-50 rounded-xl">
+                        <Button variant="ghost" size="sm" asChild className={cn("font-bold rounded-xl", colors.text, `hover:${colors.bgLight}`)}>
                             <Link href="/applications">View All <ArrowUpRight className="h-4 w-4 ml-1" /></Link>
                         </Button>
                     </CardHeader>
@@ -408,7 +411,7 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                 <Card className="lg:col-span-2 rounded-[2rem] border-slate-100/50 bg-white/70 backdrop-blur-xl shadow-xl shadow-slate-200/30 overflow-hidden flex flex-col">
                     <CardHeader className="p-6 pb-4">
                         <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-lg shadow-violet-200">
+                            <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br", colors.gradient, colors.shadow)}>
                                 <Activity className="h-5 w-5 text-white" />
                             </div>
                             <div>
@@ -423,18 +426,20 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                                 <div className="absolute left-[1.1rem] top-3 bottom-3 w-0.5 bg-gradient-to-b from-violet-200 via-slate-200 to-transparent rounded-full" />
                                 {recentActivity.map((activity) => (
                                     <div key={activity.id} className="relative pl-10 group">
-                                        <div className="absolute left-0 top-0 h-9 w-9 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center z-10 transition-all group-hover:scale-110 group-hover:shadow-md group-hover:border-violet-200">
+                                        <div className="absolute left-0 top-0 h-9 w-9 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center z-10 transition-all group-hover:scale-110 group-hover:shadow-md" style={{ borderColor: `var(--accent-primary)` }}>
                                             {activity.user?.avatar_url ? (
                                                 <img src={activity.user.avatar_url} className="h-7 w-7 rounded-lg object-cover" />
                                             ) : (
-                                                <span className="text-xs font-black text-violet-600">{activity.user?.full_name?.[0] || '?'}</span>
+                                                <span className="text-xs font-black" style={{ color: colors.primary }}>{activity.user?.full_name?.[0] || '?'}</span>
                                             )}
                                         </div>
                                         <div className="space-y-1">
                                             <p className="text-sm leading-snug">
                                                 <span className="font-bold text-slate-900">{activity.user?.full_name || 'System'}</span>
                                                 <span className="text-slate-500"> {formatAction(activity.action)} </span>
-                                                <span className="font-semibold text-violet-600">{activity.entity_type}</span>
+                                                <span className="font-semibold" style={{ color: colors.primary }}>
+                                                    {activity.details?.title || activity.entity_type}
+                                                </span>
                                             </p>
                                             <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
                                                 {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}

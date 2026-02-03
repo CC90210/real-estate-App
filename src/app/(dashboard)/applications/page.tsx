@@ -39,11 +39,13 @@ import { formatDistanceToNow } from 'date-fns'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { useAccentColor } from '@/lib/hooks/useAccentColor'
 
 export default function ApplicationsPage() {
     const supabase = createClient()
     const queryClient = useQueryClient()
     const { companyId, isLoading: isCompanyLoading } = useCompanyId()
+    const { colors } = useAccentColor()
     const [searchTerm, setSearchTerm] = useState('')
     const [statusFilter, setStatusFilter] = useState('all')
 
@@ -181,7 +183,7 @@ export default function ApplicationsPage() {
                         Manage tenant applications ({filteredApplications?.length || 0} total)
                     </p>
                 </div>
-                <Button asChild className="h-12 px-6 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-bold">
+                <Button asChild className={cn("h-12 px-6 rounded-2xl text-white font-bold shadow-lg transition-all hover:-translate-y-0.5", colors.bg, `hover:${colors.bgHover}`, colors.shadow)}>
                     <Link href="/applications/new">
                         <User className="h-4 w-4 mr-2" /> Add Application
                     </Link>
@@ -192,12 +194,12 @@ export default function ApplicationsPage() {
             <Card className="bg-white/80 backdrop-blur-xl border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 p-6">
                 <div className="flex flex-col sm:flex-row gap-6">
                     <div className="relative flex-1 group">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                        <Search className={cn("absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 transition-colors", `group-focus-within:${colors.text}`)} />
                         <Input
                             placeholder="Search by name or email..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="h-14 pl-12 bg-slate-50 border-transparent focus:bg-white focus:border-indigo-400 transition-all rounded-xl font-medium"
+                            className={cn("h-14 pl-12 bg-slate-50 border-transparent focus:bg-white transition-all rounded-xl font-medium", `focus:${colors.border}`)}
                         />
                     </div>
                     <Select value={statusFilter} onValueChange={setStatusFilter}>

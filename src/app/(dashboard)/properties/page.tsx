@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { cn } from '@/lib/utils';
+import { useAccentColor } from '@/lib/hooks/useAccentColor';
 import { PropertyImport } from '@/components/properties/PropertyImport';
 import { Upload } from 'lucide-react';
 
@@ -23,6 +24,7 @@ export default function PropertiesPage() {
     const { data: properties, isLoading, error } = useProperties();
     const { data: landlords } = useLandlords();
     const router = useRouter();
+    const { colors } = useAccentColor();
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [bedsFilter, setBedsFilter] = useState('all');
@@ -119,17 +121,19 @@ export default function PropertiesPage() {
                         Strategic oversight of your property portfolio ({filteredProperties?.length || 0} units)
                     </p>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => setImportDialogOpen(true)} className="h-14 px-6 rounded-2xl border-slate-200 text-slate-600 font-bold hover:bg-slate-50">
-                        <Upload className="w-5 h-5 mr-2" />
-                        Import
+                <div className="flex items-center gap-4 animate-in fade-in slide-in-from-right duration-700">
+                    <Button
+                        onClick={() => setImportDialogOpen(true)}
+                        className={cn("h-14 px-8 rounded-2xl text-white font-bold shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl border-0", colors.bg, `hover:${colors.bgHover}`, colors.shadow)}
+                    >
+                        <Upload className="w-5 h-5 mr-3" />
+                        Tactical Import
                     </Button>
-                    <Link href="/properties/new">
-                        <Button className="h-14 px-8 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-xl shadow-blue-500/20 gap-2 font-bold transition-all hover:scale-105 active:scale-95">
-                            <Plus className="w-5 h-5" />
-                            Provision Asset
-                        </Button>
-                    </Link>
+                    <Button asChild className={cn("h-14 px-8 rounded-2xl text-white font-bold shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl border-0", colors.bg, `hover:${colors.bgHover}`, colors.shadow)}>
+                        <Link href="/properties/new">
+                            <Plus className="h-5 w-5 mr-3" /> Register Asset
+                        </Link>
+                    </Button>
                 </div>
             </div>
             <PropertyImport open={importDialogOpen} onOpenChange={setImportDialogOpen} />
@@ -207,7 +211,7 @@ export default function PropertiesPage() {
                                 transition={{ duration: 0.4, delay: index * 0.05 }}
                             >
                                 <Link href={`/properties/${property.id}`} className="group block">
-                                    <Card className="relative bg-white rounded-[2.5rem] border-slate-100/60 shadow-lg shadow-slate-200/50 hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 overflow-hidden h-full flex flex-col hover:-translate-y-2">
+                                    <Card className={cn("relative bg-white rounded-[2.5rem] border-slate-100/60 shadow-lg shadow-slate-200/50 transition-all duration-500 overflow-hidden h-full flex flex-col hover:-translate-y-2 hover:shadow-xl", `hover:shadow-${colors.primary}/10`)}>
 
                                         <div className="relative h-56 bg-slate-100 overflow-hidden">
                                             {property.photos?.[0] ? (
@@ -239,11 +243,11 @@ export default function PropertiesPage() {
                                         <CardContent className="p-8 flex-1 flex flex-col">
                                             <div className="flex justify-between items-start mb-4">
                                                 <div className="space-y-1">
-                                                    <h3 className="font-black text-xl text-slate-900 group-hover:text-blue-600 transition-colors tracking-tight line-clamp-1">
+                                                    <h3 className={cn("font-black text-xl text-slate-900 transition-colors tracking-tight line-clamp-1", `group-hover:${colors.text}`)}>
                                                         {property.address}
                                                     </h3>
                                                     <div className="flex items-center text-slate-400 font-bold text-[10px] uppercase tracking-widest">
-                                                        <MapPin className="w-3 h-3 mr-1.5 text-blue-500" />
+                                                        <MapPin className={cn("w-3 h-3 mr-1.5", colors.text)} />
                                                         {property.city}
                                                     </div>
                                                 </div>
@@ -287,7 +291,7 @@ export default function PropertiesPage() {
                                                         {getLandlordName(property.landlord_id)}
                                                     </span>
                                                 </div>
-                                                <div className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                                                <div className={cn("h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 transition-all text-white", `group-hover:${colors.bg}`)}>
                                                     <ArrowRight className="w-5 h-5" />
                                                 </div>
                                             </div>

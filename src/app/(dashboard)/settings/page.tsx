@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { User, Shield, Bell, Palette, Save, Loader2, Sparkles, CheckCircle2, Lock, Eye, EyeOff, Upload, Image as ImageIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAccentColor } from '@/lib/hooks/useAccentColor';
 
 // Define accent colors with static classes - Tailwind can't use dynamic class names
 const accentColors = [
@@ -30,6 +31,7 @@ export default function SettingsPage() {
     const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'notifications' | 'branding'>('profile');
     const supabase = createClient();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const { colors } = useAccentColor();
 
     // Security State
     const [showPasswords, setShowPasswords] = useState(false);
@@ -172,6 +174,9 @@ export default function SettingsPage() {
 
         // Save to localStorage as persistent backup (always works)
         localStorage.setItem('propflow_branding', JSON.stringify(newBranding));
+
+        // Dispatch custom event to notify all useAccentColor hooks to update
+        window.dispatchEvent(new CustomEvent('brandingChange'));
 
         // Try to save to database (may fail if column doesn't exist)
         const { error } = await supabase
@@ -588,14 +593,14 @@ export default function SettingsPage() {
                             </CardHeader>
                             <CardContent className="p-10 space-y-10">
                                 {/* COMPANY IDENTITY - Critical for Documents */}
-                                <div className="p-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-[2rem] border border-blue-100">
+                                <div className={cn("p-8 rounded-[2rem] border", `bg-gradient-to-br ${colors.lighter} ${colors.bgLight}`, colors.border)}>
                                     <div className="flex items-center gap-3 mb-6">
-                                        <div className="p-3 bg-blue-600 rounded-2xl">
+                                        <div className={cn("p-3 rounded-2xl", colors.bg)}>
                                             <Sparkles className="w-5 h-5 text-white" />
                                         </div>
                                         <div>
                                             <h3 className="font-black text-slate-900">Company Identity</h3>
-                                            <p className="text-xs text-blue-600 font-bold uppercase tracking-widest">Used in document headers & footers</p>
+                                            <p className={cn("text-xs font-bold uppercase tracking-widest", colors.text)}>Used in document headers & footers</p>
                                         </div>
                                     </div>
 
@@ -605,7 +610,7 @@ export default function SettingsPage() {
                                             <Input
                                                 value={companyData.name}
                                                 onChange={(e) => setCompanyData({ ...companyData, name: e.target.value })}
-                                                className="h-14 rounded-2xl bg-white border-blue-100 focus:ring-4 focus:ring-blue-100 font-bold px-6 text-lg"
+                                                className={cn("h-14 rounded-2xl bg-white focus:ring-4 font-bold px-6 text-lg", colors.border, `focus:${colors.ring}/20`)}
                                                 placeholder="NostalgicAI, Remax Toronto, etc."
                                             />
                                         </div>
@@ -695,7 +700,7 @@ export default function SettingsPage() {
                                     <Button
                                         onClick={handleSaveCompanyBranding}
                                         disabled={isSaving || !companyData.name}
-                                        className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[11px] shadow-xl shadow-blue-200 mt-8"
+                                        className={cn("w-full h-16 text-white rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[11px] shadow-xl mt-8", colors.bg, `hover:${colors.bgHover}`, colors.shadow)}
                                     >
                                         {isSaving ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Save className="w-5 h-5 mr-2" />}
                                         Save Company Branding
