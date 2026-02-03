@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useCompanyId } from '@/lib/hooks/useCompanyId'
+import { useDeleteApplication } from '@/lib/hooks/useApplications'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -33,7 +34,8 @@ import {
     RefreshCw,
     ArrowRight,
     ClipboardList,
-    Shield
+    Shield,
+    Trash2
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import Link from 'next/link'
@@ -46,6 +48,7 @@ export default function ApplicationsPage() {
     const queryClient = useQueryClient()
     const { companyId, isLoading: isCompanyLoading } = useCompanyId()
     const { colors } = useAccentColor()
+    const { mutate: deleteApplication } = useDeleteApplication()
     const [searchTerm, setSearchTerm] = useState('')
     const [statusFilter, setStatusFilter] = useState('all')
 
@@ -244,6 +247,11 @@ export default function ApplicationsPage() {
                                     application={app}
                                     onApprove={() => updateStatus.mutate({ id: app.id, status: 'approved' })}
                                     onDeny={() => updateStatus.mutate({ id: app.id, status: 'denied' })}
+                                    onDelete={() => {
+                                        if (confirm('Are you sure you want to delete this application?')) {
+                                            deleteApplication(app.id)
+                                        }
+                                    }}
                                     isUpdating={updateStatus.isPending}
                                 />
                             </motion.div>
@@ -255,7 +263,7 @@ export default function ApplicationsPage() {
     )
 }
 
-function ApplicationCard({ application, onApprove, onDeny, isUpdating }: any) {
+function ApplicationCard({ application, onApprove, onDeny, onDelete, isUpdating }: any) {
     const statusConfig: any = {
         new: { label: 'New', color: 'bg-blue-50 text-blue-600 border-blue-100', icon: Clock },
         submitted: { label: 'Submitted', color: 'bg-indigo-50 text-indigo-600 border-indigo-100', icon: Clock },
@@ -343,6 +351,13 @@ function ApplicationCard({ application, onApprove, onDeny, isUpdating }: any) {
                         >
                             <XCircle className="h-5 w-5 mr-3" />
                             Reject Protocol
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={onDelete}
+                            className="flex-1 lg:flex-none h-14 border-slate-200 bg-white text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-2xl font-black transition-all hover:scale-105"
+                        >
+                            <Trash2 className="h-5 w-5" />
                         </Button>
                     </div>
                 )}

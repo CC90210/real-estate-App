@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { useAccentColor } from '@/lib/hooks/useAccentColor';
 import { useCompanyId } from '@/lib/hooks/useCompanyId';
+import { useCreateApplication } from '@/lib/hooks/useApplications';
 import { cn } from '@/lib/utils';
 import { ClipboardList } from 'lucide-react';
 
@@ -22,11 +23,13 @@ export function NewApplicationModal({ propertyId }: { propertyId: string }) {
     const supabase = createClient();
     const { colors } = useAccentColor();
     const { companyId } = useCompanyId();
+    const { mutate: createApplication } = useCreateApplication();
 
     // Form State
     const [formData, setFormData] = useState({
         applicant_name: '',
         applicant_email: '',
+        applicant_phone: '',
         monthly_income: '',
         credit_score: '',
         notes: ''
@@ -51,29 +54,45 @@ export function NewApplicationModal({ propertyId }: { propertyId: string }) {
     };
 
     const handleSubmit = async () => {
+        if (!formData.applicant_phone) {
+            toast.error("Phone number is required");
+            return;
+        }
+
         setIsLoading(true);
         try {
-            const { error } = await supabase
-                .from('applications')
-                .insert({
+            createApplication(
+                {
                     property_id: propertyId,
-                    company_id: companyId,
                     applicant_name: formData.applicant_name,
                     applicant_email: formData.applicant_email,
-                    monthly_income: parseFloat(formData.monthly_income),
-                    credit_score: parseInt(formData.credit_score),
+                    applicant_phone: formData.applicant_phone,
+                    monthly_income: parseFloat(formData.monthly_income) || undefined,
+                    credit_score: parseInt(formData.credit_score) || undefined,
                     notes: formData.notes,
-                    status: 'pending'
-                });
-
-            if (error) throw error;
-
-            toast.success("Application created successfully!");
-            setOpen(false);
-            setFormData({ applicant_name: '', applicant_email: '', monthly_income: '', credit_score: '', notes: '' });
+                },
+                {
+                    onSuccess: () => {
+                        toast.success("Application created successfully!");
+                        setOpen(false);
+                        setFormData({
+                            applicant_name: '',
+                            applicant_email: '',
+                            applicant_phone: '',
+                            monthly_income: '',
+                            credit_score: '',
+                            notes: ''
+                        });
+                        setIsLoading(false);
+                    },
+                    onError: (error) => {
+                        toast.error("Failed to create application: " + error.message);
+                        setIsLoading(false);
+                    }
+                }
+            );
         } catch (error: any) {
             toast.error("Failed to create application: " + error.message);
-        } finally {
             setIsLoading(false);
         }
     };
@@ -132,14 +151,25 @@ export function NewApplicationModal({ propertyId }: { propertyId: string }) {
                             placeholder="John Doe"
                         />
                     </div>
-                    <div className="space-y-2">
-                        <Label>Email Address</Label>
-                        <Input
-                            type="email"
-                            value={formData.applicant_email}
-                            onChange={(e) => setFormData({ ...formData, applicant_email: e.target.value })}
-                            placeholder="john@example.com"
-                        />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label>Email Address</Label>
+                            <Input
+                                type="email"
+                                value={formData.applicant_email}
+                                onChange={(e) => setFormData({ ...formData, applicant_email: e.target.value })}
+                                placeholder="john@example.com"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Phone Number</Label>
+                            <Input
+                                type="tel"
+                                value={formData.applicant_phone}
+                                onChange={(e) => setFormData({ ...formData, applicant_phone: e.target.value })}
+                                placeholder="(555) 555-5555"
+                            />
+                        </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">

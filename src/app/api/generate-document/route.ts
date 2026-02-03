@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { generateDocumentSchema } from '@/lib/schemas/document-schema';
+import { rateLimit } from '@/lib/rate-limit';
+import { logAuditEvent } from '@/lib/audit-log';
+
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 });
 
 // ============================================================================
 // PRODUCTION DOCUMENT GENERATOR - NO EXTERNAL AI DEPENDENCIES
@@ -9,6 +13,17 @@ import { generateDocumentSchema } from '@/lib/schemas/document-schema';
 
 export async function POST(request: Request) {
     try {
+        // Rate limiting
+        const ip = request.headers.get('x-forwarded-for') || 'anonymous'
+        try {
+            await limiter.check(20, ip) // 20 documents per minute per IP
+        } catch (error) {
+            return NextResponse.json(
+                { error: 'Too many requests. Please try again later.' },
+                { status: 429 }
+            )
+        }
+
         const formData = await request.formData();
         const type = formData.get('type') as string;
         const propertyId = formData.get('propertyId') as string;
@@ -220,6 +235,17 @@ export async function POST(request: Request) {
             // Don't fail the request if activity logging fails
             console.error('Activity log failed (non-blocking):', logError);
         }
+
+        // Audit log
+        await logAuditEvent({
+            action: 'api_access',
+            userId: user.id,
+            companyId: companyId,
+            resourceType: 'document',
+            resourceId: savedDoc.id,
+            metadata: { type, title: titles[type] },
+            ipAddress: ip,
+        });
 
         return NextResponse.json({
             success: true,

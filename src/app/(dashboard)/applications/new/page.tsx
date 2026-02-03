@@ -75,9 +75,10 @@ export default function NewApplicationPage() {
 
         createApplication(
             {
-                propertyId,
-                agentId: user.id,
-                formData,
+                property_id: propertyId,
+                created_by: user.id,
+                agent_id: user.id,
+                ...formData,
             },
             {
                 onSuccess: () => {

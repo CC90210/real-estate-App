@@ -28,10 +28,10 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-600">
-              <Link href="#features" className="hover:text-blue-600 transition-colors">Features</Link>
-              <Link href="#solutions" className="hover:text-blue-600 transition-colors">Solutions</Link>
-              <Link href="#pricing" className="hover:text-blue-600 transition-colors">Pricing</Link>
+            <div className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-600 uppercase tracking-widest">
+              <Link href="/features" className="hover:text-blue-600 transition-colors">Features</Link>
+              <Link href="/solutions" className="hover:text-blue-600 transition-colors">Solutions</Link>
+              <Link href="/pricing" className="hover:text-blue-600 transition-colors">Pricing</Link>
             </div>
 
             <div className="flex items-center gap-3">
@@ -113,18 +113,21 @@ export default function HomePage() {
                 title="AI Automations"
                 description="Auto-generate leases, analyze applications, and schedule showings while you sleep."
                 gradient="bg-blue-50 text-blue-600"
+                href="/features"
               />
               <FeatureCard
                 icon={Shield}
                 title="Smart Screening"
                 description="Instant background checks and income verification integrated directly into your flow."
                 gradient="bg-indigo-50 text-indigo-600"
+                href="/features"
               />
               <FeatureCard
                 icon={Building2}
                 title="Portfolio Manager"
                 description="A centralized brain for all your properties, units, and maintenance requests."
                 gradient="bg-emerald-50 text-emerald-600"
+                href="/features"
               />
             </div>
           </div>
@@ -142,14 +145,15 @@ export default function HomePage() {
               <span className="text-lg font-black tracking-tight">PropFlow</span>
             </div>
 
-            <div className="flex gap-8 text-sm font-bold text-slate-400 uppercase tracking-widest">
-              <Link href="#" className="hover:text-blue-600 transition-colors">Terms</Link>
-              <Link href="#" className="hover:text-blue-600 transition-colors">Privacy</Link>
-              <Link href="#" className="hover:text-blue-600 transition-colors">Contact</Link>
+            <div className="flex gap-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+              <Link href="/terms" className="hover:text-blue-600 transition-colors">Terms</Link>
+              <Link href="/privacy" className="hover:text-blue-600 transition-colors">Privacy</Link>
+              <Link href="/pricing" className="hover:text-blue-600 transition-colors">Pricing</Link>
+              <Link href="/contact" className="hover:text-blue-600 transition-colors">Contact</Link>
             </div>
 
-            <p className="text-sm text-slate-400 font-medium">
-              © 2026 PropFlow Intelligence. Built for elite property managers.
+            <p className="text-xs font-bold text-slate-400">
+              © 2026 PropFlow Intelligence. Built for high performance.
             </p>
           </div>
         </div>
@@ -158,9 +162,9 @@ export default function HomePage() {
   );
 }
 
-function FeatureCard({ icon: Icon, title, description, gradient }: any) {
+function FeatureCard({ icon: Icon, title, description, gradient, href = "/features" }: any) {
   return (
-    <div className="group p-8 rounded-3xl border border-slate-100 hover:border-blue-100 hover:bg-slate-50/50 transition-all duration-300 text-left relative overflow-hidden">
+    <Link href={href} className="group p-8 rounded-3xl border border-slate-100 hover:border-blue-100 hover:bg-slate-50/50 transition-all duration-300 text-left relative overflow-hidden block">
       <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 ${gradient}`}>
         <Icon className="h-7 w-7" />
       </div>
@@ -169,6 +173,6 @@ function FeatureCard({ icon: Icon, title, description, gradient }: any) {
       <div className="flex items-center gap-2 text-blue-600 font-bold text-sm cursor-pointer hover:gap-3 transition-all">
         Learn more <ArrowRight className="h-4 w-4" />
       </div>
-    </div>
+    </Link>
   );
 }

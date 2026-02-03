@@ -1,9 +1,21 @@
-
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
+import { rateLimit } from '@/lib/rate-limit';
+
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 });
 
 export async function POST(request: Request) {
     try {
+        // Rate limiting
+        const ip = request.headers.get('x-forwarded-for') || 'anonymous'
+        try {
+            await limiter.check(5, ip) // 5 signups per minute per IP
+        } catch (error) {
+            return NextResponse.json(
+                { error: 'Too many signup attempts. Please try again later.' },
+                { status: 429 }
+            )
+        }
 
         const { email, password, full_name, role, job_title } = await request.json();
         const companyName = request.headers.get('x-company-name') || 'Default Company';

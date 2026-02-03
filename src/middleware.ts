@@ -61,7 +61,7 @@ export async function middleware(request: NextRequest) {
 
     // Public routes that don't require auth
     // Add landing page "/" to public routes
-    const publicRoutes = ['/', '/login', '/signup', '/forgot-password', '/reset-password']
+    const publicRoutes = ['/', '/login', '/signup', '/forgot-password', '/reset-password', '/pricing', '/features', '/solutions', '/terms', '/privacy']
     const isPublicRoute = publicRoutes.includes(pathname) || pathname.startsWith('/join/') || pathname.startsWith('/auth/')
 
     // Auth callback route
@@ -104,6 +104,44 @@ export async function middleware(request: NextRequest) {
             return NextResponse.redirect(new URL('/onboarding', request.url))
         }
     }
+
+    // ==========================================
+    // SECURITY HEADERS - ENTERPRISE GRADE
+    // ==========================================
+
+    // Prevent clickjacking attacks
+    response.headers.set('X-Frame-Options', 'DENY')
+
+    // Prevent MIME type sniffing
+    response.headers.set('X-Content-Type-Options', 'nosniff')
+
+    // Enable XSS filter
+    response.headers.set('X-XSS-Protection', '1; mode=block')
+
+    // Referrer policy - don't leak URLs
+    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+
+    // Permissions policy - disable unnecessary browser features
+    response.headers.set('Permissions-Policy',
+        'camera=(), microphone=(), geolocation=(), interest-cohort=()'
+    )
+
+    // Content Security Policy - strict mode
+    // We append the CSP to ensure it doesn't break standard Next.js functionality
+    response.headers.set('Content-Security-Policy',
+        "default-src 'self'; " +
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://va.vercel-scripts.com; " +
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+        "font-src 'self' https://fonts.gstatic.com; " +
+        "img-src 'self' data: https: blob:; " +
+        "connect-src 'self' https://*.supabase.co wss://*.supabase.co; " +
+        "frame-ancestors 'none';"
+    )
+
+    // Strict Transport Security - force HTTPS
+    response.headers.set('Strict-Transport-Security',
+        'max-age=31536000; includeSubDomains; preload'
+    )
 
     return response
 }

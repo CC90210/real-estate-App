@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { triggerAutomation } from '@/lib/automations/dispatcher';
 import { useCompanyId } from './useCompanyId';
-import { applicationSchema } from '@/lib/schemas/application-schema';
+import { applicationSchema, ApplicationInput } from '@/lib/schemas/application-schema';
 
 export function useApplications() {
     const supabase = createClient();
@@ -80,6 +80,32 @@ export function useDeleteApplication() {
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['applications'] });
+        },
+    });
+}
+
+export function useUpdateApplication() {
+    const queryClient = useQueryClient();
+    const supabase = createClient();
+
+    return useMutation({
+        mutationFn: async ({ id, data }: { id: string; data: Partial<ApplicationInput> }) => {
+            const { data: updated, error } = await supabase
+                .from('applications')
+                .update({ ...data, updated_at: new Date().toISOString() })
+                .eq('id', id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            return updated;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['applications'] });
+            toast.success('Application updated successfully');
+        },
+        onError: (error: any) => {
+            toast.error('Failed to update application: ' + error.message);
         },
     });
 }
