@@ -2,15 +2,44 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 
 export async function deletePropertyAction(propertyId: string) {
     const supabase = await createClient();
 
     try {
-        console.log(`[deletePropertyAction] Starting deletion for: ${propertyId}`);
+        console.log(`[deletePropertyAction] Starting cascade deletion for: ${propertyId}`);
 
-        // 1. Fetch related applications
+        // 1. Delete related showings
+        const { error: showingsError } = await supabase
+            .from('showings')
+            .delete()
+            .eq('property_id', propertyId);
+
+        if (showingsError) {
+            console.warn('[deletePropertyAction] Showings cleanup (non-fatal):', showingsError.message);
+        }
+
+        // 2. Delete related invoices
+        const { error: invoicesError } = await supabase
+            .from('invoices')
+            .delete()
+            .eq('property_id', propertyId);
+
+        if (invoicesError) {
+            console.warn('[deletePropertyAction] Invoices cleanup (non-fatal):', invoicesError.message);
+        }
+
+        // 3. Delete related documents
+        const { error: docsError } = await supabase
+            .from('documents')
+            .delete()
+            .eq('property_id', propertyId);
+
+        if (docsError) {
+            console.warn('[deletePropertyAction] Documents cleanup (non-fatal):', docsError.message);
+        }
+
+        // 4. Fetch related applications
         const { data: apps } = await supabase
             .from('applications')
             .select('id')
@@ -18,17 +47,18 @@ export async function deletePropertyAction(propertyId: string) {
 
         const appIds = apps?.map(a => a.id) || [];
 
-        // 2. Cascade Delete: Logs for Applications
+        // 5. Cascade Delete: Activity logs for Applications
         if (appIds.length > 0) {
             await supabase.from('activity_log').delete().in('entity_id', appIds).eq('entity_type', 'application');
-            // 3. Cascade Delete: Applications
+            // 6. Cascade Delete: Applications
             await supabase.from('applications').delete().in('id', appIds);
+            console.log(`[deletePropertyAction] Deleted ${appIds.length} related applications`);
         }
 
-        // 4. Cascade Delete: Logs for Property
+        // 7. Cascade Delete: Activity logs for Property
         await supabase.from('activity_log').delete().eq('entity_id', propertyId).eq('entity_type', 'property');
 
-        // 5. Delete Property
+        // 8. Delete the Property
         const { error } = await supabase
             .from('properties')
             .delete()
@@ -39,12 +69,16 @@ export async function deletePropertyAction(propertyId: string) {
             throw new Error(error.message);
         }
 
-        console.log('[deletePropertyAction] Deletion successful.');
+        console.log('[deletePropertyAction] Cascade deletion successful.');
 
-        // 6. Purge Cache
+        // 9. Purge Cache - all relevant paths
         revalidatePath('/dashboard');
         revalidatePath('/areas');
-        revalidatePath(`/properties/${propertyId}`); // In case user is on details page
+        revalidatePath('/properties');
+        revalidatePath('/applications');
+        revalidatePath('/invoices');
+        revalidatePath('/showings');
+        revalidatePath(`/properties/${propertyId}`);
 
         return { success: true };
 
@@ -60,9 +94,20 @@ export async function updatePropertyAction(propertyId: string, formData: any) {
     try {
         console.log(`[updatePropertyAction] Updating: ${propertyId}`, formData);
 
+        // Clean up the formData - ensure proper types
+        const cleanData = {
+            ...formData,
+            rent: formData.rent !== undefined ? Number(formData.rent) : undefined,
+            deposit: formData.deposit !== undefined ? Number(formData.deposit) : undefined,
+            bedrooms: formData.bedrooms !== undefined ? Number(formData.bedrooms) : undefined,
+            bathrooms: formData.bathrooms !== undefined ? Number(formData.bathrooms) : undefined,
+            square_feet: formData.square_feet !== undefined ? Number(formData.square_feet) : undefined,
+            updated_at: new Date().toISOString()
+        };
+
         const { error } = await supabase
             .from('properties')
-            .update(formData)
+            .update(cleanData)
             .eq('id', propertyId);
 
         if (error) {
@@ -70,9 +115,10 @@ export async function updatePropertyAction(propertyId: string, formData: any) {
             throw new Error(error.message);
         }
 
-        // Validate Paths
+        // Revalidate relevant paths
         revalidatePath('/dashboard');
         revalidatePath('/areas');
+        revalidatePath('/properties');
         revalidatePath(`/properties/${propertyId}`);
 
         return { success: true };

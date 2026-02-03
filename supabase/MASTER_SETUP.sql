@@ -46,6 +46,36 @@ BEGIN
 END $$;
 
 -- ================================================
+-- SECTION 2B: Ensure Properties Table Has All Columns
+-- ================================================
+
+DO $$
+BEGIN
+    -- Essential property fields
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'properties' AND column_name = 'deposit') THEN
+        ALTER TABLE public.properties ADD COLUMN deposit NUMERIC DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'properties' AND column_name = 'available_date') THEN
+        ALTER TABLE public.properties ADD COLUMN available_date DATE DEFAULT CURRENT_DATE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'properties' AND column_name = 'amenities') THEN
+        ALTER TABLE public.properties ADD COLUMN amenities TEXT[] DEFAULT '{}';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'properties' AND column_name = 'lockbox_code') THEN
+        ALTER TABLE public.properties ADD COLUMN lockbox_code TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'properties' AND column_name = 'photos') THEN
+        ALTER TABLE public.properties ADD COLUMN photos TEXT[] DEFAULT '{}';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'properties' AND column_name = 'description') THEN
+        ALTER TABLE public.properties ADD COLUMN description TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'properties' AND column_name = 'updated_at') THEN
+        ALTER TABLE public.properties ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+    END IF;
+END $$;
+
+-- ================================================
 -- SECTION 3: Enable RLS on All Tables
 -- ================================================
 

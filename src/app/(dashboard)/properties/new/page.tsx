@@ -43,6 +43,7 @@ export default function NewPropertyPage() {
     const [bathrooms, setBathrooms] = useState('')
     const [rent, setRent] = useState('')
     const [sqft, setSqft] = useState('')
+    const [deposit, setDeposit] = useState('')
 
     // Fetch Areas
     useEffect(() => {
@@ -155,12 +156,14 @@ export default function NewPropertyPage() {
                     bathrooms: parseFloat(bathrooms) || 1,
                     rent: parseFloat(rent) || 0,
                     square_feet: parseInt(sqft) || 0,
-                    status: 'available'
+                    status: 'available',
+                    deposit: parseFloat(deposit) || parseFloat(rent) || 0,
+                    available_date: new Date().toISOString()
                 })
 
             if (propError) throw propError
 
-            toast.success("Property provisioned successfully!")
+            toast.success("Property created successfully!")
 
             // Activity logging is handled by DB trigger on 'properties' table
 
@@ -323,6 +326,16 @@ export default function NewPropertyPage() {
                                         onChange={e => setSqft(e.target.value)}
                                     />
                                 </div>
+                                <div className="space-y-2">
+                                    <Label className="uppercase text-[10px] font-black tracking-widest text-slate-400">Deposit ($)</Label>
+                                    <Input
+                                        type="number"
+                                        placeholder="Same as rent"
+                                        className="h-12 bg-slate-50 border-slate-100 rounded-xl font-bold"
+                                        value={deposit}
+                                        onChange={e => setDeposit(e.target.value)}
+                                    />
+                                </div>
                             </div>
                         </div>
 
@@ -331,7 +344,7 @@ export default function NewPropertyPage() {
                             disabled={isSubmitting}
                             className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-blue-200 transition-all hover:scale-[1.02] active:scale-95 text-xs"
                         >
-                            {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Provision Asset to Database'}
+                            {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Create Property'}
                         </Button>
 
                     </form>
