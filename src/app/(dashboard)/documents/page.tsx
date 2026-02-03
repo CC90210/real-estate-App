@@ -38,6 +38,7 @@ import {
 } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { useAccentColor } from '@/lib/hooks/useAccentColor'
 
 const documentTypes = [
     {
@@ -81,6 +82,7 @@ const documentTypes = [
 export default function DocumentsPage() {
     const router = useRouter()
     const supabase = createClient()
+    const { colors } = useAccentColor()
     const [selectedType, setSelectedType] = useState<string | null>(null)
     const [selectedProperty, setSelectedProperty] = useState<string>('')
     const [selectedApplication, setSelectedApplication] = useState<string>('')
@@ -204,19 +206,19 @@ export default function DocumentsPage() {
         <div className="relative p-6 lg:p-10 space-y-8">
             {/* Background elements */}
             <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
-                <div className="absolute top-[5%] right-[10%] w-[45rem] h-[45rem] bg-gradient-to-br from-blue-100/30 to-indigo-100/30 rounded-full blur-[120px] animate-float" />
+                <div className={cn("absolute top-[5%] right-[10%] w-[45rem] h-[45rem] rounded-full blur-[120px] animate-float", colors.bgLight)} />
                 <div className="absolute bottom-[20%] left-[5%] w-[35rem] h-[35rem] bg-gradient-to-br from-violet-100/20 to-purple-100/20 rounded-full blur-[100px] animate-float" style={{ animationDelay: '-5s' }} />
             </div>
 
             {/* Header Section */}
             <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 animate-in fade-in slide-in-from-left duration-500">
                 <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-blue-600 font-black text-[10px] uppercase tracking-[0.2em] mb-2">
+                    <div className={cn("flex items-center gap-2 font-black text-[10px] uppercase tracking-[0.2em] mb-2", colors.text)}>
                         <FileText className="h-3 w-3" />
                         <span>Document Generator</span>
                     </div>
                     <h1 className="text-4xl lg:text-5xl font-black tracking-tight text-slate-900">
-                        Create <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent">Documents</span>
+                        Create <span className={cn("bg-gradient-to-r bg-clip-text text-transparent", colors.gradient)}>Documents</span>
                     </h1>
                     <p className="text-slate-500 font-medium text-lg">
                         Generate professional real estate documents in seconds
@@ -224,9 +226,9 @@ export default function DocumentsPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100">
-                        <Zap className="h-4 w-4 text-blue-600" />
-                        <span className="text-sm font-bold text-blue-600">{documents?.length || 0} Documents Created</span>
+                    <div className={cn("flex items-center gap-2 px-4 py-2 rounded-2xl border", colors.bgLight, colors.border)}>
+                        <Zap className={cn("h-4 w-4", colors.text)} />
+                        <span className={cn("text-sm font-bold", colors.text)}>{documents?.length || 0} Documents Created</span>
                     </div>
                 </div>
             </div>
@@ -735,10 +737,10 @@ export default function DocumentsPage() {
                                         (selectedType === 'lease_proposal' && (!customFields.tenantName || !customFields.offerRent))
                                     }
                                     className={cn(
-                                        "w-full h-14 rounded-2xl font-black uppercase tracking-widest text-white shadow-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-2xl mt-4",
+                                        "w-full h-14 rounded-2xl font-black uppercase tracking-widest text-white shadow-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-2xl mt-4 border-0",
                                         selectedTypeData
                                             ? `bg-gradient-to-r ${selectedTypeData.gradient} ${selectedTypeData.shadowColor}`
-                                            : "bg-gradient-to-r from-blue-600 to-indigo-600 shadow-blue-200"
+                                            : cn("bg-gradient-to-r", colors.gradient, colors.shadow)
                                     )}
                                 >
                                     {isGenerating ? (

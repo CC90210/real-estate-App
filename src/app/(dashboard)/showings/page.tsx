@@ -121,7 +121,7 @@ export default function ShowingsPage() {
         title: `${showing.client_name} - ${showing.property?.address || 'Property'}`,
         start: `${showing.scheduled_date}T${showing.scheduled_time}`,
         backgroundColor: showing.status === 'completed' ? '#10b981' :
-            showing.status === 'cancelled' ? '#ef4444' : '#3b82f6',
+            showing.status === 'cancelled' ? '#ef4444' : (colors.primary || '#3b82f6'),
         extendedProps: showing
     })) || []
 
@@ -213,7 +213,7 @@ export default function ShowingsPage() {
                             color: #1e293b !important;
                         }
                         .fc-button-active {
-                            background-color: #2563eb !important;
+                            background-color: ${colors.primary} !important;
                             color: white !important;
                         }
                         .fc-daygrid-day-number {
@@ -363,7 +363,7 @@ export default function ShowingsPage() {
                             <Button type="button" variant="ghost" onClick={() => setDialogOpen(false)} className="rounded-xl font-bold text-slate-500 hover:text-slate-900">
                                 Cancel
                             </Button>
-                            <Button type="submit" disabled={createShowing.isPending} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold px-8 shadow-lg shadow-blue-200">
+                            <Button type="submit" disabled={createShowing.isPending} className={cn("text-white rounded-xl font-bold px-8 shadow-lg", colors.bg, `hover:${colors.bgHover}`, colors.shadow)}>
                                 {createShowing.isPending ? 'Scheduling...' : 'Confirm Appointment'}
                             </Button>
                         </DialogFooter>

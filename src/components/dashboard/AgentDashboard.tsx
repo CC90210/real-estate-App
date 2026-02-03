@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatDistanceToNow, format } from 'date-fns'
+import { useAccentColor } from '@/lib/hooks/useAccentColor'
 import {
     StatCard,
     QuickActionCard,
@@ -41,6 +42,7 @@ interface AgentDashboardProps {
 export default function AgentDashboard({ onQuickFind }: AgentDashboardProps) {
     const { user, profile, company } = useAuth()
     const supabase = createClient()
+    const { colors } = useAccentColor()
 
     // Fetch agent-specific stats
     const { data: stats, isLoading: statsLoading } = useQuery({
@@ -143,7 +145,7 @@ export default function AgentDashboard({ onQuickFind }: AgentDashboardProps) {
         <div className="relative p-6 lg:p-10 space-y-8">
             {/* Background elements - Agent gets a fresher, lighter look */}
             <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
-                <div className="absolute top-[5%] left-[60%] w-[50rem] h-[50rem] bg-gradient-to-br from-indigo-100/40 to-blue-100/40 rounded-full blur-[120px] animate-float" />
+                <div className={cn("absolute top-[5%] left-[60%] w-[50rem] h-[50rem] rounded-full blur-[120px] animate-float", colors.bgLight)} />
                 <div className="absolute bottom-[20%] right-[80%] w-[40rem] h-[40rem] bg-gradient-to-br from-cyan-100/30 to-teal-100/30 rounded-full blur-[100px] animate-float" style={{ animationDelay: '-4s' }} />
             </div>
 
@@ -155,7 +157,7 @@ export default function AgentDashboard({ onQuickFind }: AgentDashboardProps) {
                         <span>{today}</span>
                     </div>
                     <h1 className="text-4xl lg:text-5xl font-black tracking-tight text-slate-900 animate-in fade-in slide-in-from-left duration-700">
-                        {getGreeting()}, <span className="bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent">
+                        {getGreeting()}, <span className={cn("bg-gradient-to-r bg-clip-text text-transparent", colors.gradient)}>
                             {profile?.full_name?.split(' ')[0] || 'Agent'}
                         </span>
                     </h1>
@@ -180,7 +182,7 @@ export default function AgentDashboard({ onQuickFind }: AgentDashboardProps) {
                         Quick Find
                         <kbd className="ml-2 px-1.5 py-0.5 bg-slate-100 rounded text-[10px] font-mono hidden lg:inline">⌘K</kbd>
                     </Button>
-                    <Button asChild className="h-12 px-8 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold shadow-xl shadow-blue-500/25 transition-all hover:-translate-y-0.5 border-0">
+                    <Button asChild className={cn("h-12 px-8 rounded-2xl text-white font-bold shadow-xl transition-all hover:-translate-y-0.5 border-0 bg-gradient-to-r", colors.gradient, colors.shadow)}>
                         <Link href="/showings">
                             <CalendarIcon className="h-5 w-5 mr-2" /> My Schedule
                         </Link>

@@ -25,6 +25,7 @@ import {
 import Link from 'next/link'
 import { formatDistanceToNow, format } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { useAccentColor } from '@/lib/hooks/useAccentColor'
 import {
     StatCard,
     QuickActionCard,
@@ -40,6 +41,7 @@ interface LandlordDashboardProps {
 export default function LandlordDashboard({ onQuickFind }: LandlordDashboardProps) {
     const { user, profile, company } = useAuth()
     const supabase = createClient()
+    const { colors } = useAccentColor()
 
     // Fetch landlord-specific stats
     const { data: stats, isLoading: statsLoading } = useQuery({
@@ -158,7 +160,7 @@ export default function LandlordDashboard({ onQuickFind }: LandlordDashboardProp
         <div className="relative p-6 lg:p-10 space-y-8">
             {/* Background */}
             <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
-                <div className="absolute top-[5%] left-[15%] w-[50rem] h-[50rem] bg-gradient-to-br from-emerald-100/40 to-teal-100/40 rounded-full blur-[120px] animate-float" />
+                <div className={cn("absolute top-[5%] left-[15%] w-[50rem] h-[50rem] rounded-full blur-[120px] animate-float", colors.bgLight)} />
                 <div className="absolute bottom-[10%] right-[5%] w-[40rem] h-[40rem] bg-gradient-to-br from-blue-100/30 to-indigo-100/30 rounded-full blur-[100px] animate-float" style={{ animationDelay: '-4s' }} />
             </div>
 
@@ -170,12 +172,12 @@ export default function LandlordDashboard({ onQuickFind }: LandlordDashboardProp
                         <span>{today}</span>
                     </div>
                     <h1 className="text-4xl lg:text-5xl font-black tracking-tight text-slate-900 animate-in fade-in slide-in-from-left duration-700">
-                        {getGreeting()}, <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
+                        {getGreeting()}, <span className={cn("bg-gradient-to-r bg-clip-text text-transparent", colors.gradient)}>
                             {profile?.full_name?.split(' ')[0] || 'Landlord'}
                         </span>
                     </h1>
                     <div className="flex items-center gap-3">
-                        <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white font-black uppercase text-[10px] tracking-widest px-3 py-1">
+                        <Badge className={cn("text-white font-black uppercase text-[10px] tracking-widest px-3 py-1 border-0 hover:opacity-90", colors.bg)}>
                             Property Owner
                         </Badge>
                         <p className="text-slate-500 font-medium flex items-center gap-2">
@@ -195,7 +197,7 @@ export default function LandlordDashboard({ onQuickFind }: LandlordDashboardProp
                         Quick Find
                         <kbd className="ml-2 px-1.5 py-0.5 bg-slate-100 rounded text-[10px] font-mono hidden lg:inline">⌘K</kbd>
                     </Button>
-                    <Button asChild className="h-12 px-8 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold shadow-xl shadow-emerald-500/25 border-0">
+                    <Button asChild className={cn("h-12 px-8 rounded-2xl text-white font-bold shadow-xl border-0 bg-gradient-to-r", colors.gradient, colors.shadow)}>
                         <Link href="/properties">
                             <Eye className="h-5 w-5 mr-2" />
                             View All Properties
@@ -206,7 +208,7 @@ export default function LandlordDashboard({ onQuickFind }: LandlordDashboardProp
 
             {/* Revenue Banner */}
             <div className="animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '100ms' }}>
-                <div className="relative overflow-hidden p-8 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 rounded-3xl shadow-2xl shadow-emerald-500/20">
+                <div className={cn("relative overflow-hidden p-8 rounded-3xl shadow-2xl bg-gradient-to-r", colors.gradient, colors.shadow)}>
                     <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
                     <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                         <div className="flex items-center gap-6">
@@ -240,7 +242,7 @@ export default function LandlordDashboard({ onQuickFind }: LandlordDashboardProp
                     value={stats?.totalProperties || 0}
                     subtitle={`${stats?.availableProperties || 0} available`}
                     icon={Home}
-                    gradient="from-emerald-500 to-emerald-600"
+                    gradient={colors.gradient}
                     href="/properties"
                 />
                 <StatCard
@@ -300,7 +302,7 @@ export default function LandlordDashboard({ onQuickFind }: LandlordDashboardProp
                                     const property = Array.isArray(app.property) ? app.property[0] : app.property
                                     return (
                                         <Link key={app.id} href={`/landlord/applications`}>
-                                            <div className="group p-4 rounded-2xl bg-slate-50/50 hover:bg-white hover:shadow-lg transition-all duration-200 cursor-pointer border border-transparent hover:border-amber-200">
+                                            <div className={cn("group p-4 rounded-2xl bg-slate-50/50 hover:bg-white hover:shadow-lg transition-all duration-200 cursor-pointer border border-transparent", colors.borderHover)}>
                                                 <div className="flex items-start justify-between">
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex items-center gap-2">
@@ -316,8 +318,8 @@ export default function LandlordDashboard({ onQuickFind }: LandlordDashboardProp
                                                         </p>
                                                     </div>
                                                     <div className="flex flex-col items-end gap-2">
-                                                        <span className="text-lg font-black text-emerald-600">${property?.rent?.toLocaleString()}/mo</span>
-                                                        <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all" />
+                                                        <span className={cn("text-lg font-black", colors.text)}>${property?.rent?.toLocaleString()}/mo</span>
+                                                        <ArrowRight className={cn("h-4 w-4 text-slate-300 group-hover:translate-x-1 transition-all", `group-hover:${colors.text}`)} />
                                                     </div>
                                                 </div>
                                             </div>
@@ -341,7 +343,7 @@ export default function LandlordDashboard({ onQuickFind }: LandlordDashboardProp
                                 <p className="text-sm text-slate-500">Your portfolio</p>
                             </div>
                         </div>
-                        <Link href="/properties" className="text-sm font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
+                        <Link href="/properties" className={cn("text-sm font-bold flex items-center gap-1", colors.text, `hover:${colors.textHover}`)}>
                             View All <ArrowRight className="h-4 w-4" />
                         </Link>
                     </CardHeader>
@@ -359,7 +361,7 @@ export default function LandlordDashboard({ onQuickFind }: LandlordDashboardProp
                                         <div className="group p-4 rounded-2xl bg-slate-50/50 hover:bg-white hover:shadow-lg transition-all duration-200 cursor-pointer border border-transparent hover:border-emerald-200">
                                             <div className="flex items-center justify-between mb-2">
                                                 <PropertyStatusBadge status={property.status} />
-                                                <span className="text-lg font-black text-emerald-600">${property.rent?.toLocaleString()}</span>
+                                                <span className={cn("text-lg font-black", colors.text)}>${property.rent?.toLocaleString()}</span>
                                             </div>
                                             <p className="font-bold text-slate-900 text-sm truncate">{property.address}</p>
                                             <p className="text-xs text-slate-400 mt-1">

@@ -34,11 +34,13 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useAccentColor } from '@/lib/hooks/useAccentColor'
 
 export default function ApprovalsPage() {
     const supabase = createClient()
     const queryClient = useQueryClient()
     const { companyId, isLoading: isCompanyLoading } = useCompanyId()
+    const { colors } = useAccentColor()
     const [denyDialog, setDenyDialog] = useState<{ open: boolean; applicationId: string | null }>({
         open: false,
         applicationId: null
@@ -181,11 +183,11 @@ export default function ApprovalsPage() {
     return (
         <div className="relative p-6 lg:p-10 space-y-10">
             {/* Decoration */}
-            <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-emerald-50/50 rounded-full blur-[120px] -z-10 animate-pulse-soft" />
+            <div className={cn("absolute top-0 right-0 w-[40rem] h-[40rem] rounded-full blur-[120px] -z-10 animate-pulse-soft", colors.bgLight)} />
 
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-emerald-600 font-black text-[10px] uppercase tracking-[0.2em] mb-1">
+                    <div className={cn("flex items-center gap-2 font-black text-[10px] uppercase tracking-[0.2em] mb-1", colors.text)}>
                         <ShieldCheck className="h-3 w-3" />
                         <span>Command Authorization</span>
                     </div>
@@ -197,9 +199,9 @@ export default function ApprovalsPage() {
             </div>
 
             {!applications || applications.length === 0 ? (
-                <div className="flex flex-col items-center justify-center p-20 text-center bg-white/50 backdrop-blur-md rounded-[3rem] border-2 border-dashed border-emerald-100">
-                    <div className="h-20 w-20 bg-emerald-50 rounded-[2rem] flex items-center justify-center mb-6">
-                        <ShieldCheck className="h-10 w-10 text-emerald-200" />
+                <div className={cn("flex flex-col items-center justify-center p-20 text-center bg-white/50 backdrop-blur-md rounded-[3rem] border-2 border-dashed", colors.border.replace('blue', 'transparent').replace('indigo', 'transparent').replace('emerald', 'transparent').replace('rose', 'transparent').replace('slate', 'transparent') || colors.border)}>
+                    <div className={cn("h-20 w-20 rounded-[2rem] flex items-center justify-center mb-6", colors.bgLight)}>
+                        <ShieldCheck className={cn("h-10 w-10 opacity-20", colors.text)} />
                     </div>
                     <h2 className="text-2xl font-black text-slate-900 mb-2">Operations Clear</h2>
                     <p className="text-slate-500 font-medium">No pending applications require immediate authorization.</p>
@@ -215,24 +217,24 @@ export default function ApprovalsPage() {
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ duration: 0.4, delay: idx * 0.1 }}
                             >
-                                <Card className="group relative bg-white/80 backdrop-blur-xl rounded-[3rem] border-slate-100 shadow-xl shadow-slate-200/40 hover:shadow-2xl hover:shadow-emerald-500/10 transition-all duration-500 overflow-hidden">
+                                <Card className={cn("group relative bg-white/80 backdrop-blur-xl rounded-[3rem] border-slate-100 shadow-xl shadow-slate-200/40 transition-all duration-500 overflow-hidden", colors.shadowHover)}>
                                     <CardContent className="p-10">
                                         <div className="flex flex-col lg:flex-row gap-10">
                                             {/* Left: Applicant Signature */}
                                             <div className="flex-1 space-y-8">
                                                 <div className="flex items-center gap-6">
-                                                    <div className="h-20 w-20 bg-slate-50 rounded-[2rem] flex items-center justify-center group-hover:bg-emerald-50 transition-colors">
-                                                        <User className="h-10 w-10 text-slate-200 group-hover:text-emerald-400" />
+                                                    <div className={cn("h-20 w-20 bg-slate-50 rounded-[2rem] flex items-center justify-center transition-colors", `group-hover:${colors.bgLight}`)}>
+                                                        <User className={cn("h-10 w-10 text-slate-200 transition-colors", `group-hover:${colors.text}`)} />
                                                     </div>
                                                     <div>
-                                                        <h3 className="text-3xl font-black text-slate-900 tracking-tight group-hover:text-emerald-600 transition-colors">
+                                                        <h3 className={cn("text-3xl font-black text-slate-900 tracking-tight transition-colors", `group-hover:${colors.text}`)}>
                                                             {app.applicant_name}
                                                         </h3>
                                                         <div className="flex items-center gap-3 mt-2">
                                                             <Badge variant="outline" className="bg-white/90 font-black text-[10px] uppercase tracking-widest px-3 py-1 rounded-xl text-slate-400">
                                                                 #{app.id.slice(0, 8)}
                                                             </Badge>
-                                                            <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-none font-black text-[10px] uppercase tracking-widest px-3 py-1 rounded-xl capitalize">
+                                                            <Badge className={cn("border-none font-black text-[10px] uppercase tracking-widest px-3 py-1 rounded-xl capitalize", colors.bgLight, colors.text, `hover:${colors.bg}`)}>
                                                                 {app.status.replace('_', ' ')}
                                                             </Badge>
                                                         </div>
@@ -248,7 +250,7 @@ export default function ApprovalsPage() {
                                                 {app.property && (
                                                     <div className="p-6 rounded-[2rem] bg-slate-50 border border-slate-100/60 flex items-center gap-6 group-hover:bg-white transition-colors">
                                                         <div className="h-14 w-14 rounded-2xl bg-white shadow-sm flex items-center justify-center">
-                                                            <Building2 className="h-7 w-7 text-emerald-500" />
+                                                            <Building2 className={cn("h-7 w-7", colors.text)} />
                                                         </div>
                                                         <div className="flex-1">
                                                             <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Target Infrastructure</div>
@@ -268,7 +270,7 @@ export default function ApprovalsPage() {
                                                 <Button
                                                     onClick={() => approveMutation.mutate(app.id)}
                                                     disabled={approveMutation.isPending}
-                                                    className="flex-1 lg:flex-none h-16 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-xl shadow-emerald-500/30 font-black transition-all hover:scale-105 active:scale-95"
+                                                    className={cn("flex-1 lg:flex-none h-16 text-white rounded-2xl shadow-xl font-black transition-all hover:scale-105 active:scale-95", colors.bg, `hover:${colors.bgHover}`, colors.shadow)}
                                                 >
                                                     <CheckCircle className="h-6 w-6 mr-3" />
                                                     Authorize

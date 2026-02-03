@@ -28,6 +28,7 @@ import {
     Sparkles
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useAccentColor } from '@/lib/hooks/useAccentColor'
 
 interface SearchResult {
     id: string
@@ -52,6 +53,7 @@ export function QuickFind({ open, onOpenChange }: QuickFindProps) {
     const router = useRouter()
     const supabase = createClient()
     const { company } = useAuth()
+    const { colors } = useAccentColor()
     const inputRef = useRef<HTMLInputElement>(null)
 
     // Focus input when dialog opens
@@ -327,7 +329,7 @@ export function QuickFind({ open, onOpenChange }: QuickFindProps) {
                 {/* Search Header */}
                 <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
                     <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-200">
+                        <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center shadow-lg bg-gradient-to-br", colors.gradient, colors.shadow)}>
                             <Search className="h-5 w-5 text-white" />
                         </div>
                         <div className="flex-1">
@@ -340,7 +342,7 @@ export function QuickFind({ open, onOpenChange }: QuickFindProps) {
                                 className="h-14 text-lg font-medium border-0 bg-transparent focus-visible:ring-0 placeholder:text-slate-400"
                             />
                         </div>
-                        {isSearching && <Loader2 className="h-5 w-5 animate-spin text-blue-600" />}
+                        {isSearching && <Loader2 className={cn("h-5 w-5 animate-spin", colors.text)} />}
                     </div>
                     <div className="flex items-center gap-2 mt-3 text-xs text-slate-400">
                         <kbd className="px-2 py-1 bg-slate-100 rounded-lg font-mono text-[10px]">↑↓</kbd>
@@ -375,7 +377,7 @@ export function QuickFind({ open, onOpenChange }: QuickFindProps) {
                                             <action.icon className="h-5 w-5" />
                                         </div>
                                         <span className="font-bold text-slate-700 group-hover:text-slate-900">{action.label}</span>
-                                        <ArrowRight className="h-4 w-4 text-slate-300 ml-auto group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
+                                        <ArrowRight className={cn("h-4 w-4 text-slate-300 ml-auto group-hover:translate-x-1 transition-all", `group-hover:${colors.text}`)} />
                                     </button>
                                 ))}
                             </div>
@@ -399,7 +401,7 @@ export function QuickFind({ open, onOpenChange }: QuickFindProps) {
                                     className={cn(
                                         "w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-200 text-left",
                                         selectedIndex === idx
-                                            ? "bg-blue-50 border-2 border-blue-200"
+                                            ? cn("border-2", colors.bgLight, colors.border)
                                             : "bg-slate-50/50 hover:bg-white hover:shadow-lg border-2 border-transparent"
                                     )}
                                 >
