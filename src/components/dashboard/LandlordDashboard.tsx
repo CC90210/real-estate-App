@@ -1,191 +1,433 @@
-'use client';
+'use client'
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { DollarSign, TrendingUp, Building, Users, AlertCircle, ArrowUpRight } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'; // Assuming recharts is installed or using mock
-import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query'
+import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/hooks/useAuth'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Badge } from '@/components/ui/badge'
+import {
+    Building2,
+    Home,
+    ClipboardList,
+    ThumbsUp,
+    Calendar,
+    Wallet,
+    ArrowRight,
+    MapPin,
+    CheckCircle,
+    Eye,
+    Star,
+    FileText,
+    Search
+} from 'lucide-react'
+import Link from 'next/link'
+import { formatDistanceToNow, format } from 'date-fns'
+import { cn } from '@/lib/utils'
+import {
+    StatCard,
+    QuickActionCard,
+    StatusBadge,
+    DashboardSkeleton,
+    getGreeting
+} from './shared'
 
 interface LandlordDashboardProps {
-    profile: any;
-    stats: {
-        totalRevenue: number;
-        occupancyRate: number;
-        totalUnits: number;
-        pendingRent: number;
-    };
-    recentApps: any[];
-    revenueHistory?: { month: string; revenue: number }[];
+    onQuickFind: () => void;
 }
 
-export function LandlordDashboard({ profile, stats, recentApps, revenueHistory }: LandlordDashboardProps) {
+export default function LandlordDashboard({ onQuickFind }: LandlordDashboardProps) {
+    const { user, profile, company } = useAuth()
+    const supabase = createClient()
 
-    // Use real data if available, fallback to mock
-    const revenueData = revenueHistory && revenueHistory.length > 0
-        ? revenueHistory.map(r => ({ name: r.month, revenue: r.revenue }))
-        : [
-            { name: 'Jan', revenue: 0 },
-            { name: 'Feb', revenue: 0 },
-            { name: 'Mar', revenue: 0 },
-            { name: 'Apr', revenue: 0 },
-            { name: 'May', revenue: 0 },
-            { name: 'Jun', revenue: stats.totalRevenue || 0 },
-        ];
+    // Fetch landlord-specific stats
+    const { data: stats, isLoading: statsLoading } = useQuery({
+        queryKey: ['landlord-stats', user?.id, company?.id],
+        queryFn: async () => {
+            if (!user?.id || !company?.id) return null
+
+            // Get properties owned by this landlord
+            const { data: properties } = await supabase
+                .from('properties')
+                .select('id, rent, status')
+                .eq('company_id', company.id)
+                .eq('owner_id', user.id)
+
+            const propertyIds = properties?.map(p => p.id) || []
+            const totalProperties = properties?.length || 0
+            const rentedProperties = properties?.filter(p => p.status === 'rented') || []
+            const monthlyRevenue = rentedProperties.reduce((sum, p) => sum + (p.rent || 0), 0)
+            const availableProperties = properties?.filter(p => p.status === 'available').length || 0
+
+            // Get applications for landlord's properties
+            const { data: applications } = propertyIds.length > 0
+                ? await supabase
+                    .from('applications')
+                    .select('id, status')
+                    .in('property_id', propertyIds)
+                : { data: [] }
+
+            const pendingApplications = applications?.filter(a =>
+                ['submitted', 'screening', 'pending_landlord'].includes(a.status)
+            ).length || 0
+
+            const approvedApplications = applications?.filter(a => a.status === 'approved').length || 0
+
+            // Get upcoming showings for landlord's properties
+            const { data: showings } = propertyIds.length > 0
+                ? await supabase
+                    .from('showings')
+                    .select('id')
+                    .in('property_id', propertyIds)
+                    .gte('scheduled_date', new Date().toISOString())
+                : { data: [] }
+
+            return {
+                totalProperties,
+                rentedProperties: rentedProperties.length,
+                availableProperties,
+                monthlyRevenue,
+                totalApplications: applications?.length || 0,
+                pendingApplications,
+                approvedApplications,
+                upcomingShowings: showings?.length || 0
+            }
+        },
+        enabled: !!user?.id && !!company?.id
+    })
+
+    // Fetch recent applications for landlord's properties
+    const { data: recentApplications, isLoading: appsLoading } = useQuery({
+        queryKey: ['landlord-recent-applications', user?.id],
+        queryFn: async () => {
+            if (!user?.id) return []
+
+            const { data: properties } = await supabase
+                .from('properties')
+                .select('id')
+                .eq('owner_id', user.id)
+
+            const propertyIds = properties?.map(p => p.id) || []
+            if (propertyIds.length === 0) return []
+
+            const { data } = await supabase
+                .from('applications')
+                .select(`
+                    id,
+                    applicant_name,
+                    applicant_email,
+                    status,
+                    created_at,
+                    property:properties(address, unit_number, rent)
+                `)
+                .in('property_id', propertyIds)
+                .order('created_at', { ascending: false })
+                .limit(5)
+
+            return data || []
+        },
+        enabled: !!user?.id
+    })
+
+    // Fetch landlord's properties
+    const { data: properties, isLoading: propertiesLoading } = useQuery({
+        queryKey: ['landlord-properties', user?.id],
+        queryFn: async () => {
+            if (!user?.id) return []
+
+            const { data } = await supabase
+                .from('properties')
+                .select('id, address, unit_number, rent, status, bedrooms, bathrooms')
+                .eq('owner_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(6)
+
+            return data || []
+        },
+        enabled: !!user?.id
+    })
+
+    if (statsLoading) {
+        return <DashboardSkeleton />
+    }
+
+    const today = format(new Date(), 'EEEE, MMMM d, yyyy')
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-700">
+        <div className="relative p-6 lg:p-10 space-y-8">
+            {/* Background */}
+            <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
+                <div className="absolute top-[5%] left-[15%] w-[50rem] h-[50rem] bg-gradient-to-br from-emerald-100/40 to-teal-100/40 rounded-full blur-[120px] animate-float" />
+                <div className="absolute bottom-[10%] right-[5%] w-[40rem] h-[40rem] bg-gradient-to-br from-blue-100/30 to-indigo-100/30 rounded-full blur-[100px] animate-float" style={{ animationDelay: '-4s' }} />
+            </div>
+
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-                        Owner Overview
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+                <div className="space-y-2">
+                    <div className="flex items-center gap-3 text-slate-400 text-sm font-medium animate-in fade-in slide-in-from-left duration-500">
+                        <Calendar className="h-4 w-4" />
+                        <span>{today}</span>
+                    </div>
+                    <h1 className="text-4xl lg:text-5xl font-black tracking-tight text-slate-900 animate-in fade-in slide-in-from-left duration-700">
+                        {getGreeting()}, <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
+                            {profile?.full_name?.split(' ')[0] || 'Landlord'}
+                        </span>
                     </h1>
-                    <p className="text-slate-500 mt-1">
-                        Financial performance for <span className="font-semibold text-slate-900">{profile?.company_name || 'Personal Portfolio'}</span>.
-                    </p>
+                    <div className="flex items-center gap-3">
+                        <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white font-black uppercase text-[10px] tracking-widest px-3 py-1">
+                            Property Owner
+                        </Badge>
+                        <p className="text-slate-500 font-medium flex items-center gap-2">
+                            <Building2 className="h-4 w-4" />
+                            {company?.name || 'Your Company'}
+                        </p>
+                    </div>
                 </div>
-                <div className="flex gap-2">
-                    <button className="bg-white border border-slate-200 text-slate-700 font-bold text-sm px-4 py-2 rounded-lg hover:bg-slate-50 shadow-sm">
-                        Export Report
-                    </button>
-                    <button className="bg-slate-900 text-white font-bold text-sm px-4 py-2 rounded-lg hover:bg-slate-800 shadow-lg shadow-slate-200">
-                        View Statement
-                    </button>
+
+                <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right duration-700">
+                    <Button
+                        variant="outline"
+                        onClick={onQuickFind}
+                        className="h-12 px-6 rounded-2xl border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition-all bg-white/80 backdrop-blur-sm shadow-lg shadow-slate-100"
+                    >
+                        <Search className="h-4 w-4 mr-2" />
+                        Quick Find
+                        <kbd className="ml-2 px-1.5 py-0.5 bg-slate-100 rounded text-[10px] font-mono hidden lg:inline">⌘K</kbd>
+                    </Button>
+                    <Button asChild className="h-12 px-8 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold shadow-xl shadow-emerald-500/25 border-0">
+                        <Link href="/properties">
+                            <Eye className="h-5 w-5 mr-2" />
+                            View All Properties
+                        </Link>
+                    </Button>
                 </div>
             </div>
 
-            {/* Financial Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <FinanceCard
-                    title="Monthly Revenue"
-                    value={`$${stats.totalRevenue.toLocaleString()}`}
-                    sub="+8.2% vs last month"
-                    icon={DollarSign}
-                    variant="primary"
-                />
-                <FinanceCard
-                    title="Occupancy Rate"
-                    value={`${stats.occupancyRate}%`}
-                    sub={`${stats.totalUnits} Total Units`}
-                    icon={Building}
-                    variant="neutral"
-                />
-                <FinanceCard
-                    title="YTD Yield"
-                    value="6.4%"
-                    sub="Annualized Return"
-                    icon={TrendingUp}
-                    variant="success"
-                />
-                <FinanceCard
-                    title="Pending Rent"
-                    value={`$${stats.pendingRent.toLocaleString()}`}
-                    sub="2 Units Late"
-                    icon={AlertCircle}
-                    variant="danger"
-                />
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Revenue Chart */}
-                <Card className="lg:col-span-2 border-none shadow-sm h-[400px]">
-                    <CardHeader>
-                        <CardTitle>Revenue Trends</CardTitle>
-                        <CardDescription>Gross income over the last 6 months.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="h-[320px] w-full">
-                        {/* Simple placeholder for chart area if recharts not perfectly configured in environment */}
-                        <div className="w-full h-full bg-slate-50 rounded-xl relative overflow-hidden flex items-end justify-between px-6 pb-0 pt-10">
-                            {revenueData.map((d, i) => (
-                                <div key={i} className="flex flex-col items-center gap-2 group w-full">
-                                    <div
-                                        className="w-[60%] bg-slate-200 rounded-t-lg transition-all duration-500 group-hover:bg-blue-500 relative"
-                                        style={{ height: `${(d.revenue / 25000) * 100}%` }}
-                                    >
-                                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                                            ${d.revenue}
-                                        </div>
-                                    </div>
-                                    <span className="text-xs font-bold text-slate-400">{d.name}</span>
-                                </div>
-                            ))}
+            {/* Revenue Banner */}
+            <div className="animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '100ms' }}>
+                <div className="relative overflow-hidden p-8 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 rounded-3xl shadow-2xl shadow-emerald-500/20">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                    <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                        <div className="flex items-center gap-6">
+                            <div className="h-16 w-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                                <Wallet className="h-8 w-8 text-white" />
+                            </div>
+                            <div>
+                                <p className="text-white/70 text-sm font-bold uppercase tracking-widest">Monthly Rental Income</p>
+                                <p className="text-4xl lg:text-5xl font-black text-white">${stats?.monthlyRevenue?.toLocaleString() || 0}</p>
+                            </div>
                         </div>
+                        <div className="flex items-center gap-8 text-white/80">
+                            <div className="text-center">
+                                <p className="text-3xl font-black text-white">{stats?.rentedProperties || 0}</p>
+                                <p className="text-xs font-bold uppercase tracking-widest">Rented Units</p>
+                            </div>
+                            <div className="w-px h-12 bg-white/20" />
+                            <div className="text-center">
+                                <p className="text-3xl font-black text-white">{stats?.availableProperties || 0}</p>
+                                <p className="text-xs font-bold uppercase tracking-widest">Available</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '200ms' }}>
+                <StatCard
+                    title="My Properties"
+                    value={stats?.totalProperties || 0}
+                    subtitle={`${stats?.availableProperties || 0} available`}
+                    icon={Home}
+                    gradient="from-emerald-500 to-emerald-600"
+                    href="/properties"
+                />
+                <StatCard
+                    title="Pending Review"
+                    value={stats?.pendingApplications || 0}
+                    subtitle="Applications awaiting approval"
+                    icon={ClipboardList}
+                    gradient="from-amber-500 to-amber-600"
+                    href="/landlord/applications"
+                    urgent={(stats?.pendingApplications || 0) > 0}
+                />
+                <StatCard
+                    title="Approved"
+                    value={stats?.approvedApplications || 0}
+                    subtitle="This month"
+                    icon={ThumbsUp}
+                    gradient="from-blue-500 to-blue-600"
+                />
+                <StatCard
+                    title="Showings"
+                    value={stats?.upcomingShowings || 0}
+                    subtitle="Scheduled visits"
+                    icon={Calendar}
+                    gradient="from-violet-500 to-violet-600"
+                    href="/showings"
+                />
+            </div>
+
+            {/* Two Column Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '300ms' }}>
+                {/* Recent Applications */}
+                <Card className="rounded-[2rem] border-slate-100/50 bg-white/70 backdrop-blur-xl shadow-xl shadow-slate-200/30">
+                    <CardHeader className="p-6 pb-4 flex flex-row items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-200">
+                                <ClipboardList className="h-5 w-5 text-white" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-lg font-black text-slate-900">Pending Applications</CardTitle>
+                                <p className="text-sm text-slate-500">Require your decision</p>
+                            </div>
+                        </div>
+                        <Link href="/landlord/applications" className="text-sm font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
+                            View All <ArrowRight className="h-4 w-4" />
+                        </Link>
+                    </CardHeader>
+                    <CardContent className="p-6 pt-0">
+                        {(!recentApplications || recentApplications.length === 0) ? (
+                            <div className="text-center py-12">
+                                <CheckCircle className="h-12 w-12 text-emerald-300 mx-auto mb-4" />
+                                <p className="font-bold text-slate-700">All caught up!</p>
+                                <p className="text-sm text-slate-400">No pending applications</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {recentApplications?.map((app: any) => {
+                                    const property = Array.isArray(app.property) ? app.property[0] : app.property
+                                    return (
+                                        <Link key={app.id} href={`/landlord/applications`}>
+                                            <div className="group p-4 rounded-2xl bg-slate-50/50 hover:bg-white hover:shadow-lg transition-all duration-200 cursor-pointer border border-transparent hover:border-amber-200">
+                                                <div className="flex items-start justify-between">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="font-bold text-slate-900 truncate">{app.applicant_name}</p>
+                                                            <StatusBadge status={app.status} />
+                                                        </div>
+                                                        <p className="text-sm text-slate-500 truncate mt-1">
+                                                            <MapPin className="h-3 w-3 inline mr-1" />
+                                                            {property?.address || 'Property'} {property?.unit_number ? `#${property.unit_number}` : ''}
+                                                        </p>
+                                                        <p className="text-xs text-slate-400 mt-1">
+                                                            {formatDistanceToNow(new Date(app.created_at), { addSuffix: true })}
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex flex-col items-end gap-2">
+                                                        <span className="text-lg font-black text-emerald-600">${property?.rent?.toLocaleString()}/mo</span>
+                                                        <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    )
+                                })}
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
-                {/* Approvals Queue */}
-                <div className="space-y-6">
-                    <Card className="border-none shadow-sm h-full">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Users className="w-5 h-5 text-indigo-600" />
-                                Approvals Queue
-                            </CardTitle>
-                            <CardDescription>Applicants pending your review.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {recentApps.filter((a: any) => a.status === 'screening').length === 0 ? (
-                                <div className="text-center py-10 text-slate-400 text-sm">All caught up! No pending reviews.</div>
-                            ) : (
-                                recentApps.filter((a: any) => a.status === 'screening').map((app: any) => (
-                                    <div key={app.id} className="p-4 bg-slate-50 border border-slate-100 rounded-xl hover:border-blue-200 transition-colors cursor-pointer">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <h4 className="font-bold text-slate-900">{app.applicant_name}</h4>
-                                                <p className="text-xs text-slate-500">{app.properties?.address}</p>
+                {/* My Properties */}
+                <Card className="rounded-[2rem] border-slate-100/50 bg-white/70 backdrop-blur-xl shadow-xl shadow-slate-200/30">
+                    <CardHeader className="p-6 pb-4 flex flex-row items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-200">
+                                <Home className="h-5 w-5 text-white" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-lg font-black text-slate-900">My Properties</CardTitle>
+                                <p className="text-sm text-slate-500">Your portfolio</p>
+                            </div>
+                        </div>
+                        <Link href="/properties" className="text-sm font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
+                            View All <ArrowRight className="h-4 w-4" />
+                        </Link>
+                    </CardHeader>
+                    <CardContent className="p-6 pt-0">
+                        {(!properties || properties.length === 0) ? (
+                            <div className="text-center py-12">
+                                <Home className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+                                <p className="font-bold text-slate-700">No properties yet</p>
+                                <p className="text-sm text-slate-400">Properties you own will appear here</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {properties?.map((property: any) => (
+                                    <Link key={property.id} href={`/properties/${property.id}`}>
+                                        <div className="group p-4 rounded-2xl bg-slate-50/50 hover:bg-white hover:shadow-lg transition-all duration-200 cursor-pointer border border-transparent hover:border-emerald-200">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <PropertyStatusBadge status={property.status} />
+                                                <span className="text-lg font-black text-emerald-600">${property.rent?.toLocaleString()}</span>
                                             </div>
-                                            <Badge className="bg-indigo-100 text-indigo-700 border-none hover:bg-indigo-200">
-                                                Screening
-                                            </Badge>
+                                            <p className="font-bold text-slate-900 text-sm truncate">{property.address}</p>
+                                            <p className="text-xs text-slate-400 mt-1">
+                                                {property.unit_number ? `Unit ${property.unit_number} • ` : ''}
+                                                {property.bedrooms} bed • {property.bathrooms} bath
+                                            </p>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
-                                            <div className="bg-white p-2 rounded border border-slate-100">
-                                                <span className="text-slate-400 block">Credit</span>
-                                                <span className="font-bold text-slate-900">{app.credit_score || 'N/A'}</span>
-                                            </div>
-                                            <div className="bg-white p-2 rounded border border-slate-100">
-                                                <span className="text-slate-400 block">Income</span>
-                                                <span className="font-bold text-slate-900">${app.monthly_income?.toLocaleString()}</span>
-                                            </div>
-                                        </div>
-                                        <div className="mt-3 flex gap-2">
-                                            <button className="flex-1 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg hover:bg-slate-800">Review</button>
-                                            <button className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-xs font-bold rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-100">Decline</button>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </CardContent>
-                    </Card>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '400ms' }}>
+                <h2 className="text-lg font-black text-slate-900 mb-4 flex items-center gap-2">
+                    <Star className="h-5 w-5 text-amber-500" />
+                    Quick Actions
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <QuickActionCard
+                        title="Review Applications"
+                        description="Approve or deny pending"
+                        icon={ClipboardList}
+                        color="amber"
+                        href="/landlord/applications"
+                        badge={stats?.pendingApplications > 0 ? `${stats.pendingApplications} pending` : undefined}
+                    />
+                    <QuickActionCard
+                        title="View Properties"
+                        description="Manage your portfolio"
+                        icon={Home}
+                        color="emerald"
+                        href="/properties"
+                    />
+                    <QuickActionCard
+                        title="View Showings"
+                        description="Scheduled visits"
+                        icon={Calendar}
+                        color="violet"
+                        href="/showings"
+                    />
+                    <QuickActionCard
+                        title="Generate Report"
+                        description="Portfolio summary"
+                        icon={FileText}
+                        color="blue"
+                        href="/documents"
+                    />
                 </div>
             </div>
         </div>
-    );
+    )
 }
 
-function FinanceCard({ title, value, sub, icon: Icon, variant }: any) {
-    const variants: any = {
-        primary: "bg-blue-600 text-white sub-text-blue-100 icon-white",
-        neutral: "bg-white border-slate-200 text-slate-900 sub-text-slate-500 icon-slate-400",
-        success: "bg-emerald-50 border-emerald-100 text-slate-900 sub-text-emerald-600 icon-emerald-500",
-        danger: "bg-white border-red-100 text-slate-900 sub-text-red-500 icon-red-500"
-    };
-
-    const isPrimary = variant === 'primary';
-
+function PropertyStatusBadge({ status }: { status: string }) {
+    const configs: Record<string, { bg: string; text: string }> = {
+        'available': { bg: 'bg-emerald-100', text: 'text-emerald-700' },
+        'rented': { bg: 'bg-blue-100', text: 'text-blue-700' },
+        'pending': { bg: 'bg-amber-100', text: 'text-amber-700' },
+        'maintenance': { bg: 'bg-orange-100', text: 'text-orange-700' },
+    }
+    const config = configs[status] || { bg: 'bg-slate-100', text: 'text-slate-700' }
     return (
-        <div className={`p-6 rounded-2xl shadow-sm ${isPrimary ? 'shadow-blue-200' : 'border'} ${variants[variant].split(' ')[0] || 'bg-white'}`}>
-            <div className="flex justify-between items-start mb-4">
-                <div className={`p-2 rounded-lg ${isPrimary ? 'bg-white/10' : 'bg-slate-50'}`}>
-                    <Icon className={`w-5 h-5 ${isPrimary ? 'text-white' : 'text-slate-500'}`} />
-                </div>
-                {variant === 'primary' && <ArrowUpRight className="w-4 h-4 text-white/50" />}
-            </div>
-            <div>
-                <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${isPrimary ? 'text-blue-100' : 'text-slate-400'}`}>{title}</p>
-                <h3 className={`text-2xl font-bold mb-1 ${isPrimary ? 'text-white' : 'text-slate-900'}`}>{value}</h3>
-                <p className={`text-xs font-medium ${isPrimary ? 'text-blue-200' : 'text-slate-500'}`}>{sub}</p>
-            </div>
-        </div>
-    );
+        <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-black uppercase", config.bg, config.text)}>
+            {status}
+        </span>
+    )
 }
