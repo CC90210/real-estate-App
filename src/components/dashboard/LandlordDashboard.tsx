@@ -388,7 +388,7 @@ export default function LandlordDashboard({ onQuickFind }: LandlordDashboardProp
                         icon={ClipboardList}
                         color="amber"
                         href="/landlord/applications"
-                        badge={stats?.pendingApplications > 0 ? `${stats.pendingApplications} pending` : undefined}
+                        badge={(stats?.pendingApplications ?? 0) > 0 ? `${stats?.pendingApplications} pending` : undefined}
                     />
                     <QuickActionCard
                         title="View Properties"
