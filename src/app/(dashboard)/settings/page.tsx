@@ -164,9 +164,9 @@ export default function SettingsPage() {
                 .eq('id', profile.id);
 
             if (error) throw error;
-            toast.success("Profile synchronized with cloud storage.");
+            toast.success("Profile saved successfully.");
         } catch (error: any) {
-            toast.error("Cloud sync failed: " + error.message);
+            toast.error("Failed to save profile: " + error.message);
         } finally {
             setIsSaving(false);
         }
@@ -181,7 +181,7 @@ export default function SettingsPage() {
         try {
             const { error } = await supabase.auth.updateUser({ password: passwords.new });
             if (error) throw error;
-            toast.success("Security credentials updated successfully.");
+            toast.success("Password updated successfully.");
             setPasswords({ current: '', new: '', confirm: '' });
         } catch (error: any) {
             toast.error("Security update failed: " + error.message);
@@ -194,7 +194,7 @@ export default function SettingsPage() {
         return (
             <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
                 <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Accessing Workspace Intelligence...</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loading settings...</p>
             </div>
         );
     }
@@ -209,7 +209,7 @@ export default function SettingsPage() {
                         <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Enterprise Workspace</p>
                     </div>
                     <h1 className="text-5xl font-black tracking-tighter text-slate-900 leading-none">Settings.</h1>
-                    <p className="text-slate-500 font-medium mt-4 text-lg">Infrastructure control and professional identity management.</p>
+                    <p className="text-slate-500 font-medium mt-4 text-lg">Manage your profile, security, and company branding.</p>
                 </div>
             </div>
 
@@ -220,29 +220,29 @@ export default function SettingsPage() {
                         active={activeTab === 'profile'}
                         onClick={() => setActiveTab('profile')}
                         icon={User}
-                        label="Professional Identity"
-                        description="Profile and contact data"
+                        label="Profile"
+                        description="Your personal details"
                     />
                     <NavBtn
                         active={activeTab === 'security'}
                         onClick={() => setActiveTab('security')}
                         icon={Shield}
                         label="Account Security"
-                        description="Encryption & access"
+                        description="Password & security"
                     />
                     <NavBtn
                         active={activeTab === 'notifications'}
                         onClick={() => setActiveTab('notifications')}
                         icon={Bell}
-                        label="Intelligence Alerts"
-                        description="Real-time sync status"
+                        label="Notifications"
+                        description="Email & push alerts"
                     />
                     <NavBtn
                         active={activeTab === 'branding'}
                         onClick={() => setActiveTab('branding')}
                         icon={Palette}
                         label="Branding & UI"
-                        description="Visual performance"
+                        description="Company & documents"
                     />
                 </div>
 
@@ -251,8 +251,8 @@ export default function SettingsPage() {
                     {activeTab === 'profile' && (
                         <Card className="border-none shadow-2xl bg-white rounded-[2.5rem] overflow-hidden">
                             <CardHeader className="p-10 pb-6 border-b border-slate-50">
-                                <CardTitle className="text-2xl font-black text-slate-900">Professional Identity</CardTitle>
-                                <CardDescription className="text-slate-400 font-medium leading-relaxed">This data is injected into all AI-generated documents and legal proposals.</CardDescription>
+                                <CardTitle className="text-2xl font-black text-slate-900">Profile</CardTitle>
+                                <CardDescription className="text-slate-400 font-medium leading-relaxed">Your personal information shown on documents and invoices.</CardDescription>
                             </CardHeader>
                             <CardContent className="p-10 space-y-10">
                                 <div className="flex items-center gap-8">
@@ -295,7 +295,7 @@ export default function SettingsPage() {
                                     className="w-full h-16 bg-slate-900 hover:bg-slate-800 text-white rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-3"
                                 >
                                     {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                                    Synchronize Profile Changes
+                                    Save Profile
                                 </Button>
                             </CardContent>
                         </Card>
@@ -307,7 +307,7 @@ export default function SettingsPage() {
                                 <CardTitle className="text-2xl font-black text-slate-900 flex items-center gap-3">
                                     <Shield className="w-8 h-8 text-blue-600" /> Account Security
                                 </CardTitle>
-                                <CardDescription className="text-slate-400 font-medium">Manage your encryption credentials and access vectors.</CardDescription>
+                                <CardDescription className="text-slate-400 font-medium">Manage your password and security settings.</CardDescription>
                             </CardHeader>
                             <CardContent className="p-10 space-y-8">
                                 <div className="space-y-6">
@@ -317,8 +317,8 @@ export default function SettingsPage() {
                                                 <Lock className="w-6 h-6" />
                                             </div>
                                             <div>
-                                                <p className="font-black text-slate-900">Cloud Encryption Status</p>
-                                                <p className="text-xs text-slate-500 font-medium">Your data is secured with AES-256 end-to-end.</p>
+                                                <p className="font-black text-slate-900">Account Protection</p>
+                                                <p className="text-xs text-slate-500 font-medium">Your account is protected with secure authentication.</p>
                                             </div>
                                         </div>
                                         <Badge className="bg-emerald-500 text-white font-black px-3 py-1">ACTIVE</Badge>
@@ -342,7 +342,7 @@ export default function SettingsPage() {
                                             />
                                             <Input
                                                 type={showPasswords ? "text" : "password"}
-                                                placeholder="New High-Security Password"
+                                                placeholder="New Password"
                                                 className="h-14 rounded-2xl bg-slate-50 border-slate-100 font-mono px-6"
                                                 value={passwords.new}
                                                 onChange={(e) => setPasswords({ ...passwords, new: e.target.value })}
@@ -362,7 +362,7 @@ export default function SettingsPage() {
                                         disabled={isSaving || !passwords.new}
                                         className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[11px] shadow-xl shadow-blue-100"
                                     >
-                                        Update Security Credentials
+                                        Update Password
                                     </Button>
                                 </div>
                             </CardContent>
@@ -373,45 +373,60 @@ export default function SettingsPage() {
                         <Card className="border-none shadow-2xl bg-white rounded-[2.5rem] overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
                             <CardHeader className="p-10 pb-6 border-b border-slate-50">
                                 <CardTitle className="text-2xl font-black text-slate-900 flex items-center gap-3">
-                                    <Bell className="w-8 h-8 text-amber-500" /> Intelligence Alerts
+                                    <Bell className="w-8 h-8 text-amber-500" /> Notification Preferences
                                 </CardTitle>
-                                <CardDescription className="text-slate-400 font-medium">Control the velocity and delivery of system events.</CardDescription>
+                                <CardDescription className="text-slate-400 font-medium">Control how and when you receive updates.</CardDescription>
                             </CardHeader>
                             <CardContent className="p-10 space-y-6">
                                 <ToggleSection
-                                    title="New Application Webhooks"
-                                    description="Receive instant alerts when a high-value applicant submits a dossier."
-                                    enabled={preferences.alerts.new_app}
-                                    onToggle={(checked: boolean) => handleSavePreferences({ ...preferences, alerts: { ...preferences.alerts, new_app: checked } })}
+                                    title="New Application Alerts"
+                                    description="Get notified when a new tenant application is submitted."
+                                    enabled={preferences?.alerts?.new_app ?? true}
+                                    onToggle={(checked: boolean) => handleSavePreferences({
+                                        ...preferences,
+                                        alerts: { ...(preferences?.alerts || {}), new_app: checked }
+                                    })}
                                 />
                                 <ToggleSection
-                                    title="AI Document Forge Alerts"
-                                    description="Get notified when AI syncs with property records for summary generation."
-                                    enabled={preferences.alerts.ai_doc}
-                                    onToggle={(checked: boolean) => handleSavePreferences({ ...preferences, alerts: { ...preferences.alerts, ai_doc: checked } })}
+                                    title="Document Generation Alerts"
+                                    description="Receive alerts when documents are generated for your properties."
+                                    enabled={preferences?.alerts?.ai_doc ?? true}
+                                    onToggle={(checked: boolean) => handleSavePreferences({
+                                        ...preferences,
+                                        alerts: { ...(preferences?.alerts || {}), ai_doc: checked }
+                                    })}
                                 />
                                 <ToggleSection
-                                    title="Portfolio Revenue Milestones"
-                                    description="Real-time reporting on monthly recurring revenue (MRR) achievements."
-                                    enabled={preferences.alerts.revenue}
-                                    onToggle={(checked: boolean) => handleSavePreferences({ ...preferences, alerts: { ...preferences.alerts, revenue: checked } })}
+                                    title="Revenue Milestones"
+                                    description="Get updates on payment collections and financial milestones."
+                                    enabled={preferences?.alerts?.revenue ?? false}
+                                    onToggle={(checked: boolean) => handleSavePreferences({
+                                        ...preferences,
+                                        alerts: { ...(preferences?.alerts || {}), revenue: checked }
+                                    })}
                                 />
                                 <Separator className="my-8" />
                                 <div className="space-y-4">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Communication Delivery</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Delivery Method</p>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex items-center justify-between">
-                                            <span className="font-black text-slate-900 text-sm">Direct Email Delivery</span>
+                                            <span className="font-black text-slate-900 text-sm">Email Notifications</span>
                                             <Switch
-                                                checked={preferences.notifications.email}
-                                                onCheckedChange={(checked) => handleSavePreferences({ ...preferences, notifications: { ...preferences.notifications, email: checked } })}
+                                                checked={preferences?.notifications?.email ?? true}
+                                                onCheckedChange={(checked) => handleSavePreferences({
+                                                    ...preferences,
+                                                    notifications: { ...(preferences?.notifications || {}), email: checked }
+                                                })}
                                             />
                                         </div>
                                         <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex items-center justify-between">
-                                            <span className="font-black text-slate-900 text-sm">Push (Chrome/System)</span>
+                                            <span className="font-black text-slate-900 text-sm">Push Notifications</span>
                                             <Switch
-                                                checked={preferences.notifications.push}
-                                                onCheckedChange={(checked) => handleSavePreferences({ ...preferences, notifications: { ...preferences.notifications, push: checked } })}
+                                                checked={preferences?.notifications?.push ?? true}
+                                                onCheckedChange={(checked) => handleSavePreferences({
+                                                    ...preferences,
+                                                    notifications: { ...(preferences?.notifications || {}), push: checked }
+                                                })}
                                             />
                                         </div>
                                     </div>

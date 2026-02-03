@@ -3,7 +3,6 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import { Toaster } from '@/components/ui/sonner';
-import { ChatPanel } from '@/components/chat/ChatPanel';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -53,9 +52,9 @@ export default function RootLayout({
               },
             }}
           />
-          <ChatPanel />
         </Providers>
       </body>
     </html>
   );
 }
+

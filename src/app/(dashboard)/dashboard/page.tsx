@@ -27,6 +27,27 @@ import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
 
+// Motivational quotes for real estate professionals
+const motivationalQuotes = [
+    { quote: "Every property tells a story. Help your clients write theirs.", author: "Unknown" },
+    { quote: "Success in real estate comes from putting people first.", author: "Gary Keller" },
+    { quote: "The best time to buy real estate was 20 years ago. The second best time is now.", author: "Proverb" },
+    { quote: "Real estate is not about selling houses, it's about selling dreams.", author: "Unknown" },
+    { quote: "Your reputation is your most valuable asset in this business.", author: "Barbara Corcoran" },
+    { quote: "The fortune is in the follow-up.", author: "Jim Rohn" },
+    { quote: "Build relationships, not transactions.", author: "Unknown" },
+    { quote: "Every day is a new opportunity to close.", author: "Unknown" },
+    { quote: "Success is walking from failure to failure with no loss of enthusiasm.", author: "Winston Churchill" },
+    { quote: "The key to success is to focus on goals, not obstacles.", author: "Unknown" },
+]
+
+// Get quote based on day of year (changes daily)
+function getDailyQuote() {
+    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000)
+    return motivationalQuotes[dayOfYear % motivationalQuotes.length]
+}
+
+
 function CheckListItem({ title, description, href, completed, index }: any) {
     return (
         <Link href={href}>
@@ -164,18 +185,22 @@ export default function DashboardPage() {
                 <div className="space-y-1">
                     <div className="flex items-center gap-2 text-blue-600 font-black text-[10px] uppercase tracking-[0.2em] mb-2 animate-in fade-in slide-in-from-left duration-700">
                         <LayoutDashboard className="h-3 w-3" />
-                        <span>Command Center</span>
+                        <span>Dashboard</span>
                     </div>
                     <h1 className="text-4xl lg:text-5xl font-black tracking-tight text-slate-900 flex items-center gap-3">
                         Welcome back, <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                            {profile?.full_name?.split(' ')[0] || 'Member'}
+                            {profile?.full_name?.split(' ')[0] || 'Agent'}
                         </span>
                     </h1>
-                    <p className="text-slate-500 font-medium text-lg flex items-center gap-2">
-                        {company?.name || 'Your Global Portfolio'}
-                        <span className="h-1 w-1 rounded-full bg-slate-300" />
-                        <span className="text-slate-400">Production Mode</span>
+                    <p className="text-slate-500 font-medium text-lg">
+                        {company?.name || 'Your Company'}
                     </p>
+
+                    {/* Daily Motivational Quote */}
+                    <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 max-w-2xl">
+                        <p className="text-slate-700 italic">&quot;{getDailyQuote().quote}&quot;</p>
+                        <p className="text-sm text-slate-500 mt-1">— {getDailyQuote().author}</p>
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -184,7 +209,7 @@ export default function DashboardPage() {
                     </Button>
                     <Button asChild className="h-12 px-8 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold shadow-xl shadow-blue-500/20 transition-all hover:-translate-y-0.5 border-0">
                         <Link href="/properties/new">
-                            <Plus className="h-5 w-5 mr-2" /> Add Asset
+                            <Plus className="h-5 w-5 mr-2" /> Add Property
                         </Link>
                     </Button>
                 </div>
@@ -193,85 +218,87 @@ export default function DashboardPage() {
             {/* Metrics Ribbon */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
-                    title="Portfolio Assets"
+                    title="Total Properties"
                     value={stats?.totalProperties || 0}
-                    subtitle={`${stats?.availableProperties || 0} Ready for Lease`}
+                    subtitle={`${stats?.availableProperties || 0} Available`}
                     icon={Home}
                     gradient="from-blue-500 to-blue-600"
                     trend="+12%"
                 />
                 <StatCard
-                    title="Active Pipeline"
+                    title="Applications"
                     value={stats?.totalApplications || 0}
-                    subtitle={`${stats?.pendingApplications || 0} Pending Verification`}
+                    subtitle={`${stats?.pendingApplications || 0} Pending Review`}
                     icon={ClipboardList}
                     gradient="from-indigo-500 to-indigo-600"
                     trend="+5.2%"
                 />
                 <StatCard
-                    title="Intelligence Team"
+                    title="Team Members"
                     value={stats?.teamMembers || 0}
-                    subtitle="Certified Personnel"
+                    subtitle="Active Users"
                     icon={Users}
                     gradient="from-violet-500 to-violet-600"
                 />
                 <StatCard
-                    title="Deployment Units"
+                    title="Available Units"
                     value={stats?.availableProperties || 0}
-                    subtitle="Inventory Capacity"
+                    subtitle="Ready to Lease"
                     icon={TrendingUp}
                     gradient="from-cyan-500 to-cyan-600"
                     trend="Stable"
                 />
             </div>
 
-            {/* Getting Started Section */}
-            <div className="space-y-6">
-                <div className="flex items-center gap-4">
-                    <h2 className="text-xl font-black text-slate-900 tracking-tight">Onboarding Protocol</h2>
-                    <div className="h-px flex-1 bg-slate-100" />
-                </div>
+            {/* Getting Started Section - Only show if onboarding not complete */}
+            {((stats?.totalProperties || 0) === 0) && (
+                <div className="space-y-6">
+                    <div className="flex items-center gap-4">
+                        <h2 className="text-xl font-black text-slate-900 tracking-tight">Getting Started</h2>
+                        <div className="h-px flex-1 bg-slate-100" />
+                    </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <CheckListItem
-                        index={0}
-                        title="Establish Areas"
-                        description="Define geographical territories for organizational governance."
-                        href="/areas"
-                        completed={(stats?.totalProperties || 0) > 0}
-                    />
-                    <CheckListItem
-                        index={1}
-                        title="Register Buildings"
-                        description="Deploy structural assets into your defined command areas."
-                        href="/properties"
-                        completed={(stats?.totalProperties || 0) > 0}
-                    />
-                    <CheckListItem
-                        index={2}
-                        title="Upload Inventory"
-                        description="Input specific unit details, media, and configurations."
-                        href="/properties/new"
-                        completed={(stats?.totalProperties || 0) > 0}
-                    />
-                    <CheckListItem
-                        index={3}
-                        title="Deploy Personnel"
-                        description="Provision secure access for agents and administrators."
-                        href="/settings/team"
-                        completed={(stats?.teamMembers || 0) > 1}
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <CheckListItem
+                            index={0}
+                            title="Create Areas"
+                            description="Define the neighborhoods or regions you manage properties in."
+                            href="/areas"
+                            completed={(stats?.totalProperties || 0) > 0}
+                        />
+                        <CheckListItem
+                            index={1}
+                            title="Add Buildings"
+                            description="Register the buildings and properties in your portfolio."
+                            href="/properties"
+                            completed={(stats?.totalProperties || 0) > 0}
+                        />
+                        <CheckListItem
+                            index={2}
+                            title="Add Properties"
+                            description="Add individual units with details, photos, and pricing."
+                            href="/properties/new"
+                            completed={(stats?.totalProperties || 0) > 0}
+                        />
+                        <CheckListItem
+                            index={3}
+                            title="Invite Team"
+                            description="Add your agents and colleagues to collaborate."
+                            href="/settings/team"
+                            completed={(stats?.teamMembers || 0) > 1}
+                        />
+                    </div>
                 </div>
-            </div>
+            )}
 
-            {/* Data Intelligence Grid */}
+            {/* Recent Activity Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Recent Applications */}
                 <Card className="lg:col-span-2 rounded-[2.5rem] border-slate-100/50 bg-white/50 backdrop-blur-xl shadow-2xl shadow-slate-200/50 overflow-hidden">
                     <CardHeader className="flex flex-row items-center justify-between p-8 pb-4">
                         <div className="space-y-1">
                             <CardTitle className="text-2xl font-black text-slate-900 tracking-tight">Recent Applications</CardTitle>
-                            <p className="text-sm font-medium text-slate-500">Incoming inquiries across all channels</p>
+                            <p className="text-sm font-medium text-slate-500">Latest tenant applications</p>
                         </div>
                         <Button variant="ghost" size="sm" asChild className="font-bold text-blue-600 hover:bg-blue-50 rounded-xl">
                             <Link href="/applications">View All <ArrowUpRight className="h-4 w-4 ml-1" /></Link>
@@ -308,8 +335,8 @@ export default function DashboardPage() {
                                     <ClipboardList className="h-8 w-8 text-slate-200" />
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="font-bold text-slate-900">Zero active applications</p>
-                                    <p className="text-sm text-slate-500 max-w-[200px] leading-relaxed">Incoming applicant data will appear here in real-time.</p>
+                                    <p className="font-bold text-slate-900">No applications yet</p>
+                                    <p className="text-sm text-slate-500 max-w-[200px] leading-relaxed">Applications will appear here when tenants apply for your properties.</p>
                                 </div>
                             </div>
                         )}
@@ -320,8 +347,8 @@ export default function DashboardPage() {
                 <Card className="rounded-[2.5rem] border-slate-100/50 bg-white/50 backdrop-blur-xl shadow-2xl shadow-slate-200/50 flex flex-col">
                     <CardHeader className="p-8 pb-4">
                         <div className="space-y-1">
-                            <CardTitle className="text-2xl font-black text-slate-900 tracking-tight">Operations Log</CardTitle>
-                            <p className="text-sm font-medium text-slate-500">Live operational transparency</p>
+                            <CardTitle className="text-2xl font-black text-slate-900 tracking-tight">Activity Log</CardTitle>
+                            <p className="text-sm font-medium text-slate-500">Recent team activity</p>
                         </div>
                     </CardHeader>
                     <CardContent className="p-8 pt-0 flex-1 overflow-y-auto">

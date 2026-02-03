@@ -108,11 +108,11 @@ export default function ApplicationsPage() {
             return data
         },
         onSuccess: () => {
-            toast.success('Protocol updated successfully')
+            toast.success('Application updated successfully')
             queryClient.invalidateQueries({ queryKey: ['applications'] })
         },
         onError: (err: any) => {
-            toast.error('Failed to update protocol', { description: err.message })
+            toast.error('Failed to update application', { description: err.message })
         }
     })
 
@@ -154,11 +154,11 @@ export default function ApplicationsPage() {
                 <div className="h-20 w-20 bg-rose-50 rounded-[2rem] flex items-center justify-center mb-6">
                     <AlertTriangle className="h-10 w-10 text-rose-500" />
                 </div>
-                <h2 className="text-2xl font-black text-slate-900 mb-2">Retrieval Interrupted</h2>
+                <h2 className="text-2xl font-black text-slate-900 mb-2">Unable to Load Applications</h2>
                 <p className="text-slate-500 font-medium mb-8 max-w-md">{(error as Error).message}</p>
                 <Button onClick={() => refetch()} className="bg-slate-900 text-white rounded-xl">
                     <RefreshCw className="h-4 w-4 mr-2" />
-                    Re-establish Connection
+                    Retry
                 </Button>
             </div>
         )
@@ -174,13 +174,18 @@ export default function ApplicationsPage() {
                 <div className="space-y-1">
                     <div className="flex items-center gap-2 text-indigo-600 font-black text-[10px] uppercase tracking-[0.2em] mb-1">
                         <ClipboardList className="h-3 w-3" />
-                        <span>Tactical Screening</span>
+                        <span>Tenant Applications</span>
                     </div>
                     <h1 className="text-4xl font-black tracking-tight text-slate-900">Applications</h1>
                     <p className="text-slate-500 font-medium">
-                        Managed tenant screening pipeline ({filteredApplications?.length || 0} active protocols)
+                        Manage tenant applications ({filteredApplications?.length || 0} total)
                     </p>
                 </div>
+                <Button asChild className="h-12 px-6 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-bold">
+                    <Link href="/applications/new">
+                        <User className="h-4 w-4 mr-2" /> Add Application
+                    </Link>
+                </Button>
             </div>
 
             {/* Filters */}
@@ -189,7 +194,7 @@ export default function ApplicationsPage() {
                     <div className="relative flex-1 group">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
                         <Input
-                            placeholder="Identify applicant or coordinate..."
+                            placeholder="Search by name or email..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="h-14 pl-12 bg-slate-50 border-transparent focus:bg-white focus:border-indigo-400 transition-all rounded-xl font-medium"
@@ -198,16 +203,16 @@ export default function ApplicationsPage() {
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
                         <SelectTrigger className="h-14 w-full sm:w-64 bg-slate-50 border-transparent text-slate-600 font-bold rounded-xl">
                             <Filter className="h-4 w-4 mr-3 opacity-50" />
-                            <SelectValue placeholder="Protocol Status" />
+                            <SelectValue placeholder="Filter by Status" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-slate-100 shadow-2xl">
-                            <SelectItem value="all">All Channels</SelectItem>
-                            <SelectItem value="new">Incoming</SelectItem>
+                            <SelectItem value="all">All Applications</SelectItem>
+                            <SelectItem value="new">New</SelectItem>
                             <SelectItem value="submitted">Submitted</SelectItem>
-                            <SelectItem value="screening">Analysis</SelectItem>
-                            <SelectItem value="pending_landlord">Review Pending</SelectItem>
-                            <SelectItem value="approved">Clearnace Issued</SelectItem>
-                            <SelectItem value="denied">Rejected</SelectItem>
+                            <SelectItem value="screening">Screening</SelectItem>
+                            <SelectItem value="pending_landlord">Pending Review</SelectItem>
+                            <SelectItem value="approved">Approved</SelectItem>
+                            <SelectItem value="denied">Denied</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -219,8 +224,8 @@ export default function ApplicationsPage() {
                     <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mb-6">
                         <User className="h-8 w-8 text-slate-200" />
                     </div>
-                    <h3 className="text-2xl font-black text-slate-900">No active applications</h3>
-                    <p className="text-slate-500 font-medium mt-2 max-w-sm">No protocols matching your current synchronization criteria.</p>
+                    <h3 className="text-2xl font-black text-slate-900">No applications yet</h3>
+                    <p className="text-slate-500 font-medium mt-2 max-w-sm">Applications will appear here when tenants apply or you add them manually.</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 gap-6">
@@ -252,10 +257,10 @@ function ApplicationCard({ application, onApprove, onDeny, isUpdating }: any) {
     const statusConfig: any = {
         new: { label: 'New', color: 'bg-blue-50 text-blue-600 border-blue-100', icon: Clock },
         submitted: { label: 'Submitted', color: 'bg-indigo-50 text-indigo-600 border-indigo-100', icon: Clock },
-        screening: { label: 'Analysis', color: 'bg-amber-50 text-amber-600 border-amber-100', icon: Shield },
-        pending_landlord: { label: 'Awaiting Review', color: 'bg-purple-50 text-purple-600 border-purple-100', icon: User },
-        approved: { label: 'Cleared', color: 'bg-emerald-50 text-emerald-600 border-emerald-100', icon: CheckCircle },
-        denied: { label: 'Rejected', color: 'bg-rose-50 text-rose-600 border-rose-100', icon: XCircle }
+        screening: { label: 'Screening', color: 'bg-amber-50 text-amber-600 border-amber-100', icon: Shield },
+        pending_landlord: { label: 'Pending Review', color: 'bg-purple-50 text-purple-600 border-purple-100', icon: User },
+        approved: { label: 'Approved', color: 'bg-emerald-50 text-emerald-600 border-emerald-100', icon: CheckCircle },
+        denied: { label: 'Denied', color: 'bg-rose-50 text-rose-600 border-rose-100', icon: XCircle }
     }
 
     const status = statusConfig[application.status] || statusConfig.new
