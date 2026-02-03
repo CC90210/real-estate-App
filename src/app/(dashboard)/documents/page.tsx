@@ -478,25 +478,20 @@ export default function DocumentsPage() {
                             {documents.map(doc => (
                                 <div
                                     key={doc.id}
-                                    className="flex items-center justify-between p-3 rounded-lg bg-gray-50"
+                                    onClick={() => router.push(`/documents/${doc.id}`)}
+                                    className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-blue-50 hover:border-blue-200 border border-transparent cursor-pointer transition-all group"
                                 >
                                     <div className="flex items-center gap-3 min-w-0">
-                                        <FileText className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                                        <FileText className="h-5 w-5 text-gray-400 group-hover:text-blue-500 flex-shrink-0 transition-colors" />
                                         <div className="min-w-0">
-                                            <p className="font-medium truncate">{doc.title}</p>
+                                            <p className="font-medium truncate group-hover:text-blue-700 transition-colors">{doc.title}</p>
                                             <div className="flex items-center gap-2 text-xs text-gray-500">
                                                 <Clock className="h-3 w-3" />
                                                 {formatDistanceToNow(new Date(doc.created_at), { addSuffix: true })}
                                             </div>
                                         </div>
                                     </div>
-                                    {doc.pdf_url && (
-                                        <Button variant="ghost" size="sm" asChild>
-                                            <a href={doc.pdf_url} download>
-                                                <Download className="h-4 w-4" />
-                                            </a>
-                                        </Button>
-                                    )}
+                                    <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-blue-500 transition-colors" />
                                 </div>
                             ))}
                         </div>

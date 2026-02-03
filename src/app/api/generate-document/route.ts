@@ -95,22 +95,28 @@ export async function POST(request: Request) {
         }
 
         // Fetch full company details
-        const { data: company } = await supabase
+        const { data: company, error: companyFetchError } = await supabase
             .from('companies')
             .select('id, name, logo_url, address, phone, email')
             .eq('id', companyId)
             .single();
+
+        if (companyFetchError) {
+            console.error('Failed to fetch company details:', companyFetchError);
+        }
+
+        console.log('Company for document:', company);
 
         // Initialize document data with company branding
         let documentData: any = {
             type,
             generatedAt: new Date().toISOString(),
             company: {
-                name: company?.name || 'PropFlow Client',
+                name: company?.name || profile?.full_name || 'Your Company',
                 logo_url: company?.logo_url || null,
                 address: company?.address || '',
                 phone: company?.phone || '',
-                email: company?.email || ''
+                email: company?.email || user.email || ''
             }
         };
 
