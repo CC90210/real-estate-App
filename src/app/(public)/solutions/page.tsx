@@ -94,8 +94,8 @@ export default function SolutionsPage() {
                             <Link href="/login">
                                 <Button variant="ghost" className="font-bold text-slate-600">Sign In</Button>
                             </Link>
-                            <Link href="/signup">
-                                <Button className="font-bold bg-blue-600 rounded-xl shadow-lg shadow-blue-200">Start Free Trial</Button>
+                            <Link href="/contact">
+                                <Button className="font-bold bg-blue-600 rounded-xl shadow-lg shadow-blue-200">Request Access</Button>
                             </Link>
                         </div>
                     </div>
@@ -159,12 +159,12 @@ export default function SolutionsPage() {
                                         ))}
                                     </div>
 
-                                    <Link href="/signup">
+                                    <Link href="/contact">
                                         <Button className={cn(
                                             "h-16 px-10 rounded-2xl font-black text-lg transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-blue-200",
                                             solution.color
                                         )}>
-                                            Deploy Solution
+                                            Request Bespoke Setup
                                             <ArrowRight className="h-5 w-5 ml-3" />
                                         </Button>
                                     </Link>

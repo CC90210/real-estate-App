@@ -40,9 +40,9 @@ export default function HomePage() {
                   Sign In
                 </Button>
               </Link>
-              <Link href="/signup">
+              <Link href="/contact">
                 <Button className="font-bold px-6 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 rounded-xl">
-                  Start Free Trial
+                  Request Access
                 </Button>
               </Link>
             </div>
@@ -63,23 +63,22 @@ export default function HomePage() {
             <div className="max-w-4xl mx-auto text-center">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100/50 text-blue-600 text-xs font-bold mb-8 animate-pulse-soft">
                 <Sparkles className="h-3 w-3" />
-                <span>Next-Gen Real Estate OS</span>
+                <span>Bespoke Real Estate Infrastructure</span>
               </div>
 
               <h1 className="text-5xl sm:text-6xl lg:text-8xl font-black tracking-tight mb-8 leading-[1.1]">
-                Real estate management,{' '}
-                <span className="text-gradient block sm:inline">perfected.</span>
+                Scale your agency with <span className="text-gradient block sm:inline">expert systems.</span>
               </h1>
 
               <p className="text-lg sm:text-2xl text-slate-500 mb-12 max-w-2xl mx-auto leading-relaxed font-medium">
-                The all-in-one platform for elite property managers.
-                Automate messy workflows, delight landlords, and scale your portfolio with AI-powered intelligence.
+                PropFlow provides elite property management architecture built by experts for experts.
+                Custom deployments. Private automations. Military-grade scale.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                <Link href="/signup" className="w-full sm:w-auto">
+                <Link href="/contact" className="w-full sm:w-auto">
                   <Button size="lg" className="w-full sm:w-auto px-8 py-8 text-lg font-bold bg-blue-600 hover:bg-blue-700 shadow-2xl shadow-blue-200 rounded-2xl group">
-                    Start 14-Day Free Trial
+                    Request Custom Quote
                     <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </Link>
@@ -93,7 +92,7 @@ export default function HomePage() {
                     <div className="flex items-center gap-1">
                       {[1, 2, 3, 4, 5].map(i => <Star key={i} className="h-3 w-3 fill-amber-400 text-amber-400" />)}
                     </div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Trusted by 5,000+ Managers</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Expert-Built Ecosystem</p>
                   </div>
                 </div>
               </div>
@@ -105,7 +104,7 @@ export default function HomePage() {
         <section id="features" className="py-24 bg-white border-y border-slate-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h2 className="text-4xl font-black tracking-tight mb-4">Enterprise-grade toolkit.</h2>
-            <p className="text-lg text-slate-500 mb-20 font-medium">Built for the modern real estate agency.</p>
+            <p className="text-lg text-slate-500 mb-20 font-medium">Bespoke infrastructure for modern agencies.</p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <FeatureCard

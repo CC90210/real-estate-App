@@ -1,81 +1,22 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
     Building2,
-    Check,
     ArrowRight,
-    Zap,
-    Shield,
-    Users,
-    FileText,
-    Calendar,
-    BarChart3,
     Sparkles,
-    CheckCircle2
+    MessagesSquare,
+    Settings,
+    ShieldCheck,
+    Zap,
+    Cpu,
+    Briefcase
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 export const metadata: Metadata = {
     title: 'Pricing | PropFlow Intelligence',
-    description: 'Simple, transparent pricing for elite property management teams.',
+    description: 'Personalized, enterprise-grade property management infrastructure.',
 }
-
-const plans = [
-    {
-        name: 'Starter',
-        description: 'Perfect for independent agents scaling their portfolio.',
-        price: 49,
-        period: 'month',
-        features: [
-            'Up to 25 properties',
-            '1 team member',
-            'Basic Application management',
-            'AI Document generation',
-            'Email support',
-        ],
-        cta: 'Start Free Trial',
-        highlighted: false,
-        gradient: 'from-slate-50 to-white'
-    },
-    {
-        name: 'Professional',
-        description: 'For teams ready to automate their entire workflow.',
-        price: 99,
-        period: 'month',
-        features: [
-            'Up to 100 properties',
-            '5 team members',
-            'Everything in Starter',
-            'Showings calendar',
-            'Invoice generation',
-            'Advanced analytics',
-            'Priority support',
-        ],
-        cta: 'Start Free Trial',
-        highlighted: true,
-        gradient: 'from-blue-600 to-indigo-700'
-    },
-    {
-        name: 'Enterprise',
-        description: 'For large organizations requiring military-grade scale.',
-        price: 249,
-        period: 'month',
-        features: [
-            'Unlimited properties',
-            'Unlimited team members',
-            'Everything in Professional',
-            'Custom integrations',
-            'Dedicated account manager',
-            'SLA guarantee',
-            'Audit logs',
-        ],
-        cta: 'Contact Sales',
-        highlighted: false,
-        gradient: 'from-slate-900 to-slate-800'
-    },
-]
 
 export default function PricingPage() {
     return (
@@ -101,11 +42,8 @@ export default function PricingPage() {
                         </div>
 
                         <div className="flex items-center gap-4">
-                            <Link href="/login">
-                                <Button variant="ghost" className="font-bold text-slate-600">Sign In</Button>
-                            </Link>
-                            <Link href="/signup">
-                                <Button className="font-bold bg-blue-600 rounded-xl shadow-lg shadow-blue-200">Start Free Trial</Button>
+                            <Link href="/contact">
+                                <Button className="font-bold bg-blue-600 rounded-xl shadow-lg shadow-blue-200">Contact Us</Button>
                             </Link>
                         </div>
                     </div>
@@ -117,111 +55,112 @@ export default function PricingPage() {
                 <div className="max-w-7xl mx-auto px-4 text-center mb-20">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100/50 text-blue-600 text-xs font-bold mb-6">
                         <Sparkles className="h-3 w-3" />
-                        <span>Transparent Pricing</span>
+                        <span>Bespoke Digital Infrastructure</span>
                     </div>
                     <h1 className="text-5xl lg:text-7xl font-black tracking-tight text-slate-900 mb-6">
-                        Invest in your <span className="text-gradient">efficiency.</span>
+                        Custom built for <span className="text-gradient">high performance.</span>
                     </h1>
                     <p className="text-xl text-slate-500 font-medium max-w-2xl mx-auto leading-relaxed">
-                        Scale your real estate operations with a predictable investment.
-                        No hidden fees, just elite performance.
+                        PropFlow is currently available exclusively for enterprise-level partnerships.
+                        We build personalized ecosystems for agencies ready to lead the market.
                     </p>
                 </div>
 
-                {/* Pricing Cards */}
-                <div className="max-w-7xl mx-auto px-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
-                        {plans.map((plan) => (
-                            <Card
-                                key={plan.name}
-                                className={cn(
-                                    "relative overflow-hidden border-slate-100 transition-all duration-500 rounded-[2.5rem]",
-                                    plan.highlighted
-                                        ? "shadow-2xl shadow-blue-200 scale-105 z-10 border-blue-100"
-                                        : "shadow-xl shadow-slate-200/50 hover:scale-[1.02]"
-                                )}
-                            >
-                                {plan.highlighted && (
-                                    <div className="absolute top-0 left-0 right-0 bg-blue-600 text-white text-[10px] font-black uppercase tracking-[0.3em] py-2 text-center">
-                                        Performance Choice
-                                    </div>
-                                )}
+                {/* Personalized Value Section */}
+                <div className="max-w-5xl mx-auto px-4">
+                    <div className="bg-slate-900 rounded-[3rem] p-8 md:p-16 relative overflow-hidden shadow-2xl">
+                        {/* Background effects */}
+                        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/20 blur-[120px] rounded-full -mr-48 -mt-48" />
+                        <div className="absolute bottom-0 left-0 w-80 h-80 bg-indigo-600/20 blur-[100px] rounded-full -ml-40 -mb-40" />
 
-                                <div className={cn(
-                                    "p-10",
-                                    plan.highlighted ? "bg-white" : "bg-slate-50/30"
-                                )}>
-                                    <div className="mb-8">
-                                        <h3 className={cn(
-                                            "text-2xl font-black tracking-tight mb-2",
-                                            plan.name === 'Enterprise' ? "text-slate-900" : "text-slate-900"
-                                        )}>{plan.name}</h3>
-                                        <p className="text-sm font-medium text-slate-500 leading-relaxed">
-                                            {plan.description}
-                                        </p>
-                                    </div>
+                        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                            <div>
+                                <h2 className="text-3xl md:text-4xl font-black text-white mb-6 tracking-tight leading-tight">
+                                    The "Partner-Level" <br />
+                                    <span className="text-blue-400">Experience.</span>
+                                </h2>
+                                <p className="text-slate-400 font-medium mb-10 leading-relaxed italic">
+                                    "I developed this infrastructure from the ground up to solve the most difficult problems in real estate.
+                                    I don't just sell software; I partner with you to deploy an elite operating system tailored specifically to your agency's unique workflow."
+                                </p>
 
-                                    <div className="flex items-baseline gap-1 mb-8">
-                                        <span className="text-5xl font-black tracking-tight text-slate-900">${plan.price}</span>
-                                        <span className="text-slate-400 font-bold uppercase tracking-widest text-xs">/month</span>
-                                    </div>
+                                <ul className="space-y-6">
+                                    <ValueItem
+                                        icon={Settings}
+                                        title="Tailored Deployment"
+                                        desc="Every module is fine-tuned to your internal processes."
+                                    />
+                                    <ValueItem
+                                        icon={Cpu}
+                                        title="Proprietary Logic"
+                                        desc="Private automation flows built exclusively for your team."
+                                    />
+                                    <ValueItem
+                                        icon={ShieldCheck}
+                                        title="Sovereign Security"
+                                        desc="Dedicated instances and hardened audit trails."
+                                    />
+                                </ul>
+                            </div>
 
-                                    <ul className="space-y-4 mb-10">
-                                        {plan.features.map((feature) => (
-                                            <li key={feature} className="flex items-start gap-3">
-                                                <div className={cn(
-                                                    "h-5 w-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5",
-                                                    plan.highlighted ? "bg-blue-50 text-blue-600" : "bg-slate-100 text-slate-400"
-                                                )}>
-                                                    <CheckCircle2 className="h-3 w-3" />
-                                                </div>
-                                                <span className="text-sm font-bold text-slate-600 leading-tight">{feature}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-
-                                    <Link href={plan.name === 'Enterprise' ? '/contact' : '/signup'}>
-                                        <Button
-                                            size="lg"
-                                            className={cn(
-                                                "w-full h-14 rounded-2xl font-black transition-all",
-                                                plan.highlighted
-                                                    ? "bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-100"
-                                                    : "bg-slate-900 hover:bg-slate-800"
-                                            )}
-                                        >
-                                            {plan.cta}
-                                            <ArrowRight className="h-4 w-4 ml-2" />
-                                        </Button>
-                                    </Link>
+                            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-10">
+                                <div className="text-center mb-10">
+                                    <h3 className="text-2xl font-black text-white mb-2 tracking-tight">Enterprise Solution</h3>
+                                    <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Negotiable Partnership</p>
                                 </div>
-                            </Card>
-                        ))}
+
+                                <div className="space-y-4 mb-10">
+                                    <Feature label="Unlimited Portfolio Capacity" />
+                                    <Feature label="Bespoke Automation Workflows" />
+                                    <Feature label="Full White-Label Capabilities" />
+                                    <Feature label="Dedicated Technical Partner" />
+                                    <Feature label="Custom API Integrations" />
+                                    <Feature label="On-Premise / Private Cloud" />
+                                </div>
+
+                                <Link href="/contact">
+                                    <Button
+                                        size="lg"
+                                        className="w-full h-16 rounded-2xl font-black bg-white text-slate-900 hover:bg-blue-50 transition-all text-lg shadow-xl"
+                                    >
+                                        Request Access & Quote
+                                        <ArrowRight className="h-5 w-5 ml-2" />
+                                    </Button>
+                                </Link>
+
+                                <p className="mt-6 text-center text-slate-500 text-xs font-bold leading-relaxed px-4">
+                                    High-touch onboarding. We currently accept a limited number of new partners to maintain elite service levels.
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                {/* FAQ Section */}
-                <div className="max-w-4xl mx-auto px-4 mt-32">
-                    <h2 className="text-3xl font-black tracking-tight text-center text-slate-900 mb-12">
-                        Common Questions
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <FAQ
-                            question="Can I upgrade my infrastructure?"
-                            answer="Yes. You can switch plans instantly as your portfolio grows. Your data migrated automatically."
-                        />
-                        <FAQ
-                            question="What happens after the trial?"
-                            answer="Your 14-day trial includes full Professional features. We'll notify you 24h before billing starts."
-                        />
-                        <FAQ
-                            question="Is my data secure?"
-                            answer="PropFlow uses military-grade AES-256 encryption. We are hosted on SOC 2 Type II infrastructure."
-                        />
-                        <FAQ
-                            question="Global billing support?"
-                            answer="We support 135+ currencies and handle local tax compliance (VAT/GST/Sales Tax) automatically."
-                        />
+                {/* Legacy Context */}
+                <div className="max-w-4xl mx-auto px-4 mt-32 text-center">
+                    <h3 className="text-2xl font-black text-slate-900 mb-8 tracking-tight">Scale with Intent.</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div className="p-8 rounded-3xl bg-slate-50 border border-slate-100">
+                            <div className="h-12 w-12 bg-white rounded-xl shadow-sm border border-slate-100 flex items-center justify-center mx-auto mb-6">
+                                <MessagesSquare className="h-6 w-6 text-blue-600" />
+                            </div>
+                            <h4 className="font-bold text-slate-900 mb-2">Direct Negotiation</h4>
+                            <p className="text-sm text-slate-500 font-medium">No rigid tiers. We talk, we align, we build for your specific ROI goals.</p>
+                        </div>
+                        <div className="p-8 rounded-3xl bg-slate-50 border border-slate-100">
+                            <div className="h-12 w-12 bg-white rounded-xl shadow-sm border border-slate-100 flex items-center justify-center mx-auto mb-6">
+                                <Zap className="h-6 w-6 text-blue-600" />
+                            </div>
+                            <h4 className="font-bold text-slate-900 mb-2">Rapid Deployment</h4>
+                            <p className="text-sm text-slate-500 font-medium">As the developer, I ensure your custom setup is live in days, not months.</p>
+                        </div>
+                        <div className="p-8 rounded-3xl bg-slate-50 border border-slate-100">
+                            <div className="h-12 w-12 bg-white rounded-xl shadow-sm border border-slate-100 flex items-center justify-center mx-auto mb-6">
+                                <Briefcase className="h-6 w-6 text-blue-600" />
+                            </div>
+                            <h4 className="font-bold text-slate-900 mb-2">Expert Consultation</h4>
+                            <p className="text-sm text-slate-500 font-medium">Deep real estate tech expertise directly involved in your growth strategy.</p>
+                        </div>
                     </div>
                 </div>
             </main>
@@ -239,10 +178,10 @@ export default function PricingPage() {
                         <div className="flex gap-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
                             <Link href="/terms" className="hover:text-blue-600 transition-colors">Terms</Link>
                             <Link href="/privacy" className="hover:text-blue-600 transition-colors">Privacy</Link>
-                            <Link href="/contact" className="hover:text-blue-600 transition-colors">Contact</Link>
+                            <Link href="/contact" className="hover:text-blue-600 transition-colors text-blue-600 font-black">Contact</Link>
                         </div>
                         <p className="text-xs font-bold text-slate-400">
-                            © 2026 PropFlow Intelligence. Enterprise scale ready.
+                            © 2026 PropFlow Intelligence. Custom Enterprise Solutions.
                         </p>
                     </div>
                 </div>
@@ -251,11 +190,25 @@ export default function PricingPage() {
     )
 }
 
-function FAQ({ question, answer }: { question: string; answer: string }) {
+function ValueItem({ icon: Icon, title, desc }: { icon: any; title: string; desc: string }) {
     return (
-        <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm">
-            <h3 className="font-black text-slate-900 mb-3 tracking-tight">{question}</h3>
-            <p className="text-sm text-slate-500 font-medium leading-relaxed">{answer}</p>
+        <li className="flex gap-4">
+            <div className="h-10 w-10 bg-blue-500/10 rounded-xl flex items-center justify-center flex-shrink-0 group hover:scale-110 transition-transform">
+                <Icon className="h-5 w-5 text-blue-400" />
+            </div>
+            <div>
+                <p className="text-white font-black text-sm tracking-tight mb-1">{title}</p>
+                <p className="text-slate-500 text-xs font-medium leading-relaxed">{desc}</p>
+            </div>
+        </li>
+    )
+}
+
+function Feature({ label }: { label: string }) {
+    return (
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 transition-colors hover:bg-white/10">
+            <div className="h-2 w-2 rounded-full bg-blue-400" />
+            <span className="text-sm font-bold text-slate-300">{label}</span>
         </div>
     )
 }

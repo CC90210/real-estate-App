@@ -118,8 +118,8 @@ export default function FeaturesPage() {
                             <Link href="/login">
                                 <Button variant="ghost" className="font-bold text-slate-600">Sign In</Button>
                             </Link>
-                            <Link href="/signup">
-                                <Button className="font-bold bg-blue-600 rounded-xl shadow-lg shadow-blue-200">Start Free Trial</Button>
+                            <Link href="/contact">
+                                <Button className="font-bold bg-blue-600 rounded-xl shadow-lg shadow-blue-200">Request Access</Button>
                             </Link>
                         </div>
                     </div>
@@ -181,9 +181,9 @@ export default function FeaturesPage() {
                             <p className="text-lg text-slate-400 font-medium mb-12 max-w-xl mx-auto">
                                 Join the network of elite property managers using PropFlow to scale their digital infrastructure.
                             </p>
-                            <Link href="/signup">
+                            <Link href="/contact">
                                 <Button size="lg" className="h-16 px-10 rounded-2xl bg-white text-slate-900 hover:bg-blue-50 font-black text-lg transition-transform hover:scale-105 active:scale-95 shadow-2xl shadow-blue-500/20">
-                                    Activate Intelligence Trial
+                                    Request Enterprise Access
                                     <ArrowRight className="h-5 w-5 ml-3" />
                                 </Button>
                             </Link>
