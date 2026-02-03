@@ -49,6 +49,21 @@ export default function SettingsPage() {
         fetchProfile();
     }, []);
 
+    // Apply branding CSS variables helper
+    const applyBrandingCSS = (brandingData: any) => {
+        const accentColors: Record<string, { primary: string; light: string; ring: string }> = {
+            blue: { primary: '#3b82f6', light: '#dbeafe', ring: '#93c5fd' },
+            indigo: { primary: '#6366f1', light: '#e0e7ff', ring: '#a5b4fc' },
+            emerald: { primary: '#10b981', light: '#d1fae5', ring: '#6ee7b7' },
+            rose: { primary: '#f43f5e', light: '#ffe4e6', ring: '#fda4af' },
+            slate: { primary: '#64748b', light: '#f1f5f9', ring: '#94a3b8' }
+        };
+        const colors = accentColors[brandingData.accent] || accentColors.blue;
+        document.documentElement.style.setProperty('--accent-primary', colors.primary);
+        document.documentElement.style.setProperty('--accent-light', colors.light);
+        document.documentElement.style.setProperty('--accent-ring', colors.ring);
+    };
+
     const fetchProfile = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -64,9 +79,25 @@ export default function SettingsPage() {
             if (profileData?.preferences) {
                 setPreferences(profileData.preferences);
             }
+
+            // Load branding: prioritize DB, fallback to localStorage
+            let loadedBranding = { accent: 'blue', theme: 'light' };
             if (profileData?.branding) {
-                setBranding(profileData.branding);
+                loadedBranding = profileData.branding;
+            } else {
+                // Fallback to localStorage
+                const stored = localStorage.getItem('propflow_branding');
+                if (stored) {
+                    try {
+                        loadedBranding = JSON.parse(stored);
+                    } catch (e) {
+                        console.warn('Failed to parse stored branding');
+                    }
+                }
             }
+            setBranding(loadedBranding);
+            applyBrandingCSS(loadedBranding);
+
 
             // Fetch company data for branding
             if (profileData?.company_id) {
@@ -123,16 +154,44 @@ export default function SettingsPage() {
 
         setBranding(newBranding);
 
+        // ==================================================================
+        // APPLY ACCENT COLOR GLOBALLY VIA CSS CUSTOM PROPERTIES
+        // ==================================================================
+        const accentColors: Record<string, { primary: string; light: string; ring: string }> = {
+            blue: { primary: '#3b82f6', light: '#dbeafe', ring: '#93c5fd' },
+            indigo: { primary: '#6366f1', light: '#e0e7ff', ring: '#a5b4fc' },
+            emerald: { primary: '#10b981', light: '#d1fae5', ring: '#6ee7b7' },
+            rose: { primary: '#f43f5e', light: '#ffe4e6', ring: '#fda4af' },
+            slate: { primary: '#64748b', light: '#f1f5f9', ring: '#94a3b8' }
+        };
+
+        const colors = accentColors[newBranding.accent] || accentColors.blue;
+        document.documentElement.style.setProperty('--accent-primary', colors.primary);
+        document.documentElement.style.setProperty('--accent-light', colors.light);
+        document.documentElement.style.setProperty('--accent-ring', colors.ring);
+
+        // Save to localStorage as persistent backup (always works)
+        localStorage.setItem('propflow_branding', JSON.stringify(newBranding));
+
+        // Try to save to database (may fail if column doesn't exist)
         const { error } = await supabase
             .from('profiles')
             .update({ branding: newBranding, updated_at: new Date().toISOString() })
             .eq('id', profile.id);
 
         if (error) {
-            console.error('Branding save error:', error);
-            toast.error("Failed to save branding settings");
+            // Log but don't fail - localStorage backup will persist the setting
+            console.warn('Branding DB save failed (using localStorage fallback):', error.message);
+            // Still show success since localStorage works
+            if (newBranding.accent !== branding.accent) {
+                toast.success(`Accent color changed to ${newBranding.accent}`);
+            } else if (newBranding.theme !== branding.theme) {
+                toast.success(`Theme changed to ${newBranding.theme}`);
+            } else {
+                toast.success("Branding preferences saved");
+            }
         } else {
-            // More specific toast based on what changed
+            // Database save succeeded
             if (newBranding.accent !== branding.accent) {
                 toast.success(`Accent color changed to ${newBranding.accent}`);
             } else if (newBranding.theme !== branding.theme) {

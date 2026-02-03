@@ -198,6 +198,29 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Database Error', details: saveError.message }, { status: 500 });
         }
 
+        // ====================================================================
+        // LOG ACTIVITY FOR DASHBOARD FEED
+        // ====================================================================
+        try {
+            await supabase.from('activity_log').insert({
+                company_id: companyId,
+                user_id: user.id,
+                entity_type: 'document',
+                entity_id: savedDoc.id,
+                action: 'created',
+                details: {
+                    document_type: type,
+                    title: titles[type] || `Document - ${type}`,
+                    property_address: documentData.property?.address || null,
+                    tenant_name: customFields.tenantName || null,
+                    applicant_name: documentData.application?.applicant_name || null
+                }
+            });
+        } catch (logError) {
+            // Don't fail the request if activity logging fails
+            console.error('Activity log failed (non-blocking):', logError);
+        }
+
         return NextResponse.json({
             success: true,
             document: documentData,

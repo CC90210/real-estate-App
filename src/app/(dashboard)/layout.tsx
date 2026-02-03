@@ -1,10 +1,14 @@
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav'
+import { BrandingInitializer } from '@/components/BrandingInitializer'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     return (
         <div className="min-h-screen bg-gray-50 flex">
+            {/* Initialize branding (accent colors) from localStorage */}
+            <BrandingInitializer />
+
             {/* Desktop Sidebar */}
             <div className="hidden lg:block w-64 flex-shrink-0">
                 <Sidebar />

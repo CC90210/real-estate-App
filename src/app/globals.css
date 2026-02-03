@@ -53,6 +53,15 @@
   --sidebar-accent-foreground: 222 47% 11%;
   --sidebar-border: 220 13% 91%;
   --sidebar-ring: 217 91% 60%;
+
+  /* ========================================== */
+  /* WORKSPACE BRANDING - User Customizable    */
+  /* These can be overridden by JavaScript     */
+  /* ========================================== */
+  --accent-primary: #3b82f6;
+  /* Default: Blue */
+  --accent-light: #dbeafe;
+  --accent-ring: #93c5fd;
 }
 
 .dark {
