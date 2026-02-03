@@ -102,30 +102,60 @@ export default function DashboardPage() {
         queryFn: async () => {
             if (!company?.id) return null;
 
+            // Calculate date ranges for trend comparison
+            const now = new Date();
+            const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
             const [
                 { count: totalProperties },
                 { count: availableProperties },
                 { count: totalApplications },
                 { count: pendingApplications },
-                { count: teamMembers }
+                { count: teamMembers },
+                // This week's new items (for trend calculation)
+                { count: propertiesThisWeek },
+                { count: propertiesLastWeek },
+                { count: applicationsThisWeek },
+                { count: applicationsLastWeek },
             ] = await Promise.all([
                 supabase.from('properties').select('*', { count: 'exact', head: true }).eq('company_id', company.id),
                 supabase.from('properties').select('*', { count: 'exact', head: true }).eq('company_id', company.id).eq('status', 'available'),
                 supabase.from('applications').select('*', { count: 'exact', head: true }).eq('company_id', company.id),
                 supabase.from('applications').select('*', { count: 'exact', head: true }).eq('company_id', company.id).in('status', ['submitted', 'screening', 'pending_landlord']),
-                supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('company_id', company.id)
-            ])
+                supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('company_id', company.id),
+                // Properties added this week
+                supabase.from('properties').select('*', { count: 'exact', head: true }).eq('company_id', company.id).gte('created_at', oneWeekAgo.toISOString()),
+                // Properties added last week (for comparison)
+                supabase.from('properties').select('*', { count: 'exact', head: true }).eq('company_id', company.id).gte('created_at', twoWeeksAgo.toISOString()).lt('created_at', oneWeekAgo.toISOString()),
+                // Applications this week
+                supabase.from('applications').select('*', { count: 'exact', head: true }).eq('company_id', company.id).gte('created_at', oneWeekAgo.toISOString()),
+                // Applications last week
+                supabase.from('applications').select('*', { count: 'exact', head: true }).eq('company_id', company.id).gte('created_at', twoWeeksAgo.toISOString()).lt('created_at', oneWeekAgo.toISOString()),
+            ]);
+
+            // Calculate real trends
+            const calcTrend = (current: number, previous: number): string | null => {
+                if (previous === 0 && current === 0) return null;
+                if (previous === 0) return `+${current}`;
+                const change = ((current - previous) / previous) * 100;
+                if (change === 0) return null;
+                return change > 0 ? `+${change.toFixed(0)}%` : `${change.toFixed(0)}%`;
+            };
 
             return {
                 totalProperties: totalProperties || 0,
                 availableProperties: availableProperties || 0,
                 totalApplications: totalApplications || 0,
                 pendingApplications: pendingApplications || 0,
-                teamMembers: teamMembers || 1
-            }
+                teamMembers: teamMembers || 1,
+                // Calculated trends
+                propertyTrend: calcTrend(propertiesThisWeek || 0, propertiesLastWeek || 0),
+                applicationTrend: calcTrend(applicationsThisWeek || 0, applicationsLastWeek || 0),
+            };
         },
         enabled: !!company?.id
-    })
+    });
 
     // Fetch recent activity
     const { data: recentActivity } = useQuery({
@@ -223,7 +253,7 @@ export default function DashboardPage() {
                     subtitle={`${stats?.availableProperties || 0} Available`}
                     icon={Home}
                     gradient="from-blue-500 to-blue-600"
-                    trend="+12%"
+                    trend={stats?.propertyTrend}
                 />
                 <StatCard
                     title="Applications"
@@ -231,7 +261,7 @@ export default function DashboardPage() {
                     subtitle={`${stats?.pendingApplications || 0} Pending Review`}
                     icon={ClipboardList}
                     gradient="from-indigo-500 to-indigo-600"
-                    trend="+5.2%"
+                    trend={stats?.applicationTrend}
                 />
                 <StatCard
                     title="Team Members"
@@ -246,7 +276,6 @@ export default function DashboardPage() {
                     subtitle="Ready to Lease"
                     icon={TrendingUp}
                     gradient="from-cyan-500 to-cyan-600"
-                    trend="Stable"
                 />
             </div>
 
@@ -392,6 +421,9 @@ export default function DashboardPage() {
 // Helper Components
 
 function StatCard({ title, value, subtitle, icon: Icon, gradient, trend }: any) {
+    const isNegative = trend && trend.startsWith('-');
+    const isPositive = trend && trend.startsWith('+');
+
     return (
         <div className="group relative p-8 rounded-[2.5rem] bg-white border border-slate-100 transition-all duration-300 hover:shadow-2xl hover:shadow-slate-200/50 hover:-translate-y-1 overflow-hidden">
             <div className={cn(
@@ -408,8 +440,11 @@ function StatCard({ title, value, subtitle, icon: Icon, gradient, trend }: any) 
                         <Icon className="h-7 w-7" />
                     </div>
                     {trend && (
-                        <div className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
-                            <TrendingUp className="h-3 w-3" /> {trend}
+                        <div className={cn(
+                            "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1",
+                            isNegative ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-emerald-600"
+                        )}>
+                            <TrendingUp className={cn("h-3 w-3", isNegative && "rotate-180")} /> {trend}
                         </div>
                     )}
                 </div>
@@ -444,12 +479,12 @@ function StatusBadge({ status }: any) {
 
 function formatAction(action: string): string {
     const actions: Record<string, string> = {
-        created: 'initialized',
-        updated: 'modified',
+        created: 'added',
+        updated: 'updated',
         deleted: 'removed',
-        approved: 'authorized',
+        approved: 'approved',
         denied: 'declined',
-        AREA_CREATED: 'deployed new'
+        AREA_CREATED: 'created'
     }
     return actions[action] || action.toLowerCase()
 }

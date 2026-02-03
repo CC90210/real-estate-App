@@ -164,6 +164,14 @@ CREATE POLICY "buildings_isolation" ON public.buildings
     USING (company_id = public.get_user_company_id())
     WITH CHECK (company_id = public.get_user_company_id());
 
+-- Activity Log (Team Activity)
+ALTER TABLE public.activity_log ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "activity_log_isolation" ON public.activity_log;
+CREATE POLICY "activity_log_isolation" ON public.activity_log
+    FOR ALL TO authenticated
+    USING (company_id = public.get_user_company_id())
+    WITH CHECK (company_id = public.get_user_company_id());
+
 -- ================================================
 -- SECTION 5: Fix Orphan Profiles (Auto-Create Companies)
 -- ================================================
@@ -239,6 +247,7 @@ GRANT ALL ON public.showings TO authenticated;
 GRANT ALL ON public.landlords TO authenticated;
 GRANT ALL ON public.areas TO authenticated;
 GRANT ALL ON public.buildings TO authenticated;
+GRANT ALL ON public.activity_log TO authenticated;
 
 -- ================================================
 -- FINAL: Reload Schema Cache
