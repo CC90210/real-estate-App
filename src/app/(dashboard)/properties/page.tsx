@@ -112,7 +112,7 @@ export default function PropertiesPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-blue-600 font-black text-[10px] uppercase tracking-[0.2em] mb-1">
+                    <div className={cn("flex items-center gap-2 font-black text-[10px] uppercase tracking-[0.2em] mb-1", colors.text)}>
                         <Home className="h-3 w-3" />
                         <span>Asset Management</span>
                     </div>
@@ -142,10 +142,10 @@ export default function PropertiesPage() {
             <Card className="bg-white/80 backdrop-blur-xl border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 p-6">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                     <div className="relative group">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                        <Search className={cn("absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors", `group-focus-within:${colors.text}`)} />
                         <Input
-                            placeholder="Search coordinates..."
-                            className="h-12 pl-12 bg-slate-50 border-transparent focus:bg-white focus:border-blue-400 transition-all rounded-xl font-medium"
+                            placeholder="Identify asset..."
+                            className={cn("pl-12 h-14 bg-white/50 border-slate-200/60 transition-all rounded-2xl font-medium", colors.focusRing, `focus:${colors.border}`)}
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />

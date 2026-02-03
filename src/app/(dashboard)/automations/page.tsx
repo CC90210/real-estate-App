@@ -5,19 +5,22 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, XCircle, Clock, Workflow } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { useAccentColor } from '@/lib/hooks/useAccentColor';
+import { cn } from '@/lib/utils';
 
 export default function AutomationsPage() {
     const { data: logs, isLoading } = useAutomationLogs();
     const { data: subscription } = useAutomationSubscription();
+    const { colors } = useAccentColor();
 
     if (!subscription?.is_active) {
         return (
             <div className="p-8 max-w-4xl mx-auto text-center space-y-6 animate-in fade-in slide-in-from-bottom-5">
-                <div className="bg-gradient-to-br from-purple-100 to-indigo-50 p-12 rounded-3xl border border-indigo-100 shadow-sm">
+                <div className={cn("p-12 rounded-3xl border shadow-sm", colors.bgLight, colors.border)}>
                     <div className="w-16 h-16 bg-white rounded-2xl shadow-md flex items-center justify-center mx-auto mb-6">
-                        <Workflow className="w-8 h-8 text-indigo-600" />
+                        <Workflow className={cn("w-8 h-8", colors.text)} />
                     </div>
-                    <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-indigo-600 mb-4">
+                    <h2 className={cn("text-3xl font-bold mb-4")}>
                         Unlock Powerful Automations
                     </h2>
                     <p className="text-lg text-slate-600 max-w-lg mx-auto mb-8 leading-relaxed">
@@ -49,10 +52,10 @@ export default function AutomationsPage() {
             completed: "bg-green-100 text-green-700 border-green-200",
             failed: "bg-red-100 text-red-700 border-red-200",
             pending: "bg-amber-100 text-amber-700 border-amber-200",
-            processing: "bg-blue-100 text-blue-700 border-blue-200"
+            processing: cn(colors.bgLight, colors.text, colors.border)
         };
         return (
-            <Badge variant="outline" className={`${styles[status] || styles.pending} capitalize rounded-full px-3`}>
+            <Badge variant="outline" className={cn(styles[status] || styles.pending, "capitalize rounded-full px-3")}>
                 {status}
             </Badge>
         );

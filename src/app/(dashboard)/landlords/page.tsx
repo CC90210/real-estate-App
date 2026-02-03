@@ -40,6 +40,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useAccentColor } from '@/lib/hooks/useAccentColor'
 
 interface Landlord {
     id: string
@@ -54,6 +55,7 @@ export default function LandlordsPage() {
     const supabase = createClient()
     const queryClient = useQueryClient()
     const { companyId, isLoading: isCompanyLoading } = useCompanyId()
+    const { colors } = useAccentColor()
     const [searchTerm, setSearchTerm] = useState('')
     const [dialogOpen, setDialogOpen] = useState(false)
     const [editingLandlord, setEditingLandlord] = useState<Landlord | null>(null)
@@ -203,11 +205,11 @@ export default function LandlordsPage() {
     return (
         <div className="relative p-6 lg:p-10 space-y-10">
             {/* Decoration */}
-            <div className="absolute top-0 right-0 w-[30rem] h-[30rem] bg-indigo-50/50 rounded-full blur-[100px] -z-10 animate-pulse" />
+            <div className={cn("absolute top-0 right-0 w-[30rem] h-[30rem] rounded-full blur-[100px] -z-10 animate-pulse", colors.bgLight)} />
 
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-indigo-600 font-black text-[10px] uppercase tracking-[0.2em] mb-1">
+                    <div className={cn("flex items-center gap-2 font-black text-[10px] uppercase tracking-[0.2em] mb-1", colors.text)}>
                         <Users className="h-3 w-3" />
                         <span>Personnel Management</span>
                     </div>
@@ -216,7 +218,7 @@ export default function LandlordsPage() {
                         Strategic oversight of property owners and asset stakeholders ({filteredLandlords?.length || 0} active)
                     </p>
                 </div>
-                <Button onClick={openCreateDialog} className="h-14 px-8 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl shadow-xl gap-2 font-bold transition-all hover:scale-105">
+                <Button onClick={openCreateDialog} className={cn("h-14 px-8 text-white rounded-2xl shadow-xl gap-2 font-bold transition-all hover:scale-105", colors.bg, `hover:${colors.bgHover}`, colors.shadow)}>
                     <Plus className="h-4 w-4" />
                     Secure Entry
                 </Button>
@@ -224,12 +226,12 @@ export default function LandlordsPage() {
 
             <Card className="bg-white/80 backdrop-blur-xl border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 p-6 max-w-lg">
                 <div className="relative group">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                    <Search className={cn("absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 transition-colors", `group-focus-within:${colors.text}`)} />
                     <Input
                         placeholder="Identify personnel..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="h-12 pl-12 bg-slate-50 border-transparent focus:bg-white focus:border-indigo-400 transition-all rounded-xl font-medium"
+                        className={cn("h-12 pl-12 bg-slate-50 border-transparent focus:bg-white transition-all rounded-xl font-medium", colors.focusRing, `focus:${colors.border.replace('border-', 'border-')}`)}
                     />
                 </div>
             </Card>
@@ -242,7 +244,7 @@ export default function LandlordsPage() {
                         {searchTerm ? 'No coordination match found' : 'Registry is currently empty'}
                     </p>
                     {!searchTerm && (
-                        <Button onClick={openCreateDialog} variant="outline" className="rounded-xl border-slate-200 font-bold">
+                        <Button onClick={openCreateDialog} variant="outline" className={cn("rounded-xl border-slate-200 font-bold", colors.text, `hover:${colors.bgLight}`)}>
                             <Plus className="h-4 w-4 mr-2" />
                             Register First Owner
                         </Button>
@@ -259,17 +261,17 @@ export default function LandlordsPage() {
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ duration: 0.3, delay: idx * 0.05 }}
                             >
-                                <Card className="group relative bg-white rounded-[2rem] border-slate-100/60 shadow-lg shadow-slate-200/40 hover:shadow-2xl hover:shadow-indigo-500/10 transition-all duration-500 overflow-hidden">
+                                <Card className={cn("group relative bg-white rounded-[2rem] border-slate-100/60 shadow-lg shadow-slate-200/40 transition-all duration-500 overflow-hidden", colors.shadowHover)}>
                                     <CardContent className="p-8">
                                         <div className="flex items-start justify-between">
                                             <div className="flex items-center gap-4">
-                                                <div className="h-14 w-14 bg-slate-50 rounded-2xl flex items-center justify-center group-hover:bg-indigo-50 transition-colors">
-                                                    <User className="h-7 w-7 text-slate-300 group-hover:text-indigo-500" />
+                                                <div className={cn("h-14 w-14 bg-slate-50 rounded-2xl flex items-center justify-center transition-colors", `group-hover:${colors.bgLight}`)}>
+                                                    <User className={cn("h-7 w-7 text-slate-300 transition-colors", `group-hover:${colors.text}`)} />
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <h3 className="text-lg font-black text-slate-900 group-hover:text-indigo-600 transition-colors truncate tracking-tight">{landlord.name}</h3>
+                                                    <h3 className={cn("text-lg font-black text-slate-900 transition-colors truncate tracking-tight", `group-hover:${colors.text}`)}>{landlord.name}</h3>
                                                     <div className="flex items-center text-xs font-bold text-slate-400 truncate mt-1">
-                                                        <Mail className="h-3 w-3 mr-2 text-indigo-400" />
+                                                        <Mail className={cn("h-3 w-3 mr-2", colors.text)} />
                                                         {landlord.email}
                                                     </div>
                                                 </div>
@@ -299,13 +301,13 @@ export default function LandlordsPage() {
                                         <div className="mt-8 pt-6 border-t border-slate-50 flex items-center justify-between">
                                             {landlord.phone ? (
                                                 <div className="flex items-center gap-2 text-xs font-black text-slate-500">
-                                                    <Phone className="h-3 w-3 text-indigo-400" />
+                                                    <Phone className={cn("h-3 w-3", colors.text)} />
                                                     {landlord.phone}
                                                 </div>
                                             ) : (
                                                 <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest">No contact uplink</div>
                                             )}
-                                            <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-50 rounded-lg text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                                            <div className={cn("flex items-center gap-1.5 px-3 py-1 bg-slate-50 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors", `group-hover:${colors.bgLight}`, `group-hover:${colors.text}`, "text-slate-400")}>
                                                 <Shield className="h-3 w-3" />
                                                 Verified
                                             </div>
@@ -337,7 +339,7 @@ export default function LandlordsPage() {
                                     required
                                     value={formData.name}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="h-12 bg-slate-50 border-transparent focus:bg-white focus:border-indigo-400 transition-all rounded-xl font-bold"
+                                    className={cn("h-12 bg-slate-50 border-transparent focus:bg-white transition-all rounded-xl font-bold", colors.focusRing, `focus:${colors.border}`)}
                                     placeholder="John Matrix"
                                 />
                             </div>
@@ -348,7 +350,7 @@ export default function LandlordsPage() {
                                     required
                                     value={formData.email}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    className="h-12 bg-slate-50 border-transparent focus:bg-white focus:border-indigo-400 transition-all rounded-xl font-bold"
+                                    className={cn("h-12 bg-slate-50 border-transparent focus:bg-white transition-all rounded-xl font-bold", colors.focusRing, `focus:${colors.border}`)}
                                     placeholder="john@nexus.com"
                                 />
                             </div>
@@ -358,7 +360,7 @@ export default function LandlordsPage() {
                                     type="tel"
                                     value={formData.phone}
                                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                    className="h-12 bg-slate-50 border-transparent focus:bg-white focus:border-indigo-400 transition-all rounded-xl font-bold"
+                                    className={cn("h-12 bg-slate-50 border-transparent focus:bg-white transition-all rounded-xl font-bold", colors.focusRing, `focus:${colors.border}`)}
                                     placeholder="+1 (555) 000-0000"
                                 />
                             </div>
@@ -370,7 +372,7 @@ export default function LandlordsPage() {
                             <Button
                                 type="submit"
                                 disabled={createLandlord.isPending || updateLandlord.isPending}
-                                className="bg-slate-900 text-white rounded-xl px-8 font-black shadow-lg shadow-slate-900/20"
+                                className={cn("text-white rounded-xl px-8 font-black shadow-lg", colors.bg, `hover:${colors.bgHover}`, colors.shadow)}
                             >
                                 {editingLandlord ? 'Execute Update' : 'Finalize Registry'}
                             </Button>

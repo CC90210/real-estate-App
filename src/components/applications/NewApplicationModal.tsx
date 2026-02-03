@@ -11,7 +11,9 @@ import { FilePlus, Loader2, AlertTriangle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { useAccentColor } from '@/lib/hooks/useAccentColor';
+import { useCompanyId } from '@/lib/hooks/useCompanyId';
 import { cn } from '@/lib/utils';
+import { ClipboardList } from 'lucide-react';
 
 export function NewApplicationModal({ propertyId }: { propertyId: string }) {
     const [open, setOpen] = useState(false);
@@ -19,6 +21,7 @@ export function NewApplicationModal({ propertyId }: { propertyId: string }) {
     const [property, setProperty] = useState<any>(null);
     const supabase = createClient();
     const { colors } = useAccentColor();
+    const { companyId } = useCompanyId();
 
     // Form State
     const [formData, setFormData] = useState({
@@ -54,6 +57,7 @@ export function NewApplicationModal({ propertyId }: { propertyId: string }) {
                 .from('applications')
                 .insert({
                     property_id: propertyId,
+                    company_id: companyId,
                     applicant_name: formData.applicant_name,
                     applicant_email: formData.applicant_email,
                     monthly_income: parseFloat(formData.monthly_income),
@@ -89,8 +93,12 @@ export function NewApplicationModal({ propertyId }: { propertyId: string }) {
             </DialogTrigger>
             <DialogContent className="max-w-md">
                 <DialogHeader>
-                    <DialogTitle>New Tenant Application</DialogTitle>
-                    <DialogDescription>
+                    <div className={cn("flex items-center gap-2 font-black text-[10px] uppercase tracking-[0.2em] mb-1", colors.text)}>
+                        <ClipboardList className="h-3 w-3" />
+                        <span>Vetting Process</span>
+                    </div>
+                    <DialogTitle className="text-2xl font-black text-slate-900 tracking-tight">New Tenant Application</DialogTitle>
+                    <DialogDescription className="font-medium text-slate-500">
                         Manually enter applicant details for screening.
                     </DialogDescription>
                 </DialogHeader>

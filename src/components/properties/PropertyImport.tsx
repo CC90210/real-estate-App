@@ -4,6 +4,8 @@ import { useState, useRef } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { useAccentColor } from '@/lib/hooks/useAccentColor'
+import { cn } from '@/lib/utils'
 import {
     Dialog,
     DialogContent,
@@ -24,6 +26,7 @@ export function PropertyImport({ open, onOpenChange }: PropertyImportProps) {
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const [result, setResult] = useState<any>(null)
+    const { colors } = useAccentColor()
 
     const importMutation = useMutation({
         mutationFn: async (file: File) => {
@@ -164,6 +167,7 @@ export function PropertyImport({ open, onOpenChange }: PropertyImportProps) {
                         <Button
                             onClick={handleImport}
                             disabled={!selectedFile || importMutation.isPending}
+                            className={cn("text-white font-bold", colors.bg, `hover:${colors.bgHover}`, colors.shadow)}
                         >
                             {importMutation.isPending ? (
                                 <>

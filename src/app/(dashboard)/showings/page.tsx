@@ -30,11 +30,14 @@ import { Plus, Calendar, Clock, MapPin, Search } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 
 import { useCompanyId } from '@/lib/hooks/useCompanyId'
+import { useAccentColor } from '@/lib/hooks/useAccentColor'
+import { cn } from '@/lib/utils'
 
 export default function ShowingsPage() {
     const supabase = createClient()
     const queryClient = useQueryClient()
     const { companyId } = useCompanyId()
+    const { colors } = useAccentColor()
     const [dialogOpen, setDialogOpen] = useState(false)
     const [selectedDate, setSelectedDate] = useState<string>('')
     const [formData, setFormData] = useState({
@@ -165,7 +168,7 @@ export default function ShowingsPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-blue-600 font-black text-[10px] uppercase tracking-[0.2em] mb-1">
+                    <div className={cn("flex items-center gap-2 font-black text-[10px] uppercase tracking-[0.2em] mb-1", colors.text)}>
                         <Calendar className="h-3 w-3" />
                         <span>Schedule Management</span>
                     </div>
@@ -176,7 +179,7 @@ export default function ShowingsPage() {
                 </div>
                 <Button
                     onClick={() => setDialogOpen(true)}
-                    className="h-14 px-8 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-xl shadow-blue-500/20 gap-2 font-bold transition-all hover:scale-105 active:scale-95"
+                    className={cn("h-14 px-8 text-white rounded-2xl shadow-xl gap-2 font-bold transition-all hover:scale-105 active:scale-95", colors.bg, `hover:${colors.bgHover}`, colors.shadow)}
                 >
                     <Plus className="w-5 h-5" />
                     Schedule Showing

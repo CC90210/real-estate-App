@@ -10,9 +10,12 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Plus, FileText, DollarSign, Clock, CheckCircle, Receipt, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
+import { useAccentColor } from '@/lib/hooks/useAccentColor'
+import { cn } from '@/lib/utils'
 
 export default function InvoicesPage() {
     const supabase = createClient()
+    const { colors } = useAccentColor()
 
     const { data: invoices, isLoading } = useQuery({
         queryKey: ['invoices'],
@@ -60,7 +63,7 @@ export default function InvoicesPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-indigo-600 font-black text-[10px] uppercase tracking-[0.2em] mb-1">
+                    <div className={cn("flex items-center gap-2 font-black text-[10px] uppercase tracking-[0.2em] mb-1", colors.text)}>
                         <Receipt className="h-3 w-3" />
                         <span>Financial Operations</span>
                     </div>
@@ -70,7 +73,7 @@ export default function InvoicesPage() {
                     </p>
                 </div>
                 <Link href="/invoices/new">
-                    <Button className="h-14 px-8 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl shadow-xl shadow-indigo-500/20 gap-2 font-bold transition-all hover:scale-105 active:scale-95">
+                    <Button className={cn("h-14 px-8 text-white rounded-2xl shadow-xl gap-2 font-bold transition-all hover:scale-105 active:scale-95", colors.bg, `hover:${colors.bgHover}`, colors.shadow)}>
                         <Plus className="h-4 w-4" />
                         Create Invoice
                     </Button>
@@ -83,8 +86,8 @@ export default function InvoicesPage() {
                     label="Outstanding"
                     value={`$${invoices?.filter(i => i.status === 'sent').reduce((sum, i) => sum + Number(i.total), 0).toLocaleString() || '0'}`}
                     icon={DollarSign}
-                    color="text-indigo-600"
-                    bg="bg-indigo-50"
+                    color={colors.text}
+                    bg={colors.bgLight}
                 />
                 <StatCard
                     label="Collected (Month)"

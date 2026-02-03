@@ -14,6 +14,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Plus, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { useAccentColor } from '@/lib/hooks/useAccentColor';
+import { cn } from '@/lib/utils';
 
 const areaSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
@@ -28,6 +30,7 @@ export function AddAreaModal() {
     const [isLoading, setIsLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const { colors } = useAccentColor();
 
 
     const { user, profile, company } = useAuth();
@@ -124,7 +127,7 @@ export function AddAreaModal() {
             }
         }}>
             <DialogTrigger asChild>
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md">
+                <Button className={cn("text-white font-semibold shadow-md", colors.bg, `hover:${colors.bgHover}`)}>
                     <Plus className="w-4 h-4 mr-2" /> Add Area
                 </Button>
             </DialogTrigger>
@@ -160,7 +163,7 @@ export function AddAreaModal() {
                                     )}
                                     {uploading && (
                                         <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
-                                            <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                                            <Loader2 className={cn("w-5 h-5 animate-spin", colors.text)} />
                                         </div>
                                     )}
                                 </div>
@@ -171,7 +174,7 @@ export function AddAreaModal() {
                                         accept="image/*"
                                         onChange={onImageUpload}
                                         disabled={uploading}
-                                        className="text-xs file:bg-blue-50 file:text-blue-700 file:border-0 file:rounded-md file:px-2 file:py-1 cursor-pointer"
+                                        className={cn("text-xs file:border-0 file:rounded-md file:px-2 file:py-1 cursor-pointer", `file:${colors.bgLight}`, `file:${colors.text}`)}
                                     />
                                     <p className="text-[10px] text-slate-500">Square images work best (Max 2MB).</p>
                                 </div>
@@ -193,7 +196,7 @@ export function AddAreaModal() {
                         <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
                             Cancel
                         </Button>
-                        <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]" disabled={isLoading || uploading}>
+                        <Button type="submit" className={cn("text-white min-w-[120px]", colors.bg, `hover:${colors.bgHover}`)} disabled={isLoading || uploading}>
                             {isLoading ? (
                                 <>
                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating...
