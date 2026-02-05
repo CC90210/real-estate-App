@@ -7,8 +7,19 @@ import { useMobile } from '@/hooks/use-mobile'
 import { MobileHeader } from '@/components/mobile/MobileHeader'
 import { MobileQuickFind } from '@/components/mobile/MobileQuickFind'
 import { DesktopSidebar } from '@/components/DesktopSidebar'
+import { QuickFindProvider } from '@/lib/contexts/QuickFindContext'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+    return (
+        <QuickFindProvider>
+            <DashboardContent>
+                {children}
+            </DashboardContent>
+        </QuickFindProvider>
+    )
+}
+
+function DashboardContent({ children }: { children: React.ReactNode }) {
     const isMobile = useMobile()
     const [quickFindOpen, setQuickFindOpen] = useState(false)
     const supabase = createClient()
