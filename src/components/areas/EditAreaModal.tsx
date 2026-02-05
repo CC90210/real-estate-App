@@ -91,8 +91,8 @@ export function EditAreaModal({ area, open, onOpenChange }: EditAreaModalProps) 
     };
 
     const updateAreaMutation = useMutation({
-        mutationFn: async (data: AreaFormValues) => {
-            if (!area?.id) throw new Error("No area selected");
+        mutationFn: async ({ id, data }: { id: string, data: AreaFormValues }) => {
+            if (!id) throw new Error("No area selected");
 
             const { data: updatedArea, error } = await supabase
                 .from('areas')
@@ -101,14 +101,14 @@ export function EditAreaModal({ area, open, onOpenChange }: EditAreaModalProps) 
                     description: data.description,
                     image_url: data.image_url,
                 })
-                .eq('id', area.id)
+                .eq('id', id)
                 .select()
                 .single();
 
             if (error) throw error;
             return updatedArea;
         },
-        onMutate: async (updatedData) => {
+        onMutate: async ({ id, data }) => {
             // 1. Cancel outgoing fetches
             await queryClient.cancelQueries({ queryKey: ['areas'] });
 
@@ -117,7 +117,7 @@ export function EditAreaModal({ area, open, onOpenChange }: EditAreaModalProps) 
 
             // 3. Optimistically update
             queryClient.setQueryData(['areas'], (old: any[] = []) => {
-                return old.map(a => a.id === area.id ? { ...a, ...updatedData } : a)
+                return old.map(a => a.id === id ? { ...a, ...data } : a)
                     .sort((a, b) => a.name.localeCompare(b.name));
             });
 
@@ -138,7 +138,11 @@ export function EditAreaModal({ area, open, onOpenChange }: EditAreaModalProps) 
     });
 
     const onSubmit = (data: AreaFormValues) => {
-        updateAreaMutation.mutate(data);
+        if (!area?.id) {
+            toast.error("Cannot update: Area ID missing");
+            return;
+        }
+        updateAreaMutation.mutate({ id: area.id, data });
     };
 
     const isPending = updateAreaMutation.isPending;
