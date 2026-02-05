@@ -10,9 +10,10 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { User, Shield, Bell, Palette, Save, Loader2, Sparkles, CheckCircle2, Lock, Eye, EyeOff, Upload, Image as ImageIcon, X } from 'lucide-react';
+import { User, Shield, Bell, Palette, Save, Loader2, Sparkles, CheckCircle2, Lock, Eye, EyeOff, Upload, Image as ImageIcon, X, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAccentColor } from '@/lib/hooks/useAccentColor';
+import TeamManagementCard from '@/components/settings/TeamManagementCard';
 
 // Define accent colors with static classes - Tailwind can't use dynamic class names
 const accentColors = [
@@ -28,7 +29,7 @@ export default function SettingsPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [isUploadingLogo, setIsUploadingLogo] = useState(false);
     const [profile, setProfile] = useState<any>(null);
-    const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'notifications' | 'branding'>('profile');
+    const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'notifications' | 'branding' | 'team'>('profile');
     const supabase = createClient();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { colors } = useAccentColor();
@@ -423,11 +424,17 @@ export default function SettingsPage() {
                         description="Email & push alerts"
                     />
                     <NavBtn
-                        active={activeTab === 'branding'}
-                        onClick={() => setActiveTab('branding')}
-                        icon={Palette}
                         label="Branding & UI"
                         description="Company & documents"
+                        last={false as boolean}
+                    />
+                    <NavBtn
+                        active={activeTab === 'team'}
+                        onClick={() => setActiveTab('team')}
+                        icon={Users}
+                        label="Team Management"
+                        description="Access & Permissions"
+                        last={true as boolean}
                     />
                 </div>
 
@@ -830,6 +837,8 @@ export default function SettingsPage() {
                             </CardContent>
                         </Card>
                     )}
+
+                    {activeTab === 'team' && <TeamManagementCard />}
                 </div>
             </div>
         </div>

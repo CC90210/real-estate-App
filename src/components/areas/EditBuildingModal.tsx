@@ -1,64 +1,74 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Plus, Building2, MapPin, X } from 'lucide-react';
+import { Loader2, Plus, Save, X, Building2, MapPin, Check } from 'lucide-react';
 import { toast } from 'sonner';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAccentColor } from '@/lib/hooks/useAccentColor';
 import { cn } from '@/lib/utils';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 
 const buildingSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
     address: z.string().min(5, "Please enter a valid address"),
-    area_id: z.string().uuid("Invalid Area selected"),
     image_url: z.string().optional(),
     amenities: z.array(z.string()).optional(),
 });
 
 type BuildingFormValues = z.infer<typeof buildingSchema>;
 
-interface AddBuildingModalProps {
-    areaId: string;
-    areaName: string;
+interface EditBuildingModalProps {
+    building: any | null;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
 }
 
 const COMMON_AMENITIES = [
     "HVAC", "Secure Access", "Parking", "Gym", "Pool", "Elevator", "Doorman", "Roof Deck", "Laundry"
 ];
 
-export function AddBuildingModal({ areaId, areaName }: AddBuildingModalProps) {
-    const { company, profile } = useAuth();
-    const [open, setOpen] = useState(false);
+export function EditBuildingModal({ building, open, onOpenChange }: EditBuildingModalProps) {
     const [uploading, setUploading] = useState(false);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [amenityInput, setAmenityInput] = useState('');
-
-    const supabase = createClient();
-    const queryClient = useQueryClient();
     const { colors } = useAccentColor();
 
-    const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<BuildingFormValues>({
+    const { user, profile, company } = useAuth();
+    const supabase = createClient();
+    const queryClient = useQueryClient();
+
+    const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<BuildingFormValues>({
         resolver: zodResolver(buildingSchema),
         defaultValues: {
             name: '',
             address: '',
-            area_id: areaId,
             image_url: '',
             amenities: []
         }
     });
 
     const currentAmenities = watch('amenities') || [];
+
+    useEffect(() => {
+        if (open && building) {
+            reset({
+                name: building.name || '',
+                address: building.address || '',
+                image_url: building.image_url || '',
+                amenities: building.amenities || []
+            });
+            setPreviewUrl(building.image_url || null);
+        }
+    }, [open, building, reset]);
 
     const onImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0 || !company?.id) return;
@@ -82,7 +92,7 @@ export function AddBuildingModal({ areaId, areaName }: AddBuildingModalProps) {
 
             setValue('image_url', publicUrl);
             setPreviewUrl(publicUrl);
-            toast.success("Image uploaded");
+            toast.success("Building image uploaded");
         } catch (error: any) {
             toast.error("Upload failed: " + error.message);
         } finally {
@@ -104,136 +114,82 @@ export function AddBuildingModal({ areaId, areaName }: AddBuildingModalProps) {
         setValue('amenities', current.filter(a => a !== amenity));
     };
 
-    const createBuildingMutation = useMutation({
-        mutationFn: async (data: BuildingFormValues) => {
-            const { data: newBuilding, error } = await supabase
+    const updateBuildingMutation = useMutation({
+        mutationFn: async ({ id, data }: { id: string, data: BuildingFormValues }) => {
+            const { data: updatedBuilding, error } = await supabase
                 .from('buildings')
-                .insert({
+                .update({
                     name: data.name,
                     address: data.address,
-                    area_id: data.area_id,
-                    company_id: company?.id,
                     image_url: data.image_url,
-                    amenities: data.amenities || []
+                    amenities: data.amenities
                 })
+                .eq('id', id)
                 .select()
                 .single();
 
             if (error) throw error;
-            return newBuilding;
+            return updatedBuilding;
         },
-        onMutate: async (newBuilding) => {
-            await queryClient.cancelQueries({ queryKey: ['area-buildings', areaId] });
-            await queryClient.cancelQueries({ queryKey: ['areas'] });
+        onMutate: async ({ id, data }) => {
+            // Optimistic Update
+            await queryClient.cancelQueries({ queryKey: ['area-buildings', building?.area_id] });
+            const previousBuildings = queryClient.getQueryData(['area-buildings', building?.area_id]);
 
-            const previousBuildings = queryClient.getQueryData(['area-buildings', areaId]);
-
-            queryClient.setQueryData(['area-buildings', areaId], (old: any[] = []) => {
-                const tempBuilding = {
-                    id: `temp-${Date.now()}`,
-                    name: newBuilding.name,
-                    address: newBuilding.address,
-                    area_id: newBuilding.area_id,
-                    image_url: newBuilding.image_url,
-                    amenities: newBuilding.amenities || [],
-                    company_id: company?.id,
-                    created_at: new Date().toISOString(),
-                    properties: []
-                };
-                return [...old, tempBuilding];
+            queryClient.setQueryData(['area-buildings', building?.area_id], (old: any[] = []) => {
+                return old.map(b => b.id === id ? { ...b, ...data } : b);
             });
 
-            toast.success(`${newBuilding.name} - Instant Deployed`);
-            setOpen(false);
-            reset();
-            setPreviewUrl(null);
-
+            onOpenChange(false);
+            toast.success("Building updated instantly!");
             return { previousBuildings };
         },
-        onError: (err, newBuilding, context) => {
-            queryClient.setQueryData(['area-buildings', areaId], context?.previousBuildings);
-            toast.error("Failed to add building: " + err.message);
-            setOpen(true);
+        onError: (err, _, context) => {
+            queryClient.setQueryData(['area-buildings', building?.area_id], context?.previousBuildings);
+            toast.error("Update failed: " + err.message);
+            onOpenChange(true);
         },
         onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ['area-buildings', areaId] });
-            queryClient.invalidateQueries({ queryKey: ['areas'] });
-        },
-        onSuccess: async (data) => {
-            if (company?.id) {
-                await supabase.from('activity_log').insert({
-                    company_id: company.id,
-                    user_id: profile?.id,
-                    action: 'BUILDING_CREATED',
-                    entity_type: 'building',
-                    entity_id: data.id,
-                    details: { name: data.name, area: areaName }
-                });
-            }
+            queryClient.invalidateQueries({ queryKey: ['area-buildings', building?.area_id] });
         }
     });
 
     const onSubmit = (data: BuildingFormValues) => {
-        if (!company?.id) {
-            toast.error("Company profile not loaded");
-            return;
-        }
-        createBuildingMutation.mutate(data);
+        if (!building?.id) return;
+        updateBuildingMutation.mutate({ id: building.id, data });
     };
 
-    const isPending = createBuildingMutation.isPending;
+    const isPending = updateBuildingMutation.isPending;
 
     return (
-        <Dialog open={open} onOpenChange={(val) => {
-            setOpen(val);
-            if (!val) {
-                reset();
-                setPreviewUrl(null);
-            }
-        }}>
-            <DialogTrigger asChild>
-                <Button className="bg-slate-900 hover:bg-slate-800 text-white shadow-sm transition-all hover:scale-[1.02]">
-                    <Plus className="w-4 h-4 mr-2" /> Add Building
-                </Button>
-            </DialogTrigger>
+        <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-lg bg-white">
                 <DialogHeader>
                     <DialogTitle className="text-xl font-bold flex items-center gap-2">
                         <Building2 className="w-5 h-5 text-blue-600" />
-                        Add New Building
+                        Edit Building
                     </DialogTitle>
                     <DialogDescription>
-                        Register a new property building within <strong>{areaName}</strong>.
+                        Update details for <strong>{building?.name}</strong>.
                     </DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 py-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="name">Building Name</Label>
-                            <Input
-                                id="name"
-                                placeholder="e.g. Skyline Towers"
-                                {...register('name')}
-                                className={errors.name ? "border-red-500" : ""}
-                            />
-                            {errors.name && <p className="text-xs text-red-500 font-medium">{errors.name.message}</p>}
+                            <Label htmlFor="className">Building Name</Label>
+                            <Input id="name" {...register('name')} className={errors.name ? "border-red-500" : ""} />
+                            {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
                         </div>
-
                         <div className="space-y-2">
-                            <Label htmlFor="address">Physical Address</Label>
-                            <Input
-                                id="address"
-                                placeholder="123 Example St"
-                                className={errors.address ? "border-red-500" : ""}
-                                {...register('address')}
-                            />
-                            {errors.address && <p className="text-xs text-red-500 font-medium">{errors.address.message}</p>}
+                            <Label htmlFor="address">Address</Label>
+                            <Input id="address" {...register('address')} className={errors.address ? "border-red-500" : ""} />
+                            {errors.address && <p className="text-xs text-red-500">{errors.address.message}</p>}
                         </div>
                     </div>
 
                     <div className="space-y-2">
-                        <Label>Building Image (Optional)</Label>
+                        <Label>Building Image</Label>
                         <div className="flex items-center gap-4">
                             <div className="relative w-20 h-20 bg-slate-100 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
                                 {previewUrl ? (
@@ -306,15 +262,11 @@ export function AddBuildingModal({ areaId, areaName }: AddBuildingModalProps) {
                     </div>
 
                     <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                        <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
+                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
                             Cancel
                         </Button>
                         <Button type="submit" className={cn("text-white min-w-[120px]", colors.bg, `hover:${colors.bgHover}`)} disabled={isPending || uploading}>
-                            {isPending ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Adding...
-                                </>
-                            ) : "Add Building"}
+                            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Changes"}
                         </Button>
                     </div>
                 </form>

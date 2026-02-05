@@ -8,15 +8,25 @@ import { ArrowLeft, Building, MapPin, Check, Plus, Globe, Shield, Trash2, ArrowU
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AddBuildingModal } from '@/components/areas/AddBuildingModal';
+import { EditBuildingModal } from '@/components/areas/EditBuildingModal';
 import { DeleteAreaButton } from '@/components/areas/DeleteAreaButton';
 import { cn } from '@/lib/utils';
 import { useAccentColor } from '@/lib/hooks/useAccentColor';
+import { useState } from 'react';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { MoreVertical, Edit } from 'lucide-react';
 
 export default function AreaDetailsPage() {
     const supabase = createClient();
     const params = useParams();
     const areaId = params.areaId as string;
     const { colors } = useAccentColor();
+    const [editingBuilding, setEditingBuilding] = useState<any>(null);
 
     // Fetch Area Details
     const { data: area, isLoading: isLoadingArea } = useQuery({
@@ -148,12 +158,16 @@ export default function AreaDetailsPage() {
                                             </div>
 
                                             <div className="flex flex-wrap gap-2">
-                                                {['HVAC', 'Secure Access', 'Parking'].map(a => (
+                                                {(building.amenities && building.amenities.length > 0 ? building.amenities.slice(0, 3) : ['HVAC', 'Parking']).map((a: string) => (
                                                     <Badge key={a} variant="secondary" className={cn("bg-slate-50 text-slate-500 px-4 py-1.5 rounded-xl border border-slate-100 font-bold text-[10px] uppercase tracking-widest", `group-hover:${colors.border}`)}>
                                                         <Check className="w-3 h-3 mr-1 text-emerald-500" /> {a}
                                                     </Badge>
                                                 ))}
-                                                <div className={cn("h-6 w-6 rounded-full bg-blue-50 flex items-center justify-center text-[10px] font-black ml-2", colors.bgLight, colors.text)}>+2</div>
+                                                {(building.amenities?.length || 0) > 3 && (
+                                                    <div className={cn("h-6 w-6 rounded-full bg-blue-50 flex items-center justify-center text-[10px] font-black ml-2", colors.bgLight, colors.text)}>
+                                                        +{(building.amenities?.length || 0) - 3}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
 
@@ -173,6 +187,23 @@ export default function AreaDetailsPage() {
                                                 <ArrowUpRight className="h-5 w-5" />
                                             </div>
                                         </div>
+
+                                        {/* Actions Menu */}
+                                        <div className="absolute top-4 right-4 z-20" onClick={(e) => e.preventDefault()}>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" className="h-8 w-8 p-0 rounded-full bg-white/50 hover:bg-white text-slate-400 hover:text-slate-600">
+                                                        <MoreVertical className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="w-40">
+                                                    <DropdownMenuItem onClick={() => setEditingBuilding(building)}>
+                                                        <Edit className="h-4 w-4 mr-2" />
+                                                        Edit Application
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
                                     </div>
                                 </Link>
                             )
@@ -189,6 +220,12 @@ export default function AreaDetailsPage() {
                     </div>
                 )}
             </div>
+
+            <EditBuildingModal
+                building={editingBuilding}
+                open={!!editingBuilding}
+                onOpenChange={(open) => !open && setEditingBuilding(null)}
+            />
         </div>
     );
 }
