@@ -70,7 +70,7 @@ export function MobileHeader({ onQuickFindOpen, companyName, userName }: MobileH
     return (
         <>
             {/* Fixed Header Bar */}
-            <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b shadow-sm h-14 px-4 flex items-center justify-between md:hidden safe-top">
+            <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b shadow-sm h-14 px-4 flex items-center justify-between lg:hidden safe-top">
 
                 {/* Left: Hamburger Menu */}
                 <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
@@ -113,8 +113,8 @@ export function MobileHeader({ onQuickFindOpen, companyName, userName }: MobileH
                                         key={item.href}
                                         onClick={() => handleNavigation(item.href)}
                                         className={`w-full flex items-center gap-4 px-4 py-4 text-left transition-colors ${isActive
-                                                ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
-                                                : 'text-gray-700 hover:bg-gray-50 border-l-4 border-transparent'
+                                            ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                                            : 'text-gray-700 hover:bg-gray-50 border-l-4 border-transparent'
                                             }`}
                                     >
                                         <Icon className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
@@ -171,7 +171,7 @@ export function MobileHeader({ onQuickFindOpen, companyName, userName }: MobileH
             </header>
 
             {/* Spacer to push content below fixed header */}
-            <div className="h-14 md:hidden" />
+            <div className="h-14 lg:hidden" />
         </>
     )
 }

@@ -1,13 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import { useMobile } from '@/hooks/use-mobile'
 import { MobileHeader } from '@/components/mobile/MobileHeader'
 import { MobileQuickFind } from '@/components/mobile/MobileQuickFind'
 import { DesktopSidebar } from '@/components/DesktopSidebar'
-import { QuickFindProvider } from '@/lib/contexts/QuickFindContext'
+import { QuickFindProvider, useQuickFind } from '@/lib/contexts/QuickFindContext'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     return (
@@ -20,8 +18,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 }
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
-    const isMobile = useMobile()
-    const [quickFindOpen, setQuickFindOpen] = useState(false)
+    // Use context for "Single Source of Truth" so buttons in dashboard AND header work
+    const { open, setOpen } = useQuickFind()
     const supabase = createClient()
 
     // Fetch user profile and company
@@ -41,59 +39,32 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         }
     })
 
-    // Global keyboard shortcut for Quick Find (Cmd/Ctrl + K)
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-                e.preventDefault()
-                setQuickFindOpen(true)
-            }
-            // Also allow Escape to close
-            if (e.key === 'Escape') {
-                setQuickFindOpen(false)
-            }
-        }
-
-        window.addEventListener('keydown', handleKeyDown)
-        return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [])
-
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Mobile Header with Hamburger + Quick Find */}
-            {isMobile && (
-                <MobileHeader
-                    onQuickFindOpen={() => setQuickFindOpen(true)}
-                    companyName={userData?.company?.name}
-                    userName={userData?.full_name}
-                />
-            )}
+            {/* Mobile Header - Visible on Mobile/Tablet (< 1024px) */}
+            <MobileHeader
+                onQuickFindOpen={() => setOpen(true)}
+                companyName={userData?.company?.name}
+                userName={userData?.full_name}
+            />
 
-            {/* Desktop Sidebar - Hidden on mobile */}
-            {!isMobile && (
-                <DesktopSidebar
-                    onQuickFindOpen={() => setQuickFindOpen(true)}
-                />
-            )}
+            {/* Desktop Sidebar - Hidden on mobile (< 1024px) */}
+            <DesktopSidebar
+                onQuickFindOpen={() => setOpen(true)}
+            />
 
             {/* Main Content */}
-            <main className={`
-                ${isMobile ? 'pb-safe' : 'ml-64'} 
-                min-h-screen
-            `}>
+            {/* lg:ml-64 adds margin only on desktop to accommodate sidebar */}
+            {/* pb-safe handles iPhone notch area on mobile */}
+            <main className="min-h-screen pb-safe lg:ml-64 lg:pb-0 transition-all duration-300">
                 {children}
             </main>
 
-            {/* Quick Find Modal - Works on both mobile and desktop */}
+            {/* Quick Find Modal - Controlled by Context */}
             <MobileQuickFind
-                open={quickFindOpen}
-                onOpenChange={setQuickFindOpen}
+                open={open}
+                onOpenChange={setOpen}
             />
-
-            {/* 
-                ❌ NO BOTTOM NAVIGATION BAR ❌
-                Removed - conflicts with iOS/Android device navigation
-            */}
         </div>
     )
 }
