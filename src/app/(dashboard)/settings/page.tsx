@@ -139,10 +139,13 @@ export default function SettingsPage() {
         const { error } = await supabase
             .from('profiles')
             .update({ preferences: newPrefs, updated_at: new Date().toISOString() })
-            .eq('id', profile.id);
+            .eq('id', profile.id)
+            .select(); // Verify it actually updates
 
         if (error) {
+            console.error('Preferences save error:', error);
             toast.error("Failed to save preferences");
+            // Optionally revert state if failure
         } else {
             toast.success("Preferences saved");
         }
@@ -182,7 +185,8 @@ export default function SettingsPage() {
         const { error } = await supabase
             .from('profiles')
             .update({ branding: newBranding, updated_at: new Date().toISOString() })
-            .eq('id', profile.id);
+            .eq('id', profile.id)
+            .select();
 
         if (error) {
             // Log but don't fail - localStorage backup will persist the setting
@@ -271,7 +275,7 @@ export default function SettingsPage() {
 
         setIsSaving(true);
         try {
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from('companies')
                 .update({
                     name: companyData.name,
@@ -282,11 +286,27 @@ export default function SettingsPage() {
                     tagline: companyData.tagline,
                     updated_at: new Date().toISOString()
                 })
-                .eq('id', profile.company_id);
+                .eq('id', profile.company_id)
+                .select()
+                .single();
 
             if (error) throw error;
+
+            // verified update
+            if (data) {
+                setCompanyData({
+                    name: data.name || '',
+                    logo_url: data.logo_url || '',
+                    address: data.address || '',
+                    phone: data.phone || '',
+                    email: data.email || '',
+                    tagline: data.tagline || ''
+                });
+            }
+
             toast.success("Company branding saved! This will appear on all documents.");
         } catch (error: any) {
+            console.error('Company save error:', error);
             toast.error("Failed to save company branding: " + error.message);
         } finally {
             setIsSaving(false);
@@ -296,19 +316,38 @@ export default function SettingsPage() {
     const handleSaveProfile = async () => {
         setIsSaving(true);
         try {
-            const { error } = await supabase
+            console.log('Attempting to save profile:', {
+                id: profile.id,
+                full_name: profile.full_name,
+                phone: profile.phone
+            });
+
+            const { data, error } = await supabase
                 .from('profiles')
                 .update({
                     full_name: profile.full_name,
                     phone: profile.phone,
                     updated_at: new Date().toISOString()
                 })
-                .eq('id', profile.id);
+                .eq('id', profile.id)
+                .select()
+                .single();
 
-            if (error) throw error;
-            toast.success("Profile saved successfully.");
+            if (error) {
+                console.error('Supabase update error:', error);
+                throw error;
+            }
+
+            if (!data) {
+                throw new Error("No data returned from update. Please check your connection.");
+            }
+
+            console.log('Profile saved successfully:', data);
+            setProfile(data); // Update local state with server response to be sure
+            toast.success(`Profile saved: ${data.full_name}`);
         } catch (error: any) {
-            toast.error("Failed to save profile: " + error.message);
+            console.error('Profile save exception:', error);
+            toast.error("Failed to save profile: " + (error.message || "Unknown error"));
         } finally {
             setIsSaving(false);
         }
