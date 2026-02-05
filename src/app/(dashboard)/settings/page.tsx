@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { User, Shield, Bell, Palette, Save, Loader2, Sparkles, CheckCircle2, Lock, Eye, EyeOff, Upload, Image as ImageIcon, X, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAccentColor } from '@/lib/hooks/useAccentColor';
-import TeamManagementCard from '@/components/settings/TeamManagementCard';
+import { TeamManagementCard } from '@/components/settings/TeamManagementCard';
 
 // Define accent colors with static classes - Tailwind can't use dynamic class names
 const accentColors = [

@@ -33,7 +33,7 @@ interface Invitation {
     token: string;
 }
 
-export default function TeamManagementCard() {
+export function TeamManagementCard() {
     const { company, profile } = useAuth();
     const supabase = createClient();
     const [members, setMembers] = useState<TeamMember[]>([]);
