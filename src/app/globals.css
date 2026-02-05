@@ -362,4 +362,165 @@ body {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
+}
+
+/* ==========================================
+   MOBILE-FIRST RESPONSIVE STYLES
+   ========================================== */
+
+/* Base mobile styles */
+@media (max-width: 767px) {
+
+  /* Prevent iOS text size adjustment */
+  html {
+    -webkit-text-size-adjust: 100%;
+    font-size: 16px;
+  }
+
+  /* Prevent horizontal overflow */
+  body {
+    overflow-x: hidden;
+  }
+
+  /* Minimum touch target size - CRITICAL */
+  button,
+  a,
+  [role="button"],
+  input[type="button"],
+  input[type="submit"] {
+    min-height: 44px;
+  }
+
+  /* Prevent zoom on input focus (iOS) */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Better tap highlighting */
+  * {
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.05);
+  }
+
+  /* Smooth scrolling for scroll containers */
+  .overflow-y-auto,
+  .overflow-auto {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* Hide desktop-only elements */
+  .desktop-only {
+    display: none !important;
+  }
+}
+
+/* Show mobile-only elements only on mobile */
+@media (min-width: 768px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+/* Safe area insets for notched phones (iPhone X+) */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .pt-safe {
+    padding-top: max(0.5rem, env(safe-area-inset-top));
+  }
+}
+
+/* Extra small screen breakpoint */
+@media (max-width: 374px) {
+  .xs\:hidden {
+    display: none;
+  }
+}
+
+@media (min-width: 375px) {
+  .xs\:inline {
+    display: inline;
+  }
+
+  .xs\:flex {
+    display: flex;
+  }
+}
+
+/* Mobile card styles */
+.mobile-card {
+  @apply bg-white rounded-xl shadow-sm overflow-hidden;
+}
+
+/* Mobile stat card */
+.mobile-stat {
+  @apply p-4 rounded-xl;
+}
+
+/* Mobile list container */
+.mobile-list {
+  @apply bg-white rounded-xl overflow-hidden divide-y divide-gray-100;
+}
+
+/* Mobile list item */
+.mobile-list-item {
+  @apply flex items-center gap-4 p-4 active:bg-gray-50;
+}
+
+/* Improved scrollbar for mobile */
+@media (max-width: 767px) {
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+  }
+}
+
+/* Animation for sheet/drawer */
+@keyframes slideInFromLeft {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutToLeft {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+/* Prevent body scroll when modal is open */
+body.modal-open {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
 }

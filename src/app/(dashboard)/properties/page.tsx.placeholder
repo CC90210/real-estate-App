@@ -1,0 +1,32 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
+import { createClient } from '@/lib/supabase/client'
+import { useMobile } from '@/hooks/use-mobile'
+import { MobilePageHeader } from '@/components/mobile/MobilePageHeader'
+import { MobileSection } from '@/components/mobile/MobileSection'
+import { MobileListItem } from '@/components/mobile/MobileListItem'
+import { Home, Building } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+
+// ... your existing imports for desktop components
+// Assuming I should reproduce the existing desktop desktop layout or at least the logic
+// Since I'm overwriting, I should ideally preserve the desktop logic if I can find it. 
+// But the user gave me specific content for this file. 
+// However, the user said " // ==========================================
+//    // DESKTOP LAYOUT (existing)
+//    // ==========================================
+//    return (
+//        <div className="p-6">
+//            {/* ... your existing desktop layout ... */}
+//        </div>
+//    )"
+// So I MUST retrieve the existing content first to preserve it.
+
+// I will READ the file first effectively.
+// But I can't read from inside `write_to_file`.
+// So I will return from this tool call, read the file, and THEN write.
+// Actually, I can use `read_resource` or `view_file` normally.
+// I'll wait to write this file until I've read the original.

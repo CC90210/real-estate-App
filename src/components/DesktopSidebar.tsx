@@ -13,16 +13,14 @@ import {
     Zap,
     Settings,
     LogOut,
-    Menu,
     Calendar,
     Receipt,
+    Search
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { useState } from 'react';
 import { useUser } from '@/lib/hooks/useUser';
 import { useAccentColor } from '@/lib/hooks/useAccentColor';
 
@@ -40,7 +38,12 @@ const navItems = [
     { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'agent', 'landlord'] },
 ];
 
-export function Sidebar({ className }: { className?: string }) {
+interface DesktopSidebarProps {
+    className?: string;
+    onQuickFindOpen: () => void;
+}
+
+export function DesktopSidebar({ className, onQuickFindOpen }: DesktopSidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
     const supabase = createClient();
@@ -52,8 +55,6 @@ export function Sidebar({ className }: { className?: string }) {
         router.push('/login');
     };
 
-    // Filter based on user role
-    // Default to 'agent' if role is null to avoid crashing, though auth guard usually prevents this
     const userRole = role || 'agent';
 
     const filteredNavItems = navItems.filter(item =>
@@ -61,9 +62,9 @@ export function Sidebar({ className }: { className?: string }) {
     );
 
     return (
-        <aside className={cn("flex flex-col h-full bg-[#fcfdfe] border-r border-slate-200/60 shadow-[1px_0_10px_rgba(0,0,0,0.02)]", className)}>
-            <div className="p-8">
-                <Link href="/dashboard" className="flex items-center gap-3 group transition-all">
+        <aside className={cn("hidden lg:flex flex-col h-full w-64 bg-[#fcfdfe] border-r border-slate-200/60 shadow-[1px_0_10px_rgba(0,0,0,0.02)] fixed left-0 top-0 bottom-0 z-30", className)}>
+            <div className="p-8 pb-4">
+                <Link href="/dashboard" className="flex items-center gap-3 group transition-all mb-6">
                     <div
                         className={cn("w-10 h-10 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform bg-gradient-to-br", colors.gradient, colors.shadow)}
                     >
@@ -74,10 +75,20 @@ export function Sidebar({ className }: { className?: string }) {
                         <p className={cn("text-[10px] font-bold uppercase tracking-widest mt-1 opacity-70", colors.text)}>Intelligence</p>
                     </div>
                 </Link>
+
+                <Button
+                    variant="outline"
+                    className="w-full justify-start gap-2 text-slate-500 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50/50"
+                    onClick={onQuickFindOpen}
+                >
+                    <Search className="w-4 h-4" />
+                    <span className="flex-1 text-left">Quick Find</span>
+                    <kbd className="px-1.5 py-0.5 text-[10px] font-medium bg-slate-100 border border-slate-200 rounded text-slate-500">⌘K</kbd>
+                </Button>
             </div>
 
-            <nav className="flex-1 px-4 py-4 space-y-1.5 overflow-y-auto">
-                <div className="px-3 mb-4 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Management</div>
+            <nav className="flex-1 px-4 py-2 space-y-1.5 overflow-y-auto">
+                <div className="px-3 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Management</div>
                 {filteredNavItems.map((item) => {
                     const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
                     return (
@@ -119,32 +130,5 @@ export function Sidebar({ className }: { className?: string }) {
                 </div>
             </div>
         </aside>
-    );
-}
-
-export function MobileNav() {
-    const [open, setOpen] = useState(false);
-    const { colors } = useAccentColor();
-
-    return (
-        <div className="lg:hidden flex items-center justify-between p-4 border-b bg-white/80 backdrop-blur-md sticky top-0 z-40">
-            <div className="flex items-center gap-2">
-                <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shadow-md bg-gradient-to-br", colors.gradient)}>
-                    <Zap className="w-4 h-4 text-white fill-white" />
-                </div>
-                <span className="text-xl font-black tracking-tight text-slate-900">PropFlow</span>
-            </div>
-
-            <Sheet open={open} onOpenChange={setOpen}>
-                <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon" className="hover:bg-slate-100 rounded-xl">
-                        <Menu className="w-6 h-6 text-slate-600" />
-                    </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="p-0 w-72 border-none">
-                    <Sidebar />
-                </SheetContent>
-            </Sheet>
-        </div>
     );
 }

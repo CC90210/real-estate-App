@@ -1,7 +1,7 @@
 'use client'
 
 import { useAuth } from '@/lib/hooks/useAuth'
-import { QuickFind, useQuickFind } from '@/components/QuickFind'
+import { useQuickFind } from '@/lib/contexts/QuickFindContext'
 import AdminDashboard from '@/components/dashboard/AdminDashboard'
 import AgentDashboard from '@/components/dashboard/AgentDashboard'
 import LandlordDashboard from '@/components/dashboard/LandlordDashboard'
@@ -9,7 +9,7 @@ import { Loader2 } from 'lucide-react'
 
 export default function DashboardPage() {
     const { role, isLoading } = useAuth()
-    const { open: quickFindOpen, setOpen: setQuickFindOpen } = useQuickFind()
+    const { setOpen: setQuickFindOpen } = useQuickFind()
 
     if (isLoading) {
         return (
@@ -32,9 +32,6 @@ export default function DashboardPage() {
             {!['landlord', 'agent', 'admin'].includes(role || '') && (
                 <AdminDashboard onQuickFind={handleQuickFind} />
             )}
-
-            {/* Global Quick Find Modal */}
-            <QuickFind open={quickFindOpen} onOpenChange={setQuickFindOpen} />
         </>
     )
 }

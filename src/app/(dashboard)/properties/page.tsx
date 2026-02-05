@@ -13,14 +13,19 @@ import { Search, Filter, BedDouble, Bath, Plus, MapPin, User, ArrowRight, Buildi
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { EmptyState } from '@/components/ui/EmptyState';
+// import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { cn } from '@/lib/utils';
 import { useAccentColor } from '@/lib/hooks/useAccentColor';
 import { PropertyImport } from '@/components/properties/PropertyImport';
 import { Upload } from 'lucide-react';
+import { useMobile } from '@/hooks/use-mobile';
+import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
+import { MobileSection } from '@/components/mobile/MobileSection';
+import { MobileListItem } from '@/components/mobile/MobileListItem';
 
 export default function PropertiesPage() {
+    const isMobile = useMobile();
     const { data: properties, isLoading, error } = useProperties();
     const { data: landlords } = useLandlords();
     const router = useRouter();
@@ -30,6 +35,9 @@ export default function PropertiesPage() {
     const [bedsFilter, setBedsFilter] = useState('all');
     const [priceSort, setPriceSort] = useState('default');
     const [importDialogOpen, setImportDialogOpen] = useState(false);
+
+    // Mobile State
+    const [showAddDialog, setShowAddDialog] = useState(false);
 
     // Filter Logic
     const filteredProperties = properties?.filter(property => {
@@ -104,6 +112,93 @@ export default function PropertiesPage() {
         )
     }
 
+    // ==========================================
+    // MOBILE LAYOUT
+    // ==========================================
+    if (isMobile) {
+        const available = properties?.filter(p => p.status === 'available') || []
+        const leased = properties?.filter(p => p.status === 'rented') || [] // 'rented' seems to be the status in desktop code, user used 'leased' in snippet. I'll stick to 'rented' or check if 'leased' is valid. The existing desktop code uses 'rented'.
+
+        return (
+            <div className="min-h-screen bg-gray-50 pb-safe">
+                {/* Mobile Header */}
+                <MobilePageHeader
+                    title="Properties"
+                    subtitle={`${properties?.length || 0} total`}
+                    primaryAction={{
+                        label: 'Add',
+                        onClick: () => router.push('/properties/new') // Direct processing to new property page
+                    }}
+                />
+
+                {/* Content */}
+                <div className="py-4">
+                    {/* Available Properties */}
+                    {available.length > 0 && (
+                        <MobileSection
+                            title={`Available (${available.length})`}
+                            action={{ label: 'View All', onClick: () => { } }}
+                        >
+                            {available.slice(0, 5).map((property) => (
+                                <MobileListItem
+                                    key={property.id}
+                                    title={property.address}
+                                    subtitle={property.city} // Existing code uses property.city instead of building name
+                                    meta={`$${Number(property.rent || 0).toLocaleString()}/mo`}
+                                    icon={
+                                        <div className="h-12 w-12 bg-green-100 rounded-xl flex items-center justify-center">
+                                            <Home className="h-6 w-6 text-green-600" />
+                                        </div>
+                                    }
+                                    badge={{ text: 'Available', variant: 'success' }}
+                                    onClick={() => router.push(`/properties/${property.id}`)}
+                                />
+                            ))}
+                        </MobileSection>
+                    )}
+
+                    {/* Leased/Rented Properties */}
+                    {leased.length > 0 && (
+                        <MobileSection title={`Rented (${leased.length})`}>
+                            {leased.slice(0, 5).map((property) => (
+                                <MobileListItem
+                                    key={property.id}
+                                    title={property.address}
+                                    subtitle={property.city}
+                                    meta={`$${Number(property.rent || 0).toLocaleString()}/mo`}
+                                    icon={
+                                        <div className="h-12 w-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                                            <Home className="h-6 w-6 text-blue-600" />
+                                        </div>
+                                    }
+                                    badge={{ text: 'Rented', variant: 'info' }}
+                                    onClick={() => router.push(`/properties/${property.id}`)}
+                                />
+                            ))}
+                        </MobileSection>
+                    )}
+
+                    {/* Empty State */}
+                    {properties?.length === 0 && !isLoading && (
+                        <div className="px-4 py-12 text-center">
+                            <div className="h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Building2 className="h-8 w-8 text-gray-400" />
+                            </div>
+                            <h3 className="font-medium text-lg mb-2">No properties yet</h3>
+                            <p className="text-gray-500 mb-6">Add your first property to get started</p>
+                            <Button onClick={() => router.push('/properties/new')}>
+                                Add Property
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            </div>
+        )
+    }
+
+    // ==========================================
+    // DESKTOP LAYOUT (existing)
+    // ==========================================
     return (
         <div className="relative p-6 lg:p-10 space-y-10">
             {/* Decoration */}
