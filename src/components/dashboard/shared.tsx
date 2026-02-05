@@ -135,42 +135,43 @@ export function QuickActionCard({ title, description, icon: Icon, href, color, g
 export function CheckListItem({ title, description, href, completed, index, icon: Icon }: any) {
     return (
         <Link href={href}>
-            <div className="group relative p-5 sm:p-6 rounded-3xl border transition-all duration-300 h-full overflow-hidden",
-            completed
-            ? "bg-emerald-50/50 border-emerald-100/50 opacity-90"
-            : "bg-white border-slate-100 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5 hover:-translate-y-1"
-            )}>
-            {/* Decoration */}
             <div className={cn(
-                "absolute -right-4 -top-4 w-24 h-24 rounded-full blur-3xl transition-opacity duration-500",
-                completed ? "bg-emerald-200/20" : "bg-blue-100/30 opacity-0 group-hover:opacity-100"
-            )} />
+                "group relative p-5 sm:p-6 rounded-3xl border transition-all duration-300 h-full overflow-hidden",
+                completed
+                    ? "bg-emerald-50/50 border-emerald-100/50 opacity-90"
+                    : "bg-white border-slate-100 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5 hover:-translate-y-1"
+            )}>
+                {/* Decoration */}
+                <div className={cn(
+                    "absolute -right-4 -top-4 w-24 h-24 rounded-full blur-3xl transition-opacity duration-500",
+                    completed ? "bg-emerald-200/20" : "bg-blue-100/30 opacity-0 group-hover:opacity-100"
+                )} />
 
-            <div className="relative flex flex-col h-full">
-                <div className="flex items-center justify-between mb-4">
-                    <div className={cn(
-                        "h-12 w-12 rounded-2xl flex items-center justify-center transition-all duration-500",
-                        completed ? "bg-emerald-100 text-emerald-600" : "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-200 group-hover:scale-110 group-hover:rotate-3"
-                    )}>
-                        {completed ? <CheckCircle className="h-6 w-6" /> : <Icon className="h-5 w-5" />}
+                <div className="relative flex flex-col h-full">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className={cn(
+                            "h-12 w-12 rounded-2xl flex items-center justify-center transition-all duration-500",
+                            completed ? "bg-emerald-100 text-emerald-600" : "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-200 group-hover:scale-110 group-hover:rotate-3"
+                        )}>
+                            {completed ? <CheckCircle className="h-6 w-6" /> : <Icon className="h-5 w-5" />}
+                        </div>
+                        <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Step {index + 1}</div>
                     </div>
-                    <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Step {index + 1}</div>
+
+                    <h3 className={cn(
+                        "font-bold text-base mb-2 transition-colors",
+                        completed ? "text-emerald-900 line-through decoration-emerald-200" : "text-slate-900 group-hover:text-blue-600"
+                    )}>{title}</h3>
+
+                    <p className="text-sm text-slate-500 font-medium leading-relaxed flex-1">{description}</p>
+
+                    {!completed && (
+                        <div className="mt-4 flex items-center gap-2 text-[10px] font-black text-blue-600 uppercase tracking-widest group-hover:translate-x-1 transition-transform">
+                            Get Started <ArrowRight className="h-4 w-4" />
+                        </div>
+                    )}
                 </div>
-
-                <h3 className={cn(
-                    "font-bold text-base mb-2 transition-colors",
-                    completed ? "text-emerald-900 line-through decoration-emerald-200" : "text-slate-900 group-hover:text-blue-600"
-                )}>{title}</h3>
-
-                <p className="text-sm text-slate-500 font-medium leading-relaxed flex-1">{description}</p>
-
-                {!completed && (
-                    <div className="mt-4 flex items-center gap-2 text-[10px] font-black text-blue-600 uppercase tracking-widest group-hover:translate-x-1 transition-transform">
-                        Get Started <ArrowRight className="h-4 w-4" />
-                    </div>
-                )}
             </div>
-        </div>
         </Link >
     )
 }
