@@ -69,7 +69,9 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                 { count: propertiesLastWeek },
                 { count: applicationsThisWeek },
                 { count: applicationsLastWeek },
-                { data: rentData }
+                { data: rentData },
+                { count: totalAreas },
+                { count: totalBuildings }
             ] = await Promise.all([
                 supabase.from('properties').select('*', { count: 'exact', head: true }).eq('company_id', company.id),
                 supabase.from('properties').select('*', { count: 'exact', head: true }).eq('company_id', company.id).eq('status', 'available'),
@@ -80,7 +82,9 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                 supabase.from('properties').select('*', { count: 'exact', head: true }).eq('company_id', company.id).gte('created_at', twoWeeksAgo.toISOString()).lt('created_at', oneWeekAgo.toISOString()),
                 supabase.from('applications').select('*', { count: 'exact', head: true }).eq('company_id', company.id).gte('created_at', oneWeekAgo.toISOString()),
                 supabase.from('applications').select('*', { count: 'exact', head: true }).eq('company_id', company.id).gte('created_at', twoWeeksAgo.toISOString()).lt('created_at', oneWeekAgo.toISOString()),
-                supabase.from('properties').select('rent').eq('company_id', company.id).eq('status', 'rented')
+                supabase.from('properties').select('rent').eq('company_id', company.id).eq('status', 'rented'),
+                supabase.from('areas').select('*', { count: 'exact', head: true }).eq('company_id', company.id),
+                supabase.from('buildings').select('*', { count: 'exact', head: true }).eq('company_id', company.id)
             ]);
 
             // Calculate total monthly revenue from rented properties
@@ -105,6 +109,8 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                 rentedCount: rentData?.length || 0,
                 propertyTrend: calcTrend(propertiesThisWeek || 0, propertiesLastWeek || 0),
                 applicationTrend: calcTrend(applicationsThisWeek || 0, applicationsLastWeek || 0),
+                totalAreas: totalAreas || 0,
+                totalBuildings: totalBuildings || 0
             };
         },
         enabled: !!company?.id
@@ -294,8 +300,8 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                 </div>
             </div>
 
-            {/* Getting Started Section - Only show if no properties */}
-            {((stats?.totalProperties || 0) === 0) && (
+            {/* Getting Started Section - Show continuously until core structure (Areas, Buildings, Properties) is set up */}
+            {(!(stats?.totalProperties && stats?.totalAreas && stats?.totalBuildings)) && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '400ms' }}>
                     <div className="flex items-center gap-4">
                         <div className="p-2 rounded-xl bg-amber-100">
@@ -311,15 +317,15 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                             title="Create Areas"
                             description="Define the neighborhoods or regions you manage properties in."
                             href="/areas"
-                            completed={(stats?.totalProperties || 0) > 0}
+                            completed={(stats?.totalAreas || 0) > 0}
                             icon={MapPin}
                         />
                         <CheckListItem
                             index={1}
                             title="Add Buildings"
                             description="Register the buildings and properties in your portfolio."
-                            href="/properties"
-                            completed={(stats?.totalProperties || 0) > 0}
+                            href="/areas"
+                            completed={(stats?.totalBuildings || 0) > 0}
                             icon={Building2}
                         />
                         <CheckListItem
