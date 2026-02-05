@@ -13,9 +13,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Plus, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
 import { useAccentColor } from '@/lib/hooks/useAccentColor';
 import { cn } from '@/lib/utils';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 const areaSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
@@ -27,15 +27,13 @@ type AreaFormValues = z.infer<typeof areaSchema>;
 
 export function AddAreaModal() {
     const [open, setOpen] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const { colors } = useAccentColor();
 
-
     const { user, profile, company } = useAuth();
-    const router = useRouter();
     const supabase = createClient();
+    const queryClient = useQueryClient();
 
     const { register, handleSubmit, setValue, reset, formState: { errors } } = useForm<AreaFormValues>({
         resolver: zodResolver(areaSchema),
@@ -76,47 +74,90 @@ export function AddAreaModal() {
         }
     };
 
-    const onSubmit = async (data: AreaFormValues) => {
-        if (!company?.id) {
-            toast.error("Company profile not loaded. Please wait.");
-            return;
-        }
-
-        setIsLoading(true);
-        try {
-            const { error } = await supabase
+    // --- INSTANT REACTIVE STATE IMPLEMENTATION ---
+    const createAreaMutation = useMutation({
+        mutationFn: async (data: AreaFormValues) => {
+            const { data: newArea, error } = await supabase
                 .from('areas')
                 .insert({
                     name: data.name,
                     description: data.description,
                     image_url: data.image_url,
-                    company_id: company.id
-                });
+                    company_id: company?.id
+                })
+                .select()
+                .single();
 
             if (error) throw error;
+            return newArea;
+        },
+        onMutate: async (newArea) => {
+            // 1. Cancel outgoing fetches
+            await queryClient.cancelQueries({ queryKey: ['areas'] });
 
-            // Log activity
-            await supabase.from('activity_log').insert({
-                company_id: company.id,
-                user_id: profile?.id,
-                action: 'AREA_CREATED',
-                entity_type: 'area',
-                entity_id: '00000000-0000-0000-0000-000000000000', // Placeholder for now or actual ID if returned
-                details: { name: data.name }
+            // 2. Snapshot previous data
+            const previousAreas = queryClient.getQueryData(['areas']);
+
+            // 3. Optimistically update
+            queryClient.setQueryData(['areas'], (old: any[] = []) => {
+                const tempArea = {
+                    id: `temp-${Date.now()}`, // Temporary ID
+                    name: newArea.name,
+                    description: newArea.description,
+                    image_url: newArea.image_url,
+                    company_id: company?.id,
+                    created_at: new Date().toISOString(),
+                    buildings: [] // CRITICAL: Initialize empty relations to prevent crashes
+                };
+
+                // Add and sort by name
+                return [...old, tempArea].sort((a, b) => a.name.localeCompare(b.name));
             });
 
-            toast.success("Area created successfully");
+            // 4. Close modal immediately for "Instant" feel
             setOpen(false);
             reset();
             setPreviewUrl(null);
-            router.refresh();
-        } catch (error: any) {
-            console.error("Creation error:", error);
-            toast.error("Creation failed: " + error.message);
-        } finally {
-            setIsLoading(false);
+            toast.success("Area created instantly!");
+
+            return { previousAreas };
+        },
+        onError: (err, newArea, context) => {
+            // Rollback on failure
+            queryClient.setQueryData(['areas'], context?.previousAreas);
+            toast.error("Creation failed: " + err.message);
+            // Re-open modal so user doesn't lose data
+            setOpen(true);
+        },
+        onSettled: () => {
+            // Always refetch to ensure server sync
+            queryClient.invalidateQueries({ queryKey: ['areas'] });
+        },
+        onSuccess: async (data) => {
+            // Fire-and-forget logging
+            if (company?.id) {
+                await supabase.from('activity_log').insert({
+                    company_id: company.id,
+                    user_id: profile?.id,
+                    action: 'AREA_CREATED',
+                    entity_type: 'area',
+                    entity_id: data.id,
+                    details: { name: data.name }
+                });
+            }
         }
+    });
+
+    const onSubmit = (data: AreaFormValues) => {
+        if (!company?.id) {
+            toast.error("Company profile not loaded.");
+            return;
+        }
+        createAreaMutation.mutate(data);
     };
+
+    // Derived loading state
+    const isPending = createAreaMutation.isPending;
 
     return (
         <Dialog open={open} onOpenChange={(val) => {
@@ -193,11 +234,11 @@ export function AddAreaModal() {
                     </div>
 
                     <div className="flex justify-end gap-3 pt-2">
-                        <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
+                        <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
                             Cancel
                         </Button>
-                        <Button type="submit" className={cn("text-white min-w-[120px]", colors.bg, `hover:${colors.bgHover}`)} disabled={isLoading || uploading}>
-                            {isLoading ? (
+                        <Button type="submit" className={cn("text-white min-w-[120px]", colors.bg, `hover:${colors.bgHover}`)} disabled={isPending || uploading}>
+                            {isPending ? (
                                 <>
                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating...
                                 </>

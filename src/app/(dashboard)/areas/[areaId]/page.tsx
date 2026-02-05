@@ -1,31 +1,63 @@
-import { createClient } from '@/lib/supabase/server';
+'use client';
+
+import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
-import { ArrowLeft, Building, MapPin, Check, Plus, Globe, Shield, Trash2, ArrowUpRight } from 'lucide-react';
+import { useParams } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import { ArrowLeft, Building, MapPin, Check, Plus, Globe, Shield, Trash2, ArrowUpRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AddBuildingModal } from '@/components/areas/AddBuildingModal';
 import { DeleteAreaButton } from '@/components/areas/DeleteAreaButton';
 import { cn } from '@/lib/utils';
+import { useAccentColor } from '@/lib/hooks/useAccentColor';
 
-export default async function AreaDetailsPage({ params }: { params: { areaId: string } }) {
-    const supabase = await createClient();
-    const { areaId } = await params;
+export default function AreaDetailsPage() {
+    const supabase = createClient();
+    const params = useParams();
+    const areaId = params.areaId as string;
+    const { colors } = useAccentColor();
 
     // Fetch Area Details
-    const { data: area } = await supabase
-        .from('areas')
-        .select('*')
-        .eq('id', areaId)
-        .single();
+    const { data: area, isLoading: isLoadingArea } = useQuery({
+        queryKey: ['area', areaId],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('areas')
+                .select('*')
+                .eq('id', areaId)
+                .single();
+            if (error) throw error;
+            return data;
+        }
+    });
 
     // Fetch Buildings with property counts
-    const { data: buildings } = await supabase
-        .from('buildings')
-        .select(`
-            *,
-            properties (id, status)
-        `)
-        .eq('area_id', areaId);
+    const { data: buildings, isLoading: isLoadingBuildings } = useQuery({
+        queryKey: ['area-buildings', areaId],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('buildings')
+                .select(`
+                    *,
+                    properties (id, status)
+                `)
+                .eq('area_id', areaId);
+            if (error) throw error;
+            return data || [];
+        }
+    });
+
+    const isLoading = isLoadingArea || isLoadingBuildings;
+
+    if (isLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
+                <Loader2 className={cn("w-10 h-10 animate-spin", colors.text)} />
+                <p className="text-slate-400 font-bold tracking-widest text-xs uppercase">Loading tactical data...</p>
+            </div>
+        );
+    }
 
     if (!area) return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
@@ -40,7 +72,7 @@ export default async function AreaDetailsPage({ params }: { params: { areaId: st
     );
 
     return (
-        <div className="relative p-6 lg:p-10 space-y-10">
+        <div className="relative p-6 lg:p-10 space-y-10 animate-in fade-in duration-500">
             {/* Decoration */}
             <div className="absolute top-0 right-0 w-[30rem] h-[30rem] bg-blue-50/50 rounded-full blur-[100px] -z-10 animate-pulse" />
 
@@ -53,7 +85,7 @@ export default async function AreaDetailsPage({ params }: { params: { areaId: st
                         </Button>
                     </Link>
                     <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-blue-600 font-black text-[10px] uppercase tracking-[0.2em] mb-1">
+                        <div className={cn("flex items-center gap-2 font-black text-[10px] uppercase tracking-[0.2em] mb-1", colors.text)}>
                             <MapPin className="h-3 w-3" />
                             <span>Tactical Geographic Region</span>
                         </div>
@@ -64,6 +96,7 @@ export default async function AreaDetailsPage({ params }: { params: { areaId: st
 
                 <div className="flex items-center gap-3">
                     <DeleteAreaButton areaId={areaId} areaName={area.name} />
+                    {/* AddBuildingModal uses React Query mutations to update the list below instantly */}
                     <AddBuildingModal areaId={areaId} areaName={area.name} />
                 </div>
             </div>
@@ -71,8 +104,8 @@ export default async function AreaDetailsPage({ params }: { params: { areaId: st
             {/* Quick Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <StatBox title="Established Assets" value={buildings?.length || 0} icon={Building} label="Buildings" />
-                <StatBox title="Total Unit Capacity" value={buildings?.reduce((acc, b) => acc + (b.properties?.length || 0), 0) || 0} icon={Globe} label="Units" />
-                <StatBox title="Ready for Lease" value={buildings?.reduce((acc, b) => acc + (b.properties?.filter((p: any) => p.status === 'available').length || 0), 0) || 0} icon={Shield} label="Available" color="emerald" />
+                <StatBox title="Total Unit Capacity" value={buildings?.reduce((acc: number, b: any) => acc + (b.properties?.length || 0), 0) || 0} icon={Globe} label="Units" />
+                <StatBox title="Ready for Lease" value={buildings?.reduce((acc: number, b: any) => acc + (b.properties?.filter((p: any) => p.status === 'available').length || 0), 0) || 0} icon={Shield} label="Available" color="emerald" />
             </div>
 
             {/* Buildings Section */}
@@ -84,43 +117,43 @@ export default async function AreaDetailsPage({ params }: { params: { areaId: st
 
                 {buildings && buildings.length > 0 ? (
                     <div className="grid grid-cols-1 gap-6">
-                        {buildings.map((building) => {
+                        {buildings.map((building: any) => {
                             const unitCount = building.properties?.length || 0;
                             const availableCount = building.properties?.filter((p: any) => p.status === 'available').length || 0;
 
                             return (
                                 <Link key={building.id} href={`/areas/${areaId}/buildings/${building.id}`}>
-                                    <div className="group relative bg-white rounded-[2.5rem] p-8 border border-slate-100/60 shadow-lg shadow-slate-200/40 hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 cursor-pointer flex flex-col md:flex-row gap-8 items-center overflow-hidden">
+                                    <div className={cn("group relative bg-white rounded-[2.5rem] p-8 border border-slate-100/60 shadow-lg shadow-slate-200/40 transition-all duration-500 cursor-pointer flex flex-col md:flex-row gap-8 items-center overflow-hidden", colors.shadowHover)}>
 
                                         {/* Hover Effect Background */}
-                                        <div className="absolute right-0 top-0 w-32 h-full bg-gradient-to-l from-blue-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        <div className={cn("absolute right-0 top-0 w-32 h-full bg-gradient-to-l to-transparent opacity-0 group-hover:opacity-100 transition-opacity", colors.bgLight)} />
 
-                                        <div className="w-full md:w-56 h-40 bg-slate-50 rounded-[2rem] flex items-center justify-center shrink-0 group-hover:bg-blue-50 transition-colors">
+                                        <div className={cn("w-full md:w-56 h-40 bg-slate-50 rounded-[2rem] flex items-center justify-center shrink-0 transition-colors", `group-hover:${colors.bgLight}`)}>
                                             {building.image_url ? (
                                                 <img src={building.image_url} className="w-full h-full object-cover rounded-[2rem]" />
                                             ) : (
-                                                <Building className="w-16 h-16 text-slate-200 group-hover:text-blue-200 transition-colors" />
+                                                <Building className={cn("w-16 h-16 text-slate-200 transition-colors", `group-hover:${colors.text}/30`)} />
                                             )}
                                         </div>
 
                                         <div className="flex-1 space-y-4">
                                             <div>
-                                                <h3 className="text-2xl font-black text-slate-900 mb-1 group-hover:text-blue-600 transition-colors tracking-tight">
+                                                <h3 className={cn("text-2xl font-black text-slate-900 mb-1 transition-colors tracking-tight", `group-hover:${colors.text}`)}>
                                                     {building.name}
                                                 </h3>
                                                 <div className="flex items-center text-slate-400 font-bold text-sm">
-                                                    <MapPin className="w-4 h-4 mr-2 text-blue-500" />
+                                                    <MapPin className={cn("w-4 h-4 mr-2", colors.text)} />
                                                     {building.address}
                                                 </div>
                                             </div>
 
                                             <div className="flex flex-wrap gap-2">
                                                 {['HVAC', 'Secure Access', 'Parking'].map(a => (
-                                                    <Badge key={a} variant="secondary" className="bg-slate-50 text-slate-500 px-4 py-1.5 rounded-xl border border-slate-100 group-hover:border-blue-100 font-bold text-[10px] uppercase tracking-widest">
+                                                    <Badge key={a} variant="secondary" className={cn("bg-slate-50 text-slate-500 px-4 py-1.5 rounded-xl border border-slate-100 font-bold text-[10px] uppercase tracking-widest", `group-hover:${colors.border}`)}>
                                                         <Check className="w-3 h-3 mr-1 text-emerald-500" /> {a}
                                                     </Badge>
                                                 ))}
-                                                <div className="h-6 w-6 rounded-full bg-blue-50 flex items-center justify-center text-[10px] font-black text-blue-600 ml-2">+2</div>
+                                                <div className={cn("h-6 w-6 rounded-full bg-blue-50 flex items-center justify-center text-[10px] font-black ml-2", colors.bgLight, colors.text)}>+2</div>
                                             </div>
                                         </div>
 
@@ -136,7 +169,7 @@ export default async function AreaDetailsPage({ params }: { params: { areaId: st
                                                 )}>{availableCount}</span>
                                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Available</span>
                                             </div>
-                                            <div className="hidden md:flex h-10 w-10 rounded-full bg-slate-50 items-center justify-center text-slate-300 group-hover:bg-blue-600 group-hover:text-white group-hover:translate-x-1 transition-all">
+                                            <div className={cn("hidden md:flex h-10 w-10 rounded-full bg-slate-50 items-center justify-center text-slate-300 group-hover:text-white group-hover:translate-x-1 transition-all", `group-hover:${colors.bg}`)}>
                                                 <ArrowUpRight className="h-5 w-5" />
                                             </div>
                                         </div>

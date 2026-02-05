@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from 'sonner';
 import { deleteAreaAction } from '@/lib/actions/area-actions';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface DeleteAreaButtonProps {
     areaId: string;
@@ -25,6 +26,7 @@ export function DeleteAreaButton({ areaId, areaName }: DeleteAreaButtonProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const router = useRouter();
+    const queryClient = useQueryClient();
 
     const handleDelete = async () => {
         setIsLoading(true);
@@ -32,10 +34,15 @@ export function DeleteAreaButton({ areaId, areaName }: DeleteAreaButtonProps) {
             const result = await deleteAreaAction(areaId);
             if (!result.success) throw new Error(result.error);
 
+            // Optimistically update lists if we were on a list page (though we are usually on detail page)
+            queryClient.setQueryData(['areas'], (old: any[] = []) => old.filter(a => a.id !== areaId));
+
+            // Invalidate to ensure freshness on navigation
+            queryClient.invalidateQueries({ queryKey: ['areas'] });
+
             toast.success(`${areaName} deleted successfully`);
             setIsOpen(false);
             router.push('/areas');
-            router.refresh();
         } catch (error: any) {
             toast.error("Failed to delete area: " + error.message);
         } finally {

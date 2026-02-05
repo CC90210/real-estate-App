@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import Link from 'next/link';
-import { Building2, MapPin } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { MapPin } from 'lucide-react';
 import { AddAreaModal } from '@/components/areas/AddAreaModal';
 import { AreasList } from '@/components/areas/AreasList';
 import { useAccentColor } from '@/lib/hooks/useAccentColor';
 import { cn } from '@/lib/utils';
+import { Loader2 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,13 +16,10 @@ export default function AreasPage() {
     const supabase = createClient();
     const { colors } = useAccentColor();
 
-    // Using a simple fetch here as it's a client component now for branding
-    const [areas, setAreas] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        async function fetchAreas() {
-            const { data } = await supabase
+    const { data: areas, isLoading } = useQuery({
+        queryKey: ['areas'],
+        queryFn: async () => {
+            const { data, error } = await supabase
                 .from('areas')
                 .select(`
                     *,
@@ -31,14 +29,19 @@ export default function AreasPage() {
                     )
                 `)
                 .order('name');
-            setAreas(data || []);
-            setIsLoading(false);
+
+            if (error) throw error;
+            return data || [];
         }
-        fetchAreas();
-    }, []);
+    });
 
     if (isLoading) {
-        return <div className="p-10 text-slate-400">Loading tactical regions...</div>;
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
+                <Loader2 className={cn("w-10 h-10 animate-spin", colors.text)} />
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loading tactical regions...</p>
+            </div>
+        );
     }
 
     return (
@@ -52,6 +55,11 @@ export default function AreasPage() {
                     <h1 className="text-4xl font-black tracking-tight text-slate-900">Areas</h1>
                     <p className="text-slate-500 font-medium">Manage your properties by geographic location.</p>
                 </div>
+                {/* 
+                  AddAreaModal handles its own mutations. 
+                  Since we use React Query, the list below will update automatically 
+                  via cache invalidation/optimistic updates in the Modal.
+                */}
                 <AddAreaModal />
             </div>
 

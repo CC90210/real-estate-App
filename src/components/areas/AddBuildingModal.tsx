@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Plus, Building2, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 const buildingSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
@@ -30,9 +30,8 @@ interface AddBuildingModalProps {
 export function AddBuildingModal({ areaId, areaName }: AddBuildingModalProps) {
     const { company, profile } = useAuth();
     const [open, setOpen] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const router = useRouter();
     const supabase = createClient();
+    const queryClient = useQueryClient();
 
     const { register, handleSubmit, reset, formState: { errors } } = useForm<BuildingFormValues>({
         resolver: zodResolver(buildingSchema),
@@ -43,46 +42,85 @@ export function AddBuildingModal({ areaId, areaName }: AddBuildingModalProps) {
         }
     });
 
-    const onSubmit = async (data: BuildingFormValues) => {
-        if (!company?.id) {
-            toast.error("Company profile not loaded");
-            return;
-        }
-
-        setIsLoading(true);
-        try {
-            const { error } = await supabase
+    const createBuildingMutation = useMutation({
+        mutationFn: async (data: BuildingFormValues) => {
+            const { data: newBuilding, error } = await supabase
                 .from('buildings')
                 .insert({
                     name: data.name,
                     address: data.address,
                     area_id: data.area_id,
-                    company_id: company.id,
-                    amenities: [] // Default empty
-                });
+                    company_id: company?.id,
+                    amenities: []
+                })
+                .select()
+                .single();
 
             if (error) throw error;
+            return newBuilding;
+        },
+        onMutate: async (newBuilding) => {
+            // Cancel outgoing refetches
+            await queryClient.cancelQueries({ queryKey: ['area-buildings', areaId] });
+            await queryClient.cancelQueries({ queryKey: ['areas'] });
 
-            // Log activity
-            await supabase.from('activity_log').insert({
-                company_id: company.id,
-                user_id: profile?.id,
-                action: 'BUILDING_CREATED',
-                entity_type: 'building',
-                entity_id: '00000000-0000-0000-0000-000000000000',
-                details: { name: data.name, area: areaName }
+            // Snapshot
+            const previousBuildings = queryClient.getQueryData(['area-buildings', areaId]);
+
+            // Optimistic Update for Building List
+            queryClient.setQueryData(['area-buildings', areaId], (old: any[] = []) => {
+                const tempBuilding = {
+                    id: `temp-${Date.now()}`,
+                    name: newBuilding.name,
+                    address: newBuilding.address,
+                    area_id: newBuilding.area_id,
+                    company_id: company?.id,
+                    amenities: [],
+                    created_at: new Date().toISOString(),
+                    properties: [] // Empty units
+                };
+                return [...old, tempBuilding];
             });
 
-            toast.success(`${data.name} added to ${areaName}`);
+            toast.success(`${newBuilding.name} - Instant Deployed`);
             setOpen(false);
             reset();
-            router.refresh();
-        } catch (error: any) {
-            toast.error("Failed to add building: " + error.message);
-        } finally {
-            setIsLoading(false);
+
+            return { previousBuildings };
+        },
+        onError: (err, newBuilding, context) => {
+            queryClient.setQueryData(['area-buildings', areaId], context?.previousBuildings);
+            toast.error("Failed to add building: " + err.message);
+            setOpen(true);
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['area-buildings', areaId] });
+            queryClient.invalidateQueries({ queryKey: ['areas'] });
+        },
+        onSuccess: async (data) => {
+            // Fire-and-forget logging
+            if (company?.id) {
+                await supabase.from('activity_log').insert({
+                    company_id: company.id,
+                    user_id: profile?.id,
+                    action: 'BUILDING_CREATED',
+                    entity_type: 'building',
+                    entity_id: data.id,
+                    details: { name: data.name, area: areaName }
+                });
+            }
         }
+    });
+
+    const onSubmit = (data: BuildingFormValues) => {
+        if (!company?.id) {
+            toast.error("Company profile not loaded");
+            return;
+        }
+        createBuildingMutation.mutate(data);
     };
+
+    const isPending = createBuildingMutation.isPending;
 
     return (
         <Dialog open={open} onOpenChange={(val) => {
@@ -134,11 +172,11 @@ export function AddBuildingModal({ areaId, areaName }: AddBuildingModalProps) {
                     </div>
 
                     <div className="flex justify-end gap-3 pt-2">
-                        <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
+                        <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
                             Cancel
                         </Button>
-                        <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]" disabled={isLoading}>
-                            {isLoading ? (
+                        <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]" disabled={isPending}>
+                            {isPending ? (
                                 <>
                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Adding...
                                 </>

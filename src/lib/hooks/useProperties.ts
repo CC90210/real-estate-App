@@ -10,7 +10,7 @@ export function useProperties(buildingId?: string) {
     const { companyId } = useCompanyId();
 
     return useQuery({
-        queryKey: ['properties', buildingId, companyId],
+        queryKey: ['properties', { buildingId, companyId }],
         queryFn: async () => {
             let query = supabase
                 .from('properties')
@@ -33,7 +33,7 @@ export function useProperties(buildingId?: string) {
             if (error) throw error;
             return data;
         },
-        staleTime: 30000,
+        staleTime: 60000,
         enabled: !!companyId,
     });
 }
@@ -43,31 +43,25 @@ export function useProperty(propertyId: string) {
     const { companyId } = useCompanyId();
 
     return useQuery({
-        queryKey: ['properties', propertyId, companyId],
+        queryKey: ['properties', 'detail', propertyId],
         queryFn: async () => {
-            let query = supabase
+            const { data, error } = await supabase
                 .from('properties')
                 .select(`
                     *,
                     buildings (id, name, address, amenities),
                     landlords (id, name, email, phone)
                 `)
-                .eq('id', propertyId);
-
-            if (companyId) {
-                query = query.eq('company_id', companyId);
-            }
-
-            const { data, error } = await query.single();
+                .eq('id', propertyId)
+                .single();
 
             if (error) throw error;
             return data;
         },
-        enabled: !!propertyId && !!companyId,
+        enabled: !!propertyId,
     });
 }
 
-// Helper for consistent logging
 async function logActivity(supabase: any, { companyId, action, entityType, entityId, details }: any) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user || !companyId) return;
@@ -89,17 +83,8 @@ export function useDeleteProperty() {
 
     return useMutation({
         mutationFn: async (propertyId: string) => {
-            console.log(`[useDeleteProperty] Deleting: ${propertyId}`);
-
-            const { error } = await supabase
-                .from('properties')
-                .delete()
-                .eq('id', propertyId);
-
-            if (error) {
-                console.error('Supabase Delete Error:', error);
-                throw error;
-            }
+            const { error } = await supabase.from('properties').delete().eq('id', propertyId);
+            if (error) throw error;
 
             await logActivity(supabase, {
                 companyId,
@@ -108,33 +93,31 @@ export function useDeleteProperty() {
                 entityId: propertyId,
                 details: { id: propertyId }
             });
-
             return propertyId;
         },
         onMutate: async (propertyId) => {
-            // Optimistic update
             await queryClient.cancelQueries({ queryKey: ['properties'] });
 
-            const previousProperties = queryClient.getQueryData(['properties']);
+            const previousQueries = queryClient.getQueriesData({ queryKey: ['properties'] });
 
-            queryClient.setQueryData(['properties'], (old: any[]) =>
-                old?.filter(p => p.id !== propertyId)
-            );
+            queryClient.setQueriesData({ queryKey: ['properties'] }, (old: any[] | undefined) => {
+                if (!Array.isArray(old)) return old;
+                return old.filter(p => p.id !== propertyId);
+            });
 
-            return { previousProperties };
+            return { previousQueries };
         },
         onError: (err, propertyId, context) => {
-            queryClient.setQueryData(['properties'], context?.previousProperties);
-            toast.error('Failed to delete property: ' + err.message);
-        },
-        onSuccess: () => {
-            toast.success('Property deleted successfully');
+            context?.previousQueries.forEach(([queryKey, data]: any) => {
+                queryClient.setQueryData(queryKey, data);
+            });
+            toast.error('Failed to delete property');
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['properties'] });
-            queryClient.invalidateQueries({ queryKey: ['applications'] });
             queryClient.invalidateQueries({ queryKey: ['dashboard_metrics'] });
         },
+        onSuccess: () => toast.success('Property deleted'),
     });
 }
 
@@ -147,7 +130,7 @@ export function useUpdateProperty() {
         mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
             const { data, error } = await supabase
                 .from('properties')
-                .update({ ...updates })
+                .update(updates)
                 .eq('id', id)
                 .select()
                 .single();
@@ -166,24 +149,32 @@ export function useUpdateProperty() {
         },
         onMutate: async ({ id, updates }) => {
             await queryClient.cancelQueries({ queryKey: ['properties'] });
-            const previousProperties = queryClient.getQueryData(['properties']);
+            const previousQueries = queryClient.getQueriesData({ queryKey: ['properties'] });
 
-            queryClient.setQueryData(['properties'], (old: any[]) =>
-                old?.map(p => p.id === id ? { ...p, ...updates } : p)
-            );
+            queryClient.setQueriesData({ queryKey: ['properties'] }, (old: any[] | undefined) => {
+                if (!Array.isArray(old)) return old;
+                return old.map(p => p.id === id ? { ...p, ...updates } : p);
+            });
 
-            return { previousProperties };
+            queryClient.setQueryData(['properties', 'detail', id], (old: any) => {
+                if (!old) return old;
+                return { ...old, ...updates };
+            });
+
+            return { previousQueries };
         },
-        onError: (err, variables, context) => {
-            queryClient.setQueryData(['properties'], context?.previousProperties);
+        onError: (err, vars, context) => {
+            context?.previousQueries.forEach(([queryKey, data]: any) => {
+                queryClient.setQueryData(queryKey, data);
+            });
+            queryClient.invalidateQueries({ queryKey: ['properties', 'detail', vars.id] });
             toast.error('Failed to update property');
         },
-        onSuccess: () => {
-            toast.success('Property updated successfully');
-        },
-        onSettled: () => {
+        onSettled: (data, error, vars) => {
             queryClient.invalidateQueries({ queryKey: ['properties'] });
+            queryClient.invalidateQueries({ queryKey: ['properties', 'detail', vars.id] });
         },
+        onSuccess: () => toast.success('Property updated'),
     });
 }
 
@@ -220,12 +211,30 @@ export function useCreateProperty() {
 
             return data;
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['properties'] });
-            toast.success('Property created successfully');
+        onMutate: async (newProperty) => {
+            await queryClient.cancelQueries({ queryKey: ['properties'] });
+            const previousQueries = queryClient.getQueriesData({ queryKey: ['properties'] });
+
+            queryClient.setQueriesData({ queryKey: ['properties'] }, (old: any[] | undefined) => {
+                if (!Array.isArray(old)) return [];
+                const tempId = `temp-${Date.now()}`;
+                return [{ ...newProperty, id: tempId, created_at: new Date().toISOString() }, ...old];
+            });
+
+            return { previousQueries };
         },
-        onError: (error: any) => {
-            toast.error('Failed to create property: ' + error.message);
+        onError: (err, vars, context) => {
+            context?.previousQueries.forEach(([queryKey, data]: any) => {
+                queryClient.setQueryData(queryKey, data);
+            });
+            toast.error('Failed to create property: ' + err.message);
+        },
+        onSettled: () => {
+            // Invalidate fuzzy to catch all filters
+            queryClient.invalidateQueries({ queryKey: ['properties'] });
+        },
+        onSuccess: () => {
+            toast.success('Property created successfully');
         },
     });
 }
@@ -242,14 +251,11 @@ export function useLandlords() {
                 .order('name');
 
             if (error) {
-                // Fallback to profiles if landlords table issue or if that was the design
-                const { data: profiles, error: profileError } = await supabase
+                const { data: profiles } = await supabase
                     .from('profiles')
                     .select('*')
                     .eq('role', 'landlord');
-
-                if (profileError) throw profileError;
-                return profiles;
+                return profiles || [];
             }
             return data;
         },
