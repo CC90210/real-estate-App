@@ -424,9 +424,11 @@ export default function SettingsPage() {
                         description="Email & push alerts"
                     />
                     <NavBtn
+                        active={activeTab === 'branding'}
+                        onClick={() => setActiveTab('branding')}
+                        icon={Palette}
                         label="Branding & UI"
                         description="Company & documents"
-                        last={false as boolean}
                     />
                     <NavBtn
                         active={activeTab === 'team'}
