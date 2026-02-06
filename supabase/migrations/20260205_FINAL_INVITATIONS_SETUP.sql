@@ -47,6 +47,10 @@ USING (
 
 -- 3. Create the Validation Function (Used by the /join page)
 -- This function allows public access (SECURITY DEFINER) to validate a token without being logged in.
+
+-- CRITICAL: Drop first to allow return type changes
+DROP FUNCTION IF EXISTS public.get_invitation_by_token(text);
+
 CREATE OR REPLACE FUNCTION public.get_invitation_by_token(token_input text)
 RETURNS TABLE (
     id uuid,
