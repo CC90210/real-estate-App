@@ -278,7 +278,6 @@ function ApplicationCard({ application, onApprove, onDeny, onDelete, isUpdating 
 
     const status = statusConfig[application.status] || statusConfig.new
     const StatusIcon = status.icon
-    const canTakeAction = !['approved', 'denied'].includes(application.status)
 
     let property: any = application.property
     if (Array.isArray(property)) property = property[0]
@@ -345,34 +344,43 @@ function ApplicationCard({ application, onApprove, onDeny, onDelete, isUpdating 
                         Edit Record
                     </Button>
 
-                    {canTakeAction && (
-                        <>
-                            <Button
-                                onClick={onApprove}
-                                disabled={isUpdating}
-                                className="flex-1 lg:flex-none h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-lg shadow-emerald-500/20 font-black transition-all hover:scale-105"
-                            >
-                                <CheckCircle className="h-5 w-5 mr-3" />
-                                Issue Clearance
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={onDeny}
-                                disabled={isUpdating}
-                                className="flex-1 lg:flex-none h-14 border-rose-100 bg-white text-rose-600 hover:bg-rose-50 rounded-2xl font-black transition-all hover:scale-105"
-                            >
-                                <XCircle className="h-5 w-5 mr-3" />
-                                Reject Protocol
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={onDelete}
-                                className="flex-1 lg:flex-none h-14 border-slate-200 bg-white text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-2xl font-black transition-all hover:scale-105"
-                            >
-                                <Trash2 className="h-5 w-5" />
-                            </Button>
-                        </>
-                    )}
+                    <Button
+                        onClick={onApprove}
+                        disabled={isUpdating || application.status === 'approved'}
+                        className={cn(
+                            "flex-1 lg:flex-none h-14 rounded-2xl shadow-lg font-black transition-all hover:scale-105",
+                            application.status === 'approved'
+                                ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
+                                : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/20"
+                        )}
+                    >
+                        <CheckCircle className="h-5 w-5 mr-3" />
+                        {application.status === 'approved' ? 'Clearance Active' : 'Issue Clearance'}
+                    </Button>
+
+                    <Button
+                        variant="outline"
+                        onClick={onDeny}
+                        disabled={isUpdating || application.status === 'denied'}
+                        className={cn(
+                            "flex-1 lg:flex-none h-14 rounded-2xl font-black transition-all hover:scale-105",
+                            application.status === 'denied'
+                                ? "border-slate-100 bg-slate-50 text-slate-400 cursor-not-allowed shadow-none"
+                                : "border-rose-100 bg-white text-rose-600 hover:bg-rose-50"
+                        )}
+                    >
+                        <XCircle className="h-5 w-5 mr-3" />
+                        {application.status === 'denied' ? 'Rejection Active' : 'Reject Protocol'}
+                    </Button>
+
+                    <Button
+                        variant="outline"
+                        onClick={onDelete}
+                        className="flex-1 lg:flex-none h-14 border-slate-200 bg-white text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-2xl font-black transition-all hover:scale-105 group/delete"
+                    >
+                        <Trash2 className="h-5 w-5 mr-2 group-hover/delete:text-rose-600" />
+                        Purge Case
+                    </Button>
                 </div>
             </div>
 

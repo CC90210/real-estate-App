@@ -67,7 +67,6 @@ export default function ApprovalsPage() {
                     )
                 `)
                 .eq('company_id', companyId)
-                .in('status', ['new', 'pending_landlord', 'screening', 'submitted'])
                 .order('created_at', { ascending: false })
 
             if (error) throw error
@@ -269,20 +268,30 @@ export default function ApprovalsPage() {
                                             <div className="flex flex-row lg:flex-col gap-4 min-w-[200px] lg:border-l border-slate-100 lg:pl-10">
                                                 <Button
                                                     onClick={() => approveMutation.mutate(app.id)}
-                                                    disabled={approveMutation.isPending}
-                                                    className={cn("flex-1 lg:flex-none h-16 text-white rounded-2xl shadow-xl font-black transition-all hover:scale-105 active:scale-95", colors.bg, `hover:${colors.bgHover}`, colors.shadow)}
+                                                    disabled={approveMutation.isPending || app.status === 'approved'}
+                                                    className={cn(
+                                                        "flex-1 lg:flex-none h-16 text-white rounded-2xl shadow-xl font-black transition-all hover:scale-105 active:scale-95",
+                                                        app.status === 'approved'
+                                                            ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
+                                                            : cn(colors.bg, `hover:${colors.bgHover}`, colors.shadow)
+                                                    )}
                                                 >
                                                     <CheckCircle className="h-6 w-6 mr-3" />
-                                                    Authorize
+                                                    {app.status === 'approved' ? 'Authorized' : 'Authorize'}
                                                 </Button>
                                                 <Button
                                                     variant="outline"
                                                     onClick={() => setDenyDialog({ open: true, applicationId: app.id })}
-                                                    disabled={denyMutation.isPending}
-                                                    className="flex-1 lg:flex-none h-16 border-rose-100 text-rose-600 hover:bg-rose-50 rounded-2xl font-black transition-all hover:scale-105"
+                                                    disabled={denyMutation.isPending || app.status === 'denied'}
+                                                    className={cn(
+                                                        "flex-1 lg:flex-none h-16 rounded-2xl font-black transition-all hover:scale-105",
+                                                        app.status === 'denied'
+                                                            ? "border-slate-100 bg-slate-50 text-slate-400 cursor-not-allowed shadow-none"
+                                                            : "border-rose-100 text-rose-600 hover:bg-rose-50"
+                                                    )}
                                                 >
                                                     <XCircle className="h-6 w-6 mr-3" />
-                                                    Reject
+                                                    {app.status === 'denied' ? 'Rejected' : 'Reject'}
                                                 </Button>
                                             </div>
                                         </div>
