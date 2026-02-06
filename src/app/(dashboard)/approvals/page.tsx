@@ -21,7 +21,11 @@ import {
     ShieldCheck,
     AlertCircle,
     ArrowUpRight,
-    Search
+    Search,
+    MessageSquare,
+    Save,
+    StickyNote,
+    FileText
 } from 'lucide-react'
 import {
     Dialog,
@@ -47,7 +51,7 @@ export default function ApprovalsPage() {
     })
     const [denyReason, setDenyReason] = useState('')
 
-    // Fetch pending applications with security filter
+    // Fetch applications
     const { data: applications, isLoading, error } = useQuery({
         queryKey: ['pending-applications', companyId],
         queryFn: async () => {
@@ -155,6 +159,29 @@ export default function ApprovalsPage() {
         }
     })
 
+    // Update terms mutation
+    const updateTermsMutation = useMutation({
+        mutationFn: async ({ id, notes }: { id: string; notes: string }) => {
+            const { error } = await supabase
+                .from('applications')
+                .update({
+                    additional_notes: notes,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', id)
+                .eq('company_id', companyId)
+
+            if (error) throw error
+        },
+        onSuccess: () => {
+            toast.success('Case documentation updated')
+            queryClient.invalidateQueries({ queryKey: ['pending-applications'] })
+        },
+        onError: (err: any) => {
+            toast.error('Failed to update documentation', { description: err.message })
+        }
+    })
+
     if (isLoading || isCompanyLoading) {
         return (
             <div className="p-10 space-y-10">
@@ -234,7 +261,7 @@ export default function ApprovalsPage() {
                                                                 #{app.id.slice(0, 8)}
                                                             </Badge>
                                                             <Badge className={cn("border-none font-black text-[10px] uppercase tracking-widest px-3 py-1 rounded-xl capitalize", colors.bgLight, colors.text, `hover:${colors.bg}`)}>
-                                                                {app.status.replace('_', ' ')}
+                                                                {(app.status || 'new').replace('_', ' ')}
                                                             </Badge>
                                                         </div>
                                                     </div>
@@ -265,35 +292,90 @@ export default function ApprovalsPage() {
                                             </div>
 
                                             {/* Right: Authorization Controls */}
-                                            <div className="flex flex-row lg:flex-col gap-4 min-w-[200px] lg:border-l border-slate-100 lg:pl-10">
+                                            <div className="flex flex-row lg:flex-col gap-4 min-w-[220px] lg:border-l border-slate-100 lg:pl-10">
+                                                <div className="space-y-4 w-full">
+                                                    <Button
+                                                        onClick={() => approveMutation.mutate(app.id)}
+                                                        disabled={approveMutation.isPending || app.status === 'approved'}
+                                                        className={cn(
+                                                            "w-full h-16 text-white rounded-2xl shadow-xl font-black transition-all hover:scale-105 active:scale-95",
+                                                            app.status === 'approved'
+                                                                ? "bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-none cursor-not-allowed"
+                                                                : cn(colors.bg, `hover:${colors.bgHover}`, colors.shadow)
+                                                        )}
+                                                    >
+                                                        <CheckCircle className="h-6 w-6 mr-3" />
+                                                        {app.status === 'approved' ? 'Authorized' : 'Authorize'}
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        onClick={() => setDenyDialog({ open: true, applicationId: app.id })}
+                                                        disabled={denyMutation.isPending || app.status === 'denied'}
+                                                        className={cn(
+                                                            "w-full h-16 rounded-2xl font-black transition-all hover:scale-105",
+                                                            app.status === 'denied'
+                                                                ? "border-rose-100 bg-rose-50 text-rose-600 shadow-none cursor-not-allowed"
+                                                                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                                                        )}
+                                                    >
+                                                        <XCircle className="h-6 w-6 mr-3" />
+                                                        {app.status === 'denied' ? 'Rejected' : 'Reject'}
+                                                    </Button>
+                                                </div>
+
+                                                {app.status === 'approved' && (
+                                                    <div className="mt-6 pt-6 border-t border-slate-100 space-y-4">
+                                                        <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                            <FileText className="h-3 w-3" />
+                                                            Finalization Logic
+                                                        </div>
+                                                        <Button
+                                                            variant="ghost"
+                                                            className="w-full justify-start h-12 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 font-bold px-4"
+                                                            onClick={() => {/* Mock deal finalization */ }}
+                                                        >
+                                                            <ArrowUpRight className="h-4 w-4 mr-3" />
+                                                            Draft Lease
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Bottom: Internal Notes & Documentation */}
+                                        <div className="mt-10 pt-10 border-t border-slate-100">
+                                            <div className="flex items-center justify-between mb-6">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center", colors.bgLight)}>
+                                                        <StickyNote className={cn("h-5 w-5", colors.text)} />
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="text-lg font-black text-slate-900 tracking-tight">Case Documentation</h4>
+                                                        <p className="text-xs text-slate-400 font-medium uppercase tracking-widest mt-0.5">Internal Agent Notes & Protocol Discussion</p>
+                                                    </div>
+                                                </div>
                                                 <Button
-                                                    onClick={() => approveMutation.mutate(app.id)}
-                                                    disabled={approveMutation.isPending || app.status === 'approved'}
-                                                    className={cn(
-                                                        "flex-1 lg:flex-none h-16 text-white rounded-2xl shadow-xl font-black transition-all hover:scale-105 active:scale-95",
-                                                        app.status === 'approved'
-                                                            ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
-                                                            : cn(colors.bg, `hover:${colors.bgHover}`, colors.shadow)
-                                                    )}
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        const el = document.getElementById(`notes-${app.id}`) as HTMLTextAreaElement;
+                                                        updateTermsMutation.mutate({
+                                                            id: app.id,
+                                                            notes: el.value
+                                                        });
+                                                    }}
+                                                    disabled={updateTermsMutation.isPending}
+                                                    className={cn("rounded-xl font-bold px-6 text-white", colors.bg, `hover:${colors.bgHover}`)}
                                                 >
-                                                    <CheckCircle className="h-6 w-6 mr-3" />
-                                                    {app.status === 'approved' ? 'Authorized' : 'Authorize'}
-                                                </Button>
-                                                <Button
-                                                    variant="outline"
-                                                    onClick={() => setDenyDialog({ open: true, applicationId: app.id })}
-                                                    disabled={denyMutation.isPending || app.status === 'denied'}
-                                                    className={cn(
-                                                        "flex-1 lg:flex-none h-16 rounded-2xl font-black transition-all hover:scale-105",
-                                                        app.status === 'denied'
-                                                            ? "border-slate-100 bg-slate-50 text-slate-400 cursor-not-allowed shadow-none"
-                                                            : "border-rose-100 text-rose-600 hover:bg-rose-50"
-                                                    )}
-                                                >
-                                                    <XCircle className="h-6 w-6 mr-3" />
-                                                    {app.status === 'denied' ? 'Rejected' : 'Reject'}
+                                                    <Save className="h-4 w-4 mr-2" />
+                                                    Save Progress
                                                 </Button>
                                             </div>
+                                            <Textarea
+                                                id={`notes-${app.id}`}
+                                                defaultValue={app.additional_notes || ''}
+                                                placeholder="Enter final negotiation details, security deposit arrangements, or move-in contingencies..."
+                                                className="min-h-[120px] bg-slate-50 border-none focus:bg-white focus:ring-2 focus:ring-indigo-100 rounded-[2rem] p-6 text-slate-600 font-medium text-sm leading-relaxed transition-all"
+                                            />
                                         </div>
                                     </CardContent>
                                 </Card>
