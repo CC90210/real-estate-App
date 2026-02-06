@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Filter, MoreHorizontal, Trash2, Eye, FileCheck, XCircle } from 'lucide-react';
+import { Search, Filter, MoreHorizontal, Trash2, Eye, FileCheck, XCircle, Edit } from 'lucide-react';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -22,12 +22,14 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { EditApplicationModal } from './EditApplicationModal';
 
 export function ApplicationList({ applications: initialApplications }: { applications: any[] }) {
     const [filter, setFilter] = useState('all');
     const [search, setSearch] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
     const [appToDelete, setAppToDelete] = useState<any>(null);
+    const [editingApp, setEditingApp] = useState<any>(null);
     const router = useRouter();
     const supabase = createClient();
 
@@ -184,6 +186,12 @@ export function ApplicationList({ applications: initialApplications }: { applica
                                                 <DropdownMenuItem onClick={() => router.push(`/applications/${app.id}`)} className="rounded-xl gap-3 text-xs font-black py-3 px-4 focus:bg-blue-50 focus:text-blue-600">
                                                     <Eye className="w-4 h-4" /> LIVE VIEW DETAILS
                                                 </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    onClick={() => setEditingApp(app)}
+                                                    className="rounded-xl gap-3 text-xs font-black py-3 px-4 focus:bg-indigo-50 focus:text-indigo-600"
+                                                >
+                                                    <Edit className="w-4 h-4" /> EDIT DETAILS
+                                                </DropdownMenuItem>
                                                 <DropdownMenuSeparator className="bg-slate-100 my-1" />
                                                 <DropdownMenuItem onClick={() => handleUpdateStatus(app.id, 'approved')} className="rounded-xl gap-3 text-xs font-black py-3 px-4 text-emerald-600 focus:bg-emerald-50 focus:text-emerald-600">
                                                     <FileCheck className="w-4 h-4" /> AUTHORIZE APPROVAL
@@ -233,6 +241,12 @@ export function ApplicationList({ applications: initialApplications }: { applica
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <EditApplicationModal
+                application={editingApp}
+                open={!!editingApp}
+                onOpenChange={(open) => !open && setEditingApp(null)}
+            />
         </div>
     );
 }

@@ -32,7 +32,8 @@ export function NewApplicationModal({ propertyId }: { propertyId: string }) {
         applicant_phone: '',
         monthly_income: '',
         credit_score: '',
-        notes: ''
+        notes: '',
+        move_in_date: ''
     });
 
     useEffect(() => {
@@ -70,6 +71,7 @@ export function NewApplicationModal({ propertyId }: { propertyId: string }) {
                     monthly_income: parseFloat(formData.monthly_income) || undefined,
                     credit_score: parseInt(formData.credit_score) || undefined,
                     notes: formData.notes,
+                    move_in_date: formData.move_in_date || undefined
                 },
                 {
                     onSuccess: () => {
@@ -81,7 +83,8 @@ export function NewApplicationModal({ propertyId }: { propertyId: string }) {
                             applicant_phone: '',
                             monthly_income: '',
                             credit_score: '',
-                            notes: ''
+                            notes: '',
+                            move_in_date: ''
                         });
                         setIsLoading(false);
                     },
@@ -170,6 +173,14 @@ export function NewApplicationModal({ propertyId }: { propertyId: string }) {
                                 placeholder="(555) 555-5555"
                             />
                         </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Move-In Target</Label>
+                        <Input
+                            type="date"
+                            value={formData.move_in_date}
+                            onChange={(e) => setFormData({ ...formData, move_in_date: e.target.value })}
+                        />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
