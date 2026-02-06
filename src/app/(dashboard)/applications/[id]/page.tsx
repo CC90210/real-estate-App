@@ -22,8 +22,10 @@ import {
     Trash2,
     Loader2,
     Sparkles,
-    AlertTriangle
+    AlertTriangle,
+    Edit
 } from 'lucide-react';
+import { EditApplicationModal } from '@/components/applications/EditApplicationModal';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -38,7 +40,9 @@ export default function ApplicationDetailsPage() {
     const applicationId = params.id as string;
     const [application, setApplication] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
+
     const [isUpdating, setIsUpdating] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
     const supabase = createClient();
 
     useEffect(() => {
@@ -150,6 +154,13 @@ export default function ApplicationDetailsPage() {
                     <ArrowLeft className="w-4 h-4" /> Back to Intelligence
                 </Button>
                 <div className="flex gap-2">
+                    <Button
+                        onClick={() => setShowEditModal(true)}
+                        variant="outline"
+                        className="rounded-xl font-bold bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                    >
+                        <Edit className="w-4 h-4 mr-2" /> Edit Record
+                    </Button>
                     <Button
                         onClick={handleDelete}
                         variant="ghost"
@@ -359,6 +370,14 @@ export default function ApplicationDetailsPage() {
                     </div>
                 </div>
             </div>
+            <EditApplicationModal
+                application={application}
+                open={showEditModal}
+                onOpenChange={(open) => {
+                    setShowEditModal(open);
+                    if (!open) fetchApplication();
+                }}
+            />
         </div>
     );
 }
