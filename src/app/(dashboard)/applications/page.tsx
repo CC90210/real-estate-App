@@ -35,13 +35,15 @@ import {
     ArrowRight,
     ClipboardList,
     Shield,
-    Trash2
+    Trash2,
+    Edit
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useAccentColor } from '@/lib/hooks/useAccentColor'
+import { EditApplicationModal } from '@/components/applications/EditApplicationModal'
 
 export default function ApplicationsPage() {
     const supabase = createClient()
@@ -264,6 +266,7 @@ export default function ApplicationsPage() {
 }
 
 function ApplicationCard({ application, onApprove, onDeny, onDelete, isUpdating }: any) {
+    const [showEditModal, setShowEditModal] = useState(false)
     const statusConfig: any = {
         new: { label: 'New', color: 'bg-blue-50 text-blue-600 border-blue-100', icon: Clock },
         submitted: { label: 'Submitted', color: 'bg-indigo-50 text-indigo-600 border-indigo-100', icon: Clock },
@@ -333,35 +336,51 @@ function ApplicationCard({ application, onApprove, onDeny, onDelete, isUpdating 
                     </div>
                 </div>
 
-                {canTakeAction && (
-                    <div className="flex lg:flex-col gap-3 p-8 lg:border-l border-slate-100 bg-slate-50/50">
-                        <Button
-                            onClick={onApprove}
-                            disabled={isUpdating}
-                            className="flex-1 lg:flex-none h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-lg shadow-emerald-500/20 font-black transition-all hover:scale-105"
-                        >
-                            <CheckCircle className="h-5 w-5 mr-3" />
-                            Issue Clearance
-                        </Button>
-                        <Button
-                            variant="outline"
-                            onClick={onDeny}
-                            disabled={isUpdating}
-                            className="flex-1 lg:flex-none h-14 border-rose-100 bg-white text-rose-600 hover:bg-rose-50 rounded-2xl font-black transition-all hover:scale-105"
-                        >
-                            <XCircle className="h-5 w-5 mr-3" />
-                            Reject Protocol
-                        </Button>
-                        <Button
-                            variant="outline"
-                            onClick={onDelete}
-                            className="flex-1 lg:flex-none h-14 border-slate-200 bg-white text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-2xl font-black transition-all hover:scale-105"
-                        >
-                            <Trash2 className="h-5 w-5" />
-                        </Button>
-                    </div>
-                )}
+                <div className="flex lg:flex-col gap-3 p-8 lg:border-l border-slate-100 bg-slate-50/50">
+                    <Button
+                        onClick={() => setShowEditModal(true)}
+                        className="flex-1 lg:flex-none h-14 bg-white hover:bg-slate-50 text-slate-900 border border-slate-200 rounded-2xl font-black transition-all hover:scale-105"
+                    >
+                        <Edit className="h-5 w-5 mr-3 text-slate-400" />
+                        Edit Record
+                    </Button>
+
+                    {canTakeAction && (
+                        <>
+                            <Button
+                                onClick={onApprove}
+                                disabled={isUpdating}
+                                className="flex-1 lg:flex-none h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-lg shadow-emerald-500/20 font-black transition-all hover:scale-105"
+                            >
+                                <CheckCircle className="h-5 w-5 mr-3" />
+                                Issue Clearance
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={onDeny}
+                                disabled={isUpdating}
+                                className="flex-1 lg:flex-none h-14 border-rose-100 bg-white text-rose-600 hover:bg-rose-50 rounded-2xl font-black transition-all hover:scale-105"
+                            >
+                                <XCircle className="h-5 w-5 mr-3" />
+                                Reject Protocol
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={onDelete}
+                                className="flex-1 lg:flex-none h-14 border-slate-200 bg-white text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-2xl font-black transition-all hover:scale-105"
+                            >
+                                <Trash2 className="h-5 w-5" />
+                            </Button>
+                        </>
+                    )}
+                </div>
             </div>
+
+            <EditApplicationModal
+                application={application}
+                open={showEditModal}
+                onOpenChange={setShowEditModal}
+            />
         </Card>
     )
 }
