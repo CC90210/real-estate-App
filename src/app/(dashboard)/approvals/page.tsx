@@ -67,7 +67,7 @@ export default function ApprovalsPage() {
                     )
                 `)
                 .eq('company_id', companyId)
-                .in('status', ['pending_landlord', 'screening', 'submitted'])
+                .in('status', ['new', 'pending_landlord', 'screening', 'submitted'])
                 .order('created_at', { ascending: false })
 
             if (error) throw error

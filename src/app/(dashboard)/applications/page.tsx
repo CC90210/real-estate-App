@@ -278,7 +278,7 @@ function ApplicationCard({ application, onApprove, onDeny, onDelete, isUpdating 
 
     const status = statusConfig[application.status] || statusConfig.new
     const StatusIcon = status.icon
-    const canTakeAction = ['new', 'submitted', 'screening', 'pending_landlord'].includes(application.status)
+    const canTakeAction = !['approved', 'denied'].includes(application.status)
 
     let property: any = application.property
     if (Array.isArray(property)) property = property[0]
