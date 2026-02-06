@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -79,15 +80,26 @@ const documentTypes = [
     }
 ]
 
-export default function DocumentsPage() {
+function DocumentsContent() {
     const router = useRouter()
     const supabase = createClient()
     const { colors } = useAccentColor()
-    const [selectedType, setSelectedType] = useState<string | null>(null)
-    const [selectedProperty, setSelectedProperty] = useState<string>('')
-    const [selectedApplication, setSelectedApplication] = useState<string>('')
+    const searchParams = useSearchParams()
+    const [selectedType, setSelectedType] = useState<string | null>(searchParams.get('type') || null)
+    const [selectedProperty, setSelectedProperty] = useState<string>(searchParams.get('propertyId') || '')
+    const [selectedApplication, setSelectedApplication] = useState<string>(searchParams.get('applicationId') || '')
     const [customFields, setCustomFields] = useState<any>({})
     const [isGenerating, setIsGenerating] = useState(false)
+
+    // Sync search params if they change
+    useEffect(() => {
+        const type = searchParams.get('type')
+        const appId = searchParams.get('applicationId')
+        const propId = searchParams.get('propertyId')
+        if (type) setSelectedType(type)
+        if (appId) setSelectedApplication(appId)
+        if (propId) setSelectedProperty(propId)
+    }, [searchParams])
 
     // Reset custom fields when type changes
     useEffect(() => {
@@ -113,12 +125,33 @@ export default function DocumentsPage() {
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('applications')
-                .select('id, applicant_name, property:properties(address)')
+                .select('id, applicant_name, applicant_email, applicant_phone, property_id, property:properties(address, rent)')
                 .order('created_at', { ascending: false })
             if (error) throw error
             return data || []
         }
     })
+
+    // Auto-fill fields from selected application
+    useEffect(() => {
+        if (selectedApplication && applications) {
+            const app: any = applications.find((a: any) => a.id === selectedApplication)
+            if (app) {
+                const prop = Array.isArray(app.property) ? app.property[0] : app.property
+                setCustomFields((prev: any) => ({
+                    ...prev,
+                    tenantName: app.applicant_name,
+                    tenantEmail: app.applicant_email,
+                    tenantPhone: app.applicant_phone,
+                    offerRent: prop?.rent || prev.offerRent
+                }))
+                // Also auto-select the property if linked
+                if (app.property_id) {
+                    setSelectedProperty(app.property_id)
+                }
+            }
+        }
+    }, [selectedApplication, applications])
 
     // Fetch document history
     const { data: documents, isLoading: docsLoading, error: docsError, refetch } = useQuery({
@@ -834,5 +867,21 @@ export default function DocumentsPage() {
                 </CardContent>
             </Card>
         </div>
+    )
+}
+
+export default function DocumentsPage() {
+    return (
+        <Suspense fallback={
+            <div className="p-10 space-y-8 animate-pulse">
+                <div className="h-10 w-64 bg-slate-100 rounded-xl" />
+                <div className="grid grid-cols-2 gap-6">
+                    <div className="h-[400px] bg-slate-50 rounded-[2rem]" />
+                    <div className="h-[400px] bg-slate-50 rounded-[2rem]" />
+                </div>
+            </div>
+        }>
+            <DocumentsContent />
+        </Suspense>
     )
 }

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 import { useCompanyId } from '@/lib/hooks/useCompanyId'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
@@ -41,6 +42,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAccentColor } from '@/lib/hooks/useAccentColor'
 
 export default function ApprovalsPage() {
+    const router = useRouter()
     const supabase = createClient()
     const queryClient = useQueryClient()
     const { companyId, isLoading: isCompanyLoading } = useCompanyId()
@@ -332,7 +334,7 @@ export default function ApprovalsPage() {
                                                         <Button
                                                             variant="ghost"
                                                             className="w-full justify-start h-12 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 font-bold px-4"
-                                                            onClick={() => {/* Mock deal finalization */ }}
+                                                            onClick={() => router.push(`/documents?type=lease_proposal&applicationId=${app.id}`)}
                                                         >
                                                             <ArrowUpRight className="h-4 w-4 mr-3" />
                                                             Draft Lease
