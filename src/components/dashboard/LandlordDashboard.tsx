@@ -85,11 +85,24 @@ export default function LandlordDashboard({ onQuickFind }: LandlordDashboardProp
                     .gte('scheduled_date', new Date().toISOString())
                 : { data: [] }
 
+            // Get collected revenue from invoices for landlord's properties
+            const { data: paidInvoices } = propertyIds.length > 0
+                ? await supabase
+                    .from('invoices')
+                    .select('total')
+                    .in('property_id', propertyIds)
+                    .eq('status', 'paid')
+                    .gte('updated_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString())
+                : { data: [] }
+
+            const collectedRevenue = paidInvoices?.reduce((sum, i) => sum + (Number(i.total) || 0), 0) || 0
+
             return {
                 totalProperties,
                 rentedProperties: rentedProperties.length,
                 availableProperties,
-                monthlyRevenue,
+                monthlyRevenue, // This is projected (rent roll)
+                collectedRevenue, // This is actual (invoices)
                 totalApplications: applications?.length || 0,
                 pendingApplications,
                 approvedApplications,
@@ -237,6 +250,14 @@ export default function LandlordDashboard({ onQuickFind }: LandlordDashboardProp
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '200ms' }}>
+                <StatCard
+                    title="Collected Revenue"
+                    value={`$${(stats?.collectedRevenue || 0).toLocaleString()}`}
+                    subtitle="Invoices paid this month"
+                    icon={Wallet}
+                    gradient="from-emerald-500 to-emerald-600"
+                    href="/invoices"
+                />
                 <StatCard
                     title="My Properties"
                     value={stats?.totalProperties || 0}

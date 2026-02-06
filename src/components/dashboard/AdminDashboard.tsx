@@ -69,7 +69,7 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                 { count: propertiesLastWeek },
                 { count: applicationsThisWeek },
                 { count: applicationsLastWeek },
-                { data: rentData },
+                { data: paidInvoices },
                 { count: totalAreas },
                 { count: totalBuildings }
             ] = await Promise.all([
@@ -82,13 +82,18 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                 supabase.from('properties').select('*', { count: 'exact', head: true }).eq('company_id', company.id).gte('created_at', twoWeeksAgo.toISOString()).lt('created_at', oneWeekAgo.toISOString()),
                 supabase.from('applications').select('*', { count: 'exact', head: true }).eq('company_id', company.id).gte('created_at', oneWeekAgo.toISOString()),
                 supabase.from('applications').select('*', { count: 'exact', head: true }).eq('company_id', company.id).gte('created_at', twoWeeksAgo.toISOString()).lt('created_at', oneWeekAgo.toISOString()),
-                supabase.from('properties').select('rent').eq('company_id', company.id).eq('status', 'rented'),
+                // Fetch paid invoices for the current month
+                supabase.from('invoices')
+                    .select('total')
+                    .eq('company_id', company.id)
+                    .eq('status', 'paid')
+                    .gte('updated_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()),
                 supabase.from('areas').select('*', { count: 'exact', head: true }).eq('company_id', company.id),
                 supabase.from('buildings').select('*', { count: 'exact', head: true }).eq('company_id', company.id)
             ]);
 
-            // Calculate total monthly revenue from rented properties
-            const totalMonthlyRent = rentData?.reduce((sum, p) => sum + (p.rent || 0), 0) || 0;
+            // Calculate actual collected revenue
+            const totalMonthlyRevenue = paidInvoices?.reduce((sum, inv) => sum + (Number(inv.total) || 0), 0) || 0;
 
             // Calculate real trends
             const calcTrend = (current: number, previous: number): string | null => {
@@ -105,8 +110,8 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                 totalApplications: totalApplications || 0,
                 pendingApplications: pendingApplications || 0,
                 teamMembers: teamMembers || 1,
-                totalMonthlyRent,
-                rentedCount: rentData?.length || 0,
+                totalMonthlyRevenue,
+                rentedCount: 0,
                 propertyTrend: calcTrend(propertiesThisWeek || 0, propertiesLastWeek || 0),
                 applicationTrend: calcTrend(applicationsThisWeek || 0, applicationsLastWeek || 0),
                 totalAreas: totalAreas || 0,
@@ -246,9 +251,9 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                     href="/applications"
                 />
                 <StatCard
-                    title="Monthly Revenue"
-                    value={`$${(stats?.totalMonthlyRent || 0).toLocaleString()}`}
-                    subtitle={`${stats?.rentedCount || 0} rented units`}
+                    title="Collected Revenue"
+                    value={`$${(stats?.totalMonthlyRevenue || 0).toLocaleString()}`}
+                    subtitle="Invoices paid this month"
                     icon={Wallet}
                     gradient="from-emerald-500 to-emerald-600"
                     href="/invoices"

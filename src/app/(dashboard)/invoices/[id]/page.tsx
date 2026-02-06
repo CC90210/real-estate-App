@@ -89,6 +89,13 @@ export default function InvoiceViewPage() {
     const currentStatus = statusConfig[invoice.status] || statusConfig.draft;
     const StatusIcon = currentStatus.icon;
 
+    // Helper to safely format dates
+    const safeFormat = (dateStr: string | null, fmt: string) => {
+        if (!dateStr) return null;
+        const d = new Date(dateStr);
+        return isNaN(d.getTime()) ? null : format(d, fmt);
+    }
+
     return (
         <div className="min-h-screen bg-slate-100/50 pb-20 print:pb-0 print:bg-white">
             {/* Toolbar */}
@@ -106,6 +113,9 @@ export default function InvoiceViewPage() {
                     </Badge>
                 </div>
                 <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => router.push(`/invoices/${id}/edit`)} className="rounded-xl font-bold">
+                        Edit Invoice
+                    </Button>
                     {invoice.status === 'draft' && (
                         <Button variant="outline" onClick={() => updateStatus('sent')} disabled={isUpdating} className="rounded-xl font-bold">
                             <Send className="w-4 h-4 mr-2" /> Mark as Sent
@@ -140,8 +150,8 @@ export default function InvoiceViewPage() {
                         <h2 className="text-4xl font-black text-slate-900 tracking-tighter">INVOICE</h2>
                         <p className="font-mono text-slate-500 mt-2">#{invoice.invoice_number}</p>
                         <div className="mt-4 space-y-1 text-xs text-slate-500">
-                            <p>Issued: {format(new Date(invoice.issue_date || invoice.created_at), 'MMM dd, yyyy')}</p>
-                            <p>Due: {invoice.due_date ? format(new Date(invoice.due_date), 'MMM dd, yyyy') : 'Upon Receipt'}</p>
+                            <p>Issued: {safeFormat(invoice.issue_date || invoice.created_at, 'MMM dd, yyyy')}</p>
+                            <p>Due: {safeFormat(invoice.due_date, 'MMM dd, yyyy') || 'Upon Receipt'}</p>
                         </div>
                     </div>
                 </div>
@@ -174,7 +184,7 @@ export default function InvoiceViewPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {items.map((item: any, index: number) => (
+                            {Array.isArray(items) && items.map((item: any, index: number) => (
                                 <tr key={index} className="border-b border-slate-100">
                                     <td className="py-4 font-medium text-slate-800">{item.description || 'Line Item'}</td>
                                     <td className="py-4 text-center text-slate-600">{item.quantity || 1}</td>
