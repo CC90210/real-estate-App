@@ -23,8 +23,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
-import { generatePDFBlob } from '@/lib/generatePdf'
-import { uploadAndGetLink, triggerInvoiceAutomation } from '@/lib/automations'
 import { format } from 'date-fns'
 
 interface LineItem {
@@ -127,7 +125,7 @@ export default function NewInvoicePage() {
         return items.reduce((sum, item) => sum + (Number(item.amount || 0) * (item.quantity || 1)), 0)
     }
 
-    const handleSubmit = async (status: 'draft' | 'sent') => {
+    const handleSubmit = async () => {
         if (!recipientName) {
             toast.error('Identity Verification Required', { description: 'Recipient name cannot be blank.' })
             return
@@ -164,7 +162,7 @@ export default function NewInvoicePage() {
                 property_id: propertyId || null,
                 issue_date: new Date().toISOString(),
                 due_date: dueDate || null,
-                status: status,
+                status: 'draft',
                 items: JSON.parse(JSON.stringify(items)), // Deep clone for stability
                 subtotal: calculateTotal(),
                 tax_amount: 0,
@@ -181,21 +179,11 @@ export default function NewInvoicePage() {
 
             if (error) throw error
 
-            if (status === 'sent') {
-                // AUTOMATION PROTOCOL:
-                // 1. We have the data, but we need to generate the PDF *blob* for the attachment.
-                // NOTE: Since the invoice is just being created, we can't scrape the DOM ID because we might be on the /new page
-                // and the invoice preview doesn't exist yet. 
-                // However, the user flow redirects to /invoices/[id].
-                // Strategy: We will redirect first, then let the user trigger the official "Dispatch" from the detail view
-                // OR we generate a provisional PDF here if we had a previewer.
-                // CURRENT ARCHITECTURE: Redirect to ID page, then trigger dispatch automatically if needed?
-                // Actually, for "Create & Dispatch", it's safer to save, redirect, and show a "Ready to Dispatch" toast or dialog.
-                // BUT, user asked to "send the automated message".
-                // We'll trust the process: Save -> Redirect -> Allow user to click "Dispatch" on the next screen to ensure PDF renders correctly.
-                toast.success('Invoice Created', { description: 'Redirecting to secure viewer for final dispatch...' })
+            if (savedInvoice?.id) {
+                toast.success('Invoice Generated', { description: 'Redirecting to secure viewer...' })
+                window.location.href = `/invoices/${savedInvoice.id}`;
             } else {
-                toast.success('Ledger Entry Drafted')
+                router.push('/invoices')
             }
 
             // REDIRECT PROTOCOL - Using absolute path to prevent routing errors
@@ -236,20 +224,12 @@ export default function NewInvoicePage() {
                 </Button>
                 <div className="flex gap-3">
                     <Button
-                        variant="outline"
-                        onClick={() => handleSubmit('draft')}
-                        disabled={isLoading || !profile?.company_id}
-                        className="rounded-2xl font-black uppercase text-[10px] tracking-widest px-8 h-12 border-2"
-                    >
-                        Save as Draft
-                    </Button>
-                    <Button
-                        onClick={() => handleSubmit('sent')}
+                        onClick={handleSubmit}
                         disabled={isLoading || !profile?.company_id}
                         className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest px-10 h-12 shadow-2xl shadow-indigo-200 group"
                     >
-                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Mail className="w-4 h-4 mr-3 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />}
-                        Create & Dispatch
+                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <FileText className="w-4 h-4 mr-3 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />}
+                        Generate Invoice
                     </Button>
                 </div>
             </div>

@@ -164,65 +164,7 @@ export default function InvoiceViewPage() {
     }
 
     // MEMOIZED DATA EXTRACTION FOR MAXIMUM DEFENSE
-    const handleDispatch = async () => {
-        if (!invoice || !id) return;
-        setIsUpdating(true)
-        try {
-            // 1. Generate PDF Blob
-            // Add slight delay to allow UI to settle
-            await new Promise(r => setTimeout(r, 500));
 
-            toast.message('Secure Dispatch Initiated', { description: 'Generating encrypted document...' })
-            const pdfBlob = await generatePDFBlob('invoice-paper');
-
-            let finalBlob = pdfBlob;
-            if (!finalBlob) {
-                // Retry once
-                console.warn("PDF Generation Retrying...");
-                await new Promise(r => setTimeout(r, 1000));
-                finalBlob = await generatePDFBlob('invoice-paper');
-                if (!finalBlob) throw new Error("Failed to generate PDF document");
-            }
-
-            // 2. Upload to Storage
-            toast.message('Upload in Progress', { description: 'Synchronizing with secure gateway...' })
-            const path = `${invoice.company_id}/invoice_${id}_${Date.now()}.pdf`;
-            const fileUrl = await uploadAndGetLink(finalBlob, path);
-
-            // 3. Trigger Automation
-            await triggerInvoiceAutomation({
-                invoice_id: id as string,
-                invoice_number: invoice.invoice_number,
-                recipient_name: invoice.recipient_name,
-                recipient_email: invoice.recipient_email,
-                amount: invoice.total,
-                company_id: invoice.company_id,
-                created_by: invoice.created_by,
-                items: invoice.items,
-                file_url: fileUrl,
-                triggered_at: new Date().toISOString()
-            });
-
-            // 4. Update Status Locally
-            const { error } = await supabase
-                .from('invoices')
-                .update({ status: 'sent', updated_at: new Date().toISOString() })
-                .eq('id', id)
-
-            if (error) throw error
-
-            queryClient.invalidateQueries({ queryKey: ['invoice', id] })
-            queryClient.invalidateQueries({ queryKey: ['invoices'] })
-            toast.success('Transmission Complete', { description: 'Invoice dispatched and recipient notified.' })
-            await refetch()
-
-        } catch (e: any) {
-            console.error(e)
-            toast.error('Dispatch Failure', { description: e.message })
-        } finally {
-            setIsUpdating(false)
-        }
-    }
 
     // MEMOIZED DATA EXTRACTION FOR MAXIMUM DEFENSE
     const { items, company, property, currentStatus, StatusIcon } = useMemo(() => {
@@ -282,6 +224,64 @@ export default function InvoiceViewPage() {
         }
     }, [invoice]);
 
+    const handleDispatch = async () => {
+        if (!invoice || !id) return;
+        setIsUpdating(true)
+        try {
+            // 1. Generate PDF Blob
+            await new Promise(r => setTimeout(r, 500)); // UI Settle
+
+            toast.message('Dispatching Securely', { description: 'Encrypting document for transmission...' })
+            const pdfBlob = await generatePDFBlob('invoice-paper');
+
+            let finalBlob = pdfBlob;
+            if (!finalBlob) {
+                // Retry once
+                console.warn("PDF Generation Retrying...");
+                await new Promise(r => setTimeout(r, 1000));
+                finalBlob = await generatePDFBlob('invoice-paper');
+                if (!finalBlob) throw new Error("Failed to generate PDF document");
+            }
+
+            // 2. Upload to Storage
+            const path = `${invoice.company_id}/invoice_${id}_${Date.now()}.pdf`;
+            const fileUrl = await uploadAndGetLink(finalBlob, path);
+
+            // 3. Trigger Automation (Using production Webhook)
+            await triggerInvoiceAutomation({
+                invoice_id: id as string,
+                invoice_number: invoice.invoice_number,
+                recipient_name: invoice.recipient_name,
+                recipient_email: invoice.recipient_email,
+                amount: invoice.total,
+                company_id: invoice.company_id,
+                created_by: invoice.created_by,
+                items: items, // Use memoized items
+                file_url: fileUrl,
+                triggered_at: new Date().toISOString()
+            });
+
+            // 4. Update Status Locally
+            const { error } = await supabase
+                .from('invoices')
+                .update({ status: 'sent', updated_at: new Date().toISOString() })
+                .eq('id', id)
+
+            if (error) throw error
+
+            queryClient.invalidateQueries({ queryKey: ['invoice', id] })
+            queryClient.invalidateQueries({ queryKey: ['invoices'] })
+            toast.success('Transmission Complete', { description: 'Invoice dispatched and recipient notified.' })
+            await refetch()
+
+        } catch (e: any) {
+            console.error(e)
+            toast.error('Dispatch Failure', { description: e.message })
+        } finally {
+            setIsUpdating(false)
+        }
+    }
+
     // Helper to safely format dates
     const safeFormat = (dateStr: string | null, fmt: string) => {
         if (!dateStr) return null;
@@ -323,7 +323,6 @@ export default function InvoiceViewPage() {
 
     return (
         <div className="min-h-screen bg-slate-50/50 pb-20 print:pb-0 print:bg-white transition-opacity duration-1000">
-            /* Global Print Styles - Tighten for single page and hide browser UI */
             <style jsx global>{`
                 @media print {
                     @page {
