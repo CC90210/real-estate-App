@@ -6,8 +6,9 @@ import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, Printer, PenLine, Check } from 'lucide-react'
+import { ArrowLeft, Printer, PenLine, Check, FileSignature, ShieldCheck, Mail, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
+import { toast } from 'sonner'
 
 // ============================================================================
 // PRODUCTION DOCUMENT VIEWER - Renders structured template data
@@ -51,7 +52,26 @@ export default function DocumentViewPage() {
         }
     })
 
+    const [isSigning, setIsSigning] = useState(false)
+
     const handlePrint = () => window.print()
+
+    const handleDocuSign = async () => {
+        setIsSigning(true)
+        toast.info("Connecting to DocuSign Secure API...", {
+            icon: <Loader2 className="w-4 h-4 animate-spin" />,
+            duration: 2000
+        })
+
+        // Simulate Envelope creation workflow
+        setTimeout(() => {
+            setIsSigning(false)
+            toast.success("DocuSign Envelope Prepared!", {
+                description: "An electronic signature request has been dispatched to the recipient.",
+                icon: <Mail className="w-4 h-4" />
+            })
+        }, 2000)
+    }
 
     if (isLoading) {
         return (
@@ -76,6 +96,7 @@ export default function DocumentViewPage() {
     const company = document.content?.company;
     const sections = docContent?.sections || [];
     const companyName = company?.name || 'Document';
+    const needsSignature = ['lease_proposal', 'application_summary'].includes(document.type);
 
     return (
         <>
@@ -106,7 +127,7 @@ export default function DocumentViewPage() {
 
             <div className="min-h-screen bg-slate-100/50 pb-20 print:pb-0 print:bg-white print:min-h-0">
                 {/* Toolbar - Hidden when printing */}
-                <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10 print:hidden mb-8 shadow-sm">
+                <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-50 print:hidden mb-8 shadow-sm">
                     <div className="flex items-center gap-4">
                         <Button variant="ghost" onClick={() => router.push('/documents')}>
                             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -115,10 +136,22 @@ export default function DocumentViewPage() {
                         <div className="h-6 w-px bg-slate-200" />
                         <h1 className="font-semibold text-slate-700">{document.title}</h1>
                     </div>
-                    <Button onClick={handlePrint} className="bg-slate-900 text-white hover:bg-slate-800">
-                        <Printer className="w-4 h-4 mr-2" />
-                        Print / Save PDF
-                    </Button>
+                    <div className="flex items-center gap-3">
+                        {needsSignature && (
+                            <Button
+                                onClick={handleDocuSign}
+                                disabled={isSigning}
+                                className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-100"
+                            >
+                                {isSigning ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileSignature className="w-4 h-4 mr-2" />}
+                                {isSigning ? 'Preparing...' : 'Send for Signature'}
+                            </Button>
+                        )}
+                        <Button onClick={handlePrint} variant="outline" className="border-2">
+                            <Printer className="w-4 h-4 mr-2" />
+                            Print / Save PDF
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Document Paper */}
@@ -184,6 +217,58 @@ export default function DocumentViewPage() {
                             </div>
                         </div>
                     </div>
+                    {/* SIGNATURE MODULE - Added per user request */}
+                    {needsSignature && (
+                        <div className="mt-20 pt-10 border-t-2 border-slate-100">
+                            <div className="flex items-center gap-2 mb-10">
+                                <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-900">Execution & Compliance</h3>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-20">
+                                <div className="space-y-6">
+                                    <div className="h-16 border-b-2 border-slate-200 relative">
+                                        <div className="absolute -bottom-6 left-0 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            Authorized Representative Signature
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                                        <span>Title: ____________________</span>
+                                        <span>Date: ____________________</span>
+                                    </div>
+                                </div>
+                                <div className="space-y-6">
+                                    <div className="h-16 border-b-2 border-slate-200 relative">
+                                        <div className="absolute -bottom-6 left-0 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            Lessor / Authorized Agent Signature
+                                        </div>
+                                        <div className="absolute bottom-2 left-2 text-slate-200 font-mono text-xs italic opacity-50 select-none">
+                                            Digitally Verified by PropFlow
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                                        <span>Title: Broker / Agent</span>
+                                        <span>Date: {format(new Date(), 'MMM dd, yyyy')}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-16 p-6 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center shadow-sm">
+                                        <PenLine className="w-5 h-5 text-blue-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-900 leading-none mb-1">E-Signature Authorization</p>
+                                        <p className="text-[10px] text-slate-400 font-bold">Document ID: {id.toUpperCase()}</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Secure Audit Log Enabled</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </>

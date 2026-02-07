@@ -17,10 +17,12 @@ import {
 } from '@/components/ui/select'
 import { ArrowLeft, Building2, MapPin, Home, Loader2, Plus, CheckCircle2 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useQueryClient } from '@tanstack/react-query'
 
 export default function NewPropertyPage() {
     const router = useRouter()
     const supabase = createClient()
+    const queryClient = useQueryClient()
     const [isLoading, setIsLoading] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -162,6 +164,13 @@ export default function NewPropertyPage() {
                 })
 
             if (propError) throw propError
+
+            // CRITICAL: Global cache invalidation for "Matching Energy"
+            queryClient.invalidateQueries({ queryKey: ['properties'] })
+            queryClient.invalidateQueries({ queryKey: ['properties-simple'] })
+            queryClient.invalidateQueries({ queryKey: ['buildings'] })
+            queryClient.invalidateQueries({ queryKey: ['areas'] })
+            queryClient.invalidateQueries({ queryKey: ['dashboard_metrics'] })
 
             toast.success("Property created successfully!")
 
