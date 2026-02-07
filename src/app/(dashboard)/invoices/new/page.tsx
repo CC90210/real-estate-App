@@ -18,7 +18,9 @@ import {
 import { ArrowLeft, Plus, Trash2, Save, Loader2, DollarSign, AlertCircle } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
+
 
 interface LineItem {
     id: string
