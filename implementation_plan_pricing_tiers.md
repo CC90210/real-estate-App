@@ -117,3 +117,7 @@ export const TIER_CAPABILITIES = {
 - [x] **Phase 4: Verification**
   - [x] Verify `TierGuard` logic.
   - [x] Verify UI for locked states.
+
+- [x] **Deployment**
+  - [x] Push code to GitHub (triggers Vercel deploy).
+  - [x] Database migration captured in SQL file.

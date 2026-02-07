@@ -1,27 +1,54 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
+import { PLANS, PlanKey } from '@/lib/stripe/plans'
+import { getStripe } from '@/lib/stripe/client'
 import { Button } from '@/components/ui/button'
-import {
-    Check,
-    X,
-    Sparkles,
-    Zap,
-    Shield,
-    Users,
-    FileText,
-    Receipt,
-    Building2,
-    Calendar,
-    ArrowRight
-} from 'lucide-react'
+import { Check, X, Sparkles, Zap, Shield, FileText, Building2, Loader2 } from 'lucide-react'
 import { PublicNavbar } from '@/components/layout/PublicNavbar'
 import { PublicFooter } from '@/components/layout/PublicFooter'
 import { cn } from '@/lib/utils'
+import Link from 'next/link'
 
 export default function PricingPage() {
-    const [isAnnual, setIsAnnual] = useState(false)
+    const router = useRouter()
+    const [loading, setLoading] = useState<string | null>(null)
+    const [interval, setInterval] = useState<'monthly' | 'yearly'>('monthly')
+
+    const handleCheckout = async (planKey: PlanKey) => {
+        setLoading(planKey)
+
+        try {
+            const response = await fetch('/api/stripe/create-checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ planKey, interval }),
+            })
+
+            const data = await response.json()
+
+            if (data.error) {
+                // Not logged in - redirect to signup
+                if (response.status === 401) {
+                    router.push(`/join?plan=${planKey}`)
+                    return
+                }
+                throw new Error(data.error)
+            }
+
+            // Redirect to Stripe Checkout
+            if (data.url) {
+                window.location.href = data.url
+            }
+
+        } catch (error: any) {
+            toast.error('Checkout failed', { description: error.message })
+        } finally {
+            setLoading(null)
+        }
+    }
 
     return (
         <div className="min-h-screen bg-[#fdfeff] selection:bg-indigo-100 selection:text-indigo-900">
@@ -45,19 +72,19 @@ export default function PricingPage() {
                     {/* Billing Toggle */}
                     <div className="inline-flex p-1.5 bg-slate-100 rounded-2xl relative mb-8">
                         <button
-                            onClick={() => setIsAnnual(false)}
+                            onClick={() => setInterval('monthly')}
                             className={cn(
                                 "relative z-10 px-8 py-3 rounded-xl text-sm font-black transition-all duration-300",
-                                !isAnnual ? "bg-white text-slate-900 shadow-md" : "text-slate-500 hover:text-slate-700"
+                                interval === 'monthly' ? "bg-white text-slate-900 shadow-md" : "text-slate-500 hover:text-slate-700"
                             )}
                         >
                             Monthly
                         </button>
                         <button
-                            onClick={() => setIsAnnual(true)}
+                            onClick={() => setInterval('yearly')}
                             className={cn(
                                 "relative z-10 px-8 py-3 rounded-xl text-sm font-black transition-all duration-300 flex items-center gap-2",
-                                isAnnual ? "bg-white text-slate-900 shadow-md" : "text-slate-500 hover:text-slate-700"
+                                interval === 'yearly' ? "bg-white text-slate-900 shadow-md" : "text-slate-500 hover:text-slate-700"
                             )}
                         >
                             Yearly
@@ -74,53 +101,65 @@ export default function PricingPage() {
                     {/* Tier 1: Essentials */}
                     <PricingCard
                         tier="Essentials"
-                        price={isAnnual ? 24 : 29}
+                        price={interval === 'yearly' ? 24 : 29}
+                        interval={interval}
                         description="Core tools for solo agents & landlords starting their journey."
                         features={[
-                            { label: "Unlimited Properties", included: true },
-                            { label: "Contact CRM", included: true },
-                            { label: "Basic Dashboard", included: true },
-                            { label: "Document Generation", included: false },
-                            { label: "Invoicing & Ledger", included: false },
-                            { label: "Showing Scheduler", included: false },
+                            { label: "Up to 25 Properties", included: true },
+                            { label: "1 Team Member", included: true },
+                            { label: "Application Management", included: true },
+                            { label: "Document Generation", included: true },
+                            { label: "Basic Reporting", included: true },
+                            { label: "Email Support", included: true },
                         ]}
                         icon={Building2}
                         color="slate"
+                        planKey="starter"
+                        loading={loading}
+                        onCheckout={handleCheckout}
                     />
 
                     {/* Tier 2: Professional */}
                     <PricingCard
                         tier="Professional"
-                        price={isAnnual ? 39 : 49}
+                        price={interval === 'yearly' ? 39 : 49}
+                        interval={interval}
                         description="Streamlined compliance & paperwork for growing portfolios."
                         features={[
-                            { label: "Unlimited Properties", included: true },
-                            { label: "Contact CRM", included: true },
-                            { label: "Basic Dashboard", included: true },
-                            { label: "Document Generation", included: true },
-                            { label: "Application Management", included: true },
-                            { label: "Invoicing & Ledger", included: false },
+                            { label: "Up to 100 Properties", included: true },
+                            { label: "5 Team Members", included: true },
+                            { label: "Everything in Essentials", included: true },
+                            { label: "Showings Calendar", included: true },
+                            { label: "Invoice Generation", included: true },
+                            { label: "Advanced Analytics", included: true },
                         ]}
                         icon={FileText}
                         popular
                         color="blue"
+                        planKey="professional"
+                        loading={loading}
+                        onCheckout={handleCheckout}
                     />
 
-                    {/* Tier 3: Business Elite */}
+                    {/* Tier 3: Enterprise */}
                     <PricingCard
-                        tier="Business Elite"
-                        price={isAnnual ? 65 : 79}
-                        description="Full operational command for brokerages and teams."
+                        tier="Enterprise"
+                        price={interval === 'yearly' ? 65 : 79}
+                        interval={interval}
+                        description="Full operational command for large organizations."
                         features={[
+                            { label: "Unlimited Properties", included: true },
+                            { label: "Unlimited Team Members", included: true },
                             { label: "Everything in Professional", included: true },
-                            { label: "Invoicing & Payment Tracking", included: true },
-                            { label: "Showing Scheduler", included: true },
-                            { label: "Approvals Workflow", included: true },
-                            { label: "Team Activity Logs", included: true },
-                            { label: "Priority Support", included: true },
+                            { label: "Custom Integrations", included: true },
+                            { label: "Dedicated Account Manager", included: true },
+                            { label: "Priority Support & SLA", included: true },
                         ]}
                         icon={Shield}
                         color="indigo"
+                        planKey="enterprise"
+                        loading={loading}
+                        onCheckout={handleCheckout}
                     />
                 </div>
 
@@ -183,7 +222,7 @@ export default function PricingPage() {
     )
 }
 
-function PricingCard({ tier, price, description, features, icon: Icon, popular, color }: any) {
+function PricingCard({ tier, price, interval, description, features, icon: Icon, popular, color, planKey, loading, onCheckout }: any) {
     const isPopular = popular
     return (
         <div className={cn(
@@ -210,9 +249,9 @@ function PricingCard({ tier, price, description, features, icon: Icon, popular, 
             <div className="mb-8">
                 <div className="flex items-baseline gap-1">
                     <span className="text-5xl font-black text-slate-900 tracking-tight">${price}</span>
-                    <span className="text-slate-400 font-bold">/mo</span>
+                    <span className="text-slate-400 font-bold">/{interval === 'monthly' ? 'mo' : 'mo billed yearly'}</span>
                 </div>
-                <p className="text-xs text-slate-400 font-medium mt-2">Billed {price * 12 === price * 12 ? 'annually' : 'monthly'}</p>
+                {interval === 'yearly' && <p className="text-xs text-green-600 font-bold mt-2">You save ${(price * 0.2 * 12).toFixed(0)} a year</p>}
             </div>
 
             <div className="flex-1 space-y-4 mb-8">
@@ -234,16 +273,22 @@ function PricingCard({ tier, price, description, features, icon: Icon, popular, 
                 ))}
             </div>
 
-            <Link href="/join" className="mt-auto">
-                <Button className={cn(
-                    "w-full h-14 rounded-xl font-black uppercase tracking-widest transition-all",
+            <Button
+                onClick={() => onCheckout(planKey)}
+                disabled={loading !== null}
+                className={cn(
+                    "w-full h-14 rounded-xl font-black uppercase tracking-widest transition-all mt-auto",
                     isPopular
                         ? "bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-200"
                         : "bg-slate-900 hover:bg-slate-800 text-white shadow-lg"
-                )}>
-                    Get Started
-                </Button>
-            </Link>
+                )}
+            >
+                {loading === planKey ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                    'Get Started'
+                )}
+            </Button>
         </div>
     )
 }
