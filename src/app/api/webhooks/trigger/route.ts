@@ -6,12 +6,12 @@ import { z } from 'zod';
 // Zod Schema for validation
 const AutomationSchema = z.object({
     type: z.enum(['document', 'invoice']),
-    data: z.record(z.any())
+    data: z.record(z.string(), z.any())
 });
 
 export async function POST(request: Request) {
     try {
-        const supabase = createClient();
+        const supabase = await createClient();
         const { data: { user }, error: authError } = await supabase.auth.getUser();
 
         if (authError || !user) {

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
     ArrowLeft, Printer, DollarSign, CheckCircle, Clock, XCircle,
-    Send, Trash2, Edit3, Mail, AlertCircle, Info, ShieldCheck
+    Send, Trash2, Edit3, Mail, AlertCircle, Info, ShieldCheck, Loader2
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
@@ -25,6 +25,8 @@ import {
     DialogClose,
 } from "@/components/ui/dialog"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { generatePDFBlob } from '@/lib/generatePdf'
+import { uploadAndGetLink, triggerInvoiceAutomation } from '@/lib/automations'
 
 // ============================================================================
 // HIGH-FIDELITY INVOICE ARCHITECTURE - PRODUCTION GRADE
@@ -158,6 +160,67 @@ export default function InvoiceViewPage() {
         } catch (e: any) {
             toast.error('Critical Deletion Error', { description: e.message })
             setIsDeleting(false)
+        }
+    }
+
+    // MEMOIZED DATA EXTRACTION FOR MAXIMUM DEFENSE
+    const handleDispatch = async () => {
+        if (!invoice || !id) return;
+        setIsUpdating(true)
+        try {
+            // 1. Generate PDF Blob
+            // Add slight delay to allow UI to settle
+            await new Promise(r => setTimeout(r, 500));
+
+            toast.message('Secure Dispatch Initiated', { description: 'Generating encrypted document...' })
+            const pdfBlob = await generatePDFBlob('invoice-paper');
+
+            let finalBlob = pdfBlob;
+            if (!finalBlob) {
+                // Retry once
+                console.warn("PDF Generation Retrying...");
+                await new Promise(r => setTimeout(r, 1000));
+                finalBlob = await generatePDFBlob('invoice-paper');
+                if (!finalBlob) throw new Error("Failed to generate PDF document");
+            }
+
+            // 2. Upload to Storage
+            toast.message('Upload in Progress', { description: 'Synchronizing with secure gateway...' })
+            const path = `${invoice.company_id}/invoice_${id}_${Date.now()}.pdf`;
+            const fileUrl = await uploadAndGetLink(finalBlob, path);
+
+            // 3. Trigger Automation
+            await triggerInvoiceAutomation({
+                invoice_id: id as string,
+                invoice_number: invoice.invoice_number,
+                recipient_name: invoice.recipient_name,
+                recipient_email: invoice.recipient_email,
+                amount: invoice.total,
+                company_id: invoice.company_id,
+                created_by: invoice.created_by,
+                items: invoice.items,
+                file_url: fileUrl,
+                triggered_at: new Date().toISOString()
+            });
+
+            // 4. Update Status Locally
+            const { error } = await supabase
+                .from('invoices')
+                .update({ status: 'sent', updated_at: new Date().toISOString() })
+                .eq('id', id)
+
+            if (error) throw error
+
+            queryClient.invalidateQueries({ queryKey: ['invoice', id] })
+            queryClient.invalidateQueries({ queryKey: ['invoices'] })
+            toast.success('Transmission Complete', { description: 'Invoice dispatched and recipient notified.' })
+            await refetch()
+
+        } catch (e: any) {
+            console.error(e)
+            toast.error('Dispatch Failure', { description: e.message })
+        } finally {
+            setIsUpdating(false)
         }
     }
 
@@ -311,11 +374,12 @@ export default function InvoiceViewPage() {
                     <div className="flex gap-1.5">
                         {invoice.status === 'draft' && (
                             <Button
-                                onClick={() => updateStatus('sent')}
+                                onClick={handleDispatch}
                                 disabled={isUpdating}
-                                className="h-10 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest bg-blue-600 hover:bg-blue-700 text-white"
+                                className="h-10 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200"
                             >
-                                <Send className="w-3.5 h-3.5 mr-1.5" /> Dispatch
+                                {isUpdating ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1.5" />}
+                                Dispatch
                             </Button>
                         )}
                         {invoice.status === 'sent' && (
