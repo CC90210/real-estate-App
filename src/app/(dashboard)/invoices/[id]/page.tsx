@@ -11,16 +11,15 @@ import { format } from 'date-fns'
 import { toast } from 'sonner'
 import { useState } from 'react'
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+    DialogClose,
+} from "@/components/ui/dialog"
 
 // ============================================================================
 // PRODUCTION INVOICE VIEWER - Fully Branded & Printable
@@ -183,28 +182,30 @@ export default function InvoiceViewPage() {
                         Edit
                     </Button>
 
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
+                    <Dialog>
+                        <DialogTrigger asChild>
                             <Button variant="outline" className="rounded-xl font-bold text-red-600 border-red-100 hover:bg-red-50">
                                 <Trash2 className="w-4 h-4 mr-2" />
                                 Delete
                             </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent className="rounded-[2rem]">
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
+                        </DialogTrigger>
+                        <DialogContent className="rounded-[2rem]">
+                            <DialogHeader>
+                                <DialogTitle>Are you absolutely sure?</DialogTitle>
+                                <DialogDescription>
                                     This will permanently delete invoice #{invoice.invoice_number}. This action cannot be undone.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={deleteInvoice} className="bg-red-600 hover:bg-red-700 text-white rounded-xl">
+                                </DialogDescription>
+                            </DialogHeader>
+                            <DialogFooter>
+                                <DialogClose asChild>
+                                    <Button variant="outline" className="rounded-xl">Cancel</Button>
+                                </DialogClose>
+                                <Button onClick={deleteInvoice} disabled={isDeleting} className="bg-red-600 hover:bg-red-700 text-white rounded-xl">
                                     {isDeleting ? 'Deleting...' : 'Delete Invoice'}
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
 
                     <Button onClick={handlePrint} className="bg-slate-900 text-white hover:bg-slate-800 rounded-xl font-bold shadow-lg shadow-slate-200">
                         <Printer className="w-4 h-4 mr-2" />
