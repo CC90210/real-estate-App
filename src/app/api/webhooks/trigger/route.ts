@@ -44,7 +44,13 @@ export async function POST(request: Request) {
         };
 
         // 4. Forward to N8N Webhook URL
-        const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
+        // PRODUCTION CONFIGURATION: DYNAMIC ROUTING
+        let n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
+
+        // Specific override for INVOICE AUTOMATION
+        if (type === 'invoice') {
+            n8nWebhookUrl = 'https://n8n.srv993801.hstgr.cloud/webhook/ad6dd389-7003-4276-9f6c-5eec3836020d';
+        }
 
         if (!n8nWebhookUrl) {
             console.warn('N8N_WEBHOOK_URL is not configured. Automation payload logged but not sent.');
