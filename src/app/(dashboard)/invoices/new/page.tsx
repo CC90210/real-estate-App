@@ -15,8 +15,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
-import { ArrowLeft, Plus, Trash2, Save, Loader2, DollarSign } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Save, Loader2, DollarSign, AlertCircle } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import Link from 'next/link'
 
 interface LineItem {
     id: string
@@ -29,8 +31,10 @@ export default function NewInvoicePage() {
     const router = useRouter()
     const supabase = createClient()
     const [isLoading, setIsLoading] = useState(false)
+    const [isFetching, setIsFetching] = useState(true)
     const [company, setCompany] = useState<any>(null)
     const [properties, setProperties] = useState<any[]>([])
+    const [profile, setProfile] = useState<any>(null)
 
     // Form State
     const [recipientName, setRecipientName] = useState('')
@@ -45,25 +49,34 @@ export default function NewInvoicePage() {
     // Load properties and company on mount
     useEffect(() => {
         const fetchData = async () => {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) return
+            try {
+                const { data: { user } } = await supabase.auth.getUser()
+                if (!user) return
 
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('company_id, company:companies(name, logo_url)')
-                .eq('id', user.id)
-                .single()
+                const { data: profileData } = await supabase
+                    .from('profiles')
+                    .select('*, company:companies(id, name, logo_url)')
+                    .eq('id', user.id)
+                    .single()
 
-            if (profile?.company) {
-                setCompany(profile.company)
+                if (profileData) {
+                    setProfile(profileData)
+                    if (profileData.company) {
+                        setCompany(profileData.company)
+                    }
+                }
+
+                const { data: props } = await supabase
+                    .from('properties')
+                    .select('id, address, unit_number')
+                    .order('address')
+
+                if (props) setProperties(props)
+            } catch (err) {
+                console.error("Error fetching data:", err)
+            } finally {
+                setIsFetching(false)
             }
-
-            const { data: props } = await supabase
-                .from('properties')
-                .select('id, address, unit_number')
-                .order('address')
-
-            if (props) setProperties(props)
         }
         fetchData()
     }, [])
@@ -82,7 +95,7 @@ export default function NewInvoicePage() {
     }
 
     const calculateTotal = () => {
-        return items.reduce((sum, item) => sum + (item.amount * item.quantity), 0)
+        return items.reduce((sum, item) => sum + (Number(item.amount || 0) * (item.quantity || 1)), 0)
     }
 
     const handleSubmit = async (status: 'draft' | 'sent') => {
@@ -91,18 +104,18 @@ export default function NewInvoicePage() {
             return
         }
 
+        if (!profile?.company_id) {
+            toast.error('No company linked to your profile. Please set up your company in Settings first.')
+            return
+        }
+
         setIsLoading(true)
         try {
             const { data: { user } } = await supabase.auth.getUser()
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('company_id')
-                .eq('id', user?.id)
-                .single()
 
             const invoiceData = {
-                company_id: profile?.company_id,
-                invoice_number: `INV-${Date.now().toString().slice(-6)}`, // Simple auto-gen
+                company_id: profile.company_id,
+                invoice_number: `INV-${Date.now().toString().slice(-6)}`,
                 recipient_name: recipientName,
                 recipient_email: recipientEmail,
                 property_id: propertyId || null,
@@ -111,7 +124,7 @@ export default function NewInvoicePage() {
                 status: status,
                 items: items,
                 subtotal: calculateTotal(),
-                tax_amount: 0, // Ignoring tax for now as per requirements
+                tax_amount: 0,
                 total: calculateTotal(),
                 notes: notes,
                 created_by: user?.id
@@ -127,7 +140,6 @@ export default function NewInvoicePage() {
 
             toast.success(`Invoice ${status === 'sent' ? 'created and marked as sent' : 'saved as draft'}`)
 
-            // Redirect to the new invoice viewer
             if (savedInvoice?.id) {
                 router.push(`/invoices/${savedInvoice.id}`)
             } else {
@@ -138,6 +150,15 @@ export default function NewInvoicePage() {
         } finally {
             setIsLoading(false)
         }
+    }
+
+    if (isFetching) {
+        return (
+            <div className="max-w-4xl mx-auto p-12 flex flex-col items-center justify-center gap-4">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Preparing Workspace...</p>
+            </div>
+        )
     }
 
     return (
@@ -152,15 +173,15 @@ export default function NewInvoicePage() {
                     <Button
                         variant="outline"
                         onClick={() => handleSubmit('draft')}
-                        disabled={isLoading}
+                        disabled={isLoading || !profile?.company_id}
                         className="rounded-xl font-bold"
                     >
                         Save as Draft
                     </Button>
                     <Button
                         onClick={() => handleSubmit('sent')}
-                        disabled={isLoading}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200"
+                        disabled={isLoading || !profile?.company_id}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 px-6"
                     >
                         {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                         Create & Send
@@ -168,88 +189,112 @@ export default function NewInvoicePage() {
                 </div>
             </div>
 
-            <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden">
-                <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-8 flex flex-row justify-between items-start">
+            {!profile?.company_id && (
+                <Alert variant="destructive" className="rounded-[1.5rem] bg-red-50 border-red-100 border-2">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle className="font-black uppercase tracking-widest text-[10px]">Company Branding Required</AlertTitle>
+                    <AlertDescription className="font-medium">
+                        You cannot create invoices until your company branding is set up.
+                        <Link href="/settings" className="ml-2 font-black underline">Go to Settings →</Link>
+                    </AlertDescription>
+                </Alert>
+            )}
+
+            <Card className="rounded-[2.5rem] border-none shadow-2xl bg-white overflow-hidden">
+                <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-10 flex flex-row justify-between items-start">
                     <div>
-                        <CardTitle className="text-2xl font-black text-slate-900 mb-2">New Invoice</CardTitle>
-                        <p className="text-slate-500 font-medium text-sm">Create and issue payment request</p>
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-600">Secure Billing Terminal</p>
+                        </div>
+                        <CardTitle className="text-4xl font-black text-slate-900 tracking-tighter">New Invoice.</CardTitle>
+                        <p className="text-slate-500 font-medium text-sm mt-2 font-mono">#{Date.now().toString().slice(-6)} Ledger Entry</p>
                     </div>
                     {company && (
                         <div className="text-right">
                             {company.logo_url && (
-                                <img src={company.logo_url} alt="Logo" className="h-12 w-auto object-contain mb-2 ml-auto" />
+                                <img src={company.logo_url} alt="Logo" className="h-16 w-auto object-contain mb-3 ml-auto grayscale hover:grayscale-0 transition-all duration-500" />
                             )}
-                            <p className="font-bold text-slate-900 uppercase tracking-wide">{company.name}</p>
+                            <p className="font-black text-slate-900 uppercase tracking-widest text-xs leading-none">{company.name}</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-widest">Active Branding</p>
                         </div>
                     )}
                 </CardHeader>
-                <CardContent className="p-8 space-y-8">
+                <CardContent className="p-10 space-y-12">
                     {/* Recipient Info */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                         <div className="space-y-4">
-                            <Label className="uppercase text-[10px] font-black tracking-widest text-slate-400">Bill To</Label>
+                            <Label className="uppercase text-[10px] font-black tracking-widest text-slate-400 ml-1">Bill To / Recipient</Label>
                             <Input
                                 placeholder="Recipient Name"
-                                className="h-12 bg-slate-50 border-slate-100 rounded-xl font-bold"
+                                className="h-14 bg-slate-50 border-slate-100 focus:bg-white focus:ring-4 focus:ring-indigo-50 border-2 rounded-2xl font-black text-lg px-6 transition-all"
                                 value={recipientName}
                                 onChange={e => setRecipientName(e.target.value)}
                             />
                             <Input
-                                placeholder="Recipient Email"
+                                placeholder="Recipient Email Address"
                                 type="email"
-                                className="h-12 bg-slate-50 border-slate-100 rounded-xl font-medium"
+                                className="h-14 bg-slate-50 border-slate-100 focus:bg-white focus:ring-4 focus:ring-indigo-50 border-2 rounded-2xl font-bold px-6 transition-all"
                                 value={recipientEmail}
                                 onChange={e => setRecipientEmail(e.target.value)}
                             />
                         </div>
                         <div className="space-y-4">
-                            <Label className="uppercase text-[10px] font-black tracking-widest text-slate-400">Details</Label>
+                            <Label className="uppercase text-[10px] font-black tracking-widest text-slate-400 ml-1">Timing & Context</Label>
                             <Select value={propertyId} onValueChange={setPropertyId}>
-                                <SelectTrigger className="h-12 bg-slate-50 border-slate-100 rounded-xl font-medium text-slate-600">
-                                    <SelectValue placeholder="Select Property (Optional)" />
+                                <SelectTrigger className="h-14 bg-slate-50 border-slate-100 focus:bg-white border-2 rounded-2xl font-bold text-slate-600 px-6 transition-all">
+                                    <SelectValue placeholder="Link to Property (Recommended)" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="rounded-2xl">
                                     {properties.map(p => (
-                                        <SelectItem key={p.id} value={p.id}>{p.address} {p.unit_number && `#${p.unit_number}`}</SelectItem>
+                                        <SelectItem key={p.id} value={p.id} className="font-bold">{p.address} {p.unit_number && `#${p.unit_number}`}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <Input
-                                type="date"
-                                className="h-12 bg-slate-50 border-slate-100 rounded-xl font-medium text-slate-600"
-                                value={dueDate}
-                                onChange={e => setDueDate(e.target.value)}
-                            />
+                            <div className="relative">
+                                <Label className="absolute -top-2 left-4 bg-white px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest z-10">Due Date</Label>
+                                <Input
+                                    type="date"
+                                    className="h-14 bg-slate-50 border-slate-100 focus:bg-white border-2 rounded-2xl font-bold text-slate-600 px-6 transition-all"
+                                    value={dueDate}
+                                    onChange={e => setDueDate(e.target.value)}
+                                />
+                            </div>
                         </div>
                     </div>
 
                     {/* Line Items */}
-                    <div className="space-y-4">
-                        <Label className="uppercase text-[10px] font-black tracking-widest text-slate-400">Line Items</Label>
-                        <div className="space-y-3">
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <Label className="uppercase text-[10px] font-black tracking-[0.3em] text-slate-400 ml-1">Financial Items</Label>
+                            <Badge variant="outline" className="border-slate-200 text-[10px] font-black text-slate-400 uppercase">{items.length} Entries</Badge>
+                        </div>
+                        <div className="space-y-4">
                             {items.map((item, index) => (
-                                <div key={item.id} className="flex gap-3 items-start">
-                                    <Input
-                                        placeholder="Description"
-                                        className="h-12 bg-white border-slate-200 rounded-xl font-medium flex-1"
-                                        value={item.description}
-                                        onChange={e => updateItem(item.id, 'description', e.target.value)}
-                                    />
+                                <div key={item.id} className="flex gap-4 items-start group">
+                                    <div className="flex-1">
+                                        <Input
+                                            placeholder="Service or Charge Description"
+                                            className="h-14 bg-white border-slate-200 border-2 rounded-2xl font-black px-6 hover:border-indigo-200 transition-all"
+                                            value={item.description}
+                                            onChange={e => updateItem(item.id, 'description', e.target.value)}
+                                        />
+                                    </div>
                                     <div className="w-24 relative">
                                         <Input
                                             type="number"
-                                            className="h-12 bg-white border-slate-200 rounded-xl font-medium"
+                                            className="h-14 bg-white border-slate-200 border-2 rounded-2xl font-black text-center px-2 hover:border-indigo-200 transition-all"
                                             value={item.quantity}
                                             onChange={e => updateItem(item.id, 'quantity', parseFloat(e.target.value))}
                                         />
                                     </div>
-                                    <div className="w-32 relative">
-                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                                            <DollarSign className="w-4 h-4" />
+                                    <div className="w-40 relative">
+                                        <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-900 z-10 font-black">
+                                            $
                                         </div>
                                         <Input
                                             type="number"
-                                            className="h-12 pl-8 bg-white border-slate-200 rounded-xl font-medium"
+                                            className="h-14 pl-12 bg-white border-slate-200 border-2 rounded-2xl font-black hover:border-indigo-200 transition-all pr-4"
                                             value={item.amount}
                                             onChange={e => updateItem(item.id, 'amount', parseFloat(e.target.value))}
                                         />
@@ -258,9 +303,9 @@ export default function NewInvoicePage() {
                                         variant="ghost"
                                         size="icon"
                                         onClick={() => removeItem(item.id)}
-                                        className="h-12 w-12 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50"
+                                        className="h-14 w-14 rounded-2xl text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all"
                                     >
-                                        <Trash2 className="w-5 h-5" />
+                                        <Trash2 className="w-6 h-6" />
                                     </Button>
                                 </div>
                             ))}
@@ -268,32 +313,33 @@ export default function NewInvoicePage() {
                         <Button
                             variant="outline"
                             onClick={addItem}
-                            className="w-full h-12 border-dashed border-2 border-slate-200 text-slate-500 font-bold hover:bg-slate-50 hover:border-slate-300 rounded-xl"
+                            className="w-full h-16 border-dashed border-4 border-slate-100 text-slate-300 font-black uppercase tracking-[0.2em] text-[10px] hover:bg-slate-50 hover:border-indigo-100 hover:text-indigo-400 rounded-3xl transition-all"
                         >
-                            <Plus className="w-4 h-4 mr-2" /> Add Item
+                            <Plus className="w-5 h-5 mr-3" /> Add Ledger Line
                         </Button>
                     </div>
 
                     {/* Totals & Notes */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-slate-100">
-                        <div className="space-y-2">
-                            <Label className="uppercase text-[10px] font-black tracking-widest text-slate-400">Notes / Terms</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12 pt-12 border-t-4 border-slate-900">
+                        <div className="space-y-4">
+                            <Label className="uppercase text-[10px] font-black tracking-widest text-slate-400 ml-1">Internal Notes / Payment Terms</Label>
                             <Textarea
-                                placeholder="Payment due within 14 days..."
-                                className="min-h-[120px] bg-slate-50 border-slate-100 rounded-xl font-medium"
+                                placeholder="e.g. Please pay within 7 days of receipt to avoid late fees..."
+                                className="min-h-[160px] bg-slate-50 border-slate-100 border-2 rounded-3xl font-bold px-6 py-4 focus:bg-white focus:ring-4 focus:ring-indigo-50 transition-all"
                                 value={notes}
                                 onChange={e => setNotes(e.target.value)}
                             />
                         </div>
-                        <div className="flex flex-col justify-end items-end space-y-4">
-                            <div className="flex justify-between w-full max-w-xs text-sm font-medium text-slate-500">
+                        <div className="flex flex-col justify-end items-end space-y-6">
+                            <div className="flex justify-between w-full max-w-sm text-sm font-black uppercase tracking-widest text-slate-400 px-2">
                                 <span>Subtotal</span>
-                                <span>${calculateTotal().toLocaleString()}</span>
+                                <span className="text-slate-900">${calculateTotal().toLocaleString()}</span>
                             </div>
-                            <div className="flex justify-between w-full max-w-xs text-3xl font-black text-slate-900">
-                                <span>Total</span>
-                                <span>${calculateTotal().toLocaleString()}</span>
+                            <div className="flex justify-between items-center w-full max-w-sm p-8 bg-slate-900 text-white rounded-[2.5rem] shadow-2xl shadow-indigo-100">
+                                <span className="font-black uppercase tracking-widest text-xs">Total Amount</span>
+                                <span className="text-4xl font-black tracking-tighter">${calculateTotal().toLocaleString()}</span>
                             </div>
+                            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest px-8">PropFlow Automated Ledger Reconciliation</p>
                         </div>
                     </div>
                 </CardContent>

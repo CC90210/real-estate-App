@@ -6,10 +6,21 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, Printer, DollarSign, CheckCircle, Clock, XCircle, Send } from 'lucide-react'
+import { ArrowLeft, Printer, DollarSign, CheckCircle, Clock, XCircle, Send, Trash2, Edit3 } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 import { useState } from 'react'
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 // ============================================================================
 // PRODUCTION INVOICE VIEWER - Fully Branded & Printable
@@ -21,10 +32,12 @@ export default function InvoiceViewPage() {
     const supabase = createClient()
     const id = params?.id as string
     const [isUpdating, setIsUpdating] = useState(false)
+    const [isDeleting, setIsDeleting] = useState(false)
 
     const { data: invoice, isLoading, error, refetch } = useQuery({
         queryKey: ['invoice', id],
         queryFn: async () => {
+            if (!id) return null;
             const { data, error } = await supabase
                 .from('invoices')
                 .select('*, property:properties(address, unit_number), company:companies(name, logo_url, address, phone, email)')
@@ -33,7 +46,8 @@ export default function InvoiceViewPage() {
 
             if (error) throw error
             return data
-        }
+        },
+        enabled: !!id
     })
 
     const handlePrint = () => window.print()
@@ -56,6 +70,23 @@ export default function InvoiceViewPage() {
         }
     }
 
+    const deleteInvoice = async () => {
+        setIsDeleting(true)
+        try {
+            const { error } = await supabase
+                .from('invoices')
+                .delete()
+                .eq('id', id)
+
+            if (error) throw error
+            toast.success('Invoice deleted successfully')
+            router.push('/invoices')
+        } catch (e: any) {
+            toast.error('Failed to delete invoice', { description: e.message })
+            setIsDeleting(false)
+        }
+    }
+
     if (isLoading) {
         return (
             <div className="p-8 max-w-4xl mx-auto space-y-8">
@@ -67,17 +98,23 @@ export default function InvoiceViewPage() {
 
     if (error || !invoice) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-                <h2 className="text-2xl font-bold text-slate-800 mb-2">Invoice Not Found</h2>
-                <p className="text-slate-500 mb-6">The invoice you are looking for does not exist or you do not have permission.</p>
-                <Button onClick={() => router.back()}>Go Back</Button>
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 text-slate-900">
+                <XCircle className="w-16 h-16 text-rose-500 mb-6" />
+                <h2 className="text-4xl font-black mb-2 uppercase tracking-tighter">Invoice Not Found</h2>
+                <p className="text-slate-500 mb-8 font-medium">The invoice you are looking for does not exist or you do not have permission.</p>
+                <Button
+                    onClick={() => router.push('/invoices')}
+                    className="h-14 px-10 bg-slate-900 text-white hover:bg-slate-800 rounded-2xl font-black uppercase tracking-widest text-xs"
+                >
+                    Back to Invoices
+                </Button>
             </div>
         )
     }
 
     const company = invoice.company as any;
     const property = invoice.property as any;
-    const items = invoice.items || [];
+    const items = Array.isArray(invoice.items) ? invoice.items : [];
 
     const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
         draft: { label: 'Draft', color: 'bg-slate-100 text-slate-600', icon: Clock },
@@ -86,147 +123,214 @@ export default function InvoiceViewPage() {
         overdue: { label: 'Overdue', color: 'bg-red-100 text-red-700', icon: XCircle },
         cancelled: { label: 'Cancelled', color: 'bg-slate-100 text-slate-400', icon: XCircle },
     }
-    const currentStatus = statusConfig[invoice.status] || statusConfig.draft;
+    const currentStatus = statusConfig[invoice.status as string] || statusConfig.draft;
     const StatusIcon = currentStatus.icon;
 
     // Helper to safely format dates
     const safeFormat = (dateStr: string | null, fmt: string) => {
         if (!dateStr) return null;
-        const d = new Date(dateStr);
-        return isNaN(d.getTime()) ? null : format(d, fmt);
+        try {
+            const d = new Date(dateStr);
+            return isNaN(d.getTime()) ? null : format(d, fmt);
+        } catch (e) {
+            return null;
+        }
     }
 
     return (
-        <div className="min-h-screen bg-slate-100/50 pb-20 print:pb-0 print:bg-white">
+        <div className="min-h-screen bg-slate-100/50 pb-20 print:pb-0 print:bg-white animate-in fade-in duration-500">
             {/* Toolbar */}
-            <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10 print:hidden mb-8 shadow-sm">
+            <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-30 print:hidden mb-8 shadow-sm">
                 <div className="flex items-center gap-4">
-                    <Button variant="ghost" onClick={() => router.push('/invoices')}>
+                    <Button variant="ghost" onClick={() => router.push('/invoices')} className="rounded-xl font-bold hover:bg-slate-100">
                         <ArrowLeft className="w-4 h-4 mr-2" />
-                        Back to Invoices
+                        Back
                     </Button>
                     <div className="h-6 w-px bg-slate-200" />
-                    <h1 className="font-semibold text-slate-700">Invoice #{invoice.invoice_number}</h1>
-                    <Badge className={`${currentStatus.color} rounded-lg font-bold uppercase text-xs`}>
+                    <h1 className="font-bold text-slate-900 hidden md:block">Invoice #{invoice.invoice_number}</h1>
+                    <Badge className={`${currentStatus.color} rounded-lg font-bold uppercase text-[10px] tracking-widest px-3 py-1 border-none`}>
                         <StatusIcon className="w-3 h-3 mr-1.5" />
                         {currentStatus.label}
                     </Badge>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => router.push(`/invoices/${id}/edit`)} className="rounded-xl font-bold">
-                        Edit Invoice
-                    </Button>
+                    {/* Status Management Buttons */}
                     {invoice.status === 'draft' && (
-                        <Button variant="outline" onClick={() => updateStatus('sent')} disabled={isUpdating} className="rounded-xl font-bold">
+                        <Button
+                            variant="outline"
+                            onClick={() => updateStatus('sent')}
+                            disabled={isUpdating}
+                            className="rounded-xl font-bold text-blue-600 border-blue-100 hover:bg-blue-50"
+                        >
                             <Send className="w-4 h-4 mr-2" /> Mark as Sent
                         </Button>
                     )}
                     {invoice.status === 'sent' && (
-                        <Button variant="outline" onClick={() => updateStatus('paid')} disabled={isUpdating} className="rounded-xl font-bold text-emerald-700 border-emerald-200 hover:bg-emerald-50">
+                        <Button
+                            variant="outline"
+                            onClick={() => updateStatus('paid')}
+                            disabled={isUpdating}
+                            className="rounded-xl font-bold text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                        >
                             <CheckCircle className="w-4 h-4 mr-2" /> Mark as Paid
                         </Button>
                     )}
-                    <Button onClick={handlePrint} className="bg-slate-900 text-white hover:bg-slate-800 rounded-xl font-bold">
+
+                    <div className="h-8 w-px bg-slate-200 mx-2" />
+
+                    <Button variant="outline" onClick={() => router.push(`/invoices/${id}/edit`)} className="rounded-xl font-bold">
+                        <Edit3 className="w-4 h-4 mr-2" />
+                        Edit
+                    </Button>
+
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="outline" className="rounded-xl font-bold text-red-600 border-red-100 hover:bg-red-50">
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="rounded-[2rem]">
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This will permanently delete invoice #{invoice.invoice_number}. This action cannot be undone.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={deleteInvoice} className="bg-red-600 hover:bg-red-700 text-white rounded-xl">
+                                    {isDeleting ? 'Deleting...' : 'Delete Invoice'}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+
+                    <Button onClick={handlePrint} className="bg-slate-900 text-white hover:bg-slate-800 rounded-xl font-bold shadow-lg shadow-slate-200">
                         <Printer className="w-4 h-4 mr-2" />
-                        Print / Save PDF
+                        Print / PDF
                     </Button>
                 </div>
             </div>
 
             {/* Invoice Paper */}
-            <div className="max-w-[210mm] mx-auto bg-white shadow-xl print:shadow-none print:max-w-none min-h-[297mm] p-[20mm] text-slate-900 leading-relaxed text-sm">
+            <div className="max-w-[210mm] mx-auto bg-white shadow-2xl print:shadow-none print:max-w-none min-h-[297mm] p-[20mm] text-slate-900 leading-relaxed text-sm animate-in slide-in-from-bottom-8 duration-700">
 
                 {/* Header */}
-                <div className="flex justify-between items-start mb-12 border-b border-slate-100 pb-8">
+                <div className="flex justify-between items-start mb-16 border-b-4 border-slate-900 pb-12">
                     <div>
-                        {company?.logo_url && (
-                            <img src={company.logo_url} alt="Logo" className="h-14 mb-4" />
+                        {company?.logo_url ? (
+                            <img src={company.logo_url} alt="Logo" className="h-16 mb-6 grayscale hover:grayscale-0 transition-all duration-500" />
+                        ) : (
+                            <div className="h-16 w-16 bg-slate-900 rounded-2xl flex items-center justify-center text-white mb-6">
+                                <DollarSign className="w-8 h-8" />
+                            </div>
                         )}
-                        <h1 className="text-2xl font-bold tracking-tight text-slate-900 uppercase">{company?.name || 'Your Company'}</h1>
-                        <p className="text-xs text-slate-500 mt-1">{company?.address}</p>
-                        <p className="text-xs text-slate-500">{company?.phone} | {company?.email}</p>
+                        <h1 className="text-3xl font-black tracking-tighter text-slate-900 uppercase leading-none">{company?.name || 'PropFlow Entity'}</h1>
+                        <div className="mt-4 space-y-0.5">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Address</p>
+                            <p className="text-xs text-slate-600 font-medium">{company?.address || 'Address not set in Settings'}</p>
+                            <p className="text-xs text-slate-600 font-medium">{company?.phone} &bull; {company?.email}</p>
+                        </div>
                     </div>
                     <div className="text-right">
-                        <h2 className="text-4xl font-black text-slate-900 tracking-tighter">INVOICE</h2>
-                        <p className="font-mono text-slate-500 mt-2">#{invoice.invoice_number}</p>
-                        <div className="mt-4 space-y-1 text-xs text-slate-500">
-                            <p>Issued: {safeFormat(invoice.issue_date || invoice.created_at, 'MMM dd, yyyy')}</p>
-                            <p>Due: {safeFormat(invoice.due_date, 'MMM dd, yyyy') || 'Upon Receipt'}</p>
+                        <h2 className="text-6xl font-black text-slate-900 tracking-tighter mb-2">INVOICE</h2>
+                        <div className="inline-block bg-slate-100 px-4 py-2 rounded-xl border border-slate-200">
+                            <p className="font-mono font-bold text-slate-900">NO. {invoice.invoice_number}</p>
+                        </div>
+                        <div className="mt-8 space-y-1 text-xs font-bold uppercase tracking-widest text-slate-400 text-right">
+                            <p>Issued: <span className="text-slate-900 ml-2">{safeFormat(invoice.issue_date || invoice.created_at, 'MMM dd, yyyy')}</span></p>
+                            <p>Due: <span className="text-slate-900 ml-2">{safeFormat(invoice.due_date, 'MMM dd, yyyy') || 'Upon Receipt'}</span></p>
                         </div>
                     </div>
                 </div>
 
                 {/* Bill To */}
-                <div className="grid grid-cols-2 gap-12 mb-12">
-                    <div>
-                        <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Bill To</h3>
-                        <p className="text-lg font-bold text-slate-900">{invoice.recipient_name}</p>
-                        <p className="text-slate-500">{invoice.recipient_email}</p>
+                <div className="grid grid-cols-2 gap-12 mb-16">
+                    <div className="p-8 bg-slate-50 rounded-[2rem] border border-slate-100">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-4">Recipient Info</h3>
+                        <p className="text-xl font-black text-slate-900">{invoice.recipient_name}</p>
+                        <p className="text-slate-500 font-medium mb-4">{invoice.recipient_email}</p>
                         {property && (
-                            <p className="text-slate-500 mt-2">Property: {property.address} {property.unit_number && `#${property.unit_number}`}</p>
+                            <div className="pt-4 border-t border-slate-200">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Property Link</p>
+                                <p className="text-slate-700 font-bold">{property.address} {property.unit_number && `#${property.unit_number}`}</p>
+                            </div>
                         )}
                     </div>
-                    <div className="text-right">
-                        <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Amount Due</h3>
-                        <p className="text-4xl font-black text-slate-900">${Number(invoice.total).toLocaleString()}</p>
+                    <div className="flex flex-col justify-center items-end text-right">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-2">Grand Total Due</h3>
+                        <p className="text-6xl font-black text-slate-900 tracking-tighter">${Number(invoice.total || 0).toLocaleString()}</p>
+                        <p className="text-xs font-black text-emerald-600 uppercase tracking-widest mt-2">{invoice.status === 'paid' ? 'Paid in Full' : 'Amount Outstanding'}</p>
                     </div>
                 </div>
 
                 {/* Line Items Table */}
-                <div className="mb-12">
+                <div className="mb-16">
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="border-b-2 border-slate-900">
-                                <th className="text-left py-3 font-black uppercase text-[10px] tracking-widest text-slate-600">Description</th>
-                                <th className="text-center py-3 font-black uppercase text-[10px] tracking-widest text-slate-600">Qty</th>
-                                <th className="text-right py-3 font-black uppercase text-[10px] tracking-widest text-slate-600">Amount</th>
-                                <th className="text-right py-3 font-black uppercase text-[10px] tracking-widest text-slate-600">Total</th>
+                            <tr className="border-b-4 border-slate-900">
+                                <th className="text-left py-4 font-black uppercase text-[10px] tracking-[0.3em] text-slate-400">Description</th>
+                                <th className="text-center py-4 font-black uppercase text-[10px] tracking-[0.3em] text-slate-400">Qty</th>
+                                <th className="text-right py-4 font-black uppercase text-[10px] tracking-[0.3em] text-slate-400">Rate</th>
+                                <th className="text-right py-4 font-black uppercase text-[10px] tracking-[0.3em] text-slate-400">Subtotal</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            {Array.isArray(items) && items.map((item: any, index: number) => (
-                                <tr key={index} className="border-b border-slate-100">
-                                    <td className="py-4 font-medium text-slate-800">{item.description || 'Line Item'}</td>
-                                    <td className="py-4 text-center text-slate-600">{item.quantity || 1}</td>
-                                    <td className="py-4 text-right text-slate-600">${Number(item.amount || 0).toLocaleString()}</td>
-                                    <td className="py-4 text-right font-bold text-slate-900">${(Number(item.amount || 0) * (item.quantity || 1)).toLocaleString()}</td>
+                        <tbody className="divide-y divide-slate-100">
+                            {items.map((item: any, index: number) => (
+                                <tr key={index} className="group">
+                                    <td className="py-6 font-bold text-slate-900 text-base">{item.description || 'General Service'}</td>
+                                    <td className="py-6 text-center font-bold text-slate-500">{item.quantity || 1}</td>
+                                    <td className="py-6 text-right font-bold text-slate-500">${Number(item.amount || 0).toLocaleString()}</td>
+                                    <td className="py-6 text-right font-black text-slate-900 text-base">${(Number(item.amount || 0) * (item.quantity || 1)).toLocaleString()}</td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
 
-                {/* Totals */}
-                <div className="flex justify-end mb-12">
-                    <div className="w-72 space-y-2">
-                        <div className="flex justify-between text-sm text-slate-600">
+                {/* Totals Section */}
+                <div className="flex justify-end mb-16">
+                    <div className="w-80 space-y-4">
+                        <div className="flex justify-between items-center text-sm font-bold text-slate-500 uppercase tracking-widest">
                             <span>Subtotal</span>
-                            <span>${Number(invoice.subtotal || 0).toLocaleString()}</span>
+                            <span className="text-slate-900">${Number(invoice.subtotal || 0).toLocaleString()}</span>
                         </div>
-                        {invoice.tax_amount > 0 && (
-                            <div className="flex justify-between text-sm text-slate-600">
-                                <span>Tax</span>
-                                <span>${Number(invoice.tax_amount).toLocaleString()}</span>
+                        {Number(invoice.tax_amount) > 0 && (
+                            <div className="flex justify-between items-center text-sm font-bold text-slate-500 uppercase tracking-widest">
+                                <span>Tax/VAT</span>
+                                <span className="text-slate-900">${Number(invoice.tax_amount).toLocaleString()}</span>
                             </div>
                         )}
-                        <div className="flex justify-between text-xl font-black text-slate-900 pt-4 border-t-2 border-slate-900">
-                            <span>Total</span>
-                            <span>${Number(invoice.total || 0).toLocaleString()}</span>
+                        <div className="flex justify-between items-center text-3xl font-black text-slate-900 pt-6 border-t-[6px] border-slate-900">
+                            <span className="tracking-tighter uppercase">Total</span>
+                            <span className="tracking-tighter">${Number(invoice.total || 0).toLocaleString()}</span>
                         </div>
                     </div>
                 </div>
 
-                {/* Notes */}
-                {invoice.notes && (
-                    <div className="bg-slate-50 rounded-xl p-6 mb-12">
-                        <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Notes &amp; Terms</h3>
-                        <p className="text-sm text-slate-600">{invoice.notes}</p>
+                {/* Notes & Terms */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mt-auto">
+                    {invoice.notes && (
+                        <div className="p-8 bg-slate-50 rounded-[2rem] border border-slate-100">
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-3">Notes &amp; Terms</h3>
+                            <p className="text-xs text-slate-600 font-medium leading-relaxed">{invoice.notes}</p>
+                        </div>
+                    )}
+                    <div className="flex flex-col justify-end items-end p-8 text-right">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-white">
+                                <CheckCircle className="w-4 h-4" />
+                            </div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Secure Billing Certified</p>
+                        </div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">PropFlow High-Fidelity Ledger</p>
                     </div>
-                )}
+                </div>
 
                 {/* Footer */}
-                <div className="mt-auto pt-8 border-t border-slate-100 text-center text-[10px] text-slate-400 uppercase tracking-widest">
-                    Thank you for your business &bull; {company?.name || 'PropFlow'}
+                <div className="mt-16 pt-8 border-t border-slate-100 text-center text-[10px] text-slate-400 font-black uppercase tracking-[0.5em]">
+                    Thank you for your business &bull; Verified Transaction &bull; {company?.name || 'PropFlow'}
                 </div>
             </div>
         </div>
