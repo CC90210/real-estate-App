@@ -23,6 +23,7 @@ export default function DocumentViewPage() {
     const { data: document, isLoading, error } = useQuery({
         queryKey: ['document', id],
         queryFn: async () => {
+            // Stage 1: Primary Fetch
             const { data, error } = await supabase
                 .from('documents')
                 .select('*')
@@ -30,7 +31,23 @@ export default function DocumentViewPage() {
                 .single()
 
             if (error) throw error
-            return data
+            if (!data) return null
+
+            // Stage 2: Verification of Content Structure
+            // Ensure content is parsed if it's stored as a string
+            let parsedContent = data.content;
+            try {
+                if (typeof data.content === 'string') {
+                    parsedContent = JSON.parse(data.content);
+                }
+            } catch (e) {
+                console.error("Document content parse error:", e);
+            }
+
+            return {
+                ...data,
+                content: parsedContent
+            }
         }
     })
 

@@ -17,7 +17,7 @@ export default function InvoicesPage() {
     const supabase = createClient()
     const { colors } = useAccentColor()
 
-    const { data: invoices, isLoading } = useQuery({
+    const { data: invoices, isLoading, error } = useQuery({
         queryKey: ['invoices'],
         queryFn: async () => {
             const { data, error } = await supabase
@@ -25,11 +25,20 @@ export default function InvoicesPage() {
                 .select(`
                     *,
                     property:properties(address),
-                    landlord:landlords(name)
+                    company:companies(name)
                 `)
                 .order('created_at', { ascending: false })
 
-            if (error) throw error
+            if (error) {
+                // Secondary attempt without company join if PostgREST cache is stale
+                const { data: rawData, error: rawError } = await supabase
+                    .from('invoices')
+                    .select(`*, property:properties(address)`)
+                    .order('created_at', { ascending: false })
+
+                if (rawError) throw rawError;
+                return rawData || [];
+            }
             return data || []
         }
     })

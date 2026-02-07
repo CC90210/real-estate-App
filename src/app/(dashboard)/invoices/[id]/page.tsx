@@ -44,22 +44,57 @@ export default function InvoiceViewPage() {
         queryFn: async () => {
             if (!id) throw new Error("Missing Invoice ID");
 
-            // Explicitly selecting all required fields to ensure no partial data
+            // Stage 1: Attempt the complex join (Optimal Path)
             const { data, error } = await supabase
                 .from('invoices')
                 .select(`
-                    *, 
-                    property:properties(address, unit_number), 
+                    *,
+                    property:properties(address, unit_number),
                     company:companies(name, logo_url, address, phone, email)
                 `)
                 .eq('id', id)
                 .single()
 
-            if (error) {
-                console.error("Supabase Error [Invoices]:", error);
-                throw error
+            if (!error && data) return data;
+
+            // Stage 2: Fallback Path (Manual Hydration)
+            // If the join fails due to relationship missing in cache, fetch the raw invoice first
+            const { data: rawInvoice, error: rawError } = await supabase
+                .from('invoices')
+                .select('*')
+                .eq('id', id)
+                .single()
+
+            if (rawError) throw rawError;
+            if (!rawInvoice) return null;
+
+            // Manually hydrate property if property_id exists
+            let propertyData = null;
+            if (rawInvoice.property_id) {
+                const { data: prop } = await supabase
+                    .from('properties')
+                    .select('address, unit_number')
+                    .eq('id', rawInvoice.property_id)
+                    .single();
+                propertyData = prop;
             }
-            return data
+
+            // Manually hydrate company if company_id exists
+            let companyData = null;
+            if (rawInvoice.company_id) {
+                const { data: comp } = await supabase
+                    .from('companies')
+                    .select('name, logo_url, address, phone, email')
+                    .eq('id', rawInvoice.company_id)
+                    .single();
+                companyData = comp;
+            }
+
+            return {
+                ...rawInvoice,
+                property: propertyData,
+                company: companyData
+            };
         },
         enabled: !!id,
         retry: 1
