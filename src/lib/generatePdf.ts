@@ -11,7 +11,23 @@ export async function generatePDFBlob(elementId: string): Promise<Blob | null> {
             scale: 2,
             useCORS: true,
             logging: false,
-            backgroundColor: '#ffffff'
+            backgroundColor: '#ffffff',
+            ignoreElements: (element) => {
+                // Ignore elements that might cause color parsing issues if necessary
+                // or specific classes known to break html2canvas
+                return false;
+            },
+            onclone: (document) => {
+                // Clean up any potential problematic styles in the clone
+                const allElements = document.getElementsByTagName('*');
+                for (let i = 0; i < allElements.length; i++) {
+                    const style = window.getComputedStyle(allElements[i]);
+                    if (style.color && style.color.includes('lab(')) {
+                        // Fallback for lab colors if detected
+                        (allElements[i] as HTMLElement).style.color = '#000000';
+                    }
+                }
+            }
         });
 
         const imgData = canvas.toDataURL('image/png');

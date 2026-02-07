@@ -363,10 +363,10 @@ export default function InvoiceViewPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <Badge className={`${currentStatus.color} rounded-lg font-black uppercase text-[9px] tracking-widest px-3 py-1.5 border-none shadow-sm flex items-center gap-1.5`}>
+                    <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${currentStatus.color} ${invoice.status === 'draft' ? 'hidden' : ''}`}>
                         <StatusIcon className="w-3 h-3" />
                         {currentStatus.label}
-                    </Badge>
+                    </div>
 
                     <div className="h-6 w-px bg-slate-200 mx-1" />
 
