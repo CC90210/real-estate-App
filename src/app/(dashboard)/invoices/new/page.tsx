@@ -15,12 +15,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
-import { ArrowLeft, Plus, Trash2, Save, Loader2, DollarSign, AlertCircle } from 'lucide-react'
+import {
+    ArrowLeft, Plus, Trash2, Save, Loader2, DollarSign,
+    AlertCircle, ShieldCheck, Mail, FileText, CheckCircle
+} from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
-
 
 interface LineItem {
     id: string
@@ -28,6 +30,10 @@ interface LineItem {
     amount: number
     quantity: number
 }
+
+// ============================================================================
+// ENTERPRISE INVOICE GENERATOR - TURBO-FLOW ARCHITECTURE
+// ============================================================================
 
 export default function NewInvoicePage() {
     const router = useRouter()
@@ -53,7 +59,10 @@ export default function NewInvoicePage() {
         const fetchData = async () => {
             try {
                 const { data: { user } } = await supabase.auth.getUser()
-                if (!user) return
+                if (!user) {
+                    toast.error("Session Invalidation Detected");
+                    return;
+                }
 
                 const { data: profileData } = await supabase
                     .from('profiles')
@@ -75,7 +84,7 @@ export default function NewInvoicePage() {
 
                 if (props) setProperties(props)
             } catch (err) {
-                console.error("Error fetching data:", err)
+                console.error("Critical Workspace Error:", err)
             } finally {
                 setIsFetching(false)
             }
@@ -102,29 +111,30 @@ export default function NewInvoicePage() {
 
     const handleSubmit = async (status: 'draft' | 'sent') => {
         if (!recipientName) {
-            toast.error('Recipient name is required')
+            toast.error('Identity Verification Required', { description: 'Recipient name cannot be blank.' })
             return
         }
 
         if (!profile?.company_id) {
-            toast.error('No company linked to your profile. Please set up your company in Settings first.')
+            toast.error('Branding Conflict', { description: 'No company linked to profile. Check settings.' })
             return
         }
 
         setIsLoading(true)
+
         try {
             const { data: { user } } = await supabase.auth.getUser()
 
             const invoiceData = {
                 company_id: profile.company_id,
-                invoice_number: `INV-${Date.now().toString().slice(-6)}`,
+                invoice_number: `INV-${Math.floor(100000 + Math.random() * 900000)}`,
                 recipient_name: recipientName,
                 recipient_email: recipientEmail,
                 property_id: propertyId || null,
                 issue_date: new Date().toISOString(),
                 due_date: dueDate || null,
                 status: status,
-                items: items,
+                items: JSON.parse(JSON.stringify(items)), // Deep clone for stability
                 subtotal: calculateTotal(),
                 tax_amount: 0,
                 total: calculateTotal(),
@@ -140,163 +150,202 @@ export default function NewInvoicePage() {
 
             if (error) throw error
 
-            toast.success(`Invoice ${status === 'sent' ? 'created and marked as sent' : 'saved as draft'}`)
+            if (status === 'sent') {
+                toast.success('Transmission Successful', { description: 'Invoice sent and recipient notified.' })
+            } else {
+                toast.success('Ledger Entry Drafted')
+            }
 
+            // REDIRECT PROTOCOL - Using absolute path to prevent routing errors
             if (savedInvoice?.id) {
-                router.push(`/invoices/${savedInvoice.id}`)
+                window.location.href = `/invoices/${savedInvoice.id}`;
             } else {
                 router.push('/invoices')
             }
         } catch (error: any) {
-            toast.error('Failed to create invoice', { description: error.message })
-        } finally {
+            console.error("Submission Failure:", error);
+            toast.error('System Submission Error', { description: error.message })
             setIsLoading(false)
         }
     }
 
     if (isFetching) {
         return (
-            <div className="max-w-4xl mx-auto p-12 flex flex-col items-center justify-center gap-4">
-                <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Preparing Workspace...</p>
+            <div className="max-w-4xl mx-auto p-12 flex flex-col items-center justify-center gap-6 min-h-[60vh]">
+                <div className="relative">
+                    <Loader2 className="w-16 h-16 animate-spin text-indigo-600 opacity-20" />
+                    <ShieldCheck className="w-8 h-8 text-indigo-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+                </div>
+                <div className="text-center">
+                    <p className="text-sm font-black text-slate-900 uppercase tracking-[0.4em] mb-2">Secure Workspace Initialization</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Hydrating Financial Meta-Data...</p>
+                </div>
             </div>
         )
     }
 
     return (
-        <div className="max-w-4xl mx-auto pb-20 space-y-8 animate-in fade-in duration-500">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <Button variant="ghost" onClick={() => router.back()} className="rounded-xl font-bold text-slate-500">
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Back to Invoices
+        <div className="max-w-5xl mx-auto pb-20 space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+            {/* Nav Header */}
+            <div className="flex items-center justify-between px-2">
+                <Button variant="ghost" onClick={() => router.back()} className="rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] text-slate-400 hover:text-slate-900">
+                    <ArrowLeft className="w-4 h-4 mr-3" />
+                    Back to Terminal
                 </Button>
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                     <Button
                         variant="outline"
                         onClick={() => handleSubmit('draft')}
                         disabled={isLoading || !profile?.company_id}
-                        className="rounded-xl font-bold"
+                        className="rounded-2xl font-black uppercase text-[10px] tracking-widest px-8 h-12 border-2"
                     >
                         Save as Draft
                     </Button>
                     <Button
                         onClick={() => handleSubmit('sent')}
                         disabled={isLoading || !profile?.company_id}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 px-6"
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest px-10 h-12 shadow-2xl shadow-indigo-200 group"
                     >
-                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                        Create & Send
+                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Mail className="w-4 h-4 mr-3 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />}
+                        Create & Dispatch
                     </Button>
                 </div>
             </div>
 
             {!profile?.company_id && (
-                <Alert variant="destructive" className="rounded-[1.5rem] bg-red-50 border-red-100 border-2">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle className="font-black uppercase tracking-widest text-[10px]">Company Branding Required</AlertTitle>
-                    <AlertDescription className="font-medium">
-                        You cannot create invoices until your company branding is set up.
-                        <Link href="/settings" className="ml-2 font-black underline">Go to Settings →</Link>
+                <Alert variant="destructive" className="rounded-[2.5rem] bg-red-50 border-red-200 border-2 p-8 shadow-xl">
+                    <AlertCircle className="h-6 w-6" />
+                    <AlertTitle className="font-black uppercase tracking-[0.3em] text-xs mb-2">Critical Branding Missing</AlertTitle>
+                    <AlertDescription className="font-bold text-slate-600">
+                        The current profile lacks a linked organization. Invoices cannot be generated without an authorized entity.
+                        <Link href="/settings" className="ml-4 font-black underline text-red-600 hover:text-red-700">Configure Identity in Settings →</Link>
                     </AlertDescription>
                 </Alert>
             )}
 
-            <Card className="rounded-[2.5rem] border-none shadow-2xl bg-white overflow-hidden">
-                <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-10 flex flex-row justify-between items-start">
-                    <div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
-                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-600">Secure Billing Terminal</p>
+            <Card className="rounded-[4rem] border-none shadow-[0_50px_100px_-20px_rgba(0,0,0,0.06)] bg-white overflow-hidden relative">
+                {/* Decorative Elements */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full blur-[100px] -mr-32 -mt-32 opacity-50" />
+
+                <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-16 flex flex-row justify-between items-start relative z-10">
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-xl shadow-indigo-100">
+                                <FileText className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-600">System Code Alpha-4</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Secure Ledger Entry Terminal</p>
+                            </div>
                         </div>
-                        <CardTitle className="text-4xl font-black text-slate-900 tracking-tighter">New Invoice.</CardTitle>
-                        <p className="text-slate-500 font-medium text-sm mt-2 font-mono">#{Date.now().toString().slice(-6)} Ledger Entry</p>
+                        <CardTitle className="text-6xl font-black text-slate-900 tracking-tighter">New Invoice</CardTitle>
+                        <div className="inline-block bg-slate-900 px-4 py-1 rounded-xl">
+                            <p className="text-white font-mono font-black text-xs tracking-widest uppercase">Unverified Entry #ID_GEN</p>
+                        </div>
                     </div>
                     {company && (
-                        <div className="text-right">
-                            {company.logo_url && (
-                                <img src={company.logo_url} alt="Logo" className="h-16 w-auto object-contain mb-3 ml-auto grayscale hover:grayscale-0 transition-all duration-500" />
-                            )}
+                        <div className="text-right flex flex-col items-end">
+                            <div className="h-20 w-auto flex items-center justify-end mb-4 p-2 bg-white rounded-3xl border border-slate-50 shadow-sm">
+                                {company.logo_url && (
+                                    <img src={company.logo_url} alt="Logo" className="h-12 w-auto object-contain grayscale hover:grayscale-0 transition-all duration-700" />
+                                )}
+                            </div>
                             <p className="font-black text-slate-900 uppercase tracking-widest text-xs leading-none">{company.name}</p>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-widest">Active Branding</p>
+                            <div className="flex items-center gap-2 mt-2">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Active Authority</p>
+                            </div>
                         </div>
                     )}
                 </CardHeader>
-                <CardContent className="p-10 space-y-12">
-                    {/* Recipient Info */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                        <div className="space-y-4">
-                            <Label className="uppercase text-[10px] font-black tracking-widest text-slate-400 ml-1">Bill To / Recipient</Label>
-                            <Input
-                                placeholder="Recipient Name"
-                                className="h-14 bg-slate-50 border-slate-100 focus:bg-white focus:ring-4 focus:ring-indigo-50 border-2 rounded-2xl font-black text-lg px-6 transition-all"
-                                value={recipientName}
-                                onChange={e => setRecipientName(e.target.value)}
-                            />
-                            <Input
-                                placeholder="Recipient Email Address"
-                                type="email"
-                                className="h-14 bg-slate-50 border-slate-100 focus:bg-white focus:ring-4 focus:ring-indigo-50 border-2 rounded-2xl font-bold px-6 transition-all"
-                                value={recipientEmail}
-                                onChange={e => setRecipientEmail(e.target.value)}
-                            />
-                        </div>
-                        <div className="space-y-4">
-                            <Label className="uppercase text-[10px] font-black tracking-widest text-slate-400 ml-1">Timing & Context</Label>
-                            <Select value={propertyId} onValueChange={setPropertyId}>
-                                <SelectTrigger className="h-14 bg-slate-50 border-slate-100 focus:bg-white border-2 rounded-2xl font-bold text-slate-600 px-6 transition-all">
-                                    <SelectValue placeholder="Link to Property (Recommended)" />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-2xl">
-                                    {properties.map(p => (
-                                        <SelectItem key={p.id} value={p.id} className="font-bold">{p.address} {p.unit_number && `#${p.unit_number}`}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <div className="relative">
-                                <Label className="absolute -top-2 left-4 bg-white px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest z-10">Due Date</Label>
+
+                <CardContent className="p-16 space-y-20 relative z-10">
+                    {/* INPUT GRID */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
+                        <div className="space-y-8">
+                            <div className="flex flex-col space-y-4">
+                                <Label className="uppercase text-[10px] font-black tracking-[0.5em] text-slate-400 ml-2">Primary Recipient</Label>
                                 <Input
-                                    type="date"
-                                    className="h-14 bg-slate-50 border-slate-100 focus:bg-white border-2 rounded-2xl font-bold text-slate-600 px-6 transition-all"
-                                    value={dueDate}
-                                    onChange={e => setDueDate(e.target.value)}
+                                    placeholder="Enter full legal name..."
+                                    className="h-20 bg-slate-50 border-slate-50 focus:bg-white focus:ring-[12px] focus:ring-indigo-50/50 border-4 rounded-[2rem] font-black text-2xl px-8 transition-all duration-500 placeholder:text-slate-200"
+                                    value={recipientName}
+                                    onChange={e => setRecipientName(e.target.value)}
                                 />
+                                <Input
+                                    placeholder="Email for Digital Dispatch..."
+                                    type="email"
+                                    className="h-16 bg-slate-50 border-slate-50 focus:bg-white focus:ring-[12px] focus:ring-indigo-50/50 border-4 rounded-[1.5rem] font-bold px-8 transition-all duration-500"
+                                    value={recipientEmail}
+                                    onChange={e => setRecipientEmail(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-8">
+                            <div className="flex flex-col space-y-4">
+                                <Label className="uppercase text-[10px] font-black tracking-[0.5em] text-slate-400 ml-2">Contextual Parameters</Label>
+                                <Select value={propertyId} onValueChange={setPropertyId}>
+                                    <SelectTrigger className="h-20 bg-slate-50 border-slate-50 focus:bg-white border-4 rounded-[2rem] font-black text-slate-900 px-8 transition-all hover:bg-slate-100">
+                                        <SelectValue placeholder="Associate Target Property" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-[2rem] p-4 border-2 shadow-2xl">
+                                        {properties.map(p => (
+                                            <SelectItem key={p.id} value={p.id} className="rounded-xl p-4 font-black uppercase text-xs tracking-tight mb-1 last:mb-0 focus:bg-indigo-50 transition-colors">
+                                                {p.address} {p.unit_number && `(UNIT ${p.unit_number})`}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <div className="relative group">
+                                    <div className="absolute -top-3 left-8 bg-white px-3 py-1 rounded-full text-[10px] font-black text-slate-400 uppercase tracking-widest z-10 border shadow-sm group-focus-within:text-indigo-600 group-focus-within:border-indigo-100 transition-all">
+                                        Maturity Date
+                                    </div>
+                                    <Input
+                                        type="date"
+                                        className="h-16 bg-slate-50 border-slate-50 focus:bg-white border-4 rounded-[1.5rem] font-black text-slate-900 px-8 transition-all"
+                                        value={dueDate}
+                                        onChange={e => setDueDate(e.target.value)}
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Line Items */}
-                    <div className="space-y-6">
-                        <div className="flex justify-between items-center">
-                            <Label className="uppercase text-[10px] font-black tracking-[0.3em] text-slate-400 ml-1">Financial Items</Label>
-                            <Badge variant="outline" className="border-slate-200 text-[10px] font-black text-slate-400 uppercase">{items.length} Entries</Badge>
+                    {/* DYNAMIC LEDGER ITEMS */}
+                    <div className="space-y-8">
+                        <div className="flex justify-between items-center px-4">
+                            <div className="flex items-center gap-3">
+                                <DollarSign className="w-5 h-5 text-indigo-600" />
+                                <h3 className="uppercase text-[11px] font-black tracking-[0.5em] text-slate-900">Financial Ledger Entries</h3>
+                            </div>
+                            <Badge variant="outline" className="border-2 border-slate-100 px-4 py-2 rounded-xl text-[10px] font-black text-slate-400 uppercase tracking-widest">{items.length} Entries</Badge>
                         </div>
+
                         <div className="space-y-4">
                             {items.map((item, index) => (
-                                <div key={item.id} className="flex gap-4 items-start group">
+                                <div key={item.id} className="flex gap-4 items-start group animate-in slide-in-from-right-4 duration-500" style={{ animationDelay: `${index * 100}ms` }}>
                                     <div className="flex-1">
                                         <Input
-                                            placeholder="Service or Charge Description"
-                                            className="h-14 bg-white border-slate-200 border-2 rounded-2xl font-black px-6 hover:border-indigo-200 transition-all"
+                                            placeholder="Line item description..."
+                                            className="h-20 bg-white border-slate-100 border-4 rounded-[2.5rem] font-black px-10 hover:border-indigo-100 focus:border-indigo-200 transition-all text-lg shadow-sm"
                                             value={item.description}
                                             onChange={e => updateItem(item.id, 'description', e.target.value)}
                                         />
                                     </div>
-                                    <div className="w-24 relative">
+                                    <div className="w-32 relative">
+                                        <div className="absolute -top-3 left-6 bg-white px-2 text-[8px] font-black text-slate-300 uppercase tracking-widest z-10 border rounded-full">Qty</div>
                                         <Input
                                             type="number"
-                                            className="h-14 bg-white border-slate-200 border-2 rounded-2xl font-black text-center px-2 hover:border-indigo-200 transition-all"
+                                            className="h-20 bg-white border-slate-100 border-4 rounded-[2rem] font-black text-center px-2 hover:border-indigo-100 transition-all shadow-sm"
                                             value={item.quantity}
                                             onChange={e => updateItem(item.id, 'quantity', parseFloat(e.target.value))}
                                         />
                                     </div>
-                                    <div className="w-40 relative">
-                                        <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-900 z-10 font-black">
-                                            $
-                                        </div>
+                                    <div className="w-52 relative">
+                                        <div className="absolute -top-3 left-6 bg-white px-2 text-[8px] font-black text-slate-300 uppercase tracking-widest z-10 border rounded-full">Amount</div>
+                                        <div className="absolute left-8 top-1/2 -translate-y-1/2 text-slate-900 z-10 font-black text-xl">$</div>
                                         <Input
                                             type="number"
-                                            className="h-14 pl-12 bg-white border-slate-200 border-2 rounded-2xl font-black hover:border-indigo-200 transition-all pr-4"
+                                            className="h-20 pl-14 bg-white border-slate-100 border-4 rounded-[2.5rem] font-black hover:border-indigo-100 transition-all pr-8 shadow-sm text-xl"
                                             value={item.amount}
                                             onChange={e => updateItem(item.id, 'amount', parseFloat(e.target.value))}
                                         />
@@ -305,46 +354,77 @@ export default function NewInvoicePage() {
                                         variant="ghost"
                                         size="icon"
                                         onClick={() => removeItem(item.id)}
-                                        className="h-14 w-14 rounded-2xl text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all"
+                                        className="h-20 w-20 rounded-[2.5rem] text-slate-200 hover:text-rose-500 hover:bg-rose-50 transition-all shrink-0"
                                     >
-                                        <Trash2 className="w-6 h-6" />
+                                        <Trash2 className="w-8 h-8" />
                                     </Button>
                                 </div>
                             ))}
                         </div>
+
                         <Button
                             variant="outline"
                             onClick={addItem}
-                            className="w-full h-16 border-dashed border-4 border-slate-100 text-slate-300 font-black uppercase tracking-[0.2em] text-[10px] hover:bg-slate-50 hover:border-indigo-100 hover:text-indigo-400 rounded-3xl transition-all"
+                            className="w-full h-24 border-dashed border-8 border-slate-50 text-slate-200 font-black uppercase tracking-[0.5em] text-[10px] hover:bg-indigo-50/30 hover:border-indigo-100 hover:text-indigo-400 rounded-3xl transition-all"
                         >
-                            <Plus className="w-5 h-5 mr-3" /> Add Ledger Line
+                            <Plus className="w-6 h-6 mr-4" /> Add Record to Ledger
                         </Button>
                     </div>
 
-                    {/* Totals & Notes */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12 pt-12 border-t-4 border-slate-900">
-                        <div className="space-y-4">
-                            <Label className="uppercase text-[10px] font-black tracking-widest text-slate-400 ml-1">Internal Notes / Payment Terms</Label>
+                    {/* SUMMARY & TERMS */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-20 pt-20 border-t-8 border-slate-900">
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-3 px-2">
+                                <CheckCircle className="w-4 h-4 text-emerald-500" />
+                                <Label className="uppercase text-[10px] font-black tracking-[0.4em] text-slate-400">Policy & Dispatch Notes</Label>
+                            </div>
                             <Textarea
-                                placeholder="e.g. Please pay within 7 days of receipt to avoid late fees..."
-                                className="min-h-[160px] bg-slate-50 border-slate-100 border-2 rounded-3xl font-bold px-6 py-4 focus:bg-white focus:ring-4 focus:ring-indigo-50 transition-all"
+                                placeholder="Specify payment terms, wire details, or legal footnotes..."
+                                className="min-h-[220px] bg-slate-50/50 border-slate-50 border-4 rounded-[3rem] font-bold px-10 py-10 focus:bg-white focus:ring-[12px] focus:ring-indigo-50/50 transition-all text-sm leading-relaxed outline-none"
                                 value={notes}
                                 onChange={e => setNotes(e.target.value)}
                             />
                         </div>
-                        <div className="flex flex-col justify-end items-end space-y-6">
-                            <div className="flex justify-between w-full max-w-sm text-sm font-black uppercase tracking-widest text-slate-400 px-2">
-                                <span>Subtotal</span>
-                                <span className="text-slate-900">${calculateTotal().toLocaleString()}</span>
+                        <div className="flex flex-col justify-end items-end space-y-10">
+                            <div className="w-full max-w-sm space-y-4 px-10">
+                                <div className="flex justify-between items-center text-xs font-black uppercase tracking-[0.3em] text-slate-400">
+                                    <span>Subtotal Liability</span>
+                                    <span className="text-slate-900">${calculateTotal().toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-xs font-black uppercase tracking-[0.3em] text-slate-400">
+                                    <span>Tax Provision</span>
+                                    <span className="text-slate-900">$0.00</span>
+                                </div>
+                                <div className="h-0.5 bg-slate-100 w-full" />
                             </div>
-                            <div className="flex justify-between items-center w-full max-w-sm p-8 bg-slate-900 text-white rounded-[2.5rem] shadow-2xl shadow-indigo-100">
-                                <span className="font-black uppercase tracking-widest text-xs">Total Amount</span>
-                                <span className="text-4xl font-black tracking-tighter">${calculateTotal().toLocaleString()}</span>
+
+                            <div className="flex justify-between items-center w-full p-12 bg-slate-900 text-white rounded-[4rem] shadow-2xl shadow-indigo-100 relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:rotate-12 transition-transform duration-1000">
+                                    <ShieldCheck className="w-32 h-32" />
+                                </div>
+                                <div className="relative z-10">
+                                    <span className="font-black uppercase tracking-[0.6em] text-[10px] text-slate-400 block mb-2">Total Net Value</span>
+                                    <span className="text-6xl font-black tracking-tighter">${calculateTotal().toLocaleString()}</span>
+                                </div>
+                                <div className="text-right relative z-10">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-2 flex items-center justify-end gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                                        Ledger Ready
+                                    </p>
+                                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest max-w-[120px]">Verified transaction through PropFlow Gateway</p>
+                                </div>
                             </div>
-                            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest px-8">PropFlow Automated Ledger Reconciliation</p>
                         </div>
                     </div>
                 </CardContent>
+
+                {/* Visual Footer Decor */}
+                <div className="bg-slate-50 px-16 py-8 border-t border-slate-100 flex justify-between items-center">
+                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.8em]">End of Ledger Record &bull; PROPFLOW SECURE</p>
+                    <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map(i => <div key={i} className="w-3 h-1 bg-slate-200 rounded-full" />)}
+                    </div>
+                </div>
             </Card>
         </div>
     )

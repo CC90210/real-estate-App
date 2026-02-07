@@ -62,8 +62,14 @@ export default function InvoicesPage() {
         )
     }
 
+    const now = new Date()
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+
     const totalOutstanding = invoices?.filter(i => i.status === 'sent' || i.status === 'overdue').reduce((sum, i) => sum + Number(i.total || 0), 0) || 0
-    const totalCollected = invoices?.filter(i => i.status === 'paid').reduce((sum, i) => sum + Number(i.total || 0), 0) || 0
+    const totalCollected = invoices?.filter(i => {
+        const paidDate = new Date(i.updated_at || i.created_at)
+        return i.status === 'paid' && paidDate >= currentMonthStart
+    }).reduce((sum, i) => sum + Number(i.total || 0), 0) || 0
 
     return (
         <div className="p-6 lg:p-10 space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-1000">
@@ -74,7 +80,7 @@ export default function InvoicesPage() {
                         <Receipt className="h-4 w-4" />
                         <span>Financial Operations Console</span>
                     </div>
-                    <h1 className="text-6xl font-black tracking-tighter text-slate-900 leading-none">Invoices.</h1>
+                    <h1 className="text-6xl font-black tracking-tighter text-slate-900 leading-none">Invoices</h1>
                     <p className="text-slate-500 font-bold text-lg mt-4">
                         Tracking {invoices?.length || 0} financial records across properties.
                     </p>
@@ -98,37 +104,36 @@ export default function InvoicesPage() {
                     trend="+12% from last month"
                 />
                 <StatCard
-                    label="Collected Receipts"
+                    label="Collected (Month)"
                     value={`$${totalCollected.toLocaleString()}`}
                     icon={CheckCircle}
-                    color="text-emerald-400"
+                    color="text-emerald-600"
                     bg="bg-emerald-50"
                     trend="Target: $250,000"
                 />
                 <StatCard
                     label="Processing"
-                    value={invoices?.filter(i => i.status === 'sent').length || 0}
+                    value={invoices?.filter(i => i.status === 'draft').length.toString() || '0'}
                     icon={TrendingUp}
-                    color="text-indigo-600"
-                    bg="bg-indigo-50"
+                    color="text-blue-600"
+                    bg="bg-blue-50"
                 />
                 <StatCard
                     label="Critical Alerts"
-                    value={invoices?.filter(i => i.status === 'overdue').length || 0}
+                    value={invoices?.filter(i => i.status === 'overdue').length.toString() || '0'}
                     icon={AlertCircle}
                     color="text-rose-600"
                     bg="bg-rose-50"
-                    isAlert={true}
                 />
             </div>
 
             {/* Invoices List */}
             {!invoices || invoices.length === 0 ? (
-                <div className="py-32 bg-slate-50 rounded-[3rem] border-4 border-dashed border-slate-100 flex flex-col items-center justify-center text-center px-6">
-                    <div className="w-24 h-24 bg-white rounded-[2.5rem] shadow-xl flex items-center justify-center mb-8 border border-slate-100">
-                        <Receipt className="w-10 h-10 text-slate-200" />
+                <div className="py-32 bg-white rounded-[3rem] border-4 border-dashed border-slate-100 flex flex-col items-center justify-center text-center px-6 animate-in zoom-in-95 duration-500">
+                    <div className="w-24 h-24 bg-slate-50 rounded-[2.5rem] flex items-center justify-center mb-8">
+                        <FileText className="w-12 h-12 text-slate-200" />
                     </div>
-                    <h3 className="text-3xl font-black text-slate-900 tracking-tight">Zero Invoices.</h3>
+                    <h3 className="text-3xl font-black text-slate-900 tracking-tight">Zero Invoices</h3>
                     <p className="text-slate-500 font-bold mt-4 mb-10 max-w-md">No financial records detected in the ledger. Generate your first invoice to initialize tracking.</p>
                     <Link href="/invoices/new">
                         <Button className="h-14 px-10 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl">Draft First Invoice</Button>
