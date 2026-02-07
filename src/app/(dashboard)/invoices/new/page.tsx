@@ -140,9 +140,22 @@ export default function NewInvoicePage() {
         try {
             const { data: { user } } = await supabase.auth.getUser()
 
+            // ATOMIC NUMBERING: Try backend sequence first, fallback to client-side calc
+            let finalInvoiceNumber = nextInvoiceNumber;
+            try {
+                const { data: atomicNumber, error: atomicError } = await supabase
+                    .rpc('generate_invoice_number', { p_company_id: profile.company_id });
+
+                if (atomicNumber && !atomicError) {
+                    finalInvoiceNumber = atomicNumber;
+                }
+            } catch (rpcError) {
+                console.warn("Backend numbering sequence not active, using client-side estimate.");
+            }
+
             const invoiceData = {
                 company_id: profile.company_id,
-                invoice_number: nextInvoiceNumber,
+                invoice_number: finalInvoiceNumber,
                 recipient_name: recipientName,
                 recipient_email: recipientEmail,
                 property_id: propertyId || null,
