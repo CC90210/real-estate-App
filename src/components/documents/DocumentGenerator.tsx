@@ -260,7 +260,7 @@ function PropertySummaryForm({ properties, onGenerate, isGenerating, profile }: 
         agentName: profile?.full_name || '',
         agentPhone: profile?.phone || '',
         agentEmail: profile?.email || '',
-        companyName: 'PropFlow Realty',
+        companyName: 'Verified Realty',
         highlightFeatures: '',
         customTagline: '',
         showPrice: true,
@@ -351,7 +351,7 @@ function LeaseProposalForm({ properties, onGenerate, isGenerating, profile }: an
         agentName: profile?.full_name || '',
         agentTitle: profile?.role?.toUpperCase() || 'Real Estate Agent',
         agentLicense: '',
-        companyName: 'PropFlow Realty',
+        companyName: 'Verified Realty',
         companyAddress: '',
         validUntil: ''
     });
@@ -676,7 +676,7 @@ function DocumentTemplate({ data }: { data: any }) {
                 </div>
                 {aiHighlight && (
                     <div className="bg-slate-900 text-white p-8 rounded-3xl mb-12 shadow-2xl">
-                        <h3 className="text-xs font-black uppercase tracking-widest text-blue-400 mb-4">PropFlow Insight</h3>
+                        <h3 className="text-xs font-black uppercase tracking-widest text-blue-400 mb-4">Professional Insight</h3>
                         <p className="text-xl font-medium leading-relaxed italic">"{aiHighlight}"</p>
                     </div>
                 )}
@@ -759,7 +759,7 @@ function DocumentTemplate({ data }: { data: any }) {
                         </div>
                         <div>
                             <h1 className="text-4xl font-black tracking-tighter">Executive Screening</h1>
-                            <p className="text-xs font-black uppercase tracking-widest text-amber-600">Official PropFlow Analysis</p>
+                            <p className="text-xs font-black uppercase tracking-widest text-amber-600">Official System Analysis</p>
                         </div>
                     </div>
                 </div>

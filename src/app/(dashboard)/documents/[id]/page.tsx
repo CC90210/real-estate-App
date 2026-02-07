@@ -103,6 +103,16 @@ export default function DocumentViewPage() {
             {/* Global Print Styles - Hides ALL navigation/sidebar */}
             <style jsx global>{`
                 @media print {
+                    @page {
+                        margin: 0;
+                        size: auto;
+                    }
+                    body {
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                        padding: 20mm !important;
+                        margin: 0 !important;
+                    }
                     body > div > aside,
                     body > div > nav,
                     nav,
@@ -113,14 +123,12 @@ export default function DocumentViewPage() {
                     footer:not(.print-footer) {
                         display: none !important;
                     }
-                    body {
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
-                    }
                     .print-container {
                         margin: 0 !important;
                         padding: 0 !important;
                         max-width: 100% !important;
+                        box-shadow: none !important;
+                        border: none !important;
                     }
                 }
             `}</style>
@@ -165,7 +173,7 @@ export default function DocumentViewPage() {
                             )}
                             <div>
                                 <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">
-                                    {company?.name || 'PropFlow Document'}
+                                    {company?.name || 'Verified Record'}
                                 </h1>
                                 {company?.address && (
                                     <p className="text-sm text-slate-500 mt-1">{company.address}</p>
@@ -208,9 +216,10 @@ export default function DocumentViewPage() {
                                 {company?.logo_url && (
                                     <img src={company.logo_url} alt="" className="h-6 w-auto opacity-50" />
                                 )}
-                                <span className="font-medium">{company?.name || 'PropFlow'}</span>
+                                <span className="font-medium">{company?.name || 'Verified Record'}</span>
                             </div>
-                            <div className="text-right">
+                            <div className="text-right flex items-center gap-3">
+                                <span className="text-[8px] font-black uppercase tracking-widest opacity-20">Managed via PropFlow</span>
                                 <span className="uppercase tracking-widest text-[10px]">
                                     Confidential • {format(new Date(document.created_at), 'yyyy')}
                                 </span>

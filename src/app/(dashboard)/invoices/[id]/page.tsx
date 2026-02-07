@@ -260,16 +260,16 @@ export default function InvoiceViewPage() {
 
     return (
         <div className="min-h-screen bg-slate-50/50 pb-20 print:pb-0 print:bg-white transition-opacity duration-1000">
-            {/* Global Print Styles - Tighten for single page */}
+            /* Global Print Styles - Tighten for single page and hide browser UI */
             <style jsx global>{`
                 @media print {
                     @page {
-                        margin: 10mm;
+                        margin: 0;
                         size: auto;
                     }
                     body {
                         margin: 0;
-                        padding: 0 !important;
+                        padding: 15mm !important;
                     }
                     nav, aside, header:not(.print-header), .no-print {
                         display: none !important;
@@ -373,7 +373,7 @@ export default function InvoiceViewPage() {
                             </div>
                         )}
                         <div>
-                            <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase leading-none mb-2">{company?.name || 'PropFlow Financial'}</h1>
+                            <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase leading-none mb-2">{company?.name || 'Verified Invoice'}</h1>
                             <div className="space-y-0.5 text-[10px] text-slate-500 font-bold">
                                 <p>{company?.address || 'Corporate Headquarters'}</p>
                                 <p>{company?.phone} &bull; {company?.email}</p>
@@ -474,10 +474,13 @@ export default function InvoiceViewPage() {
                 <div className="mt-16 pt-8 border-t border-slate-100 flex justify-between items-center text-[8px] font-black uppercase tracking-widest text-slate-400">
                     <div className="flex items-center gap-2">
                         <ShieldCheck className="w-3 h-3 text-emerald-500" />
-                        <span>PropFlow Digital Ledger &copy; {new Date().getFullYear()}</span>
+                        <span>Corporate Ledger &copy; {new Date().getFullYear()}</span>
                     </div>
-                    <div className="flex gap-4">
+                    <div className="flex gap-4 items-center">
+                        <span className="opacity-30">Securely processed via PropFlow</span>
+                        <div className="w-0.5 h-0.5 rounded-full bg-slate-200" />
                         <span>Digital Signature: {id.slice(0, 12).toUpperCase()}</span>
+                        <div className="w-0.5 h-0.5 rounded-full bg-slate-200" />
                         <span>Page 01 / 01</span>
                     </div>
                 </div>
@@ -509,6 +512,6 @@ export default function InvoiceViewPage() {
                     </DialogContent>
                 </Dialog>
             </div>
-        </div>
+        </div >
     )
 }

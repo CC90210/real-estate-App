@@ -53,6 +53,7 @@ export default function NewInvoicePage() {
     const [items, setItems] = useState<LineItem[]>([
         { id: '1', description: 'Rent for ' + new Date().toLocaleString('default', { month: 'long' }), amount: 0, quantity: 1 }
     ])
+    const [nextInvoiceNumber, setNextInvoiceNumber] = useState('INV-00001')
 
     // Load properties and company on mount
     useEffect(() => {
@@ -74,6 +75,20 @@ export default function NewInvoicePage() {
                     setProfile(profileData)
                     if (profileData.company) {
                         setCompany(profileData.company)
+
+                        // Fetch highest invoice number for this company to determine next one
+                        const { data: lastInvoices } = await supabase
+                            .from('invoices')
+                            .select('invoice_number')
+                            .eq('company_id', profileData.company_id)
+                            .order('created_at', { ascending: false })
+                            .limit(1)
+
+                        if (lastInvoices && lastInvoices.length > 0) {
+                            const lastNumStr = lastInvoices[0].invoice_number.split('-')[1]
+                            const nextNum = parseInt(lastNumStr) + 1
+                            setNextInvoiceNumber(`INV-${nextNum.toString().padStart(5, '0')}`)
+                        }
                     }
                 }
 
@@ -127,7 +142,7 @@ export default function NewInvoicePage() {
 
             const invoiceData = {
                 company_id: profile.company_id,
-                invoice_number: `INV-${Math.floor(100000 + Math.random() * 900000)}`,
+                invoice_number: nextInvoiceNumber,
                 recipient_name: recipientName,
                 recipient_email: recipientEmail,
                 property_id: propertyId || null,
@@ -234,13 +249,13 @@ export default function NewInvoicePage() {
                                 <FileText className="w-5 h-5" />
                             </div>
                             <div>
-                                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-600">System Code Alpha-4</p>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Secure Ledger Entry Terminal</p>
+                                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-600">Enterprise Ledger System</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Internal Document Generation</p>
                             </div>
                         </div>
                         <CardTitle className="text-6xl font-black text-slate-900 tracking-tighter">New Invoice</CardTitle>
                         <div className="inline-block bg-slate-900 px-4 py-1 rounded-xl">
-                            <p className="text-white font-mono font-black text-xs tracking-widest uppercase">Unverified Entry #ID_GEN</p>
+                            <p className="text-white font-mono font-black text-xs tracking-widest uppercase">Draft Ledger #{nextInvoiceNumber}</p>
                         </div>
                     </div>
                     {company && (
@@ -411,7 +426,7 @@ export default function NewInvoicePage() {
                                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
                                         Ledger Ready
                                     </p>
-                                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest max-w-[120px]">Verified transaction through PropFlow Gateway</p>
+                                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest max-w-[120px]">Verified transaction through secure gateway</p>
                                 </div>
                             </div>
                         </div>
@@ -420,7 +435,7 @@ export default function NewInvoicePage() {
 
                 {/* Visual Footer Decor */}
                 <div className="bg-slate-50 px-16 py-8 border-t border-slate-100 flex justify-between items-center">
-                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.8em]">End of Ledger Record &bull; PROPFLOW SECURE</p>
+                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.8em]">End of Ledger Record &bull; SECURE SYSTEM</p>
                     <div className="flex gap-1">
                         {[1, 2, 3, 4, 5].map(i => <div key={i} className="w-3 h-1 bg-slate-200 rounded-full" />)}
                     </div>
