@@ -1,5 +1,3 @@
-'use client'
-
 import { Metadata } from 'next'
 import Link from 'next/link'
 import {
@@ -11,13 +9,16 @@ import {
     Users2,
     ArrowRight,
     Command,
-    Globe,
-    Cpu,
-    Smartphone
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PublicNavbar } from '@/components/layout/PublicNavbar'
 import { PublicFooter } from '@/components/layout/PublicFooter'
+import { cn } from '@/lib/utils'
+
+export const metadata: Metadata = {
+    title: 'Features',
+    description: 'Explore the powerful features of PropFlow: Tenant Screening, Lease Generation, Property Management, and more.',
+}
 
 const features = [
     {
@@ -126,8 +127,4 @@ export default function FeaturesPage() {
             <PublicFooter />
         </div>
     )
-}
-
-function cn(...classes: any[]) {
-    return classes.filter(Boolean).join(' ')
 }

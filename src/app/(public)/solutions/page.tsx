@@ -1,5 +1,3 @@
-'use client'
-
 import { Metadata } from 'next'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -17,6 +15,11 @@ import {
 import { cn } from '@/lib/utils'
 import { PublicNavbar } from '@/components/layout/PublicNavbar'
 import { PublicFooter } from '@/components/layout/PublicFooter'
+
+export const metadata: Metadata = {
+    title: 'Solutions',
+    description: 'Tailored property management solutions for Leasing Agents, Property Managers, and Modern Landlords.',
+}
 
 const solutions = [
     {
