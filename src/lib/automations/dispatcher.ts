@@ -49,14 +49,15 @@ export async function triggerAutomation(
         }
 
         // 3. Dispatch to n8n (or other IPaaS)
-        const response = await fetch(WEBHOOK_URL, {
+        const n8nResponse = await fetch(WEBHOOK_URL, {
             method: 'POST',
             headers,
             body: bodyString
         });
 
-        if (!response.ok) {
-            throw new Error(`Webhook failed: ${response.status} ${response.statusText}`);
+        if (!n8nResponse.ok) {
+            const errorText = await n8nResponse.text();
+            throw new Error(`N8N Gateway Error: ${n8nResponse.status} ${n8nResponse.statusText} - Detail: ${errorText.substring(0, 500)}`);
         }
 
         return { success: true, id: envelope.id };

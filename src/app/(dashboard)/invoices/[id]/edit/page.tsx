@@ -280,42 +280,49 @@ export default function EditInvoicePage() {
                     {/* Line Items */}
                     <div className="space-y-4">
                         <Label className="uppercase text-[10px] font-black tracking-widest text-slate-400">Line Items</Label>
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                             {items.map((item, index) => (
-                                <div key={item.id} className="flex gap-3 items-start">
-                                    <Input
-                                        placeholder="Description"
-                                        className="h-12 bg-white border-slate-200 rounded-xl font-medium flex-1"
-                                        value={item.description}
-                                        onChange={e => updateItem(item.id, 'description', e.target.value)}
-                                    />
-                                    <div className="w-24 relative">
+                                <div key={item.id} className="p-4 md:p-0 bg-slate-50/50 md:bg-transparent rounded-2xl border border-slate-100 md:border-none space-y-3 md:space-y-0 md:flex md:gap-3 md:items-start animate-in fade-in slide-in-from-left duration-300">
+                                    <div className="flex-1 space-y-1 md:space-y-0">
+                                        <Label className="md:hidden text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Description</Label>
                                         <Input
-                                            type="number"
+                                            placeholder="Description (e.g. Monthly Rent)"
                                             className="h-12 bg-white border-slate-200 rounded-xl font-medium"
-                                            value={item.quantity}
-                                            onChange={e => updateItem(item.id, 'quantity', parseFloat(e.target.value))}
+                                            value={item.description}
+                                            onChange={e => updateItem(item.id, 'description', e.target.value)}
                                         />
                                     </div>
-                                    <div className="w-32 relative">
-                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none font-bold">
-                                            {getCurrencySymbol(currency)}
+                                    <div className="flex gap-3 items-end">
+                                        <div className="w-24 space-y-1 md:space-y-0">
+                                            <Label className="md:hidden text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Qty</Label>
+                                            <Input
+                                                type="number"
+                                                className="h-12 bg-white border-slate-200 rounded-xl font-medium"
+                                                value={item.quantity}
+                                                onChange={e => updateItem(item.id, 'quantity', parseFloat(e.target.value))}
+                                            />
                                         </div>
-                                        <Input
-                                            type="number"
-                                            className="h-12 pl-8 bg-white border-slate-200 rounded-xl font-medium"
-                                            value={item.amount}
-                                            onChange={e => updateItem(item.id, 'amount', parseFloat(e.target.value))}
-                                        />
+                                        <div className="flex-1 md:w-40 relative space-y-1 md:space-y-0">
+                                            <Label className="md:hidden text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Price</Label>
+                                            <div className="absolute left-4 top-1/2 -translate-y-1/2 md:top-[24px] text-slate-400 pointer-events-none font-bold text-sm">
+                                                {getCurrencySymbol(currency)}
+                                            </div>
+                                            <Input
+                                                type="number"
+                                                className="h-12 pl-12 bg-white border-slate-200 rounded-xl font-medium"
+                                                value={item.amount}
+                                                onChange={e => updateItem(item.id, 'amount', parseFloat(e.target.value))}
+                                            />
+                                        </div>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => removeItem(item.id)}
+                                            className="h-12 w-12 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 shrink-0"
+                                        >
+                                            <Trash2 className="w-5 h-5" />
+                                        </Button>
                                     </div>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => removeItem(item.id)}
-                                        className="h-12 w-12 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50"
-                                    >
-                                        <Trash2 className="w-5 h-5" />
-                                    </Button>
                                 </div>
                             ))}
                         </div>

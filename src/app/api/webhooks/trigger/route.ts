@@ -65,7 +65,8 @@ export async function POST(request: Request) {
         });
 
         if (!n8nResponse.ok) {
-            throw new Error(`N8N Gateway Error: ${n8nResponse.statusText}`);
+            const errorText = await n8nResponse.text();
+            throw new Error(`N8N Gateway Error: ${n8nResponse.status} ${n8nResponse.statusText} - Detail: ${errorText.substring(0, 500)}`);
         }
 
         return NextResponse.json({ success: true, message: 'Automation Triggered Successfully' });

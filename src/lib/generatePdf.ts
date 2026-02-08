@@ -10,23 +10,29 @@ function sanitizeForCanvas(doc: Document) {
     const allElements = doc.getElementsByTagName('*');
     for (let i = 0; i < allElements.length; i++) {
         const el = allElements[i] as HTMLElement;
-        const style = el.style;
 
         // Scan common color properties for modern functions that html2canvas cannot parse
         const colorProps = ['color', 'backgroundColor', 'borderColor', 'fill', 'stroke'];
 
+        // Use getComputedStyle because el.style only reads inline styles
+        const computed = window.getComputedStyle(el);
+
         colorProps.forEach(prop => {
-            const val = (el.style as any)[prop];
+            const val = computed.getPropertyValue(prop);
             if (val && (val.includes('lab(') || val.includes('oklch(') || val.includes('oklab('))) {
-                // Fallback to safe colors
-                if (prop === 'color') (el.style as any)[prop] = '#0f172a'; // Slate 900
-                else if (prop === 'backgroundColor') (el.style as any)[prop] = '#f8fafc'; // Slate 50
-                else (el.style as any)[prop] = '#cbd5e1'; // Slate 300
+                // Force fallback to safe colors via inline style override on the clone
+                if (prop === 'color') el.style.setProperty(prop, '#0f172a', 'important'); // Slate 900
+                else if (prop === 'backgroundColor') el.style.setProperty(prop, '#f8fafc', 'important'); // Slate 50
+                else el.style.setProperty(prop, '#cbd5e1', 'important'); // Slate 300
             }
         });
 
-        // Also handle computed styles if needed via inline overrides for problematic elements
-        // This is more intensive but ensures computed styles don't break it
+        // Also fix background-image if it uses gradients with modern colors
+        const bgImg = computed.backgroundImage;
+        if (bgImg && (bgImg.includes('lab(') || bgImg.includes('oklch(') || bgImg.includes('oklab('))) {
+            el.style.setProperty('background-image', 'none', 'important');
+            el.style.setProperty('background-color', '#f8fafc', 'important');
+        }
     }
 }
 

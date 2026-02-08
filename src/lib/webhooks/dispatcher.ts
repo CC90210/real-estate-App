@@ -91,7 +91,7 @@ export async function dispatchWebhook(
                     attempts: 1,
                     last_attempt_at: new Date().toISOString(),
                     response_code: response.status,
-                    error_message: response.ok ? null : await response.text(),
+                    error_message: response.ok ? null : (await response.text()).substring(0, 500),
                 })
                 .eq('id', eventLog?.id)
 

@@ -348,64 +348,73 @@ export default function InvoiceViewPage() {
             `}</style>
 
             {/* STICKY ACTION BAR */}
-            <div className="bg-white/90 backdrop-blur-2xl border-b border-slate-100 px-6 py-4 flex items-center justify-between sticky top-0 z-50 no-print shadow-xl shadow-slate-200/10">
-                <div className="flex items-center gap-4">
-                    <Button variant="ghost" onClick={() => router.push('/invoices')} className="rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-100">
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        Invoices
-                    </Button>
-                    <div className="h-6 w-px bg-slate-200" />
-                    <div className="flex flex-col">
-                        <h1 className="font-black text-slate-900 text-xs tracking-tight leading-none flex items-center gap-1.5">
-                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                            Ledger Entry #{invoice.invoice_number}
-                        </h1>
+            <div className="bg-white/90 backdrop-blur-2xl border-b border-slate-100 px-4 md:px-6 py-3 md:py-4 flex flex-col md:flex-row md:items-center justify-between sticky top-0 z-50 no-print shadow-xl shadow-slate-200/10 gap-4 md:gap-0">
+                <div className="flex items-center justify-between md:justify-start gap-4">
+                    <div className="flex items-center gap-2 md:gap-4">
+                        <Button variant="ghost" onClick={() => router.push('/invoices')} className="h-9 md:h-10 px-2 md:px-4 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-100">
+                            <ArrowLeft className="w-4 h-4 md:mr-2" />
+                            <span className="hidden md:inline">Invoices</span>
+                        </Button>
+                        <div className="h-6 w-px bg-slate-200 hidden md:block" />
+                        <div className="flex flex-col">
+                            <h1 className="font-black text-slate-900 text-[10px] md:text-xs tracking-tight leading-none flex items-center gap-1.5 line-clamp-1">
+                                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                Ledger <span className="hidden sm:inline">Entry</span> #{invoice.invoice_number}
+                            </h1>
+                        </div>
+                    </div>
+
+                    <div className={`flex md:hidden items-center gap-2 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${currentStatus.color} ${invoice.status === 'draft' ? 'hidden' : ''}`}>
+                        <StatusIcon className="w-3 h-3" />
+                        {invoice.status}
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${currentStatus.color} ${invoice.status === 'draft' ? 'hidden' : ''}`}>
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-hide">
+                    <div className={`hidden md:flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${currentStatus.color} ${invoice.status === 'draft' ? 'hidden' : ''}`}>
                         <StatusIcon className="w-3 h-3" />
                         {currentStatus.label}
                     </div>
 
-                    <div className="h-6 w-px bg-slate-200 mx-1" />
+                    <div className="h-6 w-px bg-slate-200 mx-1 hidden md:block" />
 
-                    <div className="flex gap-1.5">
+                    <div className="flex gap-1.5 whitespace-nowrap">
                         {invoice.status === 'draft' && (
                             <Button
                                 onClick={handleDispatch}
                                 disabled={isUpdating}
-                                className="h-10 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200"
+                                className="h-9 md:h-10 px-3 md:px-4 rounded-xl font-black uppercase text-[9px] tracking-widest bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200"
                             >
                                 {isUpdating ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1.5" />}
-                                Dispatch
+                                <span className="hidden sm:inline">Dispatch</span>
+                                <span className="sm:hidden">Send</span>
                             </Button>
                         )}
                         {invoice.status === 'sent' && (
                             <Button
                                 onClick={() => updateStatus('paid')}
                                 disabled={isUpdating}
-                                className="h-10 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white"
+                                className="h-9 md:h-10 px-3 md:px-4 rounded-xl font-black uppercase text-[9px] tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white"
                             >
-                                <CheckCircle className="w-3.5 h-3.5 mr-1.5" /> Verify Paid
+                                <CheckCircle className="w-3.5 h-3.5 mr-1.5" /> <span className="hidden sm:inline">Verify Paid</span><span className="sm:hidden">Pay</span>
                             </Button>
                         )}
 
-                        <Button variant="outline" onClick={() => router.push(`/invoices/${id}/edit`)} className="h-10 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest border-2">
-                            <Edit3 className="w-3.5 h-3.5 mr-1.5" />
-                            Edit
+                        <Button variant="outline" onClick={() => router.push(`/invoices/${id}/edit`)} className="h-9 md:h-10 px-3 md:px-4 rounded-xl font-black uppercase text-[9px] tracking-widest border-2">
+                            <Edit3 className="w-3.5 h-3.5 md:mr-1.5" />
+                            <span className="hidden sm:inline">Edit</span>
                         </Button>
 
-                        <Button onClick={handlePrint} className="h-10 px-4 bg-slate-900 text-white hover:bg-slate-800 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg">
-                            <Printer className="w-3.5 h-3.5 mr-1.5" />
-                            Print / PDF
+                        <Button onClick={handlePrint} className="h-9 md:h-10 px-3 md:px-4 bg-slate-900 text-white hover:bg-slate-800 rounded-xl font-black uppercase text-[9px] tracking-widest shadow-lg">
+                            <Printer className="w-3.5 h-3.5 md:mr-1.5" />
+                            <span className="hidden sm:inline">Print / PDF</span>
+                            <span className="sm:hidden">Print</span>
                         </Button>
                     </div>
                 </div>
             </div>
 
-            <div className="max-w-[850px] mx-auto pt-8 px-6 no-print">
+            <div className="max-w-[850px] mx-auto pt-6 md:pt-8 px-4 md:px-6 no-print">
                 {currentStatus.banner && (
                     <Alert className="mb-6 rounded-2xl border bg-white shadow-lg shadow-slate-100 animate-in slide-in-from-top-2 duration-500">
                         <div className="flex items-center gap-3">
@@ -414,7 +423,7 @@ export default function InvoiceViewPage() {
                             </div>
                             <div>
                                 <AlertTitle className="font-black uppercase tracking-widest text-[9px] mb-0.5 opacity-50">Status Bulletin</AlertTitle>
-                                <AlertDescription className="text-slate-600 font-bold text-xs leading-none">
+                                <AlertDescription className="text-slate-600 font-bold text-xs leading-tight">
                                     {currentStatus.banner}
                                 </AlertDescription>
                             </div>
@@ -423,129 +432,131 @@ export default function InvoiceViewPage() {
                 )}
             </div>
 
-            {/* MAIN INVOICE PAPER - A4 Proportionally tight */}
-            <div id="invoice-paper" className="print-container max-w-[850px] mx-auto bg-white shadow-[0_20px_50px_-10px_rgba(0,0,0,0.03)] print:shadow-none min-h-[11in] p-12 rounded-[2.5rem] text-slate-900 leading-relaxed text-xs animate-in zoom-in-95 duration-700">
+            {/* MAIN INVOICE PAPER */}
+            <div className="px-4 md:px-6 mb-20 md:mb-0 overflow-x-auto md:overflow-visible scrollbar-hide">
+                <div id="invoice-paper" className="print-container w-full max-w-[850px] mx-auto bg-white shadow-[0_20px_50px_-10px_rgba(0,0,0,0.03)] print:shadow-none min-h-[11in] p-6 md:p-12 rounded-3xl md:rounded-[2.5rem] text-slate-900 leading-relaxed text-xs animate-in zoom-in-95 duration-700 mb-10">
 
-                {/* BRAND HEADER */}
-                <div className="flex justify-between items-start mb-16 border-b-4 border-slate-900 pb-10">
-                    <div className="flex gap-6">
-                        {company?.logo_url ? (
-                            <img src={company.logo_url} alt="Logo" className="h-12 w-auto object-contain" />
-                        ) : (
-                            <div className="h-12 w-12 bg-slate-900 rounded-xl flex items-center justify-center text-white">
-                                <DollarSign className="w-6 h-6" />
+                    {/* BRAND HEADER */}
+                    <div className="flex flex-col md:flex-row justify-between items-start mb-8 md:mb-16 border-b-4 border-slate-900 pb-8 md:pb-10 gap-8">
+                        <div className="flex gap-4 md:gap-6">
+                            {company?.logo_url ? (
+                                <img src={company.logo_url} alt="Logo" className="h-10 md:h-12 w-auto object-contain" />
+                            ) : (
+                                <div className="h-10 w-10 md:h-12 md:w-12 bg-slate-900 rounded-xl flex items-center justify-center text-white shrink-0">
+                                    <DollarSign className="w-5 h-5 md:w-6 md:h-6" />
+                                </div>
+                            )}
+                            <div>
+                                <h1 className="text-lg md:text-xl font-black tracking-tight text-slate-900 uppercase leading-none mb-2">{company?.name || 'Verified Invoice'}</h1>
+                                <div className="space-y-0.5 text-[9px] md:text-[10px] text-slate-500 font-bold">
+                                    <p>{company?.address || 'Corporate Headquarters'}</p>
+                                    <p>{company?.phone} &bull; {company?.email}</p>
+                                </div>
                             </div>
-                        )}
-                        <div>
-                            <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase leading-none mb-2">{company?.name || 'Verified Invoice'}</h1>
-                            <div className="space-y-0.5 text-[10px] text-slate-500 font-bold">
-                                <p>{company?.address || 'Corporate Headquarters'}</p>
-                                <p>{company?.phone} &bull; {company?.email}</p>
+                        </div>
+                        <div className="text-left md:text-right w-full md:w-auto">
+                            <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter mb-2">INVOICE</h2>
+                            <div className="inline-block bg-slate-900 px-4 py-2 rounded-xl">
+                                <p className="font-mono font-black text-white text-sm md:text-base tracking-widest">#{invoice.invoice_number}</p>
+                            </div>
+                            <div className="mt-4 md:mt-6 space-y-1 text-[8px] md:text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                <p>Issued: <span className="text-slate-900">{safeFormat(invoice.issue_date || invoice.created_at, 'MMM dd, yyyy')}</span></p>
+                                <p>Due: <span className="text-slate-900">{safeFormat(invoice.due_date, 'MMM dd, yyyy') || 'Upon Receipt'}</span></p>
                             </div>
                         </div>
                     </div>
-                    <div className="text-right">
-                        <h2 className="text-4xl font-black text-slate-900 tracking-tighter mb-2">INVOICE</h2>
-                        <div className="inline-block bg-slate-900 px-4 py-2 rounded-xl">
-                            <p className="font-mono font-black text-white text-base tracking-widest">#{invoice.invoice_number}</p>
-                        </div>
-                        <div className="mt-6 space-y-1 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                            <p>Issued: <span className="text-slate-900">{safeFormat(invoice.issue_date || invoice.created_at, 'MMM dd, yyyy')}</span></p>
-                            <p>Due: <span className="text-slate-900">{safeFormat(invoice.due_date, 'MMM dd, yyyy') || 'Upon Receipt'}</span></p>
-                        </div>
-                    </div>
-                </div>
 
-                {/* DETAILS GRID */}
-                <div className="grid grid-cols-2 gap-10 mb-16">
-                    <div className="p-8 bg-slate-50/50 rounded-3xl border border-slate-100">
-                        <h3 className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 mb-4">Recipient Information</h3>
-                        <p className="text-xl font-black text-slate-900 tracking-tight mb-0.5">{invoice.recipient_name}</p>
-                        <p className="text-slate-500 font-bold uppercase text-[9px] tracking-widest mb-6">{invoice.recipient_email}</p>
+                    {/* DETAILS GRID */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10 mb-10 md:mb-16">
+                        <div className="p-6 md:p-8 bg-slate-50/50 rounded-3xl border border-slate-100">
+                            <h3 className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 mb-4">Recipient Information</h3>
+                            <p className="text-lg md:text-xl font-black text-slate-900 tracking-tight mb-0.5">{invoice.recipient_name}</p>
+                            <p className="text-slate-500 font-bold uppercase text-[8px] md:text-[9px] tracking-widest mb-4 md:mb-6">{invoice.recipient_email}</p>
 
-                        {property && (
-                            <div className="pt-4 border-t border-slate-200/50">
-                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Linked Asset</p>
-                                <p className="text-slate-900 font-black text-sm uppercase tracking-tight">
-                                    {property.address}
-                                    {property.unit_number && <span className="ml-2 py-0.5 px-2 bg-slate-900 text-white rounded-md text-[9px]">UNIT {property.unit_number}</span>}
+                            {property && (
+                                <div className="pt-4 border-t border-slate-200/50">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Linked Asset</p>
+                                    <p className="text-slate-900 font-black text-xs md:text-sm uppercase tracking-tight line-clamp-1">
+                                        {property.address}
+                                        {property.unit_number && <span className="ml-2 py-0.5 px-2 bg-slate-900 text-white rounded-md text-[8px]">UNIT {property.unit_number}</span>}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex flex-col justify-center items-start md:items-end md:text-right md:pr-4">
+                            <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">Total Amount Due</h3>
+                            <p className="text-5xl md:text-6xl font-black text-slate-900 tracking-tighter mb-4">{getCurrencySymbol(invoice.currency)}{Number(invoice.total || 0).toLocaleString()}</p>
+                            <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full ${invoice.status === 'paid' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                                <p className={`text-[9px] font-black uppercase tracking-widest ${invoice.status === 'paid' ? 'text-emerald-600' : 'text-amber-500'}`}>
+                                    {invoice.status === 'paid' ? 'Ledger Verified' : 'Payment Awaited'}
                                 </p>
                             </div>
-                        )}
-                    </div>
-                    <div className="flex flex-col justify-center items-end text-right pr-4">
-                        <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">Total Amount Due</h3>
-                        <p className="text-6xl font-black text-slate-900 tracking-tighter mb-4">{getCurrencySymbol(invoice.currency)}{Number(invoice.total || 0).toLocaleString()}</p>
-                        <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${invoice.status === 'paid' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                            <p className={`text-[9px] font-black uppercase tracking-widest ${invoice.status === 'paid' ? 'text-emerald-600' : 'text-amber-500'}`}>
-                                {invoice.status === 'paid' ? 'Ledger Verified' : 'Payment Awaited'}
-                            </p>
                         </div>
                     </div>
-                </div>
 
-                {/* LINE ITEMS TABLE */}
-                <div className="mb-12 overflow-hidden rounded-3xl border border-slate-100 shadow-sm">
-                    <table className="w-full text-[11px]">
-                        <thead>
-                            <tr className="bg-slate-900 text-white">
-                                <th className="text-left p-5 font-black uppercase text-[9px] tracking-widest">Service Description</th>
-                                <th className="text-center p-5 font-black uppercase text-[9px] tracking-widest">Qty</th>
-                                <th className="text-right p-5 font-black uppercase text-[9px] tracking-widest">Rate</th>
-                                <th className="text-right p-5 font-black uppercase text-[9px] tracking-widest">Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {items.map((item: any, index: number) => (
-                                <tr key={index} className="hover:bg-slate-50/50">
-                                    <td className="p-5">
-                                        <p className="font-black text-slate-900 uppercase tracking-tight text-sm">{item.description || 'Professional Real Estate Service'}</p>
-                                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Reference: TRX-{index + 101}</p>
-                                    </td>
-                                    <td className="p-5 text-center font-bold text-slate-600">{item.quantity || 1}</td>
-                                    <td className="p-5 text-right font-bold text-slate-600">{getCurrencySymbol(invoice.currency)}{Number(item.amount || 0).toLocaleString()}</td>
-                                    <td className="p-5 text-right font-black text-slate-900 text-base">{getCurrencySymbol(invoice.currency)}{(Number(item.amount || 0) * (item.quantity || 1)).toLocaleString()}</td>
+                    {/* LINE ITEMS TABLE */}
+                    <div className="mb-8 md:mb-12 overflow-x-auto rounded-3xl border border-slate-100 shadow-sm scrollbar-hide">
+                        <table className="w-full text-[10px] md:text-[11px] min-w-[600px] md:min-w-0">
+                            <thead>
+                                <tr className="bg-slate-900 text-white">
+                                    <th className="text-left p-4 md:p-5 font-black uppercase text-[8px] md:text-[9px] tracking-widest">Service Description</th>
+                                    <th className="text-center p-4 md:p-5 font-black uppercase text-[8px] md:text-[9px] tracking-widest">Qty</th>
+                                    <th className="text-right p-4 md:p-5 font-black uppercase text-[8px] md:text-[9px] tracking-widest">Rate</th>
+                                    <th className="text-right p-4 md:p-5 font-black uppercase text-[8px] md:text-[9px] tracking-widest">Amount</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                        <tfoot>
-                            <tr className="bg-slate-50/50 font-black text-slate-900">
-                                <td colSpan={3} className="p-5 text-right uppercase text-[9px] tracking-widest text-slate-400">Transaction Subtotal</td>
-                                <td className="p-5 text-right text-lg tracking-tighter">{getCurrencySymbol(invoice.currency)}{Number(invoice.total || 0).toLocaleString()}</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {items.map((item: any, index: number) => (
+                                    <tr key={index} className="hover:bg-slate-50/50">
+                                        <td className="p-4 md:p-5">
+                                            <p className="font-black text-slate-900 uppercase tracking-tight text-xs md:text-sm">{item.description || 'Professional Real Estate Service'}</p>
+                                            <p className="text-[7px] md:text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Reference: TRX-{index + 101}</p>
+                                        </td>
+                                        <td className="p-4 md:p-5 text-center font-bold text-slate-600">{item.quantity || 1}</td>
+                                        <td className="p-4 md:p-5 text-right font-bold text-slate-600">{getCurrencySymbol(invoice.currency)}{Number(item.amount || 0).toLocaleString()}</td>
+                                        <td className="p-4 md:p-5 text-right font-black text-slate-900 text-sm md:text-base">{getCurrencySymbol(invoice.currency)}{(Number(item.amount || 0) * (item.quantity || 1)).toLocaleString()}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                            <tfoot>
+                                <tr className="bg-slate-50/50 font-black text-slate-900">
+                                    <td colSpan={3} className="p-4 md:p-5 text-right uppercase text-[8px] md:text-[9px] tracking-widest text-slate-400">Transaction Subtotal</td>
+                                    <td className="p-4 md:p-5 text-right text-base md:text-lg tracking-tighter">{getCurrencySymbol(invoice.currency)}{Number(invoice.total || 0).toLocaleString()}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
 
-                <div className="grid grid-cols-2 gap-10">
-                    <div className="space-y-4">
-                        <div className="p-6 rounded-2xl bg-slate-50 border border-slate-100 italic text-slate-500 text-[10px] font-medium leading-relaxed">
-                            <h4 className="font-black uppercase tracking-widest text-slate-400 text-[8px] mb-2 not-italic">Notes & Compliance</h4>
-                            {invoice.notes || 'This invoice is a digitally verified ledger entry. Please settle the balance as per the agreed terms of service.'}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
+                        <div className="space-y-4">
+                            <div className="p-5 md:p-6 rounded-2xl bg-slate-50 border border-slate-100 italic text-slate-500 text-[9px] md:text-[10px] font-medium leading-relaxed">
+                                <h4 className="font-black uppercase tracking-widest text-slate-400 text-[8px] mb-2 not-italic">Notes & Compliance</h4>
+                                {invoice.notes || 'This invoice is a digitally verified ledger entry. Please settle the balance as per the agreed terms of service.'}
+                            </div>
+                        </div>
+                        <div className="flex flex-col justify-end">
+                            <div className="border-t-2 border-slate-900 pt-6 flex justify-between items-baseline">
+                                <span className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Total Settlement Ammount</span>
+                                <span className="text-3xl md:text-4xl font-black tracking-tighter text-slate-900">{getCurrencySymbol(invoice.currency)}{Number(invoice.total || 0).toLocaleString()}</span>
+                            </div>
+                            <p className="text-[8px] text-slate-400 text-right uppercase tracking-widest font-black mt-2">All prices in {invoice.currency || 'USD'}</p>
                         </div>
                     </div>
-                    <div className="flex flex-col justify-end">
-                        <div className="border-t-2 border-slate-900 pt-6 flex justify-between items-baseline">
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Total Settlement Ammount</span>
-                            <span className="text-4xl font-black tracking-tighter text-slate-900">{getCurrencySymbol(invoice.currency)}{Number(invoice.total || 0).toLocaleString()}</span>
-                        </div>
-                        <p className="text-[8px] text-slate-400 text-right uppercase tracking-widest font-black mt-2">All prices in {invoice.currency || 'USD'}</p>
-                    </div>
-                </div>
 
-                {/* FOOTER */}
-                <div className="mt-16 pt-8 border-t border-slate-100 flex justify-between items-center text-[8px] font-black uppercase tracking-widest text-slate-400">
-                    <div className="flex items-center gap-2">
-                        <ShieldCheck className="w-3 h-3 text-emerald-500" />
-                        <span>Corporate Ledger &copy; {new Date().getFullYear()}</span>
-                    </div>
-                    <div className="flex gap-4 items-center">
-                        <span className="opacity-30">Securely processed via PropFlow</span>
-                        <div className="w-0.5 h-0.5 rounded-full bg-slate-200" />
-                        <span>Digital Signature: {id.slice(0, 12).toUpperCase()}</span>
-                        <div className="w-0.5 h-0.5 rounded-full bg-slate-200" />
-                        <span>Page 01 / 01</span>
+                    {/* FOOTER */}
+                    <div className="mt-12 md:mt-16 pt-6 md:pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 text-[8px] font-black uppercase tracking-widest text-slate-400">
+                        <div className="flex items-center gap-2">
+                            <ShieldCheck className="w-3 h-3 text-emerald-500" />
+                            <span>Corporate Ledger &copy; {new Date().getFullYear()}</span>
+                        </div>
+                        <div className="flex flex-wrap justify-center md:justify-end gap-3 md:gap-4 items-center">
+                            <span className="opacity-30">Securely processed via PropFlow</span>
+                            <div className="w-0.5 h-0.5 rounded-full bg-slate-200 hidden md:block" />
+                            <span>Digital Signature: {id.slice(0, 12).toUpperCase()}</span>
+                            <div className="w-0.5 h-0.5 rounded-full bg-slate-200 hidden md:block" />
+                            <span>Page 01 / 01</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -558,24 +569,25 @@ export default function InvoiceViewPage() {
                             <Trash2 className="w-5 h-5" />
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="rounded-[2rem]">
+                    <DialogContent className="rounded-3xl md:rounded-[2rem] w-[calc(100%-2rem)] max-w-sm">
                         <DialogHeader>
                             <DialogTitle className="text-xl font-black tracking-tight">Purge Ledger Entry</DialogTitle>
-                            <DialogDescription className="font-medium">
+                            <DialogDescription className="font-medium text-xs">
                                 Are you absolutely sure you want to delete this invoice? This action is permanent and cannot be undone.
                             </DialogDescription>
                         </DialogHeader>
-                        <DialogFooter className="gap-2">
+                        <DialogFooter className="gap-2 mt-4">
                             <DialogClose asChild>
-                                <Button variant="ghost" className="rounded-xl font-bold">Cancel</Button>
+                                <Button variant="ghost" className="h-12 rounded-xl font-bold flex-1 md:flex-none">Cancel</Button>
                             </DialogClose>
-                            <Button onClick={deleteInvoice} disabled={isDeleting} className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold">
+                            <Button onClick={deleteInvoice} disabled={isDeleting} className="h-12 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold flex-1 md:flex-none">
                                 {isDeleting ? 'Purging...' : 'Execute Purge'}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
             </div>
-        </div >
+        </div>
+
     )
 }

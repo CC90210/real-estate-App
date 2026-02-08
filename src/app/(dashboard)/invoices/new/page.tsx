@@ -377,44 +377,47 @@ export default function NewInvoicePage() {
                             <Badge variant="outline" className="border-2 border-slate-100 px-4 py-2 rounded-xl text-[10px] font-black text-slate-400 uppercase tracking-widest">{items.length} Entries</Badge>
                         </div>
 
-                        <div className="space-y-4">
+                        <div className="space-y-6">
                             {items.map((item, index) => (
-                                <div key={item.id} className="flex gap-4 items-start group animate-in slide-in-from-right-4 duration-500" style={{ animationDelay: `${index * 100}ms` }}>
-                                    <div className="flex-1">
+                                <div key={item.id} className="flex flex-col md:flex-row gap-4 items-start group animate-in slide-in-from-right-4 duration-500 p-4 md:p-0 bg-slate-50/30 md:bg-transparent rounded-[2.5rem] border md:border-none" style={{ animationDelay: `${index * 100}ms` }}>
+                                    <div className="w-full md:flex-1">
+                                        <div className="absolute -top-3 left-8 bg-white px-3 md:hidden text-[10px] font-black text-slate-400 uppercase tracking-widest z-10 border rounded-full">Description</div>
                                         <Input
-                                            placeholder="Line item description..."
-                                            className="h-20 bg-white border-slate-100 border-4 rounded-[2.5rem] font-black px-10 hover:border-indigo-100 focus:border-indigo-200 transition-all text-lg shadow-sm"
+                                            placeholder="Line item description (e.g. Monthly Rent)"
+                                            className="h-16 md:h-20 bg-white border-slate-100 border-4 rounded-[2rem] md:rounded-[2.5rem] font-black px-8 md:px-10 hover:border-indigo-100 focus:border-indigo-200 transition-all md:text-lg shadow-sm"
                                             value={item.description}
                                             onChange={e => updateItem(item.id, 'description', e.target.value)}
                                         />
                                     </div>
-                                    <div className="w-32 relative">
-                                        <div className="absolute -top-3 left-6 bg-white px-2 text-[8px] font-black text-slate-300 uppercase tracking-widest z-10 border rounded-full">Qty</div>
-                                        <Input
-                                            type="number"
-                                            className="h-20 bg-white border-slate-100 border-4 rounded-[2rem] font-black text-center px-2 hover:border-indigo-100 transition-all shadow-sm"
-                                            value={item.quantity}
-                                            onChange={e => updateItem(item.id, 'quantity', parseFloat(e.target.value))}
-                                        />
+                                    <div className="flex w-full md:w-auto gap-4 items-end">
+                                        <div className="flex-1 md:w-28 relative">
+                                            <div className="absolute -top-3 left-6 bg-white px-2 text-[8px] md:text-[10px] font-black text-slate-300 md:text-slate-400 uppercase tracking-widest z-10 border rounded-full">Qty</div>
+                                            <Input
+                                                type="number"
+                                                className="h-16 md:h-20 bg-white border-slate-100 border-4 rounded-[1.5rem] md:rounded-[2rem] font-black text-center px-2 hover:border-indigo-100 transition-all shadow-sm"
+                                                value={item.quantity}
+                                                onChange={e => updateItem(item.id, 'quantity', parseFloat(e.target.value))}
+                                            />
+                                        </div>
+                                        <div className="flex-[2] md:w-48 relative">
+                                            <div className="absolute -top-3 left-6 bg-white px-2 text-[8px] md:text-[10px] font-black text-slate-300 md:text-slate-400 uppercase tracking-widest z-10 border rounded-full">Amount</div>
+                                            <div className="absolute left-6 md:left-8 top-1/2 -translate-y-1/2 text-slate-900 z-10 font-black text-lg md:text-xl">{getCurrencySymbol(currency)}</div>
+                                            <Input
+                                                type="number"
+                                                className="h-16 md:h-20 pl-14 md:pl-16 bg-white border-slate-100 border-4 rounded-[1.5rem] md:rounded-[2.5rem] font-black hover:border-indigo-100 transition-all pr-4 md:pr-8 shadow-sm md:text-xl"
+                                                value={item.amount}
+                                                onChange={e => updateItem(item.id, 'amount', parseFloat(e.target.value))}
+                                            />
+                                        </div>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => removeItem(item.id)}
+                                            className="h-16 w-16 md:h-20 md:w-20 rounded-[1.5rem] md:rounded-[2.5rem] text-slate-200 hover:text-rose-500 hover:bg-rose-50 transition-all shrink-0"
+                                        >
+                                            <Trash2 className="w-6 h-6 md:w-8 md:h-8" />
+                                        </Button>
                                     </div>
-                                    <div className="w-52 relative">
-                                        <div className="absolute -top-3 left-6 bg-white px-2 text-[8px] font-black text-slate-300 uppercase tracking-widest z-10 border rounded-full">Amount</div>
-                                        <div className="absolute left-8 top-1/2 -translate-y-1/2 text-slate-900 z-10 font-black text-xl">{getCurrencySymbol(currency)}</div>
-                                        <Input
-                                            type="number"
-                                            className="h-20 pl-14 bg-white border-slate-100 border-4 rounded-[2.5rem] font-black hover:border-indigo-100 transition-all pr-8 shadow-sm text-xl"
-                                            value={item.amount}
-                                            onChange={e => updateItem(item.id, 'amount', parseFloat(e.target.value))}
-                                        />
-                                    </div>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => removeItem(item.id)}
-                                        className="h-20 w-20 rounded-[2.5rem] text-slate-200 hover:text-rose-500 hover:bg-rose-50 transition-all shrink-0"
-                                    >
-                                        <Trash2 className="w-8 h-8" />
-                                    </Button>
                                 </div>
                             ))}
                         </div>

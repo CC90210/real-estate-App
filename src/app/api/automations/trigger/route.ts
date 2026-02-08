@@ -144,7 +144,8 @@ export async function POST(req: Request) {
         })
 
         if (!response.ok) {
-            throw new Error(`n8n responded with ${response.status}`)
+            const errorText = await response.text();
+            throw new Error(`n8n Gateway Error: ${response.status} ${response.statusText} - Detail: ${errorText.substring(0, 500)}`)
         }
 
         // Update log status

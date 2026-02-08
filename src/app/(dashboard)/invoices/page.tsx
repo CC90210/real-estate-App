@@ -162,10 +162,10 @@ export default function InvoicesPage() {
                                         isOverdue ? "ring-2 ring-rose-100" : ""
                                     )}>
                                         <CardContent className="p-0">
-                                            <div className="flex items-center justify-between p-8">
-                                                <div className="flex items-center gap-8">
-                                                    <div className="h-20 w-20 rounded-[1.5rem] bg-slate-50 flex items-center justify-center font-bold text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500 shadow-inner group-hover:rotate-6 group-hover:scale-110">
-                                                        <FileText className="w-8 h-8" />
+                                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 sm:p-8 gap-6 sm:gap-8">
+                                                <div className="flex items-center gap-4 sm:gap-8">
+                                                    <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-[1.2rem] sm:rounded-[1.5rem] bg-slate-50 flex items-center justify-center font-bold text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500 shadow-inner group-hover:rotate-6 group-hover:scale-110">
+                                                        <FileText className="w-6 h-6 sm:w-8 sm:h-8" />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <div className="flex items-center gap-4">
@@ -176,29 +176,29 @@ export default function InvoicesPage() {
                                                                 {status.label}
                                                             </Badge>
                                                         </div>
-                                                        <div className="flex items-center gap-3 text-sm font-bold text-slate-500 uppercase tracking-widest">
+                                                        <div className="flex flex-wrap items-center gap-3 text-xs font-bold text-slate-500 uppercase tracking-widest">
                                                             <span>{invoice.recipient_name}</span>
                                                             {invoice.property?.address && (
                                                                 <>
-                                                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-200" />
-                                                                    <span className="text-slate-400 truncate max-w-[300px]">{invoice.property.address}</span>
+                                                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-200 hidden sm:block" />
+                                                                    <span className="text-slate-400 truncate max-w-[200px] sm:max-w-[300px]">{invoice.property.address}</span>
                                                                 </>
                                                             )}
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-center gap-12">
-                                                    <div className="text-right">
-                                                        <p className="text-4xl font-black text-slate-900 tracking-tighter">
+                                                <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-8 sm:gap-12">
+                                                    <div className="text-left sm:text-right">
+                                                        <p className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tighter">
                                                             {getCurrencySymbol(invoice.currency)}{Number(invoice.total || 0).toLocaleString()}
                                                         </p>
                                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2">
-                                                            Due {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Upon Receipt'}
+                                                            Due {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Upon Receipt'}
                                                         </p>
                                                     </div>
-                                                    <div className="h-14 w-14 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-slate-900 group-hover:text-white transition-all duration-500 shadow-sm border border-slate-100 group-hover:scale-110 group-hover:-rotate-45">
-                                                        <ArrowRight className="w-6 h-6" />
+                                                    <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-slate-900 group-hover:text-white transition-all duration-500 shadow-sm border border-slate-100 group-hover:scale-110 group-hover:-rotate-45">
+                                                        <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6" />
                                                     </div>
                                                 </div>
                                             </div>
