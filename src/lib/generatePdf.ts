@@ -21,16 +21,18 @@ function sanitizeForCanvas(doc: Document) {
         console.warn("Manual innerHTML sanitization failed, falling back to traversal.");
     }
 
-    // Stage 2: External Link Purge
-    // html2canvas tries to parse external CSS. If those files contain 'lab()', it crashes.
-    // By removing links, we force it to rely on the already computed styles we've inline-sanitized.
-    const links = doc.getElementsByTagName('link');
-    for (let i = links.length - 1; i >= 0; i--) {
-        const link = links[i];
-        if (link.rel === 'stylesheet') {
-            link.parentNode?.removeChild(link);
+    // Stage 2: Stylesheet Containment
+    // We explicitly disable all stylesheets and remove all style/link tags.
+    // This prevents html2canvas from attempting to parse any external or internal
+    // CSS rules that might contain unsupported functions.
+    try {
+        for (let i = 0; i < doc.styleSheets.length; i++) {
+            (doc.styleSheets[i] as any).disabled = true;
         }
-    }
+    } catch (e) { }
+
+    const styleElements = doc.querySelectorAll('style, link[rel="stylesheet"]');
+    styleElements.forEach(el => el.parentNode?.removeChild(el));
 
     // Stage 3: Deep Element Sanitization (Recursive defense)
     const allElements = doc.getElementsByTagName('*');
