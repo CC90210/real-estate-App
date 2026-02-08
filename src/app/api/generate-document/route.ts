@@ -214,6 +214,29 @@ export async function POST(request: Request) {
         }
 
         // ====================================================================
+        // TRIGGER AUTOMATIONS (Webhooks & Email)
+        // ====================================================================
+        try {
+            const { triggerDocumentAutomations } = await import('@/lib/automations/triggers');
+            // Construct the doc object for automations
+            const automationDoc = {
+                id: savedDoc.id,
+                type: type,
+                url: `${process.env.NEXT_PUBLIC_APP_URL}/documents/${savedDoc.id}`,
+                property: documentData.property ? { address: documentData.property.address } : undefined,
+                application: documentData.application ? {
+                    applicant_name: documentData.application.applicant_name,
+                    applicant_email: documentData.application.applicant_email || documentData.application.email
+                } : undefined
+            };
+
+            // Non-blocking call
+            triggerDocumentAutomations(companyId, automationDoc as any).catch(console.error);
+        } catch (autoError) {
+            console.error('Automation trigger failed:', autoError);
+        }
+
+        // ====================================================================
         // LOG ACTIVITY FOR DASHBOARD FEED
         // ====================================================================
         try {

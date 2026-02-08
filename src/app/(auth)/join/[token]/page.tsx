@@ -1,172 +1,96 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Building2, Loader2, CheckCircle, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
-import { Loader2, AlertTriangle, CheckCircle, Shield, User, Building2 } from 'lucide-react'
 
-export default function JoinPage({ params }: { params: { token: string } }) {
+export default function JoinPage() {
+    const params = useParams()
     const router = useRouter()
+    const token = params.token as string
     const supabase = createClient()
-    const [invitation, setInvitation] = useState<any>(null)
-    const [company, setCompany] = useState<any>(null)
+
     const [loading, setLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
-    const [formData, setFormData] = useState({
-        email: '',
-        password: '',
-        fullName: ''
-    })
     const [submitting, setSubmitting] = useState(false)
+    const [invitation, setInvitation] = useState<any>(null)
+    const [error, setError] = useState<string | null>(null)
+    const [form, setForm] = useState({
+        fullName: '',
+        password: '',
+        confirmPassword: ''
+    })
 
     // Fetch invitation details
     useEffect(() => {
         async function fetchInvitation() {
-            try {
-                // Use service role or RPC to fetch by token
-                const { data, error } = await supabase
-                    .rpc('get_invitation_by_token', { p_token: params.token })
+            const { data, error } = await supabase
+                .from('team_invitations')
+                .select('*, company:companies(name)')
+                .eq('token', token)
+                .is('accepted_at', null)
+                .gt('expires_at', new Date().toISOString())
+                .single()
 
-                if (error) throw error
-                if (!data || data.length === 0) {
-                    setError('Invalid or expired invitation link')
-                    return
-                }
-
-                const inv = data[0]
-
-                if (inv.status !== 'pending') {
-                    setError('This invitation has already been used or expired')
-                    return
-                }
-
-                if (new Date(inv.expires_at) < new Date()) {
-                    setError('This invitation has expired')
-                    return
-                }
-
-                setInvitation(inv)
-
-                // Fetch company details
-                // This might fail if RLS prevents reading companies without auth.
-                // However, we usually allow reading company name/logo publicly or minimal RLS.
-                // If it fails, we handle gracefully.
-                const { data: companyData, error: companyError } = await supabase
-                    .from('companies')
-                    .select('name, logo_url')
-                    .eq('id', inv.company_id)
-                    .single()
-
-                if (companyError && companyError.code !== 'PGRST116') {
-                    // ignore if not found or RLS error, just don't show company name
-                    console.warn('Could not fetch company details:', companyError)
-                }
-                setCompany(companyData)
-
-                // Pre-fill email if provided
-                if (inv.email) {
-                    setFormData(prev => ({ ...prev, email: inv.email }))
-                }
-
-            } catch (err: any) {
-                setError(err.message || 'Failed to load invitation')
-            } finally {
-                setLoading(false)
+            if (error || !data) {
+                setError('This invitation is invalid or has expired.')
+            } else {
+                setInvitation(data)
             }
+            setLoading(false)
         }
 
         fetchInvitation()
-    }, [params.token])
+    }, [token, supabase])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+
+        if (form.password !== form.confirmPassword) {
+            toast.error('Passwords do not match')
+            return
+        }
+
+        if (form.password.length < 8) {
+            toast.error('Password must be at least 8 characters')
+            return
+        }
+
         setSubmitting(true)
 
         try {
-            // 1. Create auth user
-            const { data: authData, error: authError } = await supabase.auth.signUp({
-                email: formData.email,
-                password: formData.password,
-                options: {
-                    data: {
-                        full_name: formData.fullName
-                    }
-                }
+            const res = await fetch('/api/team/accept', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    token,
+                    fullName: form.fullName,
+                    password: form.password,
+                }),
             })
 
-            if (authError) throw authError
+            const data = await res.json()
 
-            // Determine if we need to manually insert profile or if trigger does it.
-            // Earlier steps mentioned a trigger for profile creation.
-            // If trigger uses metadata, we are good.
-            // However, the prompt's code block manually inserts profile.
-            // manual insert might fail if trigger already did it.
-            // Safest: try to update profile, if user exists. Upsert.
+            if (data.error) throw new Error(data.error)
 
-            const userId = authData.user?.id
-            if (!userId) throw new Error("No user ID returned from signup")
-
-            const { error: profileError } = await supabase
-                .from('profiles')
-                .upsert({
-                    id: userId,
-                    email: formData.email,
-                    full_name: formData.fullName,
-                    role: invitation.role,
-                    company_id: invitation.company_id
-                })
-
-            if (profileError) {
-                console.error("Profile creation error", profileError)
-                // If trigger created it, maybe we just need update?
-                // But upsert handles both.
-                throw profileError
-            }
-
-            // 3. Mark invitation as accepted
-            await supabase
-                .from('team_invitations')
-                .update({
-                    status: 'accepted',
-                    accepted_at: new Date().toISOString(),
-                    accepted_by: userId
-                })
-                .eq('id', invitation.id)
-
-            // 4. Log activity
-            // This requires RLS allowing insert. Activity log usually RLS is user based.
-            await supabase.from('activity_log').insert({
-                company_id: invitation.company_id,
-                user_id: userId,
-                action: 'joined',
-                entity_type: 'team',
-                metadata: { role: invitation.role }
-            })
-
-            toast.success('Account created successfully!')
-            router.push('/dashboard')
+            toast.success(data.message || 'Welcome to the team!')
+            router.push('/login?joined=true')
 
         } catch (err: any) {
-            toast.error('Failed to create account', { description: err.message })
+            toast.error('Failed to join', { description: err.message })
         } finally {
             setSubmitting(false)
         }
     }
 
-    const roleConfig = {
-        admin: { icon: Shield, color: 'text-red-600', bg: 'bg-red-100', label: 'Administrator' },
-        agent: { icon: User, color: 'text-blue-600', bg: 'bg-blue-100', label: 'Agent' },
-        landlord: { icon: Building2, color: 'text-green-600', bg: 'bg-green-100', label: 'Landlord' }
-    }
-
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
             </div>
         )
@@ -174,13 +98,18 @@ export default function JoinPage({ params }: { params: { token: string } }) {
 
     if (error) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-                <Card className="max-w-md w-full">
-                    <CardContent className="pt-6 text-center">
-                        <AlertTriangle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
-                        <h2 className="text-xl font-semibold mb-2">Invalid Invitation</h2>
-                        <p className="text-gray-500 mb-4">{error}</p>
-                        <Button onClick={() => router.push('/login')}>
+            <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50/50">
+                <Card className="max-w-md w-full border-red-100 shadow-xl">
+                    <CardContent className="pt-8 text-center">
+                        <div className="h-16 w-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <XCircle className="h-8 w-8" />
+                        </div>
+                        <h2 className="text-2xl font-black text-slate-900 mb-2 leading-none">Invalid Invitation</h2>
+                        <p className="text-slate-500 font-medium mb-8 leading-relaxed px-4">{error}</p>
+                        <Button
+                            onClick={() => router.push('/login')}
+                            className="w-full h-12 bg-slate-900 hover:bg-slate-800 rounded-xl font-bold transition-all"
+                        >
                             Go to Login
                         </Button>
                     </CardContent>
@@ -189,90 +118,78 @@ export default function JoinPage({ params }: { params: { token: string } }) {
         )
     }
 
-    // Default to Agent if role is unknown, though it should be known
-    const roleKey = invitation.role as keyof typeof roleConfig;
-    const role = roleConfig[roleKey] || roleConfig.agent
-    const RoleIcon = role.icon
-
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-            <Card className="max-w-md w-full">
-                <CardHeader className="text-center">
-                    {company?.logo_url ? (
-                        <img src={company.logo_url} alt={company.name} className="h-12 mx-auto mb-4" />
-                    ) : (
-                        <div className="h-12 w-12 bg-blue-600 rounded-lg mx-auto mb-4 flex items-center justify-center">
-                            <span className="text-white text-xl font-bold">{company?.name?.[0] || 'P'}</span>
-                        </div>
-                    )}
-                    <CardTitle>Join {company?.name || 'the team'}</CardTitle>
-                    <CardDescription>
-                        You've been invited to join as a team member
-                    </CardDescription>
-                </CardHeader>
-
-                <CardContent>
-                    {/* Role Badge */}
-                    <div className={`flex items-center justify-center gap-2 p-3 rounded-lg ${role.bg} mb-6`}>
-                        <RoleIcon className={`h-5 w-5 ${role.color}`} />
-                        <span className={`font-medium ${role.color}`}>
-                            Joining as {role.label}
-                        </span>
+        <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50/50">
+            <Card className="max-w-md w-full shadow-2xl shadow-slate-200 border-none rounded-[2rem] overflow-hidden">
+                <CardHeader className="text-center pt-10 pb-6 bg-white">
+                    <div className="h-14 w-14 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-indigo-100">
+                        <Building2 className="h-7 w-7 text-white" />
                     </div>
-
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                            <Label>Full Name</Label>
+                    <CardTitle className="text-3xl font-black tracking-tight text-slate-900">Join {invitation?.company?.name}</CardTitle>
+                    <p className="text-slate-500 font-medium mt-2">
+                        You've been invited as a <span className="text-indigo-600 font-bold uppercase tracking-wider text-xs ml-1">{invitation?.role}</span>
+                    </p>
+                </CardHeader>
+                <CardContent className="px-8 pb-10 space-y-6">
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        <div className="space-y-2">
+                            <Label className="text-slate-900 font-bold ml-1">Email</Label>
                             <Input
-                                required
-                                value={formData.fullName}
-                                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                                placeholder="John Doe"
+                                value={invitation?.email}
+                                disabled
+                                className="h-12 bg-slate-50 border-slate-100 text-slate-500 font-medium rounded-xl"
                             />
                         </div>
 
-                        <div>
-                            <Label>Email</Label>
+                        <div className="space-y-2">
+                            <Label className="text-slate-900 font-bold ml-1 text-sm uppercase tracking-wide">Full Name</Label>
                             <Input
-                                type="email"
                                 required
-                                value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                placeholder="john@example.com"
-                                disabled={!!invitation.email}
+                                placeholder="E.g. John Smith"
+                                value={form.fullName}
+                                onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+                                className="h-12 border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-900"
                             />
                         </div>
 
-                        <div>
-                            <Label>Password</Label>
+                        <div className="space-y-2">
+                            <Label className="text-slate-900 font-bold ml-1 text-sm uppercase tracking-wide">Create Password</Label>
                             <Input
                                 type="password"
                                 required
                                 minLength={8}
-                                value={formData.password}
-                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                 placeholder="Min. 8 characters"
+                                value={form.password}
+                                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                                className="h-12 border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-900"
                             />
                         </div>
 
-                        <Button type="submit" className="w-full" disabled={submitting}>
+                        <div className="space-y-2">
+                            <Label className="text-slate-900 font-bold ml-1 text-sm uppercase tracking-wide">Confirm Password</Label>
+                            <Input
+                                type="password"
+                                required
+                                placeholder="Repeat your password"
+                                value={form.confirmPassword}
+                                onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                                className="h-12 border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-900"
+                            />
+                        </div>
+
+                        <Button
+                            type="submit"
+                            className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black uppercase tracking-widest transition-all mt-4 hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-slate-200"
+                            disabled={submitting}
+                        >
                             {submitting ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Creating account...
-                                </>
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
                             ) : (
-                                'Create Account & Join'
+                                <CheckCircle className="h-4 w-4 mr-2" />
                             )}
+                            Join Team
                         </Button>
                     </form>
-
-                    <p className="text-center text-sm text-gray-500 mt-4">
-                        Already have an account?{' '}
-                        <a href="/login" className="text-blue-600 hover:underline">
-                            Sign in
-                        </a>
-                    </p>
                 </CardContent>
             </Card>
         </div>
