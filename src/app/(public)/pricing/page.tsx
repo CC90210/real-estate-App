@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { PLANS, PlanKey } from '@/lib/stripe/plans'
-import { getStripe } from '@/lib/stripe/client'
+import { PLANS, PlanKey } from '@/lib/stripe'
+import { getStripe } from '@/lib/stripe-client'
 import { Button } from '@/components/ui/button'
 import { Check, X, Sparkles, Zap, Shield, FileText, Building2, Loader2 } from 'lucide-react'
 import { PublicNavbar } from '@/components/layout/PublicNavbar'
@@ -17,14 +17,14 @@ export default function PricingPage() {
     const [loading, setLoading] = useState<string | null>(null)
     const [interval, setInterval] = useState<'monthly' | 'yearly'>('monthly')
 
-    const handleCheckout = async (planKey: PlanKey) => {
+    const handleCheckout = async (planKey: string) => {
         setLoading(planKey)
 
         try {
-            const response = await fetch('/api/stripe/create-checkout', {
+            const response = await fetch('/api/stripe/checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ planKey, interval }),
+                body: JSON.stringify({ plan: planKey }),
             })
 
             const data = await response.json()

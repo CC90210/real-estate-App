@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
-import { stripe } from '@/lib/stripe/server'
+import { stripe } from '@/lib/stripe'
 import { createClient } from '@supabase/supabase-js'
 import Stripe from 'stripe'
 
-// Use service role for webhook (bypasses RLS)
+// Admin client for webhook (bypasses RLS)
 const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -12,37 +12,48 @@ const supabaseAdmin = createClient(
 
 export async function POST(req: Request) {
     const body = await req.text()
-
-    // Check if headers is awaitable or not. Next.js 13+ headers() is async in server components but sync in route handlers in some versions.
-    // However, in latest Next.js, headers() is a function that returns headers list.
-    const headersList = await headers();
+    const headersList = await headers()
     const signature = headersList.get('stripe-signature')!
 
     let event: Stripe.Event
 
     try {
+        // ✅ USING THE CORRECT VARIABLE NAME FROM VERCEL
         event = stripe.webhooks.constructEvent(
             body,
             signature,
-            process.env.STRIPE_WEBHOOK_SECRET!
+            process.env.STRIPE_WEBHOOK_SIGNING_SECRET!  // Matches your Vercel setup
         )
     } catch (error: any) {
         console.error('Webhook signature verification failed:', error.message)
-        return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
+        return NextResponse.json(
+            { error: `Webhook Error: ${error.message}` },
+            { status: 400 }
+        )
     }
+
+    console.log('Received Stripe event:', event.type)
 
     try {
         switch (event.type) {
+            // ====== PROPFLOW SUBSCRIPTION EVENTS ======
+
             case 'checkout.session.completed': {
                 const session = event.data.object as Stripe.Checkout.Session
-                await handleCheckoutComplete(session)
+
+                // Check if this is a Connect payment or subscription
+                if (session.mode === 'subscription') {
+                    await handleSubscriptionCheckout(session)
+                } else if (session.mode === 'payment') {
+                    await handleConnectPayment(session)
+                }
                 break
             }
 
             case 'customer.subscription.created':
             case 'customer.subscription.updated': {
                 const subscription = event.data.object as Stripe.Subscription
-                await handleSubscriptionChange(subscription)
+                await handleSubscriptionUpdate(subscription)
                 break
             }
 
@@ -54,102 +65,129 @@ export async function POST(req: Request) {
 
             case 'invoice.payment_succeeded': {
                 const invoice = event.data.object as Stripe.Invoice
-                await handleInvoicePaid(invoice)
+                console.log('Payment succeeded for invoice:', invoice.id)
                 break
             }
 
             case 'invoice.payment_failed': {
                 const invoice = event.data.object as Stripe.Invoice
-                await handleInvoiceFailed(invoice)
+                console.log('Payment failed for invoice:', invoice.id)
+                // Could send email notification to user here
                 break
             }
+
+            default:
+                console.log(`Unhandled event type: ${event.type}`)
         }
 
         return NextResponse.json({ received: true })
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Webhook handler error:', error)
-        return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 })
+        return NextResponse.json(
+            { error: 'Webhook handler failed' },
+            { status: 500 }
+        )
     }
 }
 
-async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
+// Handle PropFlow subscription checkout completion
+async function handleSubscriptionCheckout(session: Stripe.Checkout.Session) {
     const userId = session.metadata?.user_id
     const plan = session.metadata?.plan
 
-    if (!userId) return
+    if (!userId) {
+        console.log('No user_id in session metadata')
+        return
+    }
 
-    // Update company subscription status
+    console.log(`Processing subscription for user ${userId}, plan: ${plan}`)
+
+    // Get user's company
     const { data: profile } = await supabaseAdmin
         .from('profiles')
         .select('company_id')
         .eq('id', userId)
         .single()
 
-    if (profile?.company_id) {
+    if (!profile?.company_id) {
+        console.log('No company found for user')
+        return
+    }
+
+    // Update profile with Stripe customer ID
+    await supabaseAdmin
+        .from('profiles')
+        .update({ stripe_customer_id: session.customer as string })
+        .eq('id', userId)
+
+    // Update company subscription status
+    await supabaseAdmin
+        .from('companies')
+        .update({
+            subscription_status: 'trialing', // 14-day trial
+            subscription_plan: plan,
+            stripe_subscription_id: session.subscription as string,
+            subscription_current_period_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // Roughly 14 days for trial end
+        })
+        .eq('id', profile.company_id)
+
+    console.log(`Updated company ${profile.company_id} with subscription`)
+}
+
+// Handle subscription updates
+async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
+    const { data: company } = await supabaseAdmin
+        .from('companies')
+        .select('id')
+        .eq('stripe_subscription_id', subscription.id)
+        .single()
+
+    if (company) {
         await supabaseAdmin
             .from('companies')
             .update({
-                subscription_status: 'trialing',
-                // subscription_plan: plan, // Mapping needed if column exists, or rely on subscription_tier if compatible
-                stripe_subscription_id: session.subscription as string,
+                subscription_status: subscription.status,
+                subscription_current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
             })
-            .eq('id', profile.company_id)
+            .eq('id', company.id)
     }
 }
 
-async function handleSubscriptionChange(subscription: Stripe.Subscription) {
-    const customerId = subscription.customer as string
-
-    // Find company by Stripe customer ID
-    const { data: profile } = await supabaseAdmin
-        .from('profiles')
-        .select('company_id')
-        .eq('stripe_customer_id', customerId)
-        .single()
-
-    if (!profile?.company_id) return
-
-    const status = subscription.status
-    const plan = subscription.metadata?.plan || 'starter'
-
-    await supabaseAdmin
-        .from('companies')
-        .update({
-            subscription_status: status,
-            // subscription_plan: plan,
-            stripe_subscription_id: subscription.id,
-            subscription_current_period_end: (subscription as any).current_period_end ? new Date((subscription as any).current_period_end * 1000).toISOString() : null,
-        })
-        .eq('id', profile.company_id)
-}
-
+// Handle subscription cancellation
 async function handleSubscriptionCancelled(subscription: Stripe.Subscription) {
-    const customerId = subscription.customer as string
-
-    const { data: profile } = await supabaseAdmin
-        .from('profiles')
-        .select('company_id')
-        .eq('stripe_customer_id', customerId)
+    const { data: company } = await supabaseAdmin
+        .from('companies')
+        .select('id')
+        .eq('stripe_subscription_id', subscription.id)
         .single()
 
-    if (!profile?.company_id) return
+    if (company) {
+        await supabaseAdmin
+            .from('companies')
+            .update({
+                subscription_status: 'cancelled',
+                subscription_plan: null,
+            })
+            .eq('id', company.id)
+    }
+}
 
+// Handle payments from tenants to agents (Stripe Connect)
+async function handleConnectPayment(session: Stripe.Checkout.Session) {
+    const companyId = session.metadata?.company_id
+
+    if (!companyId) return
+
+    // Update tenant_payments record
     await supabaseAdmin
-        .from('companies')
+        .from('tenant_payments')
         .update({
-            subscription_status: 'cancelled',
-            // subscription_plan: null,
+            status: 'paid',
+            paid_at: new Date().toISOString(),
+            stripe_payment_intent_id: session.payment_intent as string,
         })
-        .eq('id', profile.company_id)
-}
+        .eq('stripe_checkout_session_id', session.id)
 
-async function handleInvoicePaid(invoice: Stripe.Invoice) {
-    // Log successful payment
-    console.log('Invoice paid:', invoice.id)
-}
-
-async function handleInvoiceFailed(invoice: Stripe.Invoice) {
-    // Handle failed payment - notify user
-    console.log('Invoice failed:', invoice.id)
+    console.log(`Payment completed for company ${companyId}`)
 }
