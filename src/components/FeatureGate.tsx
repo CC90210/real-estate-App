@@ -4,7 +4,7 @@ import { usePlanLimits, PlanLimits } from '@/hooks/use-plan-limits'
 import { Button } from '@/components/ui/button'
 import { Lock, Sparkles, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { PLANS, PlanId } from '@/lib/stripe'
+import { PLANS, PlanId } from '@/lib/stripe/plans'
 
 interface FeatureGateProps {
     feature: keyof PlanLimits['features']

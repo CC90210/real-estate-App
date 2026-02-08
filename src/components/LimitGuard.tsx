@@ -4,7 +4,7 @@ import { usePlanLimits } from '@/hooks/use-plan-limits'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle, ArrowRight, Zap } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { PLANS } from '@/lib/stripe'
+import { PLANS } from '@/lib/stripe/plans'
 
 interface LimitGuardProps {
     type: 'properties' | 'teamMembers'
@@ -47,7 +47,7 @@ export function LimitGuard({ type, children }: LimitGuardProps) {
                     <div className="h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner border border-slate-50">
                         <div
                             className={`h-full rounded-full transition-all duration-1000 ease-out shadow-sm ${percentage >= 100 ? 'bg-red-500' :
-                                    percentage >= 80 ? 'bg-yellow-500' : 'bg-gradient-to-r from-indigo-500 to-violet-600'
+                                percentage >= 80 ? 'bg-yellow-500' : 'bg-gradient-to-r from-indigo-500 to-violet-600'
                                 }`}
                             style={{ width: `${Math.min(percentage, 100)}%` }}
                         />

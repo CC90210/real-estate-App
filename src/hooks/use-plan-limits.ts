@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import { PLANS, PlanId } from '@/lib/stripe'
+import { PLANS, PlanId } from '@/lib/stripe/plans'
 
 export interface PlanLimits {
     plan: PlanId | null
