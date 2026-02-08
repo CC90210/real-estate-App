@@ -41,7 +41,7 @@ export function FeatureGate({ feature, children, fallback }: FeatureGateProps) {
                 </div>
                 <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">Feature Locked.</h3>
                 <p className="text-slate-500 font-medium mb-10 max-w-sm mx-auto leading-relaxed">
-                    The {featureKey.replace(/([A-Z])/g, ' $1').toLowerCase()} is restricted to our <strong>{PLANS[requiredPlan].name}</strong> tier. Upgrade to unlock full operational intelligence.
+                    The {featureKey.replace(/([A-Z])/g, ' $1').toLowerCase()} is restricted to our <strong>{PLANS[requiredPlan].name}</strong> tier. Your current <strong>{limits?.planName || 'Starter'}</strong> architecture needs an upgrade to unlock this feature.
                 </p>
                 <Button
                     onClick={() => router.push('/pricing')}

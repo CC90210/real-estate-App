@@ -9,9 +9,10 @@ import { PLANS } from '@/lib/stripe/plans'
 interface LimitGuardProps {
     type: 'properties' | 'teamMembers'
     children: React.ReactNode
+    inlineOnly?: boolean
 }
 
-export function LimitGuard({ type, children }: LimitGuardProps) {
+export function LimitGuard({ type, children, inlineOnly }: LimitGuardProps) {
     const { data: limits } = usePlanLimits()
     const router = useRouter()
 
@@ -56,7 +57,7 @@ export function LimitGuard({ type, children }: LimitGuardProps) {
             )}
 
             {/* Content or blocked state */}
-            {canAdd || limit === Infinity ? (
+            {(canAdd || limit === Infinity || inlineOnly) ? (
                 children
             ) : (
                 <div className="bg-slate-900 rounded-[2.5rem] p-10 text-center shadow-2xl shadow-slate-200 relative overflow-hidden group">

@@ -214,7 +214,7 @@ export default function PropertiesPage() {
                 </div>
             </div>
 
-            <LimitGuard type="properties">
+            <LimitGuard type="properties" inlineOnly>
                 <div className="space-y-10">
                     <NewPropertyModal open={newPropertyOpen} onOpenChange={setNewPropertyOpen} />
 

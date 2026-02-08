@@ -19,13 +19,21 @@ export interface LimitCheckResult {
     upgradeRequired?: PlanId
 }
 
-// Get company's current plan
-export async function getCompanyPlan(companyId: string): Promise<PlanId | null> {
+// Get company's current status (including lifetime bypass)
+export async function getCompanySubscriptionInfo(companyId: string) {
     const { data } = await supabaseAdmin
         .from('companies')
-        .select('subscription_plan, subscription_status')
+        .select('subscription_plan, subscription_status, is_lifetime_access, feature_flags')
         .eq('id', companyId)
         .single()
+    return data
+}
+
+// Get company's current plan (handling bypass)
+export async function getCompanyPlan(companyId: string): Promise<PlanId | null> {
+    const data = await getCompanySubscriptionInfo(companyId)
+
+    if (data?.is_lifetime_access) return 'enterprise'
 
     // Check if subscription is active
     if (!data?.subscription_plan ||
@@ -57,9 +65,10 @@ export async function getCompanyUsage(companyId: string): Promise<UsageStats> {
 
 // Check if company can add more properties
 export async function canAddProperty(companyId: string): Promise<LimitCheckResult> {
-    const plan = await getCompanyPlan(companyId)
+    const info = await getCompanySubscriptionInfo(companyId)
+    const plan = info?.is_lifetime_access ? 'enterprise' : (info?.subscription_plan as PlanId | null)
 
-    if (!plan) {
+    if (!plan && !info?.is_lifetime_access) {
         return {
             allowed: false,
             reason: 'No active subscription. Please subscribe to add properties.',
@@ -68,12 +77,13 @@ export async function canAddProperty(companyId: string): Promise<LimitCheckResul
         }
     }
 
+    const currentPlan = plan || 'essentials'
     const usage = await getCompanyUsage(companyId)
-    const limit = getLimit(plan, 'properties')
+    const limit = info?.is_lifetime_access ? Infinity : getLimit(currentPlan, 'properties')
 
     if (usage.properties >= limit) {
         // Find the next plan that would allow more
-        const upgradeRequired = plan === 'essentials' ? ('professional' as const) : ('enterprise' as const)
+        const upgradeRequired = currentPlan === 'essentials' ? ('professional' as const) : ('enterprise' as const)
 
         return {
             allowed: false,
@@ -93,9 +103,10 @@ export async function canAddProperty(companyId: string): Promise<LimitCheckResul
 
 // Check if company can add more team members
 export async function canAddTeamMember(companyId: string): Promise<LimitCheckResult> {
-    const plan = await getCompanyPlan(companyId)
+    const info = await getCompanySubscriptionInfo(companyId)
+    const plan = info?.is_lifetime_access ? 'enterprise' : (info?.subscription_plan as PlanId | null)
 
-    if (!plan) {
+    if (!plan && !info?.is_lifetime_access) {
         return {
             allowed: false,
             reason: 'No active subscription.',
@@ -104,11 +115,12 @@ export async function canAddTeamMember(companyId: string): Promise<LimitCheckRes
         }
     }
 
+    const currentPlan = plan || 'essentials'
     const usage = await getCompanyUsage(companyId)
-    const limit = getLimit(plan, 'teamMembers')
+    const limit = info?.is_lifetime_access ? Infinity : getLimit(currentPlan, 'teamMembers')
 
     if (usage.teamMembers >= limit) {
-        const upgradeRequired = plan === 'essentials' ? ('professional' as const) : ('enterprise' as const)
+        const upgradeRequired = currentPlan === 'essentials' ? ('professional' as const) : ('enterprise' as const)
 
         return {
             allowed: false,
@@ -131,9 +143,20 @@ export async function canAccessFeature(
     companyId: string,
     feature: keyof typeof PLANS.essentials.limits
 ): Promise<{ allowed: boolean; reason?: string; upgradeRequired?: PlanId }> {
+    const info = await getCompanySubscriptionInfo(companyId)
+
+    // 1. Check Lifetime Bypass
+    if (info?.is_lifetime_access) return { allowed: true }
+
+    // 2. Check Feature Flag Overrides
+    if (info?.feature_flags && (info.feature_flags as any)[feature] === true) {
+        return { allowed: true }
+    }
+
     const plan = await getCompanyPlan(companyId)
 
     if (!plan) {
+        // Fallback for partners/testers who might not have a plan set yet but aren't lifetime
         return {
             allowed: false,
             reason: 'No active subscription.',
