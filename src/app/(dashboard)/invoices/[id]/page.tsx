@@ -171,26 +171,26 @@ export default function InvoiceViewPage() {
     const { items, company, property, currentStatus, StatusIcon } = useMemo(() => {
         const statusConfig: Record<string, { label: string; color: string; icon: any; banner?: string }> = {
             draft: {
-                label: 'Draft Mode',
-                color: 'bg-slate-100 text-slate-600',
+                label: 'Active Ledger',
+                color: 'bg-slate-100 text-slate-800',
                 icon: Clock
             },
             sent: {
-                label: 'Sent & Active',
+                label: 'Dispatched',
                 color: 'bg-blue-100 text-blue-700',
-                icon: Send,
-                banner: "This invoice has been dispatched. The recipient was notified via email and should check their inbox for a response."
+                icon: Send
             },
             paid: {
-                label: 'Settled & Paid',
-                color: 'bg-emerald-100 text-emerald-700 font-bold',
-                icon: CheckCircle,
-                banner: "Payment has been processed and verified. This transaction is now closed in the ledger."
+                label: 'Verified Paid',
+                color: 'bg-emerald-100 text-emerald-700',
+                icon: ShieldCheck,
+                banner: 'This transaction has been fully verified and logged in the monthly revenue calculations.'
             },
             overdue: {
-                label: 'Critical: Overdue',
-                color: 'bg-red-100 text-red-700 animate-pulse',
-                icon: AlertCircle
+                label: 'Action Required',
+                color: 'bg-rose-100 text-rose-700',
+                icon: AlertCircle,
+                banner: 'This payment is currently past its scheduled due date. Procurement follow-up recommended.'
             },
             cancelled: {
                 label: 'Cancelled',
@@ -376,6 +376,19 @@ export default function InvoiceViewPage() {
                     <div className="h-6 w-px bg-slate-200 mx-1 hidden md:block" />
 
                     <div className="flex gap-1.5 whitespace-nowrap">
+                        {/* Always show Paid option if not paid already */}
+                        {invoice.status !== 'paid' && (
+                            <Button
+                                onClick={() => updateStatus('paid')}
+                                disabled={isUpdating}
+                                className="h-9 md:h-10 px-3 md:px-4 rounded-xl font-black uppercase text-[9px] tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200"
+                            >
+                                <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
+                                <span className="hidden sm:inline">Mark as Paid</span>
+                                <span className="sm:hidden">Pay</span>
+                            </Button>
+                        )}
+
                         {invoice.status === 'draft' && (
                             <Button
                                 onClick={handleDispatch}
@@ -383,17 +396,8 @@ export default function InvoiceViewPage() {
                                 className="h-9 md:h-10 px-3 md:px-4 rounded-xl font-black uppercase text-[9px] tracking-widest bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200"
                             >
                                 {isUpdating ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1.5" />}
-                                <span className="hidden sm:inline">Dispatch</span>
+                                <span className="hidden sm:inline">Dispatch PDF</span>
                                 <span className="sm:hidden">Send</span>
-                            </Button>
-                        )}
-                        {invoice.status === 'sent' && (
-                            <Button
-                                onClick={() => updateStatus('paid')}
-                                disabled={isUpdating}
-                                className="h-9 md:h-10 px-3 md:px-4 rounded-xl font-black uppercase text-[9px] tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white"
-                            >
-                                <CheckCircle className="w-3.5 h-3.5 mr-1.5" /> <span className="hidden sm:inline">Verify Paid</span><span className="sm:hidden">Pay</span>
                             </Button>
                         )}
 

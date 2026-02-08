@@ -7,56 +7,59 @@ import jsPDF from 'jspdf';
  * (like lab(), oklch(), etc.)
  */
 function sanitizeForCanvas(doc: Document) {
-    // Stage 1: Aggressive Stylesheet Purge
-    // html2canvas parses ALL stylesheets in the document. Even if an element doesn't use a style,
-    // if it exists in the CSS bundle, the parser might crash.
-    const styles = doc.getElementsByTagName('style');
-    for (let i = 0; i < styles.length; i++) {
-        const style = styles[i];
-        if (style.textContent) {
-            // Replace any lab(), oklch(), oklab() with safe fallbacks (slate-900 or transparent)
-            style.textContent = style.textContent
-                .replace(/lab\([^)]+\)/g, '#0f172a')
-                .replace(/oklch\([^)]+\)/g, '#0f172a')
-                .replace(/oklab\([^)]+\)/g, '#0f172a');
+    // Stage 1: Nuclear String Purge
+    // We target the entire document's HTML string to catch any lab/oklch/oklab 
+    // that might be hidden in style attributes, classes, or external references.
+    try {
+        const rawHTML = doc.documentElement.innerHTML;
+        const sanitizedHTML = rawHTML
+            .replace(/lab\([^)]+\)/g, '#0f172a')
+            .replace(/oklch\([^)]+\)/g, '#0f172a')
+            .replace(/oklab\([^)]+\)/g, '#0f172a');
+        doc.documentElement.innerHTML = sanitizedHTML;
+    } catch (e) {
+        console.warn("Manual innerHTML sanitization failed, falling back to traversal.");
+    }
+
+    // Stage 2: External Link Purge
+    // html2canvas tries to parse external CSS. If those files contain 'lab()', it crashes.
+    // By removing links, we force it to rely on the already computed styles we've inline-sanitized.
+    const links = doc.getElementsByTagName('link');
+    for (let i = links.length - 1; i >= 0; i--) {
+        const link = links[i];
+        if (link.rel === 'stylesheet') {
+            link.parentNode?.removeChild(link);
         }
     }
 
-    // Stage 2: Inline Element Overrides
+    // Stage 3: Deep Element Sanitization (Recursive defense)
     const allElements = doc.getElementsByTagName('*');
     for (let i = 0; i < allElements.length; i++) {
         const el = allElements[i] as HTMLElement;
 
-        // Scan common color properties
+        // Force fallback for common properties just in case
         const colorProps = ['color', 'backgroundColor', 'borderColor', 'fill', 'stroke'];
 
-        // We use the raw style check first because getComputedStyle might already fail if the browser doesn't handle the value
         colorProps.forEach(prop => {
-            // Attempt to read the computed value safely
             try {
+                const style = (el.style as any)[prop];
+                if (style && (style.includes('lab(') || style.includes('oklch(') || style.includes('oklab('))) {
+                    el.style.setProperty(prop, prop === 'color' ? '#0f172a' : '#ffffff', 'important');
+                }
+
+                // Also check computed style as a last resort
                 const computed = window.getComputedStyle(el);
                 const val = computed.getPropertyValue(prop);
-
                 if (val && (val.includes('lab(') || val.includes('oklch(') || val.includes('oklab('))) {
-                    if (prop === 'color') el.style.setProperty(prop, '#0f172a', 'important');
-                    else if (prop === 'backgroundColor') el.style.setProperty(prop, '#f8fafc', 'important');
-                    else el.style.setProperty(prop, '#cbd5e1', 'important');
+                    el.style.setProperty(prop, prop === 'color' ? '#0f172a' : '#ffffff', 'important');
                 }
-            } catch (e) {
-                // If computed style fails, assume it's a problematic value and force fallback
-                el.style.setProperty(prop, '#0f172a', 'important');
-            }
+            } catch (e) { }
         });
 
-        // Background gradients often cause crashes
-        try {
-            const computed = window.getComputedStyle(el);
-            const bgImg = computed.backgroundImage;
-            if (bgImg && (bgImg.includes('lab(') || bgImg.includes('oklch(') || bgImg.includes('oklab('))) {
-                el.style.setProperty('background-image', 'none', 'important');
-                el.style.setProperty('background-color', '#f8fafc', 'important');
-            }
-        } catch (e) { }
+        // Background gradients are notoriously problematic
+        if (el.style.backgroundImage && (el.style.backgroundImage.includes('lab(') || el.style.backgroundImage.includes('oklch('))) {
+            el.style.setProperty('background-image', 'none', 'important');
+        }
     }
 }
 
