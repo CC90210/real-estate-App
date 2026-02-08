@@ -13,11 +13,12 @@ export async function triggerAutomation(
     console.log(`[🚀 AUTOMATION DISPATCH] Triggering Event: ${event}`);
 
     // 🚀 PRODUCTION MODE: Real Network Dispatch
-    const WEBHOOK_URL = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL;
+    // Fallback to the user's new production hook if the env var is missing
+    const WEBHOOK_URL = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://n8n.srv993801.hstgr.cloud/webhook/ad6dd389-7003-4276-9f6c-5eec3836020d';
 
     if (!WEBHOOK_URL) {
-        console.warn(`[⚠️ AUTOMATION SKIPPED] Missing NEXT_PUBLIC_N8N_WEBHOOK_URL env var.`);
-        return { success: true, id: 'skipped-no-env', warning: 'No Webhook URL configured' };
+        console.warn(`[⚠️ AUTOMATION SKIPPED] No Webhook URL provided.`);
+        return { success: true, id: 'skipped-no-config', warning: 'No Webhook URL configured' };
     }
 
     try {

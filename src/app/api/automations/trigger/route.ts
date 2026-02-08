@@ -125,28 +125,11 @@ export async function POST(req: Request) {
         const n8nBaseUrl = process.env.N8N_BASE_URL
         const n8nWebhookSecret = process.env.N8N_WEBHOOK_SECRET
 
-        if (!n8nBaseUrl || !n8nWebhookSecret) {
-            // Fallback for demo: just simulate success
-            await supabase.from('automation_logs').update({ status: 'completed', result: { demo: true } }).eq('id', logEntry.id)
-
-            // Audit log
-            await logAuditEvent({
-                action: 'api_access',
-                userId: user.id,
-                companyId: profile.company_id,
-                resourceType: 'automation',
-                resourceId: logEntry.id,
-                metadata: { actionType, entityType, entityId, mode: 'demo' },
-                ipAddress: ip,
-            });
-
-            return NextResponse.json({ success: true, logId: logEntry.id, message: 'Automation (Demo) triggered' })
-        }
-
-        const n8nUrl = n8nBaseUrl + '/webhook/propflow-automation'
+        // Use the new production webhook URL as the primary target
+        const n8nUrl = 'https://n8n.srv993801.hstgr.cloud/webhook/ad6dd389-7003-4276-9f6c-5eec3836020d'
 
         const signature = crypto
-            .createHmac('sha256', n8nWebhookSecret)
+            .createHmac('sha256', n8nWebhookSecret || 'default_secret')
             .update(JSON.stringify(payload))
             .digest('hex')
 

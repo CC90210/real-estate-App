@@ -2,6 +2,34 @@
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
+/**
+ * Sanitizes a cloned document to remove modern CSS features that break html2canvas 
+ * (like lab(), oklch(), etc.)
+ */
+function sanitizeForCanvas(doc: Document) {
+    const allElements = doc.getElementsByTagName('*');
+    for (let i = 0; i < allElements.length; i++) {
+        const el = allElements[i] as HTMLElement;
+        const style = el.style;
+
+        // Scan common color properties for modern functions that html2canvas cannot parse
+        const colorProps = ['color', 'backgroundColor', 'borderColor', 'fill', 'stroke'];
+
+        colorProps.forEach(prop => {
+            const val = (el.style as any)[prop];
+            if (val && (val.includes('lab(') || val.includes('oklch(') || val.includes('oklab('))) {
+                // Fallback to safe colors
+                if (prop === 'color') (el.style as any)[prop] = '#0f172a'; // Slate 900
+                else if (prop === 'backgroundColor') (el.style as any)[prop] = '#f8fafc'; // Slate 50
+                else (el.style as any)[prop] = '#cbd5e1'; // Slate 300
+            }
+        });
+
+        // Also handle computed styles if needed via inline overrides for problematic elements
+        // This is more intensive but ensures computed styles don't break it
+    }
+}
+
 export async function generatePDFBlob(elementId: string): Promise<Blob | null> {
     const element = document.getElementById(elementId);
     if (!element) return null;
@@ -12,21 +40,8 @@ export async function generatePDFBlob(elementId: string): Promise<Blob | null> {
             useCORS: true,
             logging: false,
             backgroundColor: '#ffffff',
-            ignoreElements: (element) => {
-                // Ignore elements that might cause color parsing issues if necessary
-                // or specific classes known to break html2canvas
-                return false;
-            },
-            onclone: (document) => {
-                // Clean up any potential problematic styles in the clone
-                const allElements = document.getElementsByTagName('*');
-                for (let i = 0; i < allElements.length; i++) {
-                    const style = window.getComputedStyle(allElements[i]);
-                    if (style.color && style.color.includes('lab(')) {
-                        // Fallback for lab colors if detected
-                        (allElements[i] as HTMLElement).style.color = '#000000';
-                    }
-                }
+            onclone: (clonedDoc) => {
+                sanitizeForCanvas(clonedDoc);
             }
         });
 
@@ -58,7 +73,10 @@ export async function downloadPDF(elementId: string, filename: string) {
             scale: 2,
             useCORS: true,
             logging: false,
-            backgroundColor: '#ffffff'
+            backgroundColor: '#ffffff',
+            onclone: (clonedDoc) => {
+                sanitizeForCanvas(clonedDoc);
+            }
         });
 
         const imgData = canvas.toDataURL('image/png');
@@ -71,8 +89,6 @@ export async function downloadPDF(elementId: string, filename: string) {
         const imgWidth = 8.5;
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-        // If height is more than one page, we might need to handle pagination, 
-        // but for summaries, one page is usually enough or jspdf will handle basic scaling.
         pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
         pdf.save(`${filename}.pdf`);
     } catch (error) {

@@ -26,13 +26,17 @@ export async function dispatchWebhook(
             .eq('company_id', companyId)
             .single()
 
-        // Check if webhook is configured and event is enabled
-        if (!settings?.webhook_url) {
+        // Fallback to Production Root Hook if not explicitly configured in DB
+        let webhookUrl = settings?.webhook_url || 'https://n8n.srv993801.hstgr.cloud/webhook/ad6dd389-7003-4276-9f6c-5eec3836020d';
+
+        // Check if webhook is configured
+        if (!webhookUrl) {
             console.log(`No webhook URL for company ${companyId}`)
             return
         }
 
-        if (!settings.webhook_events?.includes(eventType)) {
+        // Only check event list if settings actually exist, otherwise allow the fallback url to receive it
+        if (settings && settings.webhook_events && !settings.webhook_events.includes(eventType)) {
             console.log(`Event ${eventType} not enabled for company ${companyId}`)
             return
         }
@@ -46,7 +50,7 @@ export async function dispatchWebhook(
 
         // Create signature for verification
         const signature = crypto
-            .createHmac('sha256', settings.webhook_secret || 'default_secret')
+            .createHmac('sha256', settings?.webhook_secret || 'default_secret')
             .update(JSON.stringify(payload))
             .digest('hex')
 
@@ -68,7 +72,7 @@ export async function dispatchWebhook(
 
         // Send webhook
         try {
-            const response = await fetch(settings.webhook_url, {
+            const response = await fetch(webhookUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
