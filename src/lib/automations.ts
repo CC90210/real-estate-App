@@ -24,7 +24,7 @@ type InvoicePayload = {
     company_id: string;
     created_by: string;
     items: any[];
-    file_url: string; // The signed URL from Supabase Storage
+    file_url?: string; // Optional for data-only dispatches
     triggered_at: string;
 };
 

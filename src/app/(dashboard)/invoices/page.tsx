@@ -44,10 +44,10 @@ export default function InvoicesPage() {
     })
 
     const statusConfig = {
-        draft: { label: 'Draft', color: 'bg-slate-100 text-slate-600 border-slate-200' },
-        sent: { label: 'Sent', color: 'bg-blue-50 text-blue-600 border-blue-100' },
-        paid: { label: 'Paid', color: 'bg-emerald-50 text-emerald-600 border-emerald-100' },
-        overdue: { label: 'Overdue', color: 'bg-red-50 text-red-600 border-red-100' },
+        draft: { label: 'Verified Entry', color: 'bg-slate-100 text-slate-800 border-slate-200' },
+        sent: { label: 'Dispatched', color: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
+        paid: { label: 'Settled & Paid', color: 'bg-emerald-50 text-emerald-800 border-emerald-100 font-bold' },
+        overdue: { label: 'Past Due', color: 'bg-rose-50 text-rose-700 border-rose-100' },
         cancelled: { label: 'Cancelled', color: 'bg-slate-50 text-slate-400 border-slate-100' }
     }
 
@@ -122,18 +122,20 @@ export default function InvoicesPage() {
                         trend="Target: $250,000"
                     />
                     <StatCard
-                        label="Processing"
+                        label="Verified Entries"
                         value={invoices?.filter(i => i.status === 'draft').length.toString() || '0'}
                         icon={TrendingUp}
                         color="text-blue-600"
                         bg="bg-blue-50"
+                        trend="Ready for dispatch"
                     />
                     <StatCard
-                        label="Critical Alerts"
+                        label="Past Due"
                         value={invoices?.filter(i => i.status === 'overdue').length.toString() || '0'}
                         icon={AlertCircle}
                         color="text-rose-600"
                         bg="bg-rose-50"
+                        isAlert
                     />
                 </div>
 

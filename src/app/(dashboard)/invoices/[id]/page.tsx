@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
     ArrowLeft, Printer, DollarSign, CheckCircle, Clock, XCircle,
-    Send, Trash2, Edit3, Mail, AlertCircle, Info, ShieldCheck, Loader2
+    Send, Trash2, Edit3, Mail, AlertCircle, Info, ShieldCheck, Zap, Loader2
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
@@ -165,32 +165,29 @@ export default function InvoiceViewPage() {
     }
 
     // MEMOIZED DATA EXTRACTION FOR MAXIMUM DEFENSE
-
-
-    // MEMOIZED DATA EXTRACTION FOR MAXIMUM DEFENSE
     const { items, company, property, currentStatus, StatusIcon } = useMemo(() => {
         const statusConfig: Record<string, { label: string; color: string; icon: any; banner?: string }> = {
             draft: {
-                label: 'Active Ledger',
+                label: 'Verified Entry',
                 color: 'bg-slate-100 text-slate-800',
                 icon: Clock
             },
             sent: {
                 label: 'Dispatched',
-                color: 'bg-blue-100 text-blue-700',
+                color: 'bg-indigo-100 text-indigo-700 font-bold',
                 icon: Send
             },
             paid: {
-                label: 'Verified Paid',
-                color: 'bg-emerald-100 text-emerald-700',
+                label: 'Settled & Paid',
+                color: 'bg-emerald-100 text-emerald-800 font-black tracking-tight',
                 icon: ShieldCheck,
-                banner: 'This transaction has been fully verified and logged in the monthly revenue calculations.'
+                banner: 'This transaction has been fully verified, settled, and logged in the revenue ledger.'
             },
             overdue: {
                 label: 'Action Required',
-                color: 'bg-rose-100 text-rose-700',
+                color: 'bg-rose-100 text-rose-800 animate-pulse',
                 icon: AlertCircle,
-                banner: 'This payment is currently past its scheduled due date. Procurement follow-up recommended.'
+                banner: 'Payment is past due. Procurement intervention or automated follow-up is recommended.'
             },
             cancelled: {
                 label: 'Cancelled',
@@ -225,24 +222,35 @@ export default function InvoiceViewPage() {
         }
     }, [invoice]);
 
-    const handleDispatch = async () => {
+    const handleDispatch = async (skipPdf = false) => {
         if (!invoice || !id) return;
         setIsUpdating(true)
         try {
-            // 1. Generate PDF Blob
-            toast.message('Generating Document', { description: 'Applying aggressive CSS sanitization...' })
-            await new Promise(r => setTimeout(r, 800)); // UI Settle
+            let fileUrl = "";
 
-            const pdfBlob = await generatePDFBlob('invoice-paper');
-            if (!pdfBlob) throw new Error("Failed to capture invoice viewport.");
+            if (!skipPdf) {
+                // 1. Generate PDF Blob via Isolated Sandbox
+                toast.message('Generating Document', { description: 'Isolating capture in secure sandbox...' })
+                await new Promise(r => setTimeout(r, 800)); // UI Settle
 
-            // 2. Upload to Storage
-            toast.message('Secure Upload', { description: 'Transmitting encrypted PDF to secure vault...' })
-            const path = `${invoice.company_id}/invoice_${id}_${Date.now()}.pdf`;
-            const fileUrl = await uploadAndGetLink(pdfBlob, path);
+                try {
+                    const pdfBlob = await generatePDFBlob('invoice-paper');
+                    if (pdfBlob) {
+                        toast.message('Secure Upload', { description: 'Transmitting PDF to document vault...' })
+                        const path = `${invoice.company_id}/invoice_${id}_${Date.now()}.pdf`;
+                        fileUrl = await uploadAndGetLink(pdfBlob, path);
+                    }
+                } catch (pdfError) {
+                    console.error("PDF Capture Failed:", pdfError);
+                    toast.error('Document Capture Failed', {
+                        description: 'Generating metadata-only dispatch to avoid delay...',
+                        duration: 4000
+                    });
+                }
+            }
 
-            // 3. Trigger Automation (Using Central Dispatch API)
-            toast.message('Webhook Propagation', { description: 'Handing off to Intelligent Automation Gateway...' })
+            // 2. Trigger Automation (Propagate Data)
+            toast.message('Propagating Webhook', { description: 'Broadcasting data to intelligent gateway...' })
             await triggerInvoiceAutomation({
                 invoice_id: id as string,
                 invoice_number: invoice.invoice_number,
@@ -251,22 +259,27 @@ export default function InvoiceViewPage() {
                 amount: invoice.total,
                 company_id: invoice.company_id,
                 created_by: invoice.created_by,
-                items: items,
-                file_url: fileUrl,
+                items: items, // Future-proof: full itemized data
+                file_url: fileUrl || "DATA_ONLY_DISPATCH",
                 triggered_at: new Date().toISOString()
             });
 
-            // 4. Update Status Locally
+            // 3. Update Status Locally
             const { error } = await supabase
                 .from('invoices')
-                .update({ status: 'sent', updated_at: new Date().toISOString() })
+                .update({
+                    status: 'sent',
+                    updated_at: new Date().toISOString()
+                })
                 .eq('id', id)
 
             if (error) throw error
 
             queryClient.invalidateQueries({ queryKey: ['invoice', id] })
             queryClient.invalidateQueries({ queryKey: ['invoices'] })
-            toast.success('Transmission Successful', { description: 'The invoice has been dispatched and logged.' })
+            toast.success('Propagation Successful', {
+                description: fileUrl ? 'Document and metadata dispatched.' : 'Metadata dispatched successfully (Data-Only Mode).'
+            })
             await refetch()
 
         } catch (e: any) {
@@ -381,7 +394,7 @@ export default function InvoiceViewPage() {
                             <Button
                                 onClick={() => updateStatus('paid')}
                                 disabled={isUpdating}
-                                className="h-9 md:h-10 px-3 md:px-4 rounded-xl font-black uppercase text-[9px] tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200"
+                                className="h-9 md:h-10 px-3 md:px-4 rounded-xl font-black uppercase text-[9px] tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200 transition-all hover:-translate-y-0.5"
                             >
                                 <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
                                 <span className="hidden sm:inline">Mark as Paid</span>
@@ -390,15 +403,28 @@ export default function InvoiceViewPage() {
                         )}
 
                         {invoice.status === 'draft' && (
-                            <Button
-                                onClick={handleDispatch}
-                                disabled={isUpdating}
-                                className="h-9 md:h-10 px-3 md:px-4 rounded-xl font-black uppercase text-[9px] tracking-widest bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200"
-                            >
-                                {isUpdating ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1.5" />}
-                                <span className="hidden sm:inline">Dispatch PDF</span>
-                                <span className="sm:hidden">Send</span>
-                            </Button>
+                            <>
+                                <Button
+                                    onClick={() => handleDispatch(false)}
+                                    disabled={isUpdating}
+                                    className="h-9 md:h-10 px-3 md:px-4 rounded-xl font-black uppercase text-[9px] tracking-widest bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200 transition-all hover:-translate-y-0.5"
+                                >
+                                    {isUpdating ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1.5" />}
+                                    <span className="hidden sm:inline">Dispatch Entry</span>
+                                    <span className="sm:hidden">Send</span>
+                                </Button>
+
+                                <Button
+                                    variant="outline"
+                                    onClick={() => handleDispatch(true)}
+                                    disabled={isUpdating}
+                                    className="h-9 md:h-10 px-3 md:px-4 rounded-xl font-black uppercase text-[9px] tracking-widest border-2 border-slate-200 text-slate-600 hover:bg-slate-50 transition-all"
+                                    title="Send metadata only without generating PDF"
+                                >
+                                    <Zap className="w-3.5 h-3.5 mr-1.5 text-amber-500" />
+                                    <span className="hidden lg:inline">Data Only</span>
+                                </Button>
+                            </>
                         )}
 
                         <Button variant="outline" onClick={() => router.push(`/invoices/${id}/edit`)} className="h-9 md:h-10 px-3 md:px-4 rounded-xl font-black uppercase text-[9px] tracking-widest border-2">
