@@ -9,10 +9,9 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Plus, FileText, DollarSign, Clock, CheckCircle, Receipt, ArrowRight, TrendingUp, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
-import { formatDistanceToNow } from 'date-fns'
 import { useAccentColor } from '@/lib/hooks/useAccentColor'
 import { cn } from '@/lib/utils'
-import { TierGuard } from '@/components/auth/TierGuard'
+import { FeatureGate } from '@/components/FeatureGate'
 
 export default function InvoicesPage() {
     const supabase = createClient()
@@ -31,7 +30,6 @@ export default function InvoicesPage() {
                 .order('created_at', { ascending: false })
 
             if (error) {
-                // Secondary attempt without company join if PostgREST cache is stale
                 const { data: rawData, error: rawError } = await supabase
                     .from('invoices')
                     .select(`*, property:properties(address)`)
@@ -82,7 +80,7 @@ export default function InvoicesPage() {
     }).reduce((sum, i) => sum + Number(i.total || 0), 0) || 0
 
     return (
-        <TierGuard feature="invoices">
+        <FeatureGate feature="invoiceGeneration">
             <div className="p-6 lg:p-10 space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-1000">
                 {/* Header */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
@@ -204,7 +202,6 @@ export default function InvoicesPage() {
                                                 </div>
                                             </div>
 
-                                            {/* Status Progress Bar */}
                                             <div className="h-1.5 w-full bg-slate-50 overflow-hidden">
                                                 <div
                                                     className={cn(
@@ -223,7 +220,7 @@ export default function InvoicesPage() {
                     </div>
                 )}
             </div>
-        </TierGuard>
+        </FeatureGate>
     )
 }
 

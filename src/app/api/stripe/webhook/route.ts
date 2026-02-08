@@ -103,6 +103,9 @@ async function handleSubscriptionCheckout(session: Stripe.Checkout.Session) {
 
     console.log(`Processing subscription for user ${userId}, plan: ${plan}`)
 
+    const subscriptionId = session.subscription as string
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+
     // Get user's company
     const { data: profile } = await supabaseAdmin
         .from('profiles')
@@ -125,14 +128,14 @@ async function handleSubscriptionCheckout(session: Stripe.Checkout.Session) {
     await supabaseAdmin
         .from('companies')
         .update({
-            subscription_status: 'trialing', // 14-day trial
+            subscription_status: subscription.status,
             subscription_plan: plan,
-            stripe_subscription_id: session.subscription as string,
-            subscription_current_period_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // Roughly 14 days for trial end
+            stripe_subscription_id: subscriptionId,
+            subscription_current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
         })
         .eq('id', profile.company_id)
 
-    console.log(`Updated company ${profile.company_id} with subscription`)
+    console.log(`Updated company ${profile.company_id} with subscription: ${subscription.status}`)
 }
 
 // Handle subscription updates

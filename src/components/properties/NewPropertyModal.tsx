@@ -77,71 +77,28 @@ export function NewPropertyModal({ open: controlledOpen, onOpenChange }: NewProp
     const onSubmit: import('react-hook-form').SubmitHandler<PropertyFormValues> = async (data) => {
         setIsLoading(true);
         try {
-            if (!profile?.company_id) throw new Error("Missing Company ID");
-            if (!data.landlord_id) throw new Error("Landlord required");
+            const res = await fetch('/api/properties', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
 
-            // 1. Handle Location / Area
-            // For SFH, we need to ensure an 'Area' exists or create a default 'Unassigned' one
-            // Ideally, we'd reverse geocode, but for now we'll fetch/create a placeholder Area
+            const result = await res.json();
 
-            // Try to find an area named after the City, or default.
-            let areaId: string | null = null;
-            const cityName = data.city || "General Area";
-
-            const { data: existingArea } = await supabase
-                .from('areas')
-                .select('id')
-                .eq('company_id', profile.company_id)
-                .eq('name', cityName)
-                .single();
-
-            if (existingArea) {
-                areaId = existingArea.id;
-            } else {
-                // Determine image for area based on City (placeholder logic)
-                const { data: newArea, error: areaError } = await supabase
-                    .from('areas')
-                    .insert({
-                        company_id: profile.company_id,
-                        name: cityName,
-                        description: `Properties located in ${cityName}`,
-                        image_url: 'https://images.unsplash.com/photo-1449844908441-8829872d2607?auto=format&fit=crop&q=80'
-                    })
-                    .select()
-                    .single();
-
-                if (areaError) throw areaError;
-                areaId = newArea.id;
+            if (!res.ok) {
+                // Handle plan limit errors Specifically
+                if (result.code === 'LIMIT_REACHED') {
+                    toast.error("Volume Limit Reached", {
+                        description: result.error,
+                        action: {
+                            label: "Upgrade",
+                            onClick: () => router.push('/pricing')
+                        }
+                    });
+                    return;
+                }
+                throw new Error(result.error || "Failed to create property");
             }
-
-            // 2. Create Building (The "House" Wrapper)
-            const { data: building, error: buildingError } = await supabase
-                .from('buildings')
-                .insert({
-                    company_id: profile.company_id,
-                    area_id: areaId,
-                    name: data.address, // For SFH, Building Name = Address
-                    address: data.address,
-                    image_url: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&q=80', // Default House Img
-                    amenities: []
-                })
-                .select()
-                .single();
-
-            if (buildingError) throw buildingError;
-
-            // 3. Create Unit (The actual "Property")
-            const { error: unitError } = await supabase
-                .from('properties')
-                .insert({
-                    ...data,
-                    building_id: building.id,
-                    company_id: profile.company_id,
-                    landlord_id: data.landlord_id,
-                    amenities: data.amenities || []
-                });
-
-            if (unitError) throw unitError;
 
             toast.success(propertyType === 'house' ? "House added successfully" : "Unit created");
             setIsOpen(false);

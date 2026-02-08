@@ -32,7 +32,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useCompanyId } from '@/lib/hooks/useCompanyId'
 import { useAccentColor } from '@/lib/hooks/useAccentColor'
 import { cn } from '@/lib/utils'
-import { TierGuard } from '@/components/auth/TierGuard'
+import { FeatureGate } from '@/components/FeatureGate'
 
 export default function ShowingsPage() {
     const supabase = createClient()
@@ -165,7 +165,7 @@ export default function ShowingsPage() {
     }
 
     return (
-        <TierGuard feature="showings">
+        <FeatureGate feature="showingsCalendar">
             <div className="p-6 lg:p-10 space-y-8 animate-in fade-in duration-500">
                 {/* Header */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -263,14 +263,13 @@ export default function ShowingsPage() {
                                 }}
                                 height="auto"
                                 aspectRatio={1.8}
-                                editable={true} // Allow dragging if we implement update logic later
+                                editable={true}
                                 selectable={true}
                             />
                         )}
                     </CardContent>
                 </Card>
 
-                {/* Schedule Dialog */}
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                     <DialogContent className="rounded-[2rem] p-8 max-w-lg">
                         <DialogHeader>
@@ -373,6 +372,6 @@ export default function ShowingsPage() {
                     </DialogContent>
                 </Dialog>
             </div>
-        </TierGuard>
+        </FeatureGate>
     )
 }
