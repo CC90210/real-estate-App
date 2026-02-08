@@ -230,25 +230,19 @@ export default function InvoiceViewPage() {
         setIsUpdating(true)
         try {
             // 1. Generate PDF Blob
-            await new Promise(r => setTimeout(r, 500)); // UI Settle
+            toast.message('Generating Document', { description: 'Applying aggressive CSS sanitization...' })
+            await new Promise(r => setTimeout(r, 800)); // UI Settle
 
-            toast.message('Dispatching Securely', { description: 'Encrypting document for transmission...' })
             const pdfBlob = await generatePDFBlob('invoice-paper');
-
-            let finalBlob = pdfBlob;
-            if (!finalBlob) {
-                // Retry once
-                console.warn("PDF Generation Retrying...");
-                await new Promise(r => setTimeout(r, 1000));
-                finalBlob = await generatePDFBlob('invoice-paper');
-                if (!finalBlob) throw new Error("Failed to generate PDF document");
-            }
+            if (!pdfBlob) throw new Error("Failed to capture invoice viewport.");
 
             // 2. Upload to Storage
+            toast.message('Secure Upload', { description: 'Transmitting encrypted PDF to secure vault...' })
             const path = `${invoice.company_id}/invoice_${id}_${Date.now()}.pdf`;
-            const fileUrl = await uploadAndGetLink(finalBlob, path);
+            const fileUrl = await uploadAndGetLink(pdfBlob, path);
 
-            // 3. Trigger Automation (Using production Webhook)
+            // 3. Trigger Automation (Using Central Dispatch API)
+            toast.message('Webhook Propagation', { description: 'Handing off to Intelligent Automation Gateway...' })
             await triggerInvoiceAutomation({
                 invoice_id: id as string,
                 invoice_number: invoice.invoice_number,
@@ -257,7 +251,7 @@ export default function InvoiceViewPage() {
                 amount: invoice.total,
                 company_id: invoice.company_id,
                 created_by: invoice.created_by,
-                items: items, // Use memoized items
+                items: items,
                 file_url: fileUrl,
                 triggered_at: new Date().toISOString()
             });
@@ -272,12 +266,15 @@ export default function InvoiceViewPage() {
 
             queryClient.invalidateQueries({ queryKey: ['invoice', id] })
             queryClient.invalidateQueries({ queryKey: ['invoices'] })
-            toast.success('Transmission Complete', { description: 'Invoice dispatched and recipient notified.' })
+            toast.success('Transmission Successful', { description: 'The invoice has been dispatched and logged.' })
             await refetch()
 
         } catch (e: any) {
             console.error(e)
-            toast.error('Dispatch Failure', { description: e.message })
+            toast.error('Transmission Failure', {
+                description: e.message,
+                duration: 6000
+            })
         } finally {
             setIsUpdating(false)
         }

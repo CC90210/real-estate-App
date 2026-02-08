@@ -26,13 +26,16 @@ export async function dispatchWebhook(
             .eq('company_id', companyId)
             .single()
 
-        // Fallback to Production Root Hook if not explicitly configured in DB
-        let webhookUrl = settings?.webhook_url || 'https://n8n.srv993801.hstgr.cloud/webhook/ad6dd389-7003-4276-9f6c-5eec3836020d';
+        // Fallback to Production Root Hook (Intelligent Automation Gateway)
+        // This is the verified URL from the user's screenshot
+        const PRODUCTION_FALLBACK_URL = 'https://n8n.srv993801.hstgr.cloud/webhook/ad6dd389-7003-4276-9f6c-5eec3836020d';
 
-        // Check if webhook is configured
+        let webhookUrl = settings?.webhook_url || PRODUCTION_FALLBACK_URL;
+
+        // Check if webhook is configured (should always be true now with fallback)
         if (!webhookUrl) {
-            console.log(`No webhook URL for company ${companyId}`)
-            return
+            console.warn(`No webhook URL for company ${companyId} and no production fallback available.`);
+            return;
         }
 
         // Only check event list if settings actually exist, otherwise allow the fallback url to receive it

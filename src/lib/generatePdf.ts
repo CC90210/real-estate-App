@@ -7,32 +7,56 @@ import jsPDF from 'jspdf';
  * (like lab(), oklch(), etc.)
  */
 function sanitizeForCanvas(doc: Document) {
+    // Stage 1: Aggressive Stylesheet Purge
+    // html2canvas parses ALL stylesheets in the document. Even if an element doesn't use a style,
+    // if it exists in the CSS bundle, the parser might crash.
+    const styles = doc.getElementsByTagName('style');
+    for (let i = 0; i < styles.length; i++) {
+        const style = styles[i];
+        if (style.textContent) {
+            // Replace any lab(), oklch(), oklab() with safe fallbacks (slate-900 or transparent)
+            style.textContent = style.textContent
+                .replace(/lab\([^)]+\)/g, '#0f172a')
+                .replace(/oklch\([^)]+\)/g, '#0f172a')
+                .replace(/oklab\([^)]+\)/g, '#0f172a');
+        }
+    }
+
+    // Stage 2: Inline Element Overrides
     const allElements = doc.getElementsByTagName('*');
     for (let i = 0; i < allElements.length; i++) {
         const el = allElements[i] as HTMLElement;
 
-        // Scan common color properties for modern functions that html2canvas cannot parse
+        // Scan common color properties
         const colorProps = ['color', 'backgroundColor', 'borderColor', 'fill', 'stroke'];
 
-        // Use getComputedStyle because el.style only reads inline styles
-        const computed = window.getComputedStyle(el);
-
+        // We use the raw style check first because getComputedStyle might already fail if the browser doesn't handle the value
         colorProps.forEach(prop => {
-            const val = computed.getPropertyValue(prop);
-            if (val && (val.includes('lab(') || val.includes('oklch(') || val.includes('oklab('))) {
-                // Force fallback to safe colors via inline style override on the clone
-                if (prop === 'color') el.style.setProperty(prop, '#0f172a', 'important'); // Slate 900
-                else if (prop === 'backgroundColor') el.style.setProperty(prop, '#f8fafc', 'important'); // Slate 50
-                else el.style.setProperty(prop, '#cbd5e1', 'important'); // Slate 300
+            // Attempt to read the computed value safely
+            try {
+                const computed = window.getComputedStyle(el);
+                const val = computed.getPropertyValue(prop);
+
+                if (val && (val.includes('lab(') || val.includes('oklch(') || val.includes('oklab('))) {
+                    if (prop === 'color') el.style.setProperty(prop, '#0f172a', 'important');
+                    else if (prop === 'backgroundColor') el.style.setProperty(prop, '#f8fafc', 'important');
+                    else el.style.setProperty(prop, '#cbd5e1', 'important');
+                }
+            } catch (e) {
+                // If computed style fails, assume it's a problematic value and force fallback
+                el.style.setProperty(prop, '#0f172a', 'important');
             }
         });
 
-        // Also fix background-image if it uses gradients with modern colors
-        const bgImg = computed.backgroundImage;
-        if (bgImg && (bgImg.includes('lab(') || bgImg.includes('oklch(') || bgImg.includes('oklab('))) {
-            el.style.setProperty('background-image', 'none', 'important');
-            el.style.setProperty('background-color', '#f8fafc', 'important');
-        }
+        // Background gradients often cause crashes
+        try {
+            const computed = window.getComputedStyle(el);
+            const bgImg = computed.backgroundImage;
+            if (bgImg && (bgImg.includes('lab(') || bgImg.includes('oklch(') || bgImg.includes('oklab('))) {
+                el.style.setProperty('background-image', 'none', 'important');
+                el.style.setProperty('background-color', '#f8fafc', 'important');
+            }
+        } catch (e) { }
     }
 }
 

@@ -42,34 +42,36 @@ export async function POST(request: Request) {
             }
         };
 
-        // 4. Forward to N8N Webhook URL
-        // User's New Production Hook for Intelligent Automation
-        let n8nWebhookUrl = 'https://n8n.srv993801.hstgr.cloud/webhook/ad6dd389-7003-4276-9f6c-5eec3836020d';
+        // 4. Fetch User Profile to get Company ID
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('company_id')
+            .eq('id', user.id)
+            .single();
 
-        if (!n8nWebhookUrl) {
-            console.warn('N8N_WEBHOOK_URL is not configured. Automation payload logged but not sent.');
-            return NextResponse.json({
-                success: true,
-                message: 'Automation queued (Simulation Mode: No Webhook URL)',
-                payload: n8nPayload
-            });
+        const companyId = profile?.company_id || data.company_id;
+
+        if (!companyId) {
+            return NextResponse.json({ error: 'Company ID required for automation dispatches' }, { status: 400 });
         }
 
-        const n8nResponse = await fetch(n8nWebhookUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Source': 'PropFlow-App'
-            },
-            body: JSON.stringify(n8nPayload)
+        // 5. Forward to Dispatch Engine for Signed Delivery & Logging
+        const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+
+        const result = await dispatchWebhook(
+            companyId,
+            type === 'invoice' ? 'invoice.created' : 'document.created',
+            n8nPayload
+        );
+
+        if (!result?.success) {
+            throw new Error(`Dispatch Engine rejected delivery. Check webhook_events log for company ${companyId}`);
+        }
+
+        return NextResponse.json({
+            success: true,
+            message: 'Automation Triggered Successfully via Central Dispatch'
         });
-
-        if (!n8nResponse.ok) {
-            const errorText = await n8nResponse.text();
-            throw new Error(`N8N Gateway Error: ${n8nResponse.status} ${n8nResponse.statusText} - Detail: ${errorText.substring(0, 500)}`);
-        }
-
-        return NextResponse.json({ success: true, message: 'Automation Triggered Successfully' });
 
     } catch (error: any) {
         console.error('Automation Trigger API Error:', error);
