@@ -8,74 +8,87 @@ import jsPDF from 'jspdf';
  */
 
 async function createIsolatedCapture(element: HTMLElement): Promise<HTMLCanvasElement> {
-    // 1. Create a hidden isolation sandbox
+    // 1. Create a hidden isolation sandbox with fixed high-fidelity dimensions
+    // We use a fixed width of 1200px for high-density rendering during capture
+    const captureWidth = 1200;
+    const ratio = element.offsetHeight / element.offsetWidth;
+    const captureHeight = captureWidth * ratio;
+
     const iframe = document.createElement('iframe');
     iframe.style.position = 'fixed';
     iframe.style.top = '0';
-    iframe.style.left = '0';
-    iframe.style.width = element.offsetWidth + 'px';
-    iframe.style.height = element.offsetHeight + 'px';
+    iframe.style.left = '-9999px'; // Move way off screen
+    iframe.style.width = captureWidth + 'px';
+    iframe.style.height = captureHeight + 'px';
     iframe.style.border = 'none';
-    iframe.style.visibility = 'hidden';
-    iframe.style.pointerEvents = 'none';
-    iframe.style.zIndex = '-9999';
+    iframe.style.background = 'white';
     document.body.appendChild(iframe);
 
     const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
     if (!iframeDoc) throw new Error("Isolation sandbox failed to initialize.");
 
-    // 2. Clone the content into the sandbox
+    // 2. Mirror & Scrub ALL Global Styles (Nuclear Recovery)
+    // Instead of inlining (which fails on complexity), we mirror the entire CSS architecture
+    let mirrorStyles = '';
+
+    // Capture from <style> tags
+    const styleTags = document.querySelectorAll('style');
+    styleTags.forEach(tag => {
+        mirrorStyles += tag.innerHTML;
+    });
+
+    // Capture from <link> sheets (if accessible)
+    for (let i = 0; i < document.styleSheets.length; i++) {
+        const sheet = document.styleSheets[i];
+        try {
+            if (sheet.cssRules) {
+                for (let j = 0; j < sheet.cssRules.length; j++) {
+                    mirrorStyles += sheet.cssRules[j].cssText;
+                }
+            }
+        } catch (e) {
+            console.warn("Could not mirror external stylesheet. PDF may lack some branding styles.", e);
+        }
+    }
+
+    // Surgical Scrub: Remove all modern features that crash html2canvas/PDF engines
+    // We target lab(), oklch(), and other v4-specific color functions
+    const scrubbedStyles = mirrorStyles
+        .replace(/lab\([^)]+\)/g, '#0f172a')
+        .replace(/oklch\([^)]+\)/g, '#0f172a')
+        .replace(/oklab\([^)]+\)/g, '#0f172a')
+        .replace(/--[\w-]+:\s*[^;{}]+(?:lab|oklch|oklab)[^;{}]+;/g, ''); // Clear CSS variables using these
+
+    const styleElement = iframeDoc.createElement('style');
+    styleElement.innerHTML = scrubbedStyles;
+    iframeDoc.head.appendChild(styleElement);
+
+    // 3. Clone and Inject Content
     const clone = element.cloneNode(true) as HTMLElement;
 
-    // 3. Surgical Style Inlining (Compute on original, apply to clone)
-    // This is the "Turnkey" secret: we capture styles while the element is alive
-    // in the real layout, then fix them for the sandbox.
-    const allOriginal = Array.from(element.getElementsByTagName('*'));
-    const allCloned = Array.from(clone.getElementsByTagName('*'));
+    // Explicitly fix widths for the container to match the capture width
+    clone.style.width = '100%';
+    clone.style.margin = '0';
+    clone.style.padding = '60px'; // Professional margins
+    clone.style.boxSizing = 'border-box';
+    clone.style.boxShadow = 'none';
 
-    const inlineStyles = (source: Element, target: Element) => {
-        const computed = window.getComputedStyle(source);
-        let styleStr = '';
-
-        // Essential PDF Properties
-        const props = [
-            'color', 'background-color', 'font-family', 'font-size', 'font-weight',
-            'line-height', 'text-align', 'padding', 'margin', 'border', 'border-radius',
-            'display', 'flex-direction', 'justify-content', 'align-items', 'gap',
-            'width', 'height', 'max-width', 'min-width', 'position', 'top', 'left',
-            'opacity', 'box-shadow', 'overflow', 'vertical-align', 'list-style'
-        ];
-
-        props.forEach(prop => {
-            let val = computed.getPropertyValue(prop);
-            // Deep Scrub of problematic color functions (lab, oklch)
-            if (val.includes('lab(') || val.includes('oklch(') || val.includes('oklab(')) {
-                if (prop === 'color') val = '#0f172a';
-                else if (prop.includes('background')) val = '#ffffff';
-                else val = 'initial';
-            }
-            if (val) styleStr += `${prop}:${val} !important;`;
-        });
-        (target as HTMLElement).setAttribute('style', styleStr);
-    };
-
-    // Inline the root and all children
-    inlineStyles(element, clone);
-    allOriginal.forEach((orig, idx) => inlineStyles(orig, allCloned[idx]));
-
-    // 4. Populate sandbox shadow document
     iframeDoc.body.style.margin = '0';
+    iframeDoc.body.style.background = 'white';
     iframeDoc.body.appendChild(clone);
 
-    // 5. High-Precision Capture
+    // Give the browser a moment to apply styles to the iframe
+    await new Promise(r => setTimeout(r, 300));
+
+    // 4. High-Precision Capture
     try {
         const canvas = await html2canvas(clone, {
             scale: 2,
             useCORS: true,
             logging: false,
             backgroundColor: '#ffffff',
-            // The sandbox document has NO external stylesheets, 
-            // making it impossible for the parser to encounter lab() errors
+            width: captureWidth,
+            windowWidth: captureWidth, // Force the "viewport" of the capture to match our sandbox
         });
 
         // Cleanup

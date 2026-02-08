@@ -309,7 +309,7 @@ export default function EditInvoicePage() {
                                             </div>
                                             <Input
                                                 type="number"
-                                                className="h-12 pl-12 bg-white border-slate-200 rounded-xl font-medium"
+                                                className="h-12 pl-20 bg-white border-slate-200 rounded-xl font-medium"
                                                 value={item.amount}
                                                 onChange={e => updateItem(item.id, 'amount', parseFloat(e.target.value))}
                                             />
@@ -353,7 +353,10 @@ export default function EditInvoicePage() {
                             </div>
                             <div className="flex justify-between w-full max-w-xs text-3xl font-black text-slate-900">
                                 <span>Total</span>
-                                <span>{getCurrencySymbol(currency)}{calculateTotal().toLocaleString()}</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-slate-300 text-xl">{getCurrencySymbol(currency)}</span>
+                                    <span>{calculateTotal().toLocaleString()}</span>
+                                </div>
                             </div>
                         </div>
                     </div>

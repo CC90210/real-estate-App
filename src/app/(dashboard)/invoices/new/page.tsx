@@ -401,10 +401,12 @@ export default function NewInvoicePage() {
                                         </div>
                                         <div className="flex-[2] md:w-48 relative">
                                             <div className="absolute -top-3 left-6 bg-white px-2 text-[8px] md:text-[10px] font-black text-slate-300 md:text-slate-400 uppercase tracking-widest z-10 border rounded-full">Amount</div>
-                                            <div className="absolute left-6 md:left-8 top-1/2 -translate-y-1/2 text-slate-900 z-10 font-black text-lg md:text-xl">{getCurrencySymbol(currency)}</div>
+                                            <div className="absolute left-6 md:left-8 top-1/2 -translate-y-1/2 text-slate-900 z-10 font-black text-lg md:text-xl">
+                                                {getCurrencySymbol(currency)}
+                                            </div>
                                             <Input
                                                 type="number"
-                                                className="h-16 md:h-20 pl-14 md:pl-16 bg-white border-slate-100 border-4 rounded-[1.5rem] md:rounded-[2.5rem] font-black hover:border-indigo-100 transition-all pr-4 md:pr-8 shadow-sm md:text-xl"
+                                                className="h-16 md:h-20 pl-20 md:pl-24 bg-white border-slate-100 border-4 rounded-[1.5rem] md:rounded-[2.5rem] font-black hover:border-indigo-100 transition-all pr-4 md:pr-8 shadow-sm md:text-xl"
                                                 value={item.amount}
                                                 onChange={e => updateItem(item.id, 'amount', parseFloat(e.target.value))}
                                             />
@@ -464,7 +466,10 @@ export default function NewInvoicePage() {
                                 </div>
                                 <div className="relative z-10">
                                     <span className="font-black uppercase tracking-[0.6em] text-[10px] text-slate-400 block mb-2">Total Net Value</span>
-                                    <span className="text-6xl font-black tracking-tighter">{getCurrencySymbol(currency)}{calculateTotal().toLocaleString()}</span>
+                                    <span className="text-6xl font-black tracking-tighter flex items-center gap-4">
+                                        <span className="text-white/20 italic text-3xl">{getCurrencySymbol(currency)}</span>
+                                        <span>{calculateTotal().toLocaleString()}</span>
+                                    </span>
                                 </div>
                                 <div className="text-right relative z-10">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-2 flex items-center justify-end gap-2">

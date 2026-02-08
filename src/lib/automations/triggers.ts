@@ -1,4 +1,3 @@
-import { dispatchWebhook } from '../webhooks/dispatcher'
 import { sendDocumentEmail, sendInvoiceEmail } from './email'
 
 export async function triggerDocumentAutomations(
@@ -16,16 +15,25 @@ export async function triggerDocumentAutomations(
         currency?: string
     }
 ) {
-    // Run all automations in parallel as non-blocking promises
-    Promise.allSettled([
+    try {
         // Webhook
-        dispatchWebhook(companyId, 'document.created', {
-            document_id: document.id,
-            document_type: document.type,
-            document_url: document.url,
-            property_address: document.property?.address,
-            currency: document.currency || 'USD',
-        }),
+        fetch('/api/webhooks/trigger', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'document',
+                data: {
+                    document_id: document.id,
+                    document_type: document.type,
+                    file_url: document.url,
+                    property_address: document.property?.address,
+                    recipient_name: document.application?.applicant_name || 'Prospect',
+                    recipient_email: document.application?.applicant_email,
+                    currency: document.currency || 'USD',
+                    triggered_at: new Date().toISOString()
+                }
+            }),
+        }).catch(err => console.error('Webhook Trigger Failed:', err));
 
         // Email
         sendDocumentEmail(companyId, {
@@ -36,8 +44,11 @@ export async function triggerDocumentAutomations(
             applicantName: document.application?.applicant_name,
             applicantEmail: document.application?.applicant_email,
             landlordEmail: document.landlord?.email,
-        }),
-    ]).catch(err => console.error('Automation Parallel Execution Error:', err))
+        }).catch(err => console.error('Email Trigger Failed:', err));
+
+    } catch (err) {
+        console.error('Document Automation Parallel Execution Error:', err);
+    }
 }
 
 export async function triggerInvoiceAutomations(
@@ -51,18 +62,32 @@ export async function triggerInvoiceAutomations(
         due_date?: string
         payment_url?: string
         currency?: string
+        items?: any[]
     }
 ) {
-    Promise.allSettled([
+    try {
         // Webhook
-        dispatchWebhook(companyId, 'invoice.created', {
-            invoice_id: invoice.id,
-            invoice_number: invoice.invoice_number,
-            amount: invoice.total,
-            recipient: invoice.recipient_name,
-            due_date: invoice.due_date,
-            currency: invoice.currency || 'USD',
-        }),
+        fetch('/api/webhooks/trigger', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'invoice',
+                data: {
+                    invoice_id: invoice.id,
+                    invoice_number: invoice.invoice_number,
+                    recipient_name: invoice.recipient_name,
+                    recipient_email: invoice.recipient_email,
+                    amount: invoice.total,
+                    company_id: companyId,
+                    items: invoice.items || [],
+                    due_date: invoice.due_date,
+                    currency: invoice.currency || 'USD',
+                    file_url: "DATA_ONLY_ON_CREATE",
+                    dispatch_notes: "Auto-trigger on creation",
+                    triggered_at: new Date().toISOString()
+                }
+            }),
+        }).catch(err => console.error('Webhook Trigger Failed:', err));
 
         // Email
         sendInvoiceEmail(companyId, {
@@ -73,6 +98,9 @@ export async function triggerInvoiceAutomations(
             recipientEmail: invoice.recipient_email,
             dueDate: invoice.due_date,
             paymentUrl: invoice.payment_url,
-        }),
-    ]).catch(err => console.error('Automation Parallel Execution Error:', err))
+        }).catch(err => console.error('Email Trigger Failed:', err));
+
+    } catch (err) {
+        console.error('Invoice Automation Parallel Execution Error:', err);
+    }
 }

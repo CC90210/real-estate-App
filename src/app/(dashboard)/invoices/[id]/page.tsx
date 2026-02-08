@@ -555,7 +555,10 @@ export default function InvoiceViewPage() {
                         </div>
                         <div className="flex flex-col justify-center items-start md:items-end md:text-right md:pr-4">
                             <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">Total Amount Due</h3>
-                            <p className="text-5xl md:text-6xl font-black text-slate-900 tracking-tighter mb-4">{getCurrencySymbol(invoice.currency)}{Number(invoice.total || 0).toLocaleString()}</p>
+                            <p className="text-5xl md:text-6xl font-black text-slate-900 tracking-tighter mb-4">
+                                <span className="text-slate-300 mr-2">{getCurrencySymbol(invoice.currency)}</span>
+                                {Number(invoice.total || 0).toLocaleString()}
+                            </p>
                             <div className="flex items-center gap-2">
                                 <div className={`w-2 h-2 rounded-full ${invoice.status === 'paid' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                                 <p className={`text-[9px] font-black uppercase tracking-widest ${invoice.status === 'paid' ? 'text-emerald-600' : 'text-amber-500'}`}>
@@ -689,10 +692,10 @@ export default function InvoiceViewPage() {
                         </div>
                         <div className="flex flex-col justify-center items-end text-right pr-6">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300 mb-3">Total Liability</h3>
-                            {/* Explicit spacing for CA$ to avoid overlap */}
-                            <p className="text-7xl font-black text-slate-900 tracking-tighter mb-6 flex items-center gap-3">
-                                <span className="opacity-40 text-4xl">{getCurrencySymbol(invoice.currency)}</span>
-                                <span className="pl-1">{Number(invoice.total || 0).toLocaleString()}</span>
+                            {/* Explicit optical gap for CA$ to avoid overlap */}
+                            <p className="text-7xl font-black text-slate-900 tracking-tighter mb-6 flex items-center gap-4 justify-end">
+                                <span className="opacity-20 text-4xl">{getCurrencySymbol(invoice.currency)}</span>
+                                <span className="ml-1 tracking-normal">{Number(invoice.total || 0).toLocaleString()}</span>
                             </p>
                             <div className="flex items-center gap-3 bg-slate-900 text-white px-5 py-2.5 rounded-2xl shadow-xl shadow-slate-100">
                                 <ShieldCheck className="w-5 h-5 text-emerald-400" />
@@ -723,7 +726,8 @@ export default function InvoiceViewPage() {
                                     <td className="py-8 text-center font-black text-slate-500 text-lg">{item.quantity || 1}</td>
                                     <td className="py-8 text-right font-bold text-slate-400 uppercase text-[9px] tracking-widest pr-12">Internal Entry</td>
                                     <td className="py-8 text-right font-black text-slate-900 text-2xl tracking-tighter">
-                                        {getCurrencySymbol(invoice.currency)}{Number(item.amount || 0).toLocaleString()}
+                                        <span className="text-slate-300 text-lg mr-2 italic">{getCurrencySymbol(invoice.currency)}</span>
+                                        {Number(item.amount || 0).toLocaleString()}
                                     </td>
                                 </tr>
                             ))}
@@ -736,7 +740,8 @@ export default function InvoiceViewPage() {
                                 </td>
                                 <td className="pt-12 text-right">
                                     <p className="font-black text-2xl text-slate-400 tracking-tight mb-2 opacity-50">
-                                        {getCurrencySymbol(invoice.currency)}{Number(invoice.total || 0).toLocaleString()}
+                                        <span className="text-lg mr-2">{getCurrencySymbol(invoice.currency)}</span>
+                                        {Number(invoice.total || 0).toLocaleString()}
                                     </p>
                                     <p className="font-black text-sm text-slate-400 tracking-tight">$0.00</p>
                                 </td>
@@ -757,13 +762,13 @@ export default function InvoiceViewPage() {
                         </div>
                         <div className="relative group overflow-hidden bg-slate-900 p-12 rounded-[3.5rem] shadow-2xl shadow-slate-200 flex-shrink-0 min-w-[340px]">
                             <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-                            <div className="relative z-10">
+                            <div className="relative z-10 text-right">
                                 <p className="text-[10px] font-black uppercase tracking-[0.5em] text-white/50 mb-4">Total Net Value</p>
-                                <p className="text-6xl font-black text-white tracking-tighter flex items-center gap-3 mb-6">
-                                    <span className="text-3xl text-white/30">{getCurrencySymbol(invoice.currency)}</span>
-                                    <span>{Number(invoice.total || 0).toLocaleString()}</span>
+                                <p className="text-6xl font-black text-white tracking-tighter flex items-center justify-end gap-4 mb-6">
+                                    <span className="text-3xl text-white/20 italic">{getCurrencySymbol(invoice.currency)}</span>
+                                    <span className="tracking-normal">{Number(invoice.total || 0).toLocaleString()}</span>
                                 </p>
-                                <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 rounded-xl border border-emerald-500/20 w-fit">
+                                <div className="flex items-center justify-end gap-2 px-3 py-1.5 bg-emerald-500/10 rounded-xl border border-emerald-500/20 w-fit ml-auto">
                                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                     <p className="text-[8px] font-black uppercase tracking-widest text-emerald-400 whitespace-nowrap">Ledger Verified & Secured</p>
                                 </div>
