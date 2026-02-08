@@ -4,16 +4,26 @@ This document outlines the systematic architecture for integrating document and 
 
 ## 1. The Propagation Pipeline
 
-PropFlow uses a **Data-First Propagation** strategy. Every critical financial or document event follows this rigorous path:
+PropFlow uses an **Atomic Binary Propagation** strategy. Every critical financial or document event follows this rigorous path:
 
 1.  **Event Capture**: User triggers an action (e.g., "Dispatch Entry").
-2.  **Asset Generation (Optional)**: If a PDF is required, it is generated via the **Isolated Iframe Capture Module** (`src/lib/generatePdf.ts`). This isolates the capture from the application's global CSS to prevent parsing crashes.
-3.  **Relay Fallback**: If asset generation fails, the system automatically falls back to a **Metadata Only** dispatch.
-4.  **Signed Delivery**: The `dispatchWebhook` engine (`src/lib/webhooks/dispatcher.ts`) signs the payload with a timestamped HMAC signature.
-5.  **Audit Ledger**: Every dispatch is logged in the `webhook_events` table for observability.
+2.  **Asset Generation (Optional)**: If a PDF is required, it is generated via the **Isolated Iframe Capture Module**.
+3.  **Atomic Relay**: The dispatch engine fetches the generated PDF from the secure vault and relays it as `multipart/form-data`.
+4.  **Binary Payload**: The webhook receives:
+    -   `payload`: A JSON string containing all metadata (invoice ID, items, etc.).
+    -   `attachment`: The actual binary PDF document.
+5.  **Signed Delivery**: The payload is signed with a timestamped HMAC signature in the headers.
 
 ## 2. Replicatable Payload Schema
 
+### Webhook Format: `multipart/form-data`
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `payload` | `JSON String` | Flattened metadata object. |
+| `attachment` | `Binary (PDF)` | The actual invoice/document file. |
+
+### Metadata Sample (within `payload`)
 To ensure easy integration for future clients (n8n, Zapier, Make), all automation triggers must follow this standardized schema:
 
 ### Invoice Creation (`invoice.created`)

@@ -19,46 +19,39 @@ export async function dispatchWebhook(
     data: any
 ) {
     try {
-        // Get company's automation settings
+        // 1. Get company's automation settings
         const { data: settings } = await supabaseAdmin
             .from('automation_settings')
             .select('webhook_url, webhook_secret, webhook_events')
             .eq('company_id', companyId)
             .single()
 
-        // Fallback to Production Root Hook (Intelligent Automation Gateway)
-        // This is the verified URL from the user's screenshot
         const PRODUCTION_FALLBACK_URL = 'https://n8n.srv993801.hstgr.cloud/webhook/ad6dd389-7003-4276-9f6c-5eec3836020d';
-
         let webhookUrl = settings?.webhook_url || PRODUCTION_FALLBACK_URL;
 
-        // Check if webhook is configured (should always be true now with fallback)
-        if (!webhookUrl) {
-            console.warn(`No webhook URL for company ${companyId} and no production fallback available.`);
+        if (!webhookUrl) return;
+
+        if (settings && settings.webhook_events && !settings.webhook_events.includes(eventType)) {
             return;
         }
 
-        // Only check event list if settings actually exist, otherwise allow the fallback url to receive it
-        if (settings && settings.webhook_events && !settings.webhook_events.includes(eventType)) {
-            console.log(`Event ${eventType} not enabled for company ${companyId}`)
-            return
-        }
-
-        const payload: WebhookPayload = {
+        // 2. Surgical Payload Refinement (Flat & Clean)
+        // We remove the nesting of 'data' to provide a cleaner schema for n8n
+        const payload = {
             event: eventType,
-            data,
             company_id: companyId,
             timestamp: new Date().toISOString(),
-        }
+            ...data // Spread the actual payload (invoice_id, amount, etc.)
+        };
 
-        // Create signature for verification
+        // 3. HMAC Signature (Based on clean payload)
         const signature = crypto
             .createHmac('sha256', settings?.webhook_secret || 'default_secret')
             .update(JSON.stringify(payload))
             .digest('hex')
 
-        // Log the event
-        const { data: eventLog, error: logError } = await supabaseAdmin
+        // 4. Log the Intent
+        const { data: eventLog } = await supabaseAdmin
             .from('webhook_events')
             .insert({
                 company_id: companyId,
@@ -69,24 +62,56 @@ export async function dispatchWebhook(
             .select()
             .single()
 
-        if (logError) {
-            console.error('Failed to log webhook event:', logError)
+        // 5. Binary Attachment Logic (Atomic Relay)
+        let transmissionBody: any = JSON.stringify(payload);
+        let contentType = 'application/json';
+
+        if (data.file_url && data.file_url !== "DATA_ONLY_DISPATCH") {
+            try {
+                // Fetch the actual document from Supabase storage using the signed URL
+                const fileResponse = await fetch(data.file_url);
+                if (fileResponse.ok) {
+                    const fileBuffer = await fileResponse.arrayBuffer();
+
+                    // We switch to Multipart/Form-Data to "attach" the actual file
+                    const formData = new FormData();
+                    formData.append('payload', JSON.stringify(payload));
+
+                    // Construct a file blob for the attachment field
+                    const fileName = data.invoice_number ? `${data.invoice_number}.pdf` : 'document.pdf';
+                    const fileBlob = new Blob([fileBuffer], { type: 'application/pdf' });
+                    formData.append('attachment', fileBlob, fileName);
+
+                    transmissionBody = formData;
+                    contentType = ''; // Browser/Node fetch will automatically set the boundary
+                }
+            } catch (attError) {
+                console.warn("Failed to attach binary file, falling back to JSON metadata:", attError);
+            }
         }
 
-        // Send webhook
+        // 6. Signed Propagation
         try {
+            const headers: Record<string, string> = {
+                'X-PropFlow-Signature': signature,
+                'X-PropFlow-Event': eventType,
+                'X-PropFlow-Timestamp': payload.timestamp,
+            };
+
+            // Only set Content-Type if it's not multipart (fetch handles boundary)
+            if (contentType) {
+                headers['Content-Type'] = contentType;
+            }
+
             const response = await fetch(webhookUrl, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-PropFlow-Signature': signature,
-                    'X-PropFlow-Event': eventType,
-                    'X-PropFlow-Timestamp': payload.timestamp,
-                },
-                body: JSON.stringify(payload),
+                headers,
+                body: transmissionBody,
             })
 
-            // Update event log
+            const responseText = await response.text();
+
+            // Update Ledger
             await supabaseAdmin
                 .from('webhook_events')
                 .update({
@@ -94,14 +119,13 @@ export async function dispatchWebhook(
                     attempts: 1,
                     last_attempt_at: new Date().toISOString(),
                     response_code: response.status,
-                    error_message: response.ok ? null : (await response.text()).substring(0, 500),
+                    error_message: response.ok ? null : responseText.substring(0, 500),
                 })
                 .eq('id', eventLog?.id)
 
             return { success: response.ok, status: response.status }
 
         } catch (fetchError: any) {
-            // Update event log with error
             await supabaseAdmin
                 .from('webhook_events')
                 .update({

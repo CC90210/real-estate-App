@@ -31,14 +31,12 @@ export async function POST(request: Request) {
 
         const { type, data } = validation.data;
 
-        // 3. Construct N8N Webhook Payload
+        // 3. Construct Lean Propagation Payload
         const n8nPayload = {
             ...data,
             meta: {
-                triggered_by: user.email,
-                user_id: user.id,
-                timestamp: new Date().toISOString(),
-                environment: process.env.NODE_ENV
+                operator: user.email,
+                env: process.env.NODE_ENV
             }
         };
 
