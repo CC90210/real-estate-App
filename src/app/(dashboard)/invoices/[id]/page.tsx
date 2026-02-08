@@ -43,6 +43,8 @@ export default function InvoiceViewPage() {
 
     const [isUpdating, setIsUpdating] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
+    const [isDispatching, setIsDispatching] = useState(false)
+    const [dispatchNotes, setDispatchNotes] = useState("")
 
     const { data: invoice, isLoading, error, refetch } = useQuery({
         queryKey: ['invoice', id],
@@ -225,16 +227,18 @@ export default function InvoiceViewPage() {
     const handleDispatch = async (skipPdf = false) => {
         if (!invoice || !id) return;
         setIsUpdating(true)
+        setIsDispatching(false) // Close dialog
         try {
             let fileUrl = "";
 
             if (!skipPdf) {
-                // 1. Generate PDF Blob via Isolated Sandbox
-                toast.message('Generating Document', { description: 'Isolating capture in secure sandbox...' })
+                // 1. Generate PDF Blob via Dedicated High-Fidelity Template
+                toast.message('Generating Document', { description: 'Syncing with High-Fidelity Print Engine...' })
                 await new Promise(r => setTimeout(r, 800)); // UI Settle
 
                 try {
-                    const pdfBlob = await generatePDFBlob('invoice-paper');
+                    // We target the HIDDEN print template to ensure 100% layout fidelity
+                    const pdfBlob = await generatePDFBlob('invoice-print-template');
                     if (pdfBlob) {
                         toast.message('Secure Upload', { description: 'Transmitting PDF to document vault...' })
                         const path = `${invoice.company_id}/invoice_${id}_${Date.now()}.pdf`;
@@ -249,7 +253,7 @@ export default function InvoiceViewPage() {
                 }
             }
 
-            // 2. Trigger Automation (Propagate Data)
+            // 2. Trigger Automation (Propagate Data + Intel Notes)
             toast.message('Propagating Webhook', { description: 'Broadcasting data to intelligent gateway...' })
             await triggerInvoiceAutomation({
                 invoice_id: id as string,
@@ -259,8 +263,9 @@ export default function InvoiceViewPage() {
                 amount: invoice.total,
                 company_id: invoice.company_id,
                 created_by: invoice.created_by,
-                items: items, // Future-proof: full itemized data
+                items: items,
                 file_url: fileUrl || "DATA_ONLY_DISPATCH",
+                dispatch_notes: dispatchNotes, // The new meta message
                 triggered_at: new Date().toISOString()
             });
 
@@ -278,7 +283,7 @@ export default function InvoiceViewPage() {
             queryClient.invalidateQueries({ queryKey: ['invoice', id] })
             queryClient.invalidateQueries({ queryKey: ['invoices'] })
             toast.success('Propagation Successful', {
-                description: fileUrl ? 'Document and metadata dispatched.' : 'Metadata dispatched successfully (Data-Only Mode).'
+                description: fileUrl ? 'Document and intelligence notes dispatched.' : 'Metadata dispatched successfully (Data-Only Mode).'
             })
             await refetch()
 
@@ -404,15 +409,53 @@ export default function InvoiceViewPage() {
 
                         {invoice.status === 'draft' && (
                             <>
-                                <Button
-                                    onClick={() => handleDispatch(false)}
-                                    disabled={isUpdating}
-                                    className="h-9 md:h-10 px-3 md:px-4 rounded-xl font-black uppercase text-[9px] tracking-widest bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200 transition-all hover:-translate-y-0.5"
-                                >
-                                    {isUpdating ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1.5" />}
-                                    <span className="hidden sm:inline">Dispatch Entry</span>
-                                    <span className="sm:hidden">Send</span>
-                                </Button>
+                                <Dialog open={isDispatching} onOpenChange={setIsDispatching}>
+                                    <DialogTrigger asChild>
+                                        <Button
+                                            disabled={isUpdating}
+                                            className="h-9 md:h-10 px-3 md:px-4 rounded-xl font-black uppercase text-[9px] tracking-widest bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200 transition-all hover:-translate-y-0.5"
+                                        >
+                                            {isUpdating ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1.5" />}
+                                            <span className="hidden sm:inline">Dispatch Entry</span>
+                                            <span className="sm:hidden">Send</span>
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="rounded-3xl md:rounded-[2rem] w-[calc(100%-2rem)] max-w-lg">
+                                        <DialogHeader>
+                                            <DialogTitle className="text-2xl font-black tracking-tight flex items-center gap-2">
+                                                <Zap className="h-6 w-6 text-amber-500" />
+                                                Intelligent Dispatch
+                                            </DialogTitle>
+                                            <DialogDescription className="font-medium text-slate-500">
+                                                Include additional context or meta-notes for the CRM and agents who will handle this entry.
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <div className="py-4">
+                                            <textarea
+                                                value={dispatchNotes}
+                                                onChange={(e) => setDispatchNotes(e.target.value)}
+                                                placeholder="e.g. Please followup by Thursday, apply 5% discount if paid early..."
+                                                className="w-full h-32 p-4 rounded-2xl bg-slate-50 border-2 border-slate-100 font-medium text-sm focus:outline-none focus:border-indigo-300 transition-all resize-none"
+                                            />
+                                        </div>
+                                        <DialogFooter className="gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                onClick={() => setIsDispatching(false)}
+                                                className="h-12 rounded-xl font-bold flex-1"
+                                            >
+                                                Cancel
+                                            </Button>
+                                            <Button
+                                                onClick={() => handleDispatch(false)}
+                                                disabled={isUpdating}
+                                                className="h-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold flex-1"
+                                            >
+                                                {isUpdating ? 'Transmitting...' : 'Begin Propagation'}
+                                            </Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
 
                                 <Button
                                     variant="outline"
@@ -583,6 +626,164 @@ export default function InvoiceViewPage() {
                             <span>Digital Signature: {id.slice(0, 12).toUpperCase()}</span>
                             <div className="w-0.5 h-0.5 rounded-full bg-slate-200 hidden md:block" />
                             <span>Page 01 / 01</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* 
+                DEDICATED PRINT TEMPLATE - HIGH FIDELITY SANDBOX
+                This element is rendered off-screen but used for PDF capture.
+                It uses fixed sizing and explicit spacing to prevent overlap/cutoff.
+            */}
+            <div className="fixed top-0 left-0 w-[850px] -translate-x-[200%] pointer-events-none no-print">
+                <div id="invoice-print-template" className="w-[850px] bg-white min-h-[11in] p-16 text-slate-900 leading-relaxed font-sans">
+                    {/* Header: High Branding */}
+                    <div className="flex justify-between items-start mb-16 pb-12 border-b-[6px] border-slate-900">
+                        <div className="flex gap-6">
+                            {company?.logo_url ? (
+                                <img src={company.logo_url} alt="Logo" className="h-16 w-auto object-contain" />
+                            ) : (
+                                <div className="h-16 w-16 bg-slate-900 rounded-2xl flex items-center justify-center text-white">
+                                    <DollarSign className="w-8 h-8" />
+                                </div>
+                            )}
+                            <div>
+                                <h1 className="text-3xl font-black tracking-tighter text-slate-900 uppercase leading-none mb-3">
+                                    {company?.name || 'Corporate Ledger'}
+                                </h1>
+                                <div className="space-y-1 text-xs text-slate-400 font-bold uppercase tracking-widest">
+                                    <p>{company?.address || '141 SIXTH STREET'}</p>
+                                    <p>{company?.phone} &bull; {company?.email}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <h2 className="text-5xl font-black text-slate-900 tracking-tighter mb-4">INVOICE</h2>
+                            <span className="bg-slate-900 text-white font-mono font-black py-2.5 px-6 rounded-xl text-lg tracking-[0.2em]">
+                                #{invoice.invoice_number}
+                            </span>
+                            <div className="mt-8 space-y-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                <p>Date of Issue: <span className="text-slate-900 ml-2">{safeFormat(invoice.issue_date || invoice.created_at, 'MMM dd, yyyy')}</span></p>
+                                <p>Payment Due: <span className="text-slate-900 ml-2">{safeFormat(invoice.due_date, 'MMM dd, yyyy') || 'Upon Receipt'}</span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Details Grid: No responsiveness, fixed widths */}
+                    <div className="grid grid-cols-2 gap-12 mb-20">
+                        <div className="p-10 bg-slate-50 rounded-[2.5rem] border-2 border-slate-100 flex flex-col h-full">
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300 mb-6">Recipient Information</h3>
+                            <p className="text-2xl font-black text-slate-900 tracking-tight leading-none mb-1">{invoice.recipient_name}</p>
+                            <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mb-8">{invoice.recipient_email}</p>
+
+                            {property && (
+                                <div className="mt-auto pt-6 border-t-2 border-slate-200/50">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 mb-2">Subject Property</p>
+                                    <p className="text-slate-900 font-black text-sm uppercase tracking-tight">
+                                        {property.address}
+                                        {property.unit_number && <span className="ml-3 py-1 px-3 bg-slate-200 text-slate-600 rounded-lg text-[10px]">UNIT {property.unit_number}</span>}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex flex-col justify-center items-end text-right pr-6">
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300 mb-3">Total Liability</h3>
+                            {/* Explicit spacing for CA$ to avoid overlap */}
+                            <p className="text-7xl font-black text-slate-900 tracking-tighter mb-6 flex items-center gap-3">
+                                <span className="opacity-40 text-4xl">{getCurrencySymbol(invoice.currency)}</span>
+                                <span className="pl-1">{Number(invoice.total || 0).toLocaleString()}</span>
+                            </p>
+                            <div className="flex items-center gap-3 bg-slate-900 text-white px-5 py-2.5 rounded-2xl shadow-xl shadow-slate-100">
+                                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                                <p className="text-[11px] font-black uppercase tracking-[0.2em]">
+                                    {invoice.status === 'paid' ? 'Settled & Verified' : 'Payment Scheduled'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Ledger Items: Explicitly spaced */}
+                    <table className="w-full mb-20">
+                        <thead>
+                            <tr className="border-b-4 border-slate-100">
+                                <th className="text-left py-6 font-black uppercase text-[10px] tracking-[0.3em] text-slate-300">Particulars</th>
+                                <th className="text-center py-6 font-black uppercase text-[10px] tracking-[0.3em] text-slate-300">Quantity</th>
+                                <th className="text-right py-6 font-black uppercase text-[10px] tracking-[0.3em] text-slate-300 pr-12">Reference</th>
+                                <th className="text-right py-6 font-black uppercase text-[10px] tracking-[0.3em] text-slate-300">Net Value</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y-2 divide-slate-50">
+                            {items.map((item: any, index: number) => (
+                                <tr key={index}>
+                                    <td className="py-8">
+                                        <p className="font-black text-slate-900 uppercase tracking-tight text-lg">{item.description || 'Professional Service'}</p>
+                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Transaction Ref: PF-{index + 1001}</p>
+                                    </td>
+                                    <td className="py-8 text-center font-black text-slate-500 text-lg">{item.quantity || 1}</td>
+                                    <td className="py-8 text-right font-bold text-slate-400 uppercase text-[9px] tracking-widest pr-12">Internal Entry</td>
+                                    <td className="py-8 text-right font-black text-slate-900 text-2xl tracking-tighter">
+                                        {getCurrencySymbol(invoice.currency)}{Number(item.amount || 0).toLocaleString()}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colSpan={3} className="pt-12 text-right">
+                                    <p className="font-black uppercase tracking-[0.4em] text-slate-300 text-[10px] mb-2">Subtotal Exposure</p>
+                                    <p className="font-black uppercase tracking-[0.4em] text-slate-300 text-[10px]">Current Tax (0%)</p>
+                                </td>
+                                <td className="pt-12 text-right">
+                                    <p className="font-black text-2xl text-slate-400 tracking-tight mb-2 opacity-50">
+                                        {getCurrencySymbol(invoice.currency)}{Number(invoice.total || 0).toLocaleString()}
+                                    </p>
+                                    <p className="font-black text-sm text-slate-400 tracking-tight">$0.00</p>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+
+                    {/* Bottom Summary: The High-Grade UI Callout */}
+                    <div className="flex items-center justify-between gap-12 pt-16 border-t-4 border-slate-100">
+                        <div className="flex-1 max-w-[400px]">
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-300 mb-4 flex items-center gap-3">
+                                <Info className="h-4 w-4" />
+                                Notes & Directives
+                            </h4>
+                            <p className="text-xs text-slate-500 font-medium leading-relaxed bg-slate-50 p-8 rounded-[2rem] border-2 border-slate-100 italic">
+                                "{invoice.notes || 'This invoice is a digitally verified ledger entry. Please settle the balance as per the agreed terms of service.'}"
+                            </p>
+                        </div>
+                        <div className="relative group overflow-hidden bg-slate-900 p-12 rounded-[3.5rem] shadow-2xl shadow-slate-200 flex-shrink-0 min-w-[340px]">
+                            <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                            <div className="relative z-10">
+                                <p className="text-[10px] font-black uppercase tracking-[0.5em] text-white/50 mb-4">Total Net Value</p>
+                                <p className="text-6xl font-black text-white tracking-tighter flex items-center gap-3 mb-6">
+                                    <span className="text-3xl text-white/30">{getCurrencySymbol(invoice.currency)}</span>
+                                    <span>{Number(invoice.total || 0).toLocaleString()}</span>
+                                </p>
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 rounded-xl border border-emerald-500/20 w-fit">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    <p className="text-[8px] font-black uppercase tracking-widest text-emerald-400 whitespace-nowrap">Ledger Verified & Secured</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Institutional Footer */}
+                    <div className="mt-24 pt-10 border-t-2 border-slate-100 flex justify-between items-center text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
+                        <div className="flex items-center gap-4">
+                            <span className="flex items-center gap-2">
+                                <ShieldCheck className="h-3.5 w-3.5" />
+                                Verified Corporate Entry &copy; {new Date().getFullYear()}
+                            </span>
+                            <span className="opacity-20 text-lg">|</span>
+                            <span>A4 Compliant Document</span>
+                        </div>
+                        <div className="flex items-center gap-6">
+                            <span className="opacity-40">Digital Node: {id.slice(0, 8).toUpperCase()}</span>
+                            <span className="px-3 py-1 bg-slate-100 rounded-lg text-slate-500">Page 1 of 1</span>
                         </div>
                     </div>
                 </div>

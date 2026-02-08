@@ -18,12 +18,17 @@ PropFlow uses an **Atomic Binary Propagation** strategy. Every critical financia
 
 ### Webhook Format: `multipart/form-data`
 
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| `payload` | `JSON String` | Flattened metadata object. |
+| `payload` | `JSON String` | Flattened metadata object (includes `dispatch_notes`). |
 | `attachment` | `Binary (PDF)` | The actual invoice/document file. |
 
 ### Metadata Sample (within `payload`)
+```json
+{
+  "invoice_id": "uuid",
+  "dispatch_notes": "Please followup by Thursday...",
+  ...
+}
+```
 To ensure easy integration for future clients (n8n, Zapier, Make), all automation triggers must follow this standardized schema:
 
 ### Invoice Creation (`invoice.created`)

@@ -25,6 +25,7 @@ type InvoicePayload = {
     created_by: string;
     items: any[];
     file_url?: string; // Optional for data-only dispatches
+    dispatch_notes?: string; // Additional context for CRM/Agents
     triggered_at: string;
 };
 
