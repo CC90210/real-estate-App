@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/select'
 import { ArrowLeft, Plus, Trash2, Save, Loader2, DollarSign } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
+import { CURRENCIES, getCurrencySymbol } from '@/lib/currencies'
 
 interface LineItem {
     id: string
@@ -44,6 +45,7 @@ export default function EditInvoicePage() {
     const [items, setItems] = useState<LineItem[]>([])
     const [status, setStatus] = useState('draft')
     const [invoiceNumber, setInvoiceNumber] = useState('')
+    const [currency, setCurrency] = useState('USD')
 
     // Load invoice and initial data
     useEffect(() => {
@@ -88,6 +90,7 @@ export default function EditInvoicePage() {
                     setItems(invoice.items || [])
                     setStatus(invoice.status)
                     setInvoiceNumber(invoice.invoice_number)
+                    setCurrency(invoice.currency || 'USD')
                 }
             } catch (error: any) {
                 toast.error('Failed to load invoice', { description: error.message })
@@ -134,18 +137,43 @@ export default function EditInvoicePage() {
                 subtotal: calculateTotal(),
                 total: calculateTotal(),
                 notes: notes,
+                currency: currency,
                 updated_at: new Date().toISOString()
             }
 
-            const { error } = await supabase
+            const { data: updatedInvoice, error } = await supabase
                 .from('invoices')
                 .update(invoiceData)
                 .eq('id', id)
+                .select('id, invoice_number, total, recipient_name, recipient_email, due_date, currency')
+                .single()
 
             if (error) throw error
 
-            toast.success('Invoice updated successfully')
-            router.push(`/invoices/${id}`)
+            if (updatedInvoice) {
+                // Trigger Automations (Webhooks & Email)
+                try {
+                    const { triggerInvoiceAutomations } = await import('@/lib/automations/triggers');
+                    const { data: profile } = await supabase.from('profiles').select('company_id').single();
+                    if (profile?.company_id) {
+                        triggerInvoiceAutomations(profile.company_id, {
+                            id: updatedInvoice.id,
+                            invoice_number: updatedInvoice.invoice_number,
+                            total: updatedInvoice.total,
+                            recipient_name: updatedInvoice.recipient_name,
+                            recipient_email: updatedInvoice.recipient_email,
+                            due_date: updatedInvoice.due_date,
+                            currency: updatedInvoice.currency,
+                            payment_url: `${process.env.NEXT_PUBLIC_APP_URL}/invoices/${updatedInvoice.id}`
+                        }).catch(console.error);
+                    }
+                } catch (autoError) {
+                    console.error('Automation trigger failed:', autoError);
+                }
+
+                toast.success('Invoice updated successfully')
+                router.push(`/invoices/${id}`)
+            }
         } catch (error: any) {
             toast.error('Failed to update invoice', { description: error.message })
         } finally {
@@ -233,6 +261,19 @@ export default function EditInvoicePage() {
                                 value={dueDate}
                                 onChange={e => setDueDate(e.target.value)}
                             />
+                            <div className="space-y-1">
+                                <Label className="uppercase text-[10px] font-black tracking-widest text-slate-400 ml-1">Currency</Label>
+                                <Select value={currency} onValueChange={setCurrency}>
+                                    <SelectTrigger className="h-12 bg-slate-50 border-slate-100 rounded-xl font-medium text-slate-600">
+                                        <SelectValue placeholder="Select Currency" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {CURRENCIES.map(c => (
+                                            <SelectItem key={c.code} value={c.code}>{c.code} ({c.symbol})</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
                     </div>
 
@@ -257,8 +298,8 @@ export default function EditInvoicePage() {
                                         />
                                     </div>
                                     <div className="w-32 relative">
-                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                                            <DollarSign className="w-4 h-4" />
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none font-bold">
+                                            {getCurrencySymbol(currency)}
                                         </div>
                                         <Input
                                             type="number"
@@ -301,11 +342,11 @@ export default function EditInvoicePage() {
                         <div className="flex flex-col justify-end items-end space-y-4">
                             <div className="flex justify-between w-full max-w-xs text-sm font-medium text-slate-500">
                                 <span>Subtotal</span>
-                                <span>${calculateTotal().toLocaleString()}</span>
+                                <span>{getCurrencySymbol(currency)}{calculateTotal().toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between w-full max-w-xs text-3xl font-black text-slate-900">
                                 <span>Total</span>
-                                <span>${calculateTotal().toLocaleString()}</span>
+                                <span>{getCurrencySymbol(currency)}{calculateTotal().toLocaleString()}</span>
                             </div>
                         </div>
                     </div>

@@ -28,6 +28,7 @@ export async function POST(request: Request) {
         const type = formData.get('type') as string;
         const propertyId = formData.get('propertyId') as string;
         const applicantId = formData.get('applicantId') as string;
+        const currency = formData.get('currency') as string || 'USD';
         const customFields = JSON.parse(formData.get('customFields') as string || '{}');
 
         // Validate input
@@ -132,7 +133,8 @@ export async function POST(request: Request) {
                 address: company?.address || '',
                 phone: company?.phone || '',
                 email: company?.email || user.email || ''
-            }
+            },
+            currency: currency
         };
 
         // Fetch property data if provided
@@ -203,6 +205,7 @@ export async function POST(request: Request) {
                 property_id: propertyId || null,
                 application_id: (applicantId && applicantId !== 'none') ? applicantId : null,
                 company_id: companyId,
+                currency: currency,
                 created_by: user.id,
             })
             .select('id')
@@ -227,7 +230,8 @@ export async function POST(request: Request) {
                 application: documentData.application ? {
                     applicant_name: documentData.application.applicant_name,
                     applicant_email: documentData.application.applicant_email || documentData.application.email
-                } : undefined
+                } : undefined,
+                currency: currency
             };
 
             // Non-blocking call

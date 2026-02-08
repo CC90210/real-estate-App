@@ -12,6 +12,7 @@ import Link from 'next/link'
 import { useAccentColor } from '@/lib/hooks/useAccentColor'
 import { cn } from '@/lib/utils'
 import { FeatureGate } from '@/components/FeatureGate'
+import { getCurrencySymbol } from '@/lib/currencies'
 
 export default function InvoicesPage() {
     const supabase = createClient()
@@ -190,7 +191,7 @@ export default function InvoicesPage() {
                                                 <div className="flex items-center gap-12">
                                                     <div className="text-right">
                                                         <p className="text-4xl font-black text-slate-900 tracking-tighter">
-                                                            ${Number(invoice.total || 0).toLocaleString()}
+                                                            {getCurrencySymbol(invoice.currency)}{Number(invoice.total || 0).toLocaleString()}
                                                         </p>
                                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2">
                                                             Due {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Upon Receipt'}

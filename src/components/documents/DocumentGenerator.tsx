@@ -32,6 +32,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { downloadPDF } from '@/lib/generatePdf';
 import { createClient } from '@/lib/supabase/client';
+import { CURRENCIES, getCurrencySymbol } from '@/lib/currencies';
 
 interface DocumentGeneratorProps {
     properties: any[];
@@ -107,6 +108,9 @@ export function DocumentGenerator({ properties, applications }: DocumentGenerato
 
             const { image, ...fields } = formData;
             if (image) body.append('image', image);
+
+            // Add currency to top level if it exists in form data
+            if (formData.currency) body.append('currency', formData.currency);
 
             body.append('customFields', JSON.stringify(fields));
 
@@ -265,7 +269,8 @@ function PropertySummaryForm({ properties, onGenerate, isGenerating, profile }: 
         customTagline: '',
         showPrice: true,
         showLockbox: false,
-        template: 'modern'
+        template: 'modern',
+        currency: 'USD'
     });
 
     useEffect(() => {
@@ -300,6 +305,17 @@ function PropertySummaryForm({ properties, onGenerate, isGenerating, profile }: 
                         {properties.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.address}</SelectItem>)}
                     </SelectContent>
                 </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Monetary Unit</Label>
+                    <Select value={formData.currency} onValueChange={(v) => setFormData(prev => ({ ...prev, currency: v }))}>
+                        <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            {CURRENCIES.map(c => <SelectItem key={c.code} value={c.code}>{c.code} ({c.symbol})</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
             <div>
                 <Label>Property Photo Override</Label>
@@ -353,7 +369,8 @@ function LeaseProposalForm({ properties, onGenerate, isGenerating, profile }: an
         agentLicense: '',
         companyName: 'Verified Realty',
         companyAddress: '',
-        validUntil: ''
+        validUntil: '',
+        currency: 'USD'
     });
 
     // Sync with selected property rent
@@ -429,9 +446,20 @@ function LeaseProposalForm({ properties, onGenerate, isGenerating, profile }: an
                 </p>
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
+                        <Label className="text-xs text-slate-500">Monetary Unit</Label>
+                        <Select value={formData.currency} onValueChange={(v) => setFormData({ ...formData, currency: v })}>
+                            <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                {CURRENCIES.map(c => <SelectItem key={c.code} value={c.code}>{c.code} ({c.symbol})</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
                         <Label className="text-xs text-slate-500">Monthly Rent *</Label>
                         <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">{getCurrencySymbol(formData.currency)}</span>
                             <Input
                                 type="number"
                                 value={formData.offerRent}
@@ -444,7 +472,7 @@ function LeaseProposalForm({ properties, onGenerate, isGenerating, profile }: an
                     <div className="space-y-2">
                         <Label className="text-xs text-slate-500">Security Deposit *</Label>
                         <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">{getCurrencySymbol(formData.currency)}</span>
                             <Input
                                 type="number"
                                 value={formData.securityDeposit}
@@ -517,7 +545,8 @@ function ShowingSheetForm({ properties, onGenerate, isGenerating, profile }: any
         showLockbox: true,
         includeDirections: true,
         includeNearbyAmenities: true,
-        notes: ''
+        notes: '',
+        currency: 'USD'
     });
 
     useEffect(() => {
@@ -538,6 +567,17 @@ function ShowingSheetForm({ properties, onGenerate, isGenerating, profile }: any
                     {properties.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.address}</SelectItem>)}
                 </SelectContent>
             </Select>
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Monetary Unit</Label>
+                    <Select value={formData.currency} onValueChange={(v) => setFormData(prev => ({ ...prev, currency: v }))}>
+                        <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            {CURRENCIES.map(c => <SelectItem key={c.code} value={c.code}>{c.code} ({c.symbol})</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
             <div className="grid grid-cols-2 gap-4">
                 <Input type="date" value={formData.showingDate} onChange={(e) => setFormData({ ...formData, showingDate: e.target.value })} />
                 <Input type="time" value={formData.showingTime} onChange={(e) => setFormData({ ...formData, showingTime: e.target.value })} />
@@ -562,7 +602,8 @@ function ApplicationSummaryForm({ properties, applications, onGenerate, isGenera
         includeIncome: true,
         includeBackground: true,
         isStrict: false,
-        template: 'executive'
+        template: 'executive',
+        currency: 'USD'
     });
 
     useEffect(() => {
@@ -596,6 +637,18 @@ function ApplicationSummaryForm({ properties, applications, onGenerate, isGenera
                             ))}
                         </SelectContent>
                     </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-widest text-slate-500">Financial Standard</Label>
+                        <Select value={formData.currency} onValueChange={(v) => setFormData({ ...formData, currency: v })}>
+                            <SelectTrigger className="h-12 rounded-xl bg-slate-50"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                {CURRENCIES.map(c => <SelectItem key={c.code} value={c.code}>{c.code} ({c.symbol})</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
 
                 <div className="space-y-2">
@@ -658,7 +711,8 @@ function ApplicationSummaryForm({ properties, applications, onGenerate, isGenera
 }
 
 function DocumentTemplate({ data }: { data: any }) {
-    const { type, property, application, customFields, aiHighlight, aiIntro, aiTalkingPoints, aiAnalysis } = data;
+    const { type, property, application, customFields, aiHighlight, aiIntro, aiTalkingPoints, aiAnalysis, currency } = data;
+    const symbol = getCurrencySymbol(currency || 'USD');
 
     if (type === 'property_summary') {
         return (
@@ -672,7 +726,7 @@ function DocumentTemplate({ data }: { data: any }) {
                 <div className="grid grid-cols-3 gap-8 mb-12">
                     <StatBox label="Bedrooms" value={property.bedrooms} />
                     <StatBox label="Bathrooms" value={property.bathrooms} />
-                    <StatBox label="Monthly Rent" value={`$${property.rent?.toLocaleString()}`} />
+                    <StatBox label="Monthly Rent" value={`${symbol}${property.rent?.toLocaleString()}`} />
                 </div>
                 {aiHighlight && (
                     <div className="bg-slate-900 text-white p-8 rounded-3xl mb-12 shadow-2xl">
@@ -738,7 +792,7 @@ function DocumentTemplate({ data }: { data: any }) {
                 </div>
                 <p className="text-xl leading-relaxed italic border-l-4 border-blue-600 pl-8 mb-12 text-slate-700">"{aiIntro}"</p>
                 <div className="grid grid-cols-2 gap-10 mb-12">
-                    <KVRow label="Monthly Rate" value={`$${customFields.offerRent}`} />
+                    <KVRow label="Monthly Rate" value={`${symbol}${customFields.offerRent}`} />
                     <KVRow label="Move-in" value={customFields.moveInDate} />
                 </div>
                 <div className="mt-auto border-t pt-8">
@@ -774,7 +828,7 @@ function DocumentTemplate({ data }: { data: any }) {
                 </div>
                 <div className="grid grid-cols-2 gap-10">
                     <KVRow label="Credit Strength" value={application?.credit_score || 'N/A'} />
-                    <KVRow label="Income Support" value={`$${application?.monthly_income?.toLocaleString()}/mo`} />
+                    <KVRow label="Income Support" value={`${symbol}${application?.monthly_income?.toLocaleString()}/mo`} />
                 </div>
                 <div className="mt-auto pt-10 text-[10px] font-black uppercase text-slate-300 tracking-[0.5em] text-center">
                     Cloud Secured Intelligence Report

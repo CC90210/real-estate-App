@@ -27,6 +27,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { generatePDFBlob } from '@/lib/generatePdf'
 import { uploadAndGetLink, triggerInvoiceAutomation } from '@/lib/automations'
+import { getCurrencySymbol } from '@/lib/currencies'
 
 // ============================================================================
 // HIGH-FIDELITY INVOICE ARCHITECTURE - PRODUCTION GRADE
@@ -474,7 +475,7 @@ export default function InvoiceViewPage() {
                     </div>
                     <div className="flex flex-col justify-center items-end text-right pr-4">
                         <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">Total Amount Due</h3>
-                        <p className="text-6xl font-black text-slate-900 tracking-tighter mb-4">${Number(invoice.total || 0).toLocaleString()}</p>
+                        <p className="text-6xl font-black text-slate-900 tracking-tighter mb-4">{getCurrencySymbol(invoice.currency)}{Number(invoice.total || 0).toLocaleString()}</p>
                         <div className="flex items-center gap-2">
                             <div className={`w-2 h-2 rounded-full ${invoice.status === 'paid' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                             <p className={`text-[9px] font-black uppercase tracking-widest ${invoice.status === 'paid' ? 'text-emerald-600' : 'text-amber-500'}`}>
@@ -503,15 +504,15 @@ export default function InvoiceViewPage() {
                                         <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Reference: TRX-{index + 101}</p>
                                     </td>
                                     <td className="p-5 text-center font-bold text-slate-600">{item.quantity || 1}</td>
-                                    <td className="p-5 text-right font-bold text-slate-600">${Number(item.amount || 0).toLocaleString()}</td>
-                                    <td className="p-5 text-right font-black text-slate-900 text-base">${(Number(item.amount || 0) * (item.quantity || 1)).toLocaleString()}</td>
+                                    <td className="p-5 text-right font-bold text-slate-600">{getCurrencySymbol(invoice.currency)}{Number(item.amount || 0).toLocaleString()}</td>
+                                    <td className="p-5 text-right font-black text-slate-900 text-base">{getCurrencySymbol(invoice.currency)}{(Number(item.amount || 0) * (item.quantity || 1)).toLocaleString()}</td>
                                 </tr>
                             ))}
                         </tbody>
                         <tfoot>
                             <tr className="bg-slate-50/50 font-black text-slate-900">
                                 <td colSpan={3} className="p-5 text-right uppercase text-[9px] tracking-widest text-slate-400">Transaction Subtotal</td>
-                                <td className="p-5 text-right text-lg tracking-tighter">${Number(invoice.total || 0).toLocaleString()}</td>
+                                <td className="p-5 text-right text-lg tracking-tighter">{getCurrencySymbol(invoice.currency)}{Number(invoice.total || 0).toLocaleString()}</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -527,9 +528,9 @@ export default function InvoiceViewPage() {
                     <div className="flex flex-col justify-end">
                         <div className="border-t-2 border-slate-900 pt-6 flex justify-between items-baseline">
                             <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Total Settlement Ammount</span>
-                            <span className="text-4xl font-black tracking-tighter text-slate-900">${Number(invoice.total || 0).toLocaleString()}</span>
+                            <span className="text-4xl font-black tracking-tighter text-slate-900">{getCurrencySymbol(invoice.currency)}{Number(invoice.total || 0).toLocaleString()}</span>
                         </div>
-                        <p className="text-[8px] text-slate-400 text-right uppercase tracking-widest font-black mt-2">All prices in USD</p>
+                        <p className="text-[8px] text-slate-400 text-right uppercase tracking-widest font-black mt-2">All prices in {invoice.currency || 'USD'}</p>
                     </div>
                 </div>
 

@@ -24,6 +24,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { format } from 'date-fns'
+import { CURRENCIES, getCurrencySymbol } from '@/lib/currencies'
 
 interface LineItem {
     id: string
@@ -55,6 +56,7 @@ export default function NewInvoicePage() {
         { id: '1', description: 'Rent for ' + new Date().toLocaleString('default', { month: 'long' }), amount: 0, quantity: 1 }
     ])
     const [nextInvoiceNumber, setNextInvoiceNumber] = useState('INV-00001')
+    const [currency, setCurrency] = useState('USD')
 
     // Load properties and company on mount
     useEffect(() => {
@@ -168,18 +170,36 @@ export default function NewInvoicePage() {
                 tax_amount: 0,
                 total: calculateTotal(),
                 notes: notes,
+                currency: currency,
                 created_by: user?.id
             }
 
             const { data: savedInvoice, error } = await supabase
                 .from('invoices')
                 .insert(invoiceData)
-                .select('id')
+                .select('id, invoice_number, total, recipient_name, recipient_email, due_date, currency')
                 .single()
 
             if (error) throw error
 
             if (savedInvoice?.id) {
+                // Trigger Automations (Webhooks & Email)
+                try {
+                    const { triggerInvoiceAutomations } = await import('@/lib/automations/triggers');
+                    triggerInvoiceAutomations(profile.company_id, {
+                        id: savedInvoice.id,
+                        invoice_number: savedInvoice.invoice_number,
+                        total: savedInvoice.total,
+                        recipient_name: savedInvoice.recipient_name,
+                        recipient_email: savedInvoice.recipient_email,
+                        due_date: savedInvoice.due_date,
+                        currency: savedInvoice.currency,
+                        payment_url: `${process.env.NEXT_PUBLIC_APP_URL}/invoices/${savedInvoice.id}`
+                    }).catch(console.error);
+                } catch (autoError) {
+                    console.error('Automation trigger failed:', autoError);
+                }
+
                 toast.success('Invoice Generated', { description: 'Redirecting to secure viewer...' })
                 window.location.href = `/invoices/${savedInvoice.id}`;
             } else {
@@ -328,6 +348,21 @@ export default function NewInvoicePage() {
                                         onChange={e => setDueDate(e.target.value)}
                                     />
                                 </div>
+                                <div className="space-y-4">
+                                    <Label className="uppercase text-[10px] font-black tracking-[0.5em] text-slate-400 ml-2">Monetary Standard</Label>
+                                    <Select value={currency} onValueChange={setCurrency}>
+                                        <SelectTrigger className="h-16 bg-slate-50 border-slate-50 focus:bg-white border-4 rounded-[1.5rem] font-black text-slate-900 px-8 transition-all hover:bg-slate-100">
+                                            <SelectValue placeholder="Select Currency" />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-[1.5rem] p-4 border-2 shadow-2xl">
+                                            {CURRENCIES.map(c => (
+                                                <SelectItem key={c.code} value={c.code} className="rounded-xl p-4 font-black uppercase text-xs tracking-tight mb-1 last:mb-0 focus:bg-indigo-50 transition-colors">
+                                                    {c.code} - {c.name} ({c.symbol})
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -364,7 +399,7 @@ export default function NewInvoicePage() {
                                     </div>
                                     <div className="w-52 relative">
                                         <div className="absolute -top-3 left-6 bg-white px-2 text-[8px] font-black text-slate-300 uppercase tracking-widest z-10 border rounded-full">Amount</div>
-                                        <div className="absolute left-8 top-1/2 -translate-y-1/2 text-slate-900 z-10 font-black text-xl">$</div>
+                                        <div className="absolute left-8 top-1/2 -translate-y-1/2 text-slate-900 z-10 font-black text-xl">{getCurrencySymbol(currency)}</div>
                                         <Input
                                             type="number"
                                             className="h-20 pl-14 bg-white border-slate-100 border-4 rounded-[2.5rem] font-black hover:border-indigo-100 transition-all pr-8 shadow-sm text-xl"
@@ -411,11 +446,11 @@ export default function NewInvoicePage() {
                             <div className="w-full max-w-sm space-y-4 px-10">
                                 <div className="flex justify-between items-center text-xs font-black uppercase tracking-[0.3em] text-slate-400">
                                     <span>Subtotal Liability</span>
-                                    <span className="text-slate-900">${calculateTotal().toLocaleString()}</span>
+                                    <span className="text-slate-900">{getCurrencySymbol(currency)}{calculateTotal().toLocaleString()}</span>
                                 </div>
                                 <div className="flex justify-between items-center text-xs font-black uppercase tracking-[0.3em] text-slate-400">
                                     <span>Tax Provision</span>
-                                    <span className="text-slate-900">$0.00</span>
+                                    <span className="text-slate-900">{getCurrencySymbol(currency)}0.00</span>
                                 </div>
                                 <div className="h-0.5 bg-slate-100 w-full" />
                             </div>
@@ -426,7 +461,7 @@ export default function NewInvoicePage() {
                                 </div>
                                 <div className="relative z-10">
                                     <span className="font-black uppercase tracking-[0.6em] text-[10px] text-slate-400 block mb-2">Total Net Value</span>
-                                    <span className="text-6xl font-black tracking-tighter">${calculateTotal().toLocaleString()}</span>
+                                    <span className="text-6xl font-black tracking-tighter">{getCurrencySymbol(currency)}{calculateTotal().toLocaleString()}</span>
                                 </div>
                                 <div className="text-right relative z-10">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-2 flex items-center justify-end gap-2">

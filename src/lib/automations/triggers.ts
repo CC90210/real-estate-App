@@ -13,6 +13,7 @@ export async function triggerDocumentAutomations(
             applicant_email: string
         }
         landlord?: { email: string }
+        currency?: string
     }
 ) {
     // Run all automations in parallel as non-blocking promises
@@ -23,6 +24,7 @@ export async function triggerDocumentAutomations(
             document_type: document.type,
             document_url: document.url,
             property_address: document.property?.address,
+            currency: document.currency || 'USD',
         }),
 
         // Email
@@ -48,6 +50,7 @@ export async function triggerInvoiceAutomations(
         recipient_email: string
         due_date?: string
         payment_url?: string
+        currency?: string
     }
 ) {
     Promise.allSettled([
@@ -58,6 +61,7 @@ export async function triggerInvoiceAutomations(
             amount: invoice.total,
             recipient: invoice.recipient_name,
             due_date: invoice.due_date,
+            currency: invoice.currency || 'USD',
         }),
 
         // Email
