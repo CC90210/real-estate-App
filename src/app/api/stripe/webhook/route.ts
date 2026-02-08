@@ -119,7 +119,7 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
             subscription_status: status,
             // subscription_plan: plan,
             stripe_subscription_id: subscription.id,
-            subscription_current_period_end: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null,
+            subscription_current_period_end: (subscription as any).current_period_end ? new Date((subscription as any).current_period_end * 1000).toISOString() : null,
         })
         .eq('id', profile.company_id)
 }
