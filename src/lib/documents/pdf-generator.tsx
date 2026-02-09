@@ -52,8 +52,8 @@ export async function generateInvoicePDF({ companyId, invoiceId }: GenerateInvoi
             description: item.description,
             reference: item.reference,
             quantity: item.quantity,
-            rate: item.rate / 100, // Convert from cents
-            amount: item.amount / 100,
+            rate: (item.rate || 0) / 100, // Convert from cents
+            amount: (item.amount || 0) / 100,
         }))
     } else if (invoice.items && Array.isArray(invoice.items)) {
         // Fallback for legacy invoices stored in JSON column
@@ -69,32 +69,32 @@ export async function generateInvoicePDF({ companyId, invoiceId }: GenerateInvoi
     // Generate PDF buffer
     const pdfBuffer = await renderToBuffer(
         <InvoicePDF
-            companyName={ invoice.company?.name || 'Company' }
-            companyAddress = { invoice.company?.address }
-            companyPhone = { invoice.company?.phone }
-            companyEmail = { invoice.company?.email }
-            companyLogo = { invoice.company?.logo_url }
-            invoiceNumber = { invoice.invoice_number }
-            issueDate = {
-            new Date(invoice.issue_date || invoice.created_at).toLocaleDateString('en-US', {
-                month: 'short',
-                day: '2-digit',
-                year: 'numeric'
-            }).toUpperCase()
-        }
-            dueDate = {
-            new Date(invoice.due_date).toLocaleDateString('en-US', {
-                month: 'short',
-                day: '2-digit',
-                year: 'numeric'
-            }).toUpperCase()
-        }
-            status = { invoice.status }
-            recipientName = { invoice.recipient_name }
-            recipientEmail = { invoice.recipient_email }
-            lineItems = { pdfItems }
-            currency = { invoice.currency || 'CAD' }
-            currencySymbol = { invoice.currency === 'USD' ? '$' : 'CA$' }
+            companyName={invoice.company?.name || 'Company'}
+            companyAddress={invoice.company?.address}
+            companyPhone={invoice.company?.phone}
+            companyEmail={invoice.company?.email}
+            companyLogo={invoice.company?.logo_url}
+            invoiceNumber={invoice.invoice_number}
+            issueDate={
+                new Date(invoice.issue_date || invoice.created_at).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: '2-digit',
+                    year: 'numeric'
+                }).toUpperCase()
+            }
+            dueDate={
+                new Date(invoice.due_date).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: '2-digit',
+                    year: 'numeric'
+                }).toUpperCase()
+            }
+            status={invoice.status}
+            recipientName={invoice.recipient_name}
+            recipientEmail={invoice.recipient_email}
+            lineItems={pdfItems}
+            currency={invoice.currency || 'CAD'}
+            currencySymbol={invoice.currency === 'USD' ? '$' : 'CA$'}
         />
     )
 

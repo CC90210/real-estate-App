@@ -209,11 +209,16 @@ export async function dispatchDocumentWebhook(
                 return { success: false, error: 'Invoice not found' }
             }
 
-            // Generate PDF
-            pdfData = await generateInvoicePDF({
-                companyId,
-                invoiceId: documentId,
-            })
+            // Generate PDF (Fail Open Strategy)
+            try {
+                pdfData = await generateInvoicePDF({
+                    companyId,
+                    invoiceId: documentId,
+                })
+            } catch (genError: any) {
+                console.error("PDF Generation Failed:", genError);
+                pdfData = { pdfBuffer: Buffer.from(''), pdfUrl: '', fileName: '' };
+            }
 
             // Build document data
             const totalAmount = invoice.items?.reduce((sum: number, item: any) => sum + item.amount, 0) || 0
@@ -229,11 +234,12 @@ export async function dispatchDocumentWebhook(
                 issue_date: invoice.issue_date,
                 due_date: invoice.due_date,
                 status: invoice.status,
-                pdf_url: pdfData.pdfUrl,
-                pdf_filename: pdfData.fileName,
-                // Include base64 for direct processing
-                pdf_base64: pdfData.pdfBuffer.toString('base64'),
-                dispatch_notes: dispatchNotes // Optional context
+                // Only include PDF fields if generation succeeded
+                pdf_url: pdfData.pdfUrl || undefined,
+                pdf_filename: pdfData.fileName || undefined,
+                pdf_base64: pdfData.pdfBuffer.length > 0 ? pdfData.pdfBuffer.toString('base64') : undefined,
+                pdf_generation_error: pdfData.pdfUrl ? undefined : 'PDF Generation Failed - Check Server Logs',
+                dispatch_notes: dispatchNotes
             }
         } else {
             // Handle other document types (leases, etc.)
