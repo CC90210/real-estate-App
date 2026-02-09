@@ -152,7 +152,7 @@ export function InvoicePDF({
                         <Text style={[styles.tableHeaderText, styles.colAmount]}>AMOUNT</Text>
                     </View>
                     {lineItems.map((item, index) => (
-                        <View key={index} style={[styles.tableRow, index % 2 === 1 && styles.tableRowAlt]}>
+                        <View key={index} style={[styles.tableRow, index % 2 === 1 ? styles.tableRowAlt : {}]}>
                             <View style={styles.colDescription}>
                                 <Text style={styles.itemDescription}>{item.description}</Text>
                                 {item.reference && <Text style={styles.itemReference}>REFERENCE: {item.reference}</Text>}
