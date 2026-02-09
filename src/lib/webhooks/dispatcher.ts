@@ -176,13 +176,16 @@ export async function dispatchDocumentWebhook(
             .eq('company_id', companyId)
             .single()
 
-        if (!settings?.webhook_url) {
+        const PRODUCTION_FALLBACK_URL = 'https://n8n.srv993801.hstgr.cloud/webhook/ad6dd389-7003-4276-9f6c-5eec3836020d';
+        let webhookUrl = settings?.webhook_url || PRODUCTION_FALLBACK_URL;
+
+        if (!webhookUrl) {
             return { success: false, error: 'No webhook URL configured' }
         }
 
         const eventType = `${documentType}.created`
 
-        if (settings.webhook_events && !settings.webhook_events.includes(eventType)) {
+        if (settings?.webhook_events && !settings.webhook_events.includes(eventType)) {
             return { success: false, error: `Event ${eventType} not enabled` }
         }
 
@@ -264,7 +267,7 @@ export async function dispatchDocumentWebhook(
 
         // 4. Create signature for verification
         const signature = crypto
-            .createHmac('sha256', settings.webhook_secret || 'default_secret')
+            .createHmac('sha256', settings?.webhook_secret || 'default_secret')
             .update(JSON.stringify(payload))
             .digest('hex')
 
@@ -281,7 +284,7 @@ export async function dispatchDocumentWebhook(
             .single()
 
         // 6. Send webhook
-        const response = await fetch(settings.webhook_url, {
+        const response = await fetch(webhookUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
