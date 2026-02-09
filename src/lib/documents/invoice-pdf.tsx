@@ -2,19 +2,15 @@
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Font, Image } from '@react-pdf/renderer'
 
-// Register fonts
-Font.register({
-    family: 'Inter',
-    fonts: [
-        { src: 'https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hjp-Ek-_EeA.woff2', fontWeight: 400 },
-        { src: 'https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuI6fAZ9hjp-Ek-_EeA.woff2', fontWeight: 500 },
-        { src: 'https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuGKYAZ9hjp-Ek-_EeA.woff2', fontWeight: 600 },
-        { src: 'https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuFuYAZ9hjp-Ek-_EeA.woff2', fontWeight: 700 },
-    ],
-})
-
+// Use standard PDF font for reliability in serverless environments
 const styles = StyleSheet.create({
-    page: { padding: 40, fontFamily: 'Inter', fontSize: 10, color: '#1a1a2e', backgroundColor: '#ffffff' },
+    page: {
+        padding: 40,
+        fontFamily: 'Helvetica',
+        fontSize: 10,
+        color: '#1a1a2e',
+        backgroundColor: '#ffffff'
+    },
     header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 40 },
     companySection: { flexDirection: 'row', alignItems: 'flex-start' },
     logo: { width: 50, height: 50, marginRight: 12, borderRadius: 8 },
@@ -119,7 +115,7 @@ export function InvoicePDF({
                 )}
                 <View style={styles.header}>
                     <View style={styles.companySection}>
-                        {companyLogo ? <Image src={companyLogo} style={styles.logo} /> : <View style={styles.logoPlaceholder}><Text style={styles.logoText}>⚡</Text></View>}
+                        <View style={styles.logoPlaceholder}><Text style={styles.logoText}>⚡</Text></View>
                         <View>
                             <Text style={styles.companyName}>{companyName}</Text>
                             <Text style={styles.companyDetails}>{companyAddress && `${companyAddress}\n`}{companyPhone && companyEmail && `${companyPhone} • ${companyEmail}`}</Text>

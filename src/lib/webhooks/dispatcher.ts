@@ -195,6 +195,7 @@ export async function dispatchDocumentWebhook(
             pdfUrl: '',
             fileName: ''
         };
+        let pdfGenerationError: string | undefined;
         let documentData: any
 
         if (documentType === 'invoice') {
@@ -210,7 +211,7 @@ export async function dispatchDocumentWebhook(
                 .single()
 
             if (!invoice) {
-                return { success: false, error: 'Invoice not found' }
+                return { success: false, error: 'Invoice not found in system' }
             }
 
             // Generate PDF (Fail Open Strategy)
@@ -221,8 +222,8 @@ export async function dispatchDocumentWebhook(
                 })
                 pdfData = generated;
             } catch (genError: any) {
-                console.error("PDF Generation Failed:", genError);
-                // pdfData remains with default empty buffer
+                pdfGenerationError = genError.message || 'Unknown generation error';
+                console.error("PDF GENERATION FAILED:", pdfGenerationError);
             }
 
             // Build document data with robust total calculation
@@ -247,7 +248,7 @@ export async function dispatchDocumentWebhook(
                 pdf_url: pdfData.pdfUrl || undefined,
                 pdf_filename: pdfData.fileName || undefined,
                 pdf_base64: pdfData.pdfBuffer.length > 0 ? pdfData.pdfBuffer.toString('base64') : undefined,
-                pdf_generation_error: pdfData.pdfUrl ? undefined : 'PDF Generation Failed - Check Server Logs',
+                pdf_generation_error: pdfGenerationError,
                 dispatch_notes: dispatchNotes
             }
         } else {
