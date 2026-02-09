@@ -32,7 +32,7 @@ export async function POST(request: Request) {
         const { type, data } = validation.data;
 
         // 3. Construct Lean Propagation Payload
-        const n8nPayload = {
+        const n8nPayload: any = {
             ...data,
             meta: {
                 operator: user.email,
@@ -54,13 +54,23 @@ export async function POST(request: Request) {
         }
 
         // 5. Forward to Dispatch Engine for Signed Delivery & Logging
-        const { dispatchWebhook } = await import('@/lib/webhooks/dispatcher');
+        const { dispatchWebhook, dispatchDocumentWebhook } = await import('@/lib/webhooks/dispatcher');
 
-        const result = await dispatchWebhook(
-            companyId,
-            type === 'invoice' ? 'invoice.created' : 'document.created',
-            n8nPayload
-        );
+        let result;
+
+        if (type === 'invoice' && n8nPayload.invoice_id && n8nPayload.file_url !== 'DATA_ONLY_DISPATCH') {
+            // New Production Flow: Generate PDF on server
+            result = await dispatchDocumentWebhook(companyId, 'invoice', n8nPayload.invoice_id);
+        } else if (type === 'document' && n8nPayload.document_id && n8nPayload.file_url !== 'DATA_ONLY_DISPATCH') {
+            result = await dispatchDocumentWebhook(companyId, 'document', n8nPayload.document_id);
+        } else {
+            // Legacy Fallback (or Data-Only Request)
+            result = await dispatchWebhook(
+                companyId,
+                type === 'invoice' ? 'invoice.created' : 'document.created',
+                n8nPayload
+            );
+        }
 
         if (!result?.success) {
             throw new Error(`Dispatch Engine rejected delivery. Check webhook_events log for company ${companyId}`);
