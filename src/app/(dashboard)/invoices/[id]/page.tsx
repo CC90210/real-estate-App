@@ -390,7 +390,7 @@ export default function InvoiceViewPage() {
                             </Button>
                         )}
 
-                        {invoice.status === 'draft' && (
+                        {(invoice.status === 'draft' || invoice.status === 'sent') && (
                             <>
                                 <Dialog open={isDispatching} onOpenChange={setIsDispatching}>
                                     <DialogTrigger asChild>

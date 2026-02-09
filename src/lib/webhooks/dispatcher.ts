@@ -20,6 +20,8 @@ interface WebhookPayload {
     data: any
     company_id: string
     timestamp: string
+    dispatch_notes?: string
+    metadata?: Record<string, any>
 }
 
 export async function dispatchWebhook(
@@ -238,18 +240,21 @@ export async function dispatchDocumentWebhook(
                 type: 'invoice',
                 invoice_number: invoice.invoice_number,
                 amount: totalAmount,
-                amount_formatted: `CA$${(totalAmount / 100).toLocaleString()}`,
+                amount_formatted: `${invoice.currency === 'USD' ? '$' : 'CA$'}${(totalAmount / 100).toLocaleString()}`,
+                currency: invoice.currency || 'CAD',
                 recipient_name: invoice.recipient_name,
                 recipient_email: invoice.recipient_email,
                 issue_date: invoice.issue_date,
                 due_date: invoice.due_date,
                 status: invoice.status,
+                property_id: invoice.property_id,
+                invoice_notes: invoice.notes,
+                items: lineItems, // Include full line items in data
                 // Only include PDF fields if generation succeeded
                 pdf_url: pdfData.pdfUrl || undefined,
                 pdf_filename: pdfData.fileName || undefined,
                 pdf_base64: pdfData.pdfBuffer.length > 0 ? pdfData.pdfBuffer.toString('base64') : undefined,
                 pdf_generation_error: pdfGenerationError,
-                dispatch_notes: dispatchNotes
             }
         } else {
             // Handle other document types (leases, etc.)
@@ -274,11 +279,12 @@ export async function dispatchDocumentWebhook(
             }
         }
 
-        // 3. Build webhook payload
+        // 3. Build webhook payload (Elite Schema)
         const payload: WebhookPayload = {
             event: eventType,
             timestamp: new Date().toISOString(),
             company_id: companyId,
+            dispatch_notes: dispatchNotes, // Promoted to root for n8n visibility
             data: documentData,
         }
 
