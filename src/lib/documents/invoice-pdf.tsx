@@ -169,7 +169,48 @@ const styles = StyleSheet.create({
         fontSize: 8,
         color: '#64748b',
         textTransform: 'uppercase',
-        letterSpacing: 0.5
+        letterSpacing: 0.5,
+        marginBottom: 8
+    },
+    propertySection: {
+        marginTop: 8,
+        borderTopWidth: 1,
+        borderTopColor: '#f1f5f9',
+        paddingTop: 8,
+    },
+    propertyLabel: {
+        fontSize: 6,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+        color: '#94a3b8',
+        letterSpacing: 1,
+        marginBottom: 2
+    },
+    propertyValueRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6
+    },
+    propertyValue: {
+        fontSize: 9,
+        fontWeight: 'bold',
+        color: '#0f172a',
+    },
+    unitBadge: {
+        backgroundColor: '#0f172a',
+        paddingHorizontal: 4,
+        paddingVertical: 1,
+        borderRadius: 4,
+    },
+    unitText: {
+        color: '#ffffff',
+        fontSize: 6,
+        fontWeight: 'bold',
+    },
+    logoImage: {
+        width: 32,
+        height: 32,
+        objectFit: 'contain'
     },
     totalBoxColumn: {
         flex: 1,
@@ -344,13 +385,15 @@ interface InvoicePDFProps {
     currency?: string
     currencySymbol?: string
     notes?: string
+    propertyAddress?: string
+    propertyUnit?: string
 }
 
 export function InvoicePDF({
     companyName, companyAddress, companyPhone, companyEmail, companyLogo,
     invoiceNumber, issueDate, dueDate, status = 'sent',
     recipientName, recipientEmail, lineItems, currency = 'CAD', currencySymbol = 'CA$',
-    notes
+    notes, propertyAddress, propertyUnit
 }: InvoicePDFProps) {
     const total = lineItems.reduce((sum, item) => sum + item.amount, 0)
 
@@ -365,7 +408,11 @@ export function InvoicePDF({
                 <View style={styles.headerLine}>
                     <View style={styles.brandSection}>
                         <View style={styles.logoBox}>
-                            <Text style={styles.logoText}>i</Text>
+                            {companyLogo ? (
+                                <Image src={companyLogo} style={styles.logoImage} />
+                            ) : (
+                                <Text style={styles.logoText}>i</Text>
+                            )}
                         </View>
                         <View>
                             <Text style={styles.companyName}>{companyName}</Text>
@@ -412,6 +459,20 @@ export function InvoicePDF({
                         <Text style={styles.boxLabel}>Recipient Information</Text>
                         <Text style={styles.recipientNameBase}>{recipientName}</Text>
                         <Text style={styles.recipientEmailBase}>{recipientEmail}</Text>
+
+                        {(propertyAddress || propertyUnit) && (
+                            <View style={styles.propertySection}>
+                                <Text style={styles.propertyLabel}>Linked Asset</Text>
+                                <View style={styles.propertyValueRow}>
+                                    <Text style={styles.propertyValue}>{propertyAddress}</Text>
+                                    {propertyUnit && (
+                                        <View style={styles.unitBadge}>
+                                            <Text style={styles.unitText}>UNIT {propertyUnit}</Text>
+                                        </View>
+                                    )}
+                                </View>
+                            </View>
+                        )}
                     </View>
                     <View style={styles.totalBoxColumn}>
                         <Text style={styles.bigTotalLabel}>Total Amount Due</Text>

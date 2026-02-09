@@ -26,6 +26,10 @@ export async function generateInvoicePDF({ companyId, invoiceId }: GenerateInvoi
                     phone,
                     email,
                     logo_url
+                ),
+                property:properties(
+                    address,
+                    unit_number
                 )
             `)
             .eq('id', invoiceId)
@@ -95,6 +99,8 @@ export async function generateInvoicePDF({ companyId, invoiceId }: GenerateInvoi
                     currency={invoice.currency || 'CAD'}
                     currencySymbol={invoice.currency === 'USD' ? '$' : 'CA$'}
                     notes={invoice.notes}
+                    propertyAddress={invoice.property?.address}
+                    propertyUnit={invoice.property?.unit_number}
                 />
             )
         } catch (renderError: any) {
