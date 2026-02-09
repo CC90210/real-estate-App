@@ -170,7 +170,7 @@ See [TESTING_GUIDE.md](./TESTING_GUIDE.md) for multi-tenant testing instructions
 
 ## 📝 License
 
-Proprietary - All rights reserved.
+Proprietary - All rights reserved to OASISAI
 
 ---
 
