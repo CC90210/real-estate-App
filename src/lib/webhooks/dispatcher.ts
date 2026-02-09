@@ -190,7 +190,11 @@ export async function dispatchDocumentWebhook(
         }
 
         // 2. Generate PDF based on document type
-        let pdfData: { pdfBuffer: Buffer; pdfUrl: string; fileName: string }
+        let pdfData: { pdfBuffer: Buffer; pdfUrl: string; fileName: string } = {
+            pdfBuffer: Buffer.from(''),
+            pdfUrl: '',
+            fileName: ''
+        };
         let documentData: any
 
         if (documentType === 'invoice') {
@@ -200,7 +204,7 @@ export async function dispatchDocumentWebhook(
                 .select(`
                     *,
                     company:companies(name),
-                    items:invoice_items(*)
+                    items_table:invoice_items(*)
                 `)
                 .eq('id', documentId)
                 .single()
@@ -211,17 +215,22 @@ export async function dispatchDocumentWebhook(
 
             // Generate PDF (Fail Open Strategy)
             try {
-                pdfData = await generateInvoicePDF({
+                const generated = await generateInvoicePDF({
                     companyId,
                     invoiceId: documentId,
                 })
+                pdfData = generated;
             } catch (genError: any) {
                 console.error("PDF Generation Failed:", genError);
-                pdfData = { pdfBuffer: Buffer.from(''), pdfUrl: '', fileName: '' };
+                // pdfData remains with default empty buffer
             }
 
-            // Build document data
-            const totalAmount = invoice.items?.reduce((sum: number, item: any) => sum + item.amount, 0) || 0
+            // Build document data with robust total calculation
+            const lineItems = (invoice.items_table && (invoice.items_table as any[]).length > 0)
+                ? invoice.items_table
+                : (invoice.items || []);
+
+            const totalAmount = (lineItems as any[]).reduce((sum: number, item: any) => sum + (item.amount || 0), 0) || 0
 
             documentData = {
                 id: invoice.id,
@@ -290,17 +299,44 @@ export async function dispatchDocumentWebhook(
             .select()
             .single()
 
-        // 6. Send webhook
+        // 6. Signed Propagation (Atomic Multipart Relay)
+        let transmissionBody: any = JSON.stringify(payload);
+        let contentType = 'application/json';
+
+        if (pdfData.pdfBuffer.length > 0) {
+            try {
+                // Switch to Multipart/Form-Data if we have a binary payload
+                const formData = new FormData();
+                formData.append('payload', JSON.stringify(payload));
+
+                // Construct file blob from buffer (Explicit Uint8Array conversion for Blob compatibility)
+                const fileBlob = new Blob([new Uint8Array(pdfData.pdfBuffer)], { type: 'application/pdf' });
+                const finalFileName = pdfData.fileName || `INV-${documentData.invoice_number || 'DOC'}.pdf`;
+                formData.append('attachment', fileBlob, finalFileName);
+
+                transmissionBody = formData;
+                contentType = ''; // Node-fetch/Browser will auto-generate boundary
+            } catch (formError) {
+                console.warn("Multipart construction failed, falling back to JSON:", formError);
+                // Keep default JSON body
+            }
+        }
+
+        const headers: Record<string, string> = {
+            'X-PropFlow-Signature': signature,
+            'X-PropFlow-Event': eventType,
+            'X-PropFlow-Timestamp': payload.timestamp,
+            'X-PropFlow-Delivery': webhookLog?.id || '',
+        };
+
+        if (contentType) {
+            headers['Content-Type'] = contentType;
+        }
+
         const response = await fetch(webhookUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-PropFlow-Signature': signature,
-                'X-PropFlow-Event': eventType,
-                'X-PropFlow-Timestamp': payload.timestamp,
-                'X-PropFlow-Delivery': webhookLog?.id || '',
-            },
-            body: JSON.stringify(payload),
+            headers,
+            body: transmissionBody,
         })
 
         // 7. Update webhook log with result
