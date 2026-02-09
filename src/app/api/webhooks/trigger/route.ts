@@ -60,9 +60,9 @@ export async function POST(request: Request) {
 
         if (type === 'invoice' && n8nPayload.invoice_id && n8nPayload.file_url !== 'DATA_ONLY_DISPATCH') {
             // New Production Flow: Generate PDF on server
-            result = await dispatchDocumentWebhook(companyId, 'invoice', n8nPayload.invoice_id);
+            result = await dispatchDocumentWebhook(companyId, 'invoice', n8nPayload.invoice_id, n8nPayload.dispatch_notes);
         } else if (type === 'document' && n8nPayload.document_id && n8nPayload.file_url !== 'DATA_ONLY_DISPATCH') {
-            result = await dispatchDocumentWebhook(companyId, 'document', n8nPayload.document_id);
+            result = await dispatchDocumentWebhook(companyId, 'document', n8nPayload.document_id, n8nPayload.dispatch_notes);
         } else {
             // Legacy Fallback (or Data-Only Request)
             result = await dispatchWebhook(

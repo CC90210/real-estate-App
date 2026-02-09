@@ -233,6 +233,7 @@ export async function dispatchDocumentWebhook(
                 pdf_filename: pdfData.fileName,
                 // Include base64 for direct processing
                 pdf_base64: pdfData.pdfBuffer.toString('base64'),
+                dispatch_notes: dispatchNotes // Optional context
             }
         } else {
             // Handle other document types (leases, etc.)
