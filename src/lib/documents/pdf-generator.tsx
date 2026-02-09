@@ -46,7 +46,7 @@ export async function generateInvoicePDF({ companyId, invoiceId }: GenerateInvoi
             console.warn("Could not fetch invoice_items table:", itemsError.message);
         }
 
-        // 3. Map items with fallback
+        // 3. Map items WITHOUT division (DB stores values as displayed in UI or as integers, based on web-ui code)
         let pdfItems = []
 
         if (tableItems && tableItems.length > 0) {
@@ -54,16 +54,16 @@ export async function generateInvoicePDF({ companyId, invoiceId }: GenerateInvoi
                 description: item.description || 'Service',
                 reference: item.reference || '',
                 quantity: item.quantity || 1,
-                rate: (item.rate || 0) / 100,
-                amount: (item.amount || 0) / 100,
+                rate: Number(item.rate || 0),
+                amount: Number(item.amount || 0),
             }))
         } else if (invoice.items && Array.isArray(invoice.items)) {
             pdfItems = invoice.items.map((item: any) => ({
                 description: item.description || item.name || 'Service',
                 reference: item.reference || '',
                 quantity: item.quantity || 1,
-                rate: (item.rate || item.unit_price || 0) / 100,
-                amount: (item.amount || item.total || 0) / 100,
+                rate: Number(item.rate || item.unit_price || 0),
+                amount: Number(item.amount || item.total || 0),
             }))
         }
 
@@ -94,6 +94,7 @@ export async function generateInvoicePDF({ companyId, invoiceId }: GenerateInvoi
                     lineItems={pdfItems}
                     currency={invoice.currency || 'CAD'}
                     currencySymbol={invoice.currency === 'USD' ? '$' : 'CA$'}
+                    notes={invoice.notes}
                 />
             )
         } catch (renderError: any) {

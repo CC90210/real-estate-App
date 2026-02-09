@@ -2,68 +2,322 @@
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Font, Image } from '@react-pdf/renderer'
 
-// Use standard PDF font for reliability in serverless environments
+// 1. High-Fidelity Styles to match PropFlow Web Interface
 const styles = StyleSheet.create({
     page: {
-        padding: 40,
+        padding: 48,
         fontFamily: 'Helvetica',
-        fontSize: 10,
-        color: '#1a1a2e',
+        fontSize: 9,
+        color: '#0f172a',
         backgroundColor: '#ffffff'
     },
-    header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 40 },
-    companySection: { flexDirection: 'row', alignItems: 'flex-start' },
-    logo: { width: 50, height: 50, marginRight: 12, borderRadius: 8 },
-    logoPlaceholder: { width: 50, height: 50, marginRight: 12, backgroundColor: '#1a1a2e', borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-    logoText: { color: '#00d4aa', fontSize: 20, fontWeight: 700 },
-    companyName: { fontSize: 24, fontWeight: 700, color: '#1a1a2e', marginBottom: 4 },
-    companyDetails: { fontSize: 9, color: '#6b7280', lineHeight: 1.4 },
-    invoiceTitle: { textAlign: 'right' },
-    invoiceLabel: { fontSize: 28, fontWeight: 700, color: '#1a1a2e', letterSpacing: 2 },
-    invoiceNumber: { fontSize: 14, fontWeight: 600, color: '#1a1a2e', backgroundColor: '#f3f4f6', padding: '6 12', borderRadius: 4, marginTop: 8, marginBottom: 12 },
-    dateRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 2 },
-    dateLabel: { fontSize: 9, color: '#6b7280', width: 50, textAlign: 'right', marginRight: 8 },
-    dateValue: { fontSize: 9, fontWeight: 600, color: '#1a1a2e' },
-    statusBanner: { backgroundColor: '#f0fdf4', borderRadius: 8, padding: 12, marginBottom: 30, flexDirection: 'row', alignItems: 'center' },
-    statusIcon: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#22c55e', marginRight: 10, justifyContent: 'center', alignItems: 'center' },
-    statusIconText: { color: '#ffffff', fontSize: 12, fontWeight: 700 },
-    statusText: { flex: 1 },
-    statusTitle: { fontSize: 10, fontWeight: 600, color: '#166534', marginBottom: 2 },
-    statusDescription: { fontSize: 9, color: '#15803d' },
-    twoColumn: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 30 },
-    recipientSection: { flex: 1 },
-    sectionLabel: { fontSize: 10, fontWeight: 600, color: '#6b7280', letterSpacing: 3, marginBottom: 8 },
-    recipientName: { fontSize: 16, fontWeight: 700, color: '#1a1a2e', marginBottom: 4 },
-    recipientEmail: { fontSize: 10, color: '#3b82f6' },
-    amountSection: { alignItems: 'flex-end' },
-    amountLabel: { fontSize: 10, fontWeight: 600, color: '#6b7280', letterSpacing: 2, marginBottom: 4 },
-    amountRow: { flexDirection: 'row', alignItems: 'flex-start' },
-    currencySymbol: { fontSize: 18, fontWeight: 600, color: '#00d4aa', marginRight: 2, marginTop: 8 },
-    amountValue: { fontSize: 48, fontWeight: 700, color: '#1a1a2e' },
-    verifiedBadge: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
-    verifiedDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#22c55e', marginRight: 6 },
-    verifiedText: { fontSize: 9, fontWeight: 600, color: '#22c55e', letterSpacing: 1 },
-    table: { marginTop: 20 },
-    tableHeader: { flexDirection: 'row', backgroundColor: '#1a1a2e', padding: '12 16', borderTopLeftRadius: 8, borderTopRightRadius: 8 },
-    tableHeaderText: { color: '#ffffff', fontSize: 9, fontWeight: 600, letterSpacing: 1 },
-    colDescription: { flex: 3 },
+    // Header Section
+    headerLine: {
+        borderBottomWidth: 3,
+        borderBottomColor: '#0f172a',
+        paddingBottom: 24,
+        marginBottom: 32,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start'
+    },
+    brandSection: {
+        flexDirection: 'row',
+        gap: 12
+    },
+    logoBox: {
+        width: 42,
+        height: 42,
+        backgroundColor: '#0f172a',
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    logoText: {
+        color: '#ffffff',
+        fontSize: 18,
+        fontWeight: 'bold'
+    },
+    companyName: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 4
+    },
+    companyMeta: {
+        fontSize: 8,
+        color: '#64748b',
+        lineHeight: 1.4,
+        fontWeight: 'medium'
+    },
+    invoiceTitleSection: {
+        alignItems: 'flex-end'
+    },
+    titleText: {
+        fontSize: 32,
+        fontWeight: 'extrabold',
+        letterSpacing: -1.5,
+        color: '#0f172a',
+        marginBottom: 4
+    },
+    invoiceBadge: {
+        backgroundColor: '#0f172a',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+        marginBottom: 12
+    },
+    invoiceNumber: {
+        color: '#ffffff',
+        fontSize: 11,
+        fontWeight: 'bold',
+        letterSpacing: 1
+    },
+    metaGrid: {
+        alignItems: 'flex-end',
+        gap: 2
+    },
+    metaRow: {
+        flexDirection: 'row',
+        gap: 8
+    },
+    metaLabel: {
+        fontSize: 7,
+        fontWeight: 'bold',
+        color: '#94a3b8',
+        textTransform: 'uppercase',
+        letterSpacing: 1
+    },
+    metaValue: {
+        fontSize: 7,
+        fontWeight: 'bold',
+        color: '#0f172a'
+    },
+
+    // Status Banner
+    statusAlert: {
+        backgroundColor: '#f8fafc',
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 32,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12
+    },
+    statusIconCircle: {
+        width: 32,
+        height: 32,
+        borderRadius: 10,
+        backgroundColor: '#f0f9ff',
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    statusIcon: {
+        color: '#0284c7',
+        fontSize: 14,
+        fontWeight: 'bold'
+    },
+    statusContent: {
+        flex: 1
+    },
+    statusLabel: {
+        fontSize: 7,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+        color: '#94a3b8',
+        letterSpacing: 1,
+        marginBottom: 2
+    },
+    statusValue: {
+        fontSize: 9,
+        fontWeight: 'bold',
+        color: '#334155'
+    },
+
+    // Sub-Details Grid
+    detailsGrid: {
+        flexDirection: 'row',
+        gap: 20,
+        marginBottom: 40
+    },
+    recipientBox: {
+        flex: 1,
+        backgroundColor: '#f8fafc',
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#f1f5f9',
+        padding: 20
+    },
+    boxLabel: {
+        fontSize: 7,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+        color: '#94a3b8',
+        letterSpacing: 2,
+        marginBottom: 10
+    },
+    recipientNameBase: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#0f172a',
+        marginBottom: 2
+    },
+    recipientEmailBase: {
+        fontSize: 8,
+        color: '#64748b',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5
+    },
+    totalBoxColumn: {
+        flex: 1,
+        alignItems: 'flex-end',
+        justifyContent: 'center',
+        paddingRight: 12
+    },
+    bigTotalLabel: {
+        fontSize: 8,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+        color: '#94a3b8',
+        letterSpacing: 1,
+        marginBottom: 4
+    },
+    bigTotalRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start'
+    },
+    bigCurrency: {
+        fontSize: 18,
+        color: '#cbd5e1',
+        fontWeight: 'bold',
+        marginRight: 6,
+        marginTop: 6
+    },
+    bigTotalValue: {
+        fontSize: 48,
+        fontWeight: 'bold',
+        letterSpacing: -2,
+        color: '#0f172a'
+    },
+
+    // Table Styling
+    tableContainer: {
+        marginBottom: 40,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#f1f5f9',
+        overflow: 'hidden'
+    },
+    tableHeader: {
+        flexDirection: 'row',
+        backgroundColor: '#0f172a',
+        paddingVertical: 14,
+        paddingHorizontal: 16
+    },
+    tableHeaderText: {
+        color: '#ffffff',
+        fontSize: 7,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+        letterSpacing: 1
+    },
+    tableRow: {
+        flexDirection: 'row',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f1f5f9'
+    },
+    colDesc: { flex: 3 },
     colQty: { flex: 1, textAlign: 'center' },
     colRate: { flex: 1.5, textAlign: 'right' },
     colAmount: { flex: 1.5, textAlign: 'right' },
-    tableRow: { flexDirection: 'row', padding: '16 16', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', backgroundColor: '#ffffff' },
-    tableRowAlt: { backgroundColor: '#f9fafb' },
-    itemDescription: { fontSize: 11, fontWeight: 600, color: '#1a1a2e', marginBottom: 2 },
-    itemReference: { fontSize: 8, color: '#9ca3af' },
-    itemQty: { fontSize: 11, color: '#6b7280', textAlign: 'center' },
-    itemRate: { fontSize: 11, color: '#6b7280', textAlign: 'right' },
-    itemAmount: { fontSize: 11, fontWeight: 600, color: '#1a1a2e', textAlign: 'right' },
-    totalsSection: { marginTop: 20, alignItems: 'flex-end' },
-    totalRow: { flexDirection: 'row', justifyContent: 'flex-end', paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#e5e7eb', width: 250 },
-    totalLabel: { fontSize: 10, fontWeight: 600, color: '#6b7280', letterSpacing: 1, flex: 1 },
-    totalValue: { fontSize: 14, fontWeight: 700, color: '#1a1a2e', textAlign: 'right', minWidth: 100 },
-    footer: { position: 'absolute', bottom: 40, left: 40, right: 40, flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 20 },
-    footerText: { fontSize: 8, color: '#9ca3af' },
-    footerBrand: { fontSize: 8, color: '#9ca3af' },
+
+    itemTitle: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#0f172a',
+        marginBottom: 2
+    },
+    itemSub: {
+        fontSize: 7,
+        color: '#94a3b8',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5
+    },
+    itemText: {
+        fontSize: 9,
+        color: '#475569',
+        fontWeight: 'bold'
+    },
+    itemPrice: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#0f172a'
+    },
+
+    // Summary Section
+    summaryGrid: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 40
+    },
+    notesBox: {
+        flex: 1,
+        backgroundColor: '#f8fafc',
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#f1f5f9'
+    },
+    settlementColumn: {
+        width: 250,
+        justifyContent: 'flex-end'
+    },
+    settlementActionRow: {
+        borderTopWidth: 2,
+        borderTopColor: '#0f172a',
+        paddingTop: 12,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'baseline'
+    },
+    settleLabel: {
+        fontSize: 7,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+        color: '#94a3b8',
+        letterSpacing: 1
+    },
+    settleAmount: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#0f172a',
+        letterSpacing: -0.5
+    },
+
+    // Footer
+    footer: {
+        position: 'absolute',
+        bottom: 30,
+        left: 48,
+        right: 48,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#f1f5f9'
+    },
+    footerLabel: {
+        fontSize: 7,
+        color: '#94a3b8',
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5
+    }
 })
 
 interface InvoiceLineItem {
@@ -89,85 +343,132 @@ interface InvoicePDFProps {
     lineItems: InvoiceLineItem[]
     currency?: string
     currencySymbol?: string
+    notes?: string
 }
 
 export function InvoicePDF({
     companyName, companyAddress, companyPhone, companyEmail, companyLogo,
     invoiceNumber, issueDate, dueDate, status = 'sent',
-    recipientName, recipientEmail, lineItems, currency = 'CAD', currencySymbol = 'CA$'
+    recipientName, recipientEmail, lineItems, currency = 'CAD', currencySymbol = 'CA$',
+    notes
 }: InvoicePDFProps) {
-    const subtotal = lineItems.reduce((sum, item) => sum + item.amount, 0)
-    const total = subtotal
-    const formatCurrency = (amount: number) => `${currencySymbol}${amount.toLocaleString('en-US', { minimumFractionDigits: 0 })}`
-    const formatAmount = (amount: number) => amount.toLocaleString('en-US', { minimumFractionDigits: 0 })
+    const total = lineItems.reduce((sum, item) => sum + item.amount, 0)
+
+    // We expect amounts to be in DOLLARS now (division handled in generator)
+    const formatValue = (val: number) => val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+    const formatCurrency = (val: number) => `${currencySymbol}${formatValue(val)}`
 
     return (
         <Document>
             <Page size="A4" style={styles.page}>
-                {status === 'paid' && (
-                    <View style={styles.statusBanner}>
-                        <View style={styles.statusIcon}><Text style={styles.statusIconText}>✓</Text></View>
-                        <View style={styles.statusText}>
-                            <Text style={styles.statusTitle}>STATUS BULLETIN</Text>
-                            <Text style={styles.statusDescription}>This transaction has been fully verified, settled, and logged in the revenue ledger.</Text>
+                {/* Header Section */}
+                <View style={styles.headerLine}>
+                    <View style={styles.brandSection}>
+                        <View style={styles.logoBox}>
+                            <Text style={styles.logoText}>i</Text>
                         </View>
-                    </View>
-                )}
-                <View style={styles.header}>
-                    <View style={styles.companySection}>
-                        <View style={styles.logoPlaceholder}><Text style={styles.logoText}>⚡</Text></View>
                         <View>
                             <Text style={styles.companyName}>{companyName}</Text>
-                            <Text style={styles.companyDetails}>{companyAddress && `${companyAddress}\n`}{companyPhone && companyEmail && `${companyPhone} • ${companyEmail}`}</Text>
+                            <Text style={styles.companyMeta}>{companyAddress}</Text>
+                            <Text style={styles.companyMeta}>{companyPhone} • {companyEmail}</Text>
                         </View>
                     </View>
-                    <View style={styles.invoiceTitle}>
-                        <Text style={styles.invoiceLabel}>INVOICE</Text>
-                        <Text style={styles.invoiceNumber}>#{invoiceNumber}</Text>
-                        <View style={styles.dateRow}><Text style={styles.dateLabel}>ISSUED:</Text><Text style={styles.dateValue}>{issueDate}</Text></View>
-                        <View style={styles.dateRow}><Text style={styles.dateLabel}>DUE:</Text><Text style={styles.dateValue}>{dueDate}</Text></View>
-                    </View>
-                </View>
-                <View style={styles.twoColumn}>
-                    <View style={styles.recipientSection}>
-                        <Text style={styles.sectionLabel}>RECIPIENT INFORMATION</Text>
-                        <Text style={styles.recipientName}>{recipientName}</Text>
-                        <Text style={styles.recipientEmail}>{recipientEmail}</Text>
-                    </View>
-                    <View style={styles.amountSection}>
-                        <Text style={styles.amountLabel}>TOTAL AMOUNT DUE</Text>
-                        <View style={styles.amountRow}><Text style={styles.currencySymbol}>{currencySymbol}</Text><Text style={styles.amountValue}>{formatAmount(total)}</Text></View>
-                        {status === 'paid' && <View style={styles.verifiedBadge}><View style={styles.verifiedDot} /><Text style={styles.verifiedText}>LEDGER VERIFIED</Text></View>}
-                    </View>
-                </View>
-                <View style={styles.table}>
-                    <View style={styles.tableHeader}>
-                        <Text style={[styles.tableHeaderText, styles.colDescription]}>SERVICE DESCRIPTION</Text>
-                        <Text style={[styles.tableHeaderText, styles.colQty]}>QTY</Text>
-                        <Text style={[styles.tableHeaderText, styles.colRate]}>RATE</Text>
-                        <Text style={[styles.tableHeaderText, styles.colAmount]}>AMOUNT</Text>
-                    </View>
-                    {lineItems.map((item, index) => (
-                        <View key={index} style={[styles.tableRow, index % 2 === 1 ? styles.tableRowAlt : {}]}>
-                            <View style={styles.colDescription}>
-                                <Text style={styles.itemDescription}>{item.description}</Text>
-                                {item.reference && <Text style={styles.itemReference}>REFERENCE: {item.reference}</Text>}
+                    <View style={styles.invoiceTitleSection}>
+                        <Text style={styles.titleText}>INVOICE</Text>
+                        <View style={styles.invoiceBadge}>
+                            <Text style={styles.invoiceNumber}>#{invoiceNumber}</Text>
+                        </View>
+                        <View style={styles.metaGrid}>
+                            <View style={styles.metaRow}>
+                                <Text style={styles.metaLabel}>Issued:</Text>
+                                <Text style={styles.metaValue}>{issueDate}</Text>
                             </View>
-                            <Text style={[styles.itemQty, styles.colQty]}>{item.quantity}</Text>
-                            <Text style={[styles.itemRate, styles.colRate]}>{formatCurrency(item.rate)}</Text>
-                            <Text style={[styles.itemAmount, styles.colAmount]}>{formatCurrency(item.amount)}</Text>
+                            <View style={styles.metaRow}>
+                                <Text style={styles.metaLabel}>Due:</Text>
+                                <Text style={styles.metaValue}>{dueDate}</Text>
+                            </View>
+                        </View>
+                    </View>
+                </View>
+
+                {/* Status Banner */}
+                <View style={styles.statusAlert}>
+                    <View style={styles.statusIconCircle}>
+                        <Text style={styles.statusIcon}>{status === 'paid' ? '✓' : 'ℹ'}</Text>
+                    </View>
+                    <View style={styles.statusContent}>
+                        <Text style={styles.statusLabel}>Status Bulletin</Text>
+                        <Text style={styles.statusValue}>
+                            {status === 'paid'
+                                ? 'This transaction has been fully verified and settled in the revenue ledger.'
+                                : 'Digitally verified ledger entry. Awaiting settlement as per agreed terms.'}
+                        </Text>
+                    </View>
+                </View>
+
+                {/* Recipient and Total Row */}
+                <View style={styles.detailsGrid}>
+                    <View style={styles.recipientBox}>
+                        <Text style={styles.boxLabel}>Recipient Information</Text>
+                        <Text style={styles.recipientNameBase}>{recipientName}</Text>
+                        <Text style={styles.recipientEmailBase}>{recipientEmail}</Text>
+                    </View>
+                    <View style={styles.totalBoxColumn}>
+                        <Text style={styles.bigTotalLabel}>Total Amount Due</Text>
+                        <View style={styles.bigTotalRow}>
+                            <Text style={styles.bigCurrency}>{currencySymbol}</Text>
+                            <Text style={styles.bigTotalValue}>{formatValue(total)}</Text>
+                        </View>
+                    </View>
+                </View>
+
+                {/* Line Items Table */}
+                <View style={styles.tableContainer}>
+                    <View style={styles.tableHeader}>
+                        <Text style={[styles.tableHeaderText, styles.colDesc]}>Service Description</Text>
+                        <Text style={[styles.tableHeaderText, styles.colQty]}>Qty</Text>
+                        <Text style={[styles.tableHeaderText, styles.colRate]}>Rate</Text>
+                        <Text style={[styles.tableHeaderText, styles.colAmount]}>Amount</Text>
+                    </View>
+                    {lineItems.map((item, idx) => (
+                        <View key={idx} style={[styles.tableRow, { backgroundColor: idx % 2 === 1 ? '#f8fafc' : '#ffffff' }]}>
+                            <View style={styles.colDesc}>
+                                <Text style={styles.itemTitle}>{item.description}</Text>
+                                <Text style={styles.itemSub}>Reference: {item.reference || `TRX-${idx + 101}`}</Text>
+                            </View>
+                            <Text style={[styles.itemText, styles.colQty]}>{item.quantity}</Text>
+                            <Text style={[styles.itemText, styles.colRate]}>{formatCurrency(item.rate)}</Text>
+                            <Text style={[styles.itemPrice, styles.colAmount]}>{formatCurrency(item.amount)}</Text>
                         </View>
                     ))}
-                </View>
-                <View style={styles.totalsSection}>
-                    <View style={styles.totalRow}>
-                        <Text style={styles.totalLabel}>TRANSACTION SUBTOTAL</Text>
-                        <Text style={styles.totalValue}>{formatCurrency(subtotal)}</Text>
+                    {/* Interior Subtotal Row */}
+                    <View style={{ flexDirection: 'row', backgroundColor: '#f8fafc', padding: 16, borderTopWidth: 1, borderTopColor: '#f1f5f9' }}>
+                        <Text style={[styles.metaLabel, { flex: 1, textAlign: 'right', marginRight: 16 }]}>Transaction Subtotal</Text>
+                        <Text style={[styles.itemPrice, { width: 100, textAlign: 'right' }]}>{formatCurrency(total)}</Text>
                     </View>
                 </View>
+
+                {/* Bottom Sections */}
+                <View style={styles.summaryGrid}>
+                    <View style={styles.notesBox}>
+                        <Text style={styles.boxLabel}>Notes & Compliance</Text>
+                        <Text style={[styles.companyMeta, { color: '#475569', fontStyle: 'italic' }]}>
+                            {notes || 'This invoice is a digitally verified ledger entry. Please settle the balance as per the agreed terms of service.'}
+                        </Text>
+                    </View>
+                    <View style={styles.settlementColumn}>
+                        <View style={styles.settlementActionRow}>
+                            <Text style={styles.settleLabel}>Total Settlement</Text>
+                            <Text style={styles.settleAmount}>{formatCurrency(total)}</Text>
+                        </View>
+                        <Text style={[styles.metaLabel, { textAlign: 'right', marginTop: 4, fontSize: 6 }]}>All prices in {currency}</Text>
+                    </View>
+                </View>
+
+                {/* Footer */}
                 <View style={styles.footer}>
-                    <Text style={styles.footerText}>Generated by PropFlow • {new Date().toLocaleDateString()}</Text>
-                    <Text style={styles.footerBrand}>propflow.pro</Text>
+                    <Text style={styles.footerLabel}>Generated by PropFlow • {new Date().toLocaleDateString()}</Text>
+                    <Text style={styles.footerLabel}>PROPFLOW.PRO</Text>
                 </View>
             </Page>
         </Document>
