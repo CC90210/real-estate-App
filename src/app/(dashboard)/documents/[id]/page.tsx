@@ -172,58 +172,60 @@ export default function DocumentViewPage() {
 
             <div className="min-h-screen bg-slate-100/50 pb-20 print:pb-0 print:bg-white print:min-h-0">
                 {/* Toolbar - Hidden when printing */}
-                <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-50 print:hidden mb-8 shadow-sm">
-                    <div className="flex items-center gap-4">
-                        <Button variant="ghost" onClick={() => router.push('/documents')}>
-                            <ArrowLeft className="w-4 h-4 mr-2" />
-                            Back to Documents
+                <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-3 md:py-4 sticky top-0 z-50 print:hidden mb-4 md:mb-8 shadow-sm">
+                    <div className="flex items-center justify-between gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => router.push('/documents')} className="shrink-0">
+                            <ArrowLeft className="w-4 h-4 mr-1 md:mr-2" />
+                            <span className="hidden sm:inline">Back to Documents</span>
+                            <span className="sm:hidden">Back</span>
                         </Button>
-                        <div className="h-6 w-px bg-slate-200" />
-                        <h1 className="font-semibold text-slate-700">{document.title}</h1>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        {needsSignature && (
-                            <Button
-                                onClick={handleSignatureRequest}
-                                disabled={isSigning}
-                                className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-100"
-                            >
-                                {isSigning ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileSignature className="w-4 h-4 mr-2" />}
-                                {isSigning ? 'Preparing...' : 'Send for Signature'}
+                        <div className="flex items-center gap-2 shrink-0">
+                            {needsSignature && (
+                                <Button
+                                    onClick={handleSignatureRequest}
+                                    disabled={isSigning}
+                                    size="sm"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-100 text-xs md:text-sm"
+                                >
+                                    {isSigning ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <FileSignature className="w-4 h-4 mr-1" />}
+                                    <span className="hidden sm:inline">{isSigning ? 'Preparing...' : 'Send for Signature'}</span>
+                                    <span className="sm:hidden">{isSigning ? '...' : 'Sign'}</span>
+                                </Button>
+                            )}
+                            <Button onClick={handlePrint} variant="outline" size="sm" className="border-2 text-xs md:text-sm">
+                                <Printer className="w-4 h-4 mr-1" />
+                                <span className="hidden sm:inline">Print / Save PDF</span>
+                                <span className="sm:hidden">Print</span>
                             </Button>
-                        )}
-                        <Button onClick={handlePrint} variant="outline" className="border-2">
-                            <Printer className="w-4 h-4 mr-2" />
-                            Print / Save PDF
-                        </Button>
+                        </div>
                     </div>
                 </div>
 
                 {/* Document Paper */}
-                <div id="document-paper" className="print-container max-w-[210mm] mx-auto bg-white shadow-xl print:shadow-none print:max-w-none min-h-[297mm] p-[20mm] text-slate-900 leading-relaxed text-sm">
+                <div id="document-paper" className="print-container max-w-[210mm] mx-auto bg-white shadow-xl print:shadow-none print:max-w-none min-h-[297mm] p-6 md:p-[20mm] text-slate-900 leading-relaxed text-sm">
 
                     {/* BRANDED DOCUMENT HEADER */}
-                    <div className="flex justify-between items-start mb-10 pb-8 border-b-2 border-slate-900">
-                        <div className="flex items-center gap-6">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-8 md:mb-10 pb-6 md:pb-8 border-b-2 border-slate-900">
+                        <div className="flex items-center gap-4 md:gap-6 min-w-0">
                             {company?.logo_url && (
-                                <img src={company.logo_url} alt="Company Logo" className="h-16 w-auto object-contain" />
+                                <img src={company.logo_url} alt="Company Logo" className="h-12 md:h-16 w-auto object-contain shrink-0" />
                             )}
-                            <div>
-                                <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">
+                            <div className="min-w-0">
+                                <h1 className="text-lg md:text-2xl font-black tracking-tight text-slate-900 uppercase break-words">
                                     {company?.name || 'Verified Record'}
                                 </h1>
                                 {company?.address && (
-                                    <p className="text-sm text-slate-500 mt-1">{company.address}</p>
+                                    <p className="text-xs md:text-sm text-slate-500 mt-1 break-words">{company.address}</p>
                                 )}
-                                <div className="flex gap-4 text-xs text-slate-400 mt-1">
+                                <div className="flex flex-wrap gap-2 md:gap-4 text-xs text-slate-400 mt-1">
                                     {company?.phone && <span>{company.phone}</span>}
-                                    {company?.email && <span>{company.email}</span>}
+                                    {company?.email && <span className="break-all">{company.email}</span>}
                                 </div>
                             </div>
                         </div>
-                        <div className="text-right">
+                        <div className="sm:text-right shrink-0">
                             <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Document Type</p>
-                            <p className="text-lg font-black text-slate-900 capitalize">{document.type?.replace(/_/g, ' ')}</p>
+                            <p className="text-base md:text-lg font-black text-slate-900 capitalize">{document.type?.replace(/_/g, ' ')}</p>
                             <p className="text-xs text-slate-400 mt-2">
                                 Generated: {format(new Date(document.created_at), 'MMM dd, yyyy')}
                             </p>
@@ -231,8 +233,8 @@ export default function DocumentViewPage() {
                     </div>
 
                     {/* DOCUMENT TITLE */}
-                    <div className="mb-10">
-                        <h2 className="text-3xl font-black text-slate-900 tracking-tight">{document.title}</h2>
+                    <div className="mb-8 md:mb-10">
+                        <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight break-words">{document.title}</h2>
                     </div>
 
                     {sections.map((section: any, index: number) => (
@@ -247,15 +249,15 @@ export default function DocumentViewPage() {
                     )}
 
                     {/* PROFESSIONAL FOOTER - No website URL */}
-                    <div className="print-footer mt-auto pt-10 border-t border-slate-200">
-                        <div className="flex justify-between items-center text-xs text-slate-400">
+                    <div className="print-footer mt-auto pt-8 md:pt-10 border-t border-slate-200">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-xs text-slate-400">
                             <div className="flex items-center gap-4">
                                 {company?.logo_url && (
                                     <img src={company.logo_url} alt="" className="h-6 w-auto opacity-50" />
                                 )}
                                 <span className="font-medium">{company?.name || 'Verified Record'}</span>
                             </div>
-                            <div className="text-right flex items-center gap-3">
+                            <div className="flex items-center gap-3">
                                 <span className="text-[8px] font-black uppercase tracking-widest opacity-20">Managed via PropFlow</span>
                                 <span className="uppercase tracking-widest text-[10px]">
                                     Confidential • {format(new Date(document.created_at), 'yyyy')}
@@ -271,7 +273,7 @@ export default function DocumentViewPage() {
                                 <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-900">Execution & Compliance</h3>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-20">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 md:gap-20">
                                 <div className="space-y-6">
                                     <div className="h-16 border-b-2 border-slate-200 relative">
                                         <div className="absolute -bottom-6 left-0 text-[10px] font-black uppercase tracking-widest text-slate-400">

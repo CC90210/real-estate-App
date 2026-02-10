@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useCompanyId } from '@/lib/hooks/useCompanyId'
@@ -54,6 +55,7 @@ interface Landlord {
 export default function LandlordsPage() {
     const supabase = createClient()
     const queryClient = useQueryClient()
+    const router = useRouter()
     const { companyId, isLoading: isCompanyLoading } = useCompanyId()
     const { colors } = useAccentColor()
     const [searchTerm, setSearchTerm] = useState('')
@@ -218,9 +220,9 @@ export default function LandlordsPage() {
                         Strategic oversight of property owners and asset stakeholders ({filteredLandlords?.length || 0} active)
                     </p>
                 </div>
-                <Button onClick={openCreateDialog} className={cn("h-14 px-8 text-white rounded-2xl shadow-xl gap-2 font-bold transition-all hover:scale-105", colors.bg, `hover:${colors.bgHover}`, colors.shadow)}>
+                <Button onClick={() => router.push('/settings?tab=team')} className={cn("h-14 px-8 text-white rounded-2xl shadow-xl gap-2 font-bold transition-all hover:scale-105", colors.bg, `hover:${colors.bgHover}`, colors.shadow)}>
                     <Plus className="h-4 w-4" />
-                    Secure Entry
+                    Invite Landlord
                 </Button>
             </div>
 

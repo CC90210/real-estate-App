@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -47,6 +48,15 @@ export default function SettingsPage() {
         email: '',
         tagline: ''
     });
+
+    const searchParams = useSearchParams();
+
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab && ['profile', 'security', 'notifications', 'branding', 'team'].includes(tab)) {
+            setActiveTab(tab as any);
+        }
+    }, [searchParams]);
 
     useEffect(() => {
         fetchProfile();
@@ -642,13 +652,13 @@ export default function SettingsPage() {
                             <CardContent className="p-5 md:p-10 space-y-8 md:space-y-10">
                                 {/* COMPANY IDENTITY - Critical for Documents */}
                                 <div className={cn("p-4 md:p-8 rounded-2xl md:rounded-[2rem] border", `bg-gradient-to-br ${colors.lighter} ${colors.bgLight}`, colors.border)}>
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <div className={cn("p-3 rounded-2xl", colors.bg)}>
-                                            <Sparkles className="w-5 h-5 text-white" />
+                                    <div className="flex items-center gap-3 mb-4 md:mb-6">
+                                        <div className={cn("p-2.5 md:p-3 rounded-xl md:rounded-2xl shrink-0", colors.bg)}>
+                                            <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-white" />
                                         </div>
-                                        <div>
-                                            <h3 className="font-black text-slate-900">Company Identity</h3>
-                                            <p className={cn("text-xs font-bold uppercase tracking-widest", colors.text)}>Used in document headers & footers</p>
+                                        <div className="min-w-0">
+                                            <h3 className="font-black text-slate-900 text-sm md:text-base">Company Identity</h3>
+                                            <p className={cn("text-[10px] md:text-xs font-bold uppercase tracking-widest truncate", colors.text)}>Used in document headers & footers</p>
                                         </div>
                                     </div>
 
@@ -658,7 +668,7 @@ export default function SettingsPage() {
                                             <Input
                                                 value={companyData.name}
                                                 onChange={(e) => setCompanyData({ ...companyData, name: e.target.value })}
-                                                className={cn("h-14 rounded-2xl bg-white focus:ring-4 font-bold px-6 text-lg", colors.border, `focus:${colors.ring}/20`)}
+                                                className={cn("h-12 md:h-14 rounded-xl md:rounded-2xl bg-white focus:ring-4 font-bold px-4 md:px-6 text-base md:text-lg", colors.border, `focus:${colors.ring}/20`)}
                                                 placeholder="NostalgicAI, Remax Toronto, etc."
                                             />
                                         </div>
@@ -667,7 +677,7 @@ export default function SettingsPage() {
                                             <Input
                                                 value={companyData.phone}
                                                 onChange={(e) => setCompanyData({ ...companyData, phone: e.target.value })}
-                                                className="h-14 rounded-2xl bg-white border-blue-100 focus:ring-4 focus:ring-blue-100 font-mono px-6"
+                                                className="h-12 md:h-14 rounded-xl md:rounded-2xl bg-white border-blue-100 focus:ring-4 focus:ring-blue-100 font-mono px-4 md:px-6"
                                                 placeholder="+1 (416) 555-0123"
                                             />
                                         </div>
@@ -676,7 +686,7 @@ export default function SettingsPage() {
                                             <Input
                                                 value={companyData.email}
                                                 onChange={(e) => setCompanyData({ ...companyData, email: e.target.value })}
-                                                className="h-14 rounded-2xl bg-white border-blue-100 focus:ring-4 focus:ring-blue-100 px-6"
+                                                className="h-12 md:h-14 rounded-xl md:rounded-2xl bg-white border-blue-100 focus:ring-4 focus:ring-blue-100 px-4 md:px-6"
                                                 placeholder="contact@yourcompany.com"
                                             />
                                         </div>
@@ -685,7 +695,7 @@ export default function SettingsPage() {
                                             <Input
                                                 value={companyData.address}
                                                 onChange={(e) => setCompanyData({ ...companyData, address: e.target.value })}
-                                                className="h-14 rounded-2xl bg-white border-blue-100 focus:ring-4 focus:ring-blue-100 px-6"
+                                                className="h-12 md:h-14 rounded-xl md:rounded-2xl bg-white border-blue-100 focus:ring-4 focus:ring-blue-100 px-4 md:px-6"
                                                 placeholder="123 Main Street, Suite 100, Toronto, ON M5V 1A1"
                                             />
                                         </div>
@@ -748,7 +758,7 @@ export default function SettingsPage() {
                                     <Button
                                         onClick={handleSaveCompanyBranding}
                                         disabled={isSaving || !companyData.name}
-                                        className={cn("w-full h-16 text-white rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[11px] shadow-xl mt-8", colors.bg, `hover:${colors.bgHover}`, colors.shadow)}
+                                        className={cn("w-full h-14 md:h-16 text-white rounded-xl md:rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[11px] shadow-xl mt-6 md:mt-8", colors.bg, `hover:${colors.bgHover}`, colors.shadow)}
                                     >
                                         {isSaving ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Save className="w-5 h-5 mr-2" />}
                                         Save Company Branding
@@ -797,7 +807,7 @@ export default function SettingsPage() {
                                 </div>
 
                                 {/* Signature Branding Preview - with guaranteed contrast */}
-                                <div className="relative p-10 rounded-[2.5rem] overflow-hidden shadow-2xl transition-all duration-500">
+                                <div className="relative p-6 md:p-10 rounded-2xl md:rounded-[2.5rem] overflow-hidden shadow-2xl transition-all duration-500">
                                     {/* Base dark background for guaranteed contrast */}
                                     <div className="absolute inset-0 bg-slate-900" />
 
@@ -815,7 +825,7 @@ export default function SettingsPage() {
                                         <h3 className={cn("text-[10px] font-black uppercase tracking-widest mb-6", activeAccent.text)}>
                                             Signature Branding Preview
                                         </h3>
-                                        <div className="p-8 bg-white/10 border border-white/20 rounded-3xl backdrop-blur-xl">
+                                        <div className="p-4 md:p-8 bg-white/10 border border-white/20 rounded-2xl md:rounded-3xl backdrop-blur-xl">
                                             <div className="flex flex-col gap-4">
                                                 <div className="flex justify-between items-end border-b border-white/20 pb-6">
                                                     <div>
