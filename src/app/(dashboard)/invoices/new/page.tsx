@@ -235,20 +235,20 @@ export default function NewInvoicePage() {
     }
 
     return (
-        <div className="max-w-5xl mx-auto pb-20 space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+        <div className="max-w-5xl mx-auto pb-20 px-4 md:px-0 space-y-6 md:space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
             {/* Nav Header */}
-            <div className="flex items-center justify-between px-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-2">
                 <Button variant="ghost" onClick={() => router.back()} className="rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] text-slate-400 hover:text-slate-900">
-                    <ArrowLeft className="w-4 h-4 mr-3" />
+                    <ArrowLeft className="w-4 h-4 mr-2 md:mr-3" />
                     Back to Terminal
                 </Button>
-                <div className="flex gap-3">
+                <div className="flex gap-3 w-full sm:w-auto">
                     <Button
                         onClick={handleSubmit}
                         disabled={isLoading || !profile?.company_id}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest px-10 h-12 shadow-2xl shadow-indigo-200 group"
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest px-6 md:px-10 h-12 shadow-2xl shadow-indigo-200 group w-full sm:w-auto"
                     >
-                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <FileText className="w-4 h-4 mr-3 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />}
+                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <FileText className="w-4 h-4 mr-2 md:mr-3 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />}
                         Generate Invoice
                     </Button>
                 </div>
@@ -265,58 +265,60 @@ export default function NewInvoicePage() {
                 </Alert>
             )}
 
-            <Card className="rounded-[4rem] border-none shadow-[0_50px_100px_-20px_rgba(0,0,0,0.06)] bg-white overflow-hidden relative">
+            <Card className="rounded-2xl md:rounded-[4rem] border-none shadow-[0_20px_50px_-10px_rgba(0,0,0,0.06)] md:shadow-[0_50px_100px_-20px_rgba(0,0,0,0.06)] bg-white overflow-hidden relative">
                 {/* Decorative Elements */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full blur-[100px] -mr-32 -mt-32 opacity-50" />
 
-                <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-16 flex flex-row justify-between items-start relative z-10">
-                    <div className="space-y-4">
+                <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-6 md:p-16 flex flex-col md:flex-row justify-between items-start gap-4 md:gap-0 relative z-10">
+                    <div className="space-y-3 md:space-y-4">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-xl shadow-indigo-100">
                                 <FileText className="w-5 h-5" />
                             </div>
                             <div>
-                                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-600">Enterprise Ledger System</p>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Internal Document Generation</p>
+                                <p className="text-[10px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-indigo-600">Enterprise Ledger System</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden md:block">Internal Document Generation</p>
                             </div>
                         </div>
-                        <CardTitle className="text-6xl font-black text-slate-900 tracking-tighter">New Invoice</CardTitle>
-                        <div className="inline-block bg-slate-900 px-4 py-1 rounded-xl">
-                            <p className="text-white font-mono font-black text-xs tracking-widest uppercase">Draft Ledger #{nextInvoiceNumber}</p>
+                        <CardTitle className="text-3xl md:text-6xl font-black text-slate-900 tracking-tighter">New Invoice</CardTitle>
+                        <div className="inline-block bg-slate-900 px-3 md:px-4 py-1 rounded-xl">
+                            <p className="text-white font-mono font-black text-[10px] md:text-xs tracking-widest uppercase">Draft #{nextInvoiceNumber}</p>
                         </div>
                     </div>
                     {company && (
-                        <div className="text-right flex flex-col items-end">
-                            <div className="h-20 w-auto flex items-center justify-end mb-4 p-2 bg-white rounded-3xl border border-slate-50 shadow-sm">
+                        <div className="text-left md:text-right flex flex-row md:flex-col items-center md:items-end gap-3 md:gap-0">
+                            <div className="h-14 md:h-20 w-auto flex items-center justify-end mb-0 md:mb-4 p-2 bg-white rounded-2xl md:rounded-3xl border border-slate-50 shadow-sm">
                                 {company.logo_url && (
-                                    <img src={company.logo_url} alt="Logo" className="h-12 w-auto object-contain grayscale hover:grayscale-0 transition-all duration-700" />
+                                    <img src={company.logo_url} alt="Logo" className="h-10 md:h-12 w-auto object-contain grayscale hover:grayscale-0 transition-all duration-700" />
                                 )}
                             </div>
-                            <p className="font-black text-slate-900 uppercase tracking-widest text-xs leading-none">{company.name}</p>
-                            <div className="flex items-center gap-2 mt-2">
-                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Active Authority</p>
+                            <div>
+                                <p className="font-black text-slate-900 uppercase tracking-widest text-xs leading-none">{company.name}</p>
+                                <div className="flex items-center gap-2 mt-1 md:mt-2">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Active Authority</p>
+                                </div>
                             </div>
                         </div>
                     )}
                 </CardHeader>
 
-                <CardContent className="p-16 space-y-20 relative z-10">
+                <CardContent className="p-4 md:p-16 space-y-8 md:space-y-20 relative z-10">
                     {/* INPUT GRID */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-16">
                         <div className="space-y-8">
                             <div className="flex flex-col space-y-4">
                                 <Label className="uppercase text-[10px] font-black tracking-[0.5em] text-slate-400 ml-2">Primary Recipient</Label>
                                 <Input
                                     placeholder="Enter full legal name..."
-                                    className="h-20 bg-slate-50 border-slate-50 focus:bg-white focus:ring-[12px] focus:ring-indigo-50/50 border-4 rounded-[2rem] font-black text-2xl px-8 transition-all duration-500 placeholder:text-slate-200"
+                                    className="h-14 md:h-20 bg-slate-50 border-slate-50 focus:bg-white focus:ring-4 md:focus:ring-[12px] focus:ring-indigo-50/50 border-2 md:border-4 rounded-xl md:rounded-[2rem] font-bold md:font-black text-base md:text-2xl px-4 md:px-8 transition-all duration-500 placeholder:text-slate-300 text-slate-900"
                                     value={recipientName}
                                     onChange={e => setRecipientName(e.target.value)}
                                 />
                                 <Input
                                     placeholder="Email for Digital Dispatch..."
                                     type="email"
-                                    className="h-16 bg-slate-50 border-slate-50 focus:bg-white focus:ring-[12px] focus:ring-indigo-50/50 border-4 rounded-[1.5rem] font-bold px-8 transition-all duration-500"
+                                    className="h-14 md:h-16 bg-slate-50 border-slate-50 focus:bg-white focus:ring-4 md:focus:ring-[12px] focus:ring-indigo-50/50 border-2 md:border-4 rounded-xl md:rounded-[1.5rem] font-bold px-4 md:px-8 transition-all duration-500 text-slate-900"
                                     value={recipientEmail}
                                     onChange={e => setRecipientEmail(e.target.value)}
                                 />
@@ -326,12 +328,12 @@ export default function NewInvoicePage() {
                             <div className="flex flex-col space-y-4">
                                 <Label className="uppercase text-[10px] font-black tracking-[0.5em] text-slate-400 ml-2">Contextual Parameters</Label>
                                 <Select value={propertyId} onValueChange={setPropertyId}>
-                                    <SelectTrigger className="h-20 bg-slate-50 border-slate-50 focus:bg-white border-4 rounded-[2rem] font-black text-slate-900 px-8 transition-all hover:bg-slate-100">
+                                    <SelectTrigger className="h-14 md:h-20 bg-slate-50 border-slate-50 focus:bg-white border-2 md:border-4 rounded-xl md:rounded-[2rem] font-bold md:font-black text-slate-900 px-4 md:px-8 transition-all hover:bg-slate-100 text-sm md:text-base">
                                         <SelectValue placeholder="Associate Target Property" />
                                     </SelectTrigger>
-                                    <SelectContent className="rounded-[2rem] p-4 border-2 shadow-2xl">
+                                    <SelectContent className="rounded-xl md:rounded-[2rem] p-2 md:p-4 border-2 shadow-2xl">
                                         {properties.map(p => (
-                                            <SelectItem key={p.id} value={p.id} className="rounded-xl p-4 font-black uppercase text-xs tracking-tight mb-1 last:mb-0 focus:bg-indigo-50 transition-colors">
+                                            <SelectItem key={p.id} value={p.id} className="rounded-xl p-3 md:p-4 font-bold md:font-black uppercase text-xs tracking-tight mb-1 last:mb-0 focus:bg-indigo-50 transition-colors">
                                                 {p.address} {p.unit_number && `(UNIT ${p.unit_number})`}
                                             </SelectItem>
                                         ))}
@@ -343,7 +345,7 @@ export default function NewInvoicePage() {
                                     </div>
                                     <Input
                                         type="date"
-                                        className="h-16 bg-slate-50 border-slate-50 focus:bg-white border-4 rounded-[1.5rem] font-black text-slate-900 px-8 transition-all"
+                                        className="h-14 md:h-16 bg-slate-50 border-slate-50 focus:bg-white border-2 md:border-4 rounded-xl md:rounded-[1.5rem] font-bold md:font-black text-slate-900 px-4 md:px-8 transition-all"
                                         value={dueDate}
                                         onChange={e => setDueDate(e.target.value)}
                                     />
@@ -351,12 +353,12 @@ export default function NewInvoicePage() {
                                 <div className="space-y-4">
                                     <Label className="uppercase text-[10px] font-black tracking-[0.5em] text-slate-400 ml-2">Monetary Standard</Label>
                                     <Select value={currency} onValueChange={setCurrency}>
-                                        <SelectTrigger className="h-16 bg-slate-50 border-slate-50 focus:bg-white border-4 rounded-[1.5rem] font-black text-slate-900 px-8 transition-all hover:bg-slate-100">
+                                        <SelectTrigger className="h-14 md:h-16 bg-slate-50 border-slate-50 focus:bg-white border-2 md:border-4 rounded-xl md:rounded-[1.5rem] font-bold md:font-black text-slate-900 px-4 md:px-8 transition-all hover:bg-slate-100 text-sm md:text-base">
                                             <SelectValue placeholder="Select Currency" />
                                         </SelectTrigger>
-                                        <SelectContent className="rounded-[1.5rem] p-4 border-2 shadow-2xl">
+                                        <SelectContent className="rounded-xl md:rounded-[1.5rem] p-2 md:p-4 border-2 shadow-2xl">
                                             {CURRENCIES.map(c => (
-                                                <SelectItem key={c.code} value={c.code} className="rounded-xl p-4 font-black uppercase text-xs tracking-tight mb-1 last:mb-0 focus:bg-indigo-50 transition-colors">
+                                                <SelectItem key={c.code} value={c.code} className="rounded-xl p-3 md:p-4 font-bold md:font-black uppercase text-xs tracking-tight mb-1 last:mb-0 focus:bg-indigo-50 transition-colors">
                                                     {c.code} - {c.name} ({c.symbol})
                                                 </SelectItem>
                                             ))}
@@ -379,34 +381,34 @@ export default function NewInvoicePage() {
 
                         <div className="space-y-6">
                             {items.map((item, index) => (
-                                <div key={item.id} className="flex flex-col md:flex-row gap-4 items-start group animate-in slide-in-from-right-4 duration-500 p-4 md:p-0 bg-slate-50/30 md:bg-transparent rounded-[2.5rem] border md:border-none" style={{ animationDelay: `${index * 100}ms` }}>
+                                <div key={item.id} className="flex flex-col md:flex-row gap-3 md:gap-4 items-start group animate-in slide-in-from-right-4 duration-500 p-4 md:p-0 bg-slate-50/50 md:bg-transparent rounded-xl md:rounded-[2.5rem] border border-slate-100 md:border-none" style={{ animationDelay: `${index * 100}ms` }}>
                                     <div className="w-full md:flex-1">
-                                        <div className="absolute -top-3 left-8 bg-white px-3 md:hidden text-[10px] font-black text-slate-400 uppercase tracking-widest z-10 border rounded-full">Description</div>
+                                        <div className="mb-1 md:hidden text-[11px] font-bold text-slate-400 uppercase tracking-widest">Description</div>
                                         <Input
                                             placeholder="Line item description (e.g. Monthly Rent)"
-                                            className="h-16 md:h-20 bg-white border-slate-100 border-4 rounded-[2rem] md:rounded-[2.5rem] font-black px-8 md:px-10 hover:border-indigo-100 focus:border-indigo-200 transition-all md:text-lg shadow-sm"
+                                            className="h-12 md:h-20 bg-white border-slate-200 md:border-slate-100 border-2 md:border-4 rounded-xl md:rounded-[2.5rem] font-bold md:font-black px-4 md:px-10 hover:border-indigo-100 focus:border-indigo-200 transition-all md:text-lg shadow-sm text-slate-900 text-base"
                                             value={item.description}
                                             onChange={e => updateItem(item.id, 'description', e.target.value)}
                                         />
                                     </div>
-                                    <div className="flex w-full md:w-auto gap-4 items-end">
+                                    <div className="flex w-full md:w-auto gap-3 md:gap-4 items-end">
                                         <div className="flex-1 md:w-28 relative">
-                                            <div className="absolute -top-3 left-6 bg-white px-2 text-[8px] md:text-[10px] font-black text-slate-300 md:text-slate-400 uppercase tracking-widest z-10 border rounded-full">Qty</div>
+                                            <div className="mb-1 md:mb-0 md:absolute md:-top-3 md:left-6 bg-white md:px-2 text-[11px] md:text-[10px] font-bold md:font-black text-slate-400 uppercase tracking-widest md:z-10 md:border md:rounded-full">Qty</div>
                                             <Input
                                                 type="number"
-                                                className="h-16 md:h-20 bg-white border-slate-100 border-4 rounded-[1.5rem] md:rounded-[2rem] font-black text-center px-2 hover:border-indigo-100 transition-all shadow-sm"
+                                                className="h-12 md:h-20 bg-white border-slate-200 md:border-slate-100 border-2 md:border-4 rounded-xl md:rounded-[2rem] font-bold md:font-black text-center text-slate-900 text-base px-2 hover:border-indigo-100 transition-all shadow-sm"
                                                 value={item.quantity}
                                                 onChange={e => updateItem(item.id, 'quantity', parseFloat(e.target.value))}
                                             />
                                         </div>
                                         <div className="flex-[2] md:w-48 relative">
-                                            <div className="absolute -top-3 left-6 bg-white px-2 text-[8px] md:text-[10px] font-black text-slate-300 md:text-slate-400 uppercase tracking-widest z-10 border rounded-full">Amount</div>
-                                            <div className="absolute left-6 md:left-8 top-1/2 -translate-y-1/2 text-slate-900 z-10 font-black text-lg md:text-xl">
+                                            <div className="mb-1 md:mb-0 md:absolute md:-top-3 md:left-6 bg-white md:px-2 text-[11px] md:text-[10px] font-bold md:font-black text-slate-400 uppercase tracking-widest md:z-10 md:border md:rounded-full">Amount</div>
+                                            <div className="absolute left-3 md:left-8 top-[calc(50%+10px)] md:top-1/2 -translate-y-1/2 text-slate-900 z-10 font-bold md:font-black text-base md:text-xl">
                                                 {getCurrencySymbol(currency)}
                                             </div>
                                             <Input
                                                 type="number"
-                                                className="h-16 md:h-20 pl-20 md:pl-24 bg-white border-slate-100 border-4 rounded-[1.5rem] md:rounded-[2.5rem] font-black hover:border-indigo-100 transition-all pr-4 md:pr-8 shadow-sm md:text-xl"
+                                                className="h-12 md:h-20 pl-10 md:pl-24 bg-white border-slate-200 md:border-slate-100 border-2 md:border-4 rounded-xl md:rounded-[2.5rem] font-bold md:font-black text-slate-900 text-base hover:border-indigo-100 transition-all pr-3 md:pr-8 shadow-sm md:text-xl"
                                                 value={item.amount}
                                                 onChange={e => updateItem(item.id, 'amount', parseFloat(e.target.value))}
                                             />
@@ -415,9 +417,9 @@ export default function NewInvoicePage() {
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => removeItem(item.id)}
-                                            className="h-16 w-16 md:h-20 md:w-20 rounded-[1.5rem] md:rounded-[2.5rem] text-slate-200 hover:text-rose-500 hover:bg-rose-50 transition-all shrink-0"
+                                            className="h-12 w-12 md:h-20 md:w-20 rounded-xl md:rounded-[2.5rem] text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all shrink-0"
                                         >
-                                            <Trash2 className="w-6 h-6 md:w-8 md:h-8" />
+                                            <Trash2 className="w-5 h-5 md:w-8 md:h-8" />
                                         </Button>
                                     </div>
                                 </div>
@@ -427,14 +429,14 @@ export default function NewInvoicePage() {
                         <Button
                             variant="outline"
                             onClick={addItem}
-                            className="w-full h-24 border-dashed border-8 border-slate-50 text-slate-200 font-black uppercase tracking-[0.5em] text-[10px] hover:bg-indigo-50/30 hover:border-indigo-100 hover:text-indigo-400 rounded-3xl transition-all"
+                            className="w-full h-14 md:h-24 border-dashed border-4 md:border-8 border-slate-100 md:border-slate-50 text-slate-400 md:text-slate-200 font-bold md:font-black uppercase tracking-widest md:tracking-[0.5em] text-[11px] md:text-[10px] hover:bg-indigo-50/30 hover:border-indigo-100 hover:text-indigo-400 rounded-xl md:rounded-3xl transition-all"
                         >
-                            <Plus className="w-6 h-6 mr-4" /> Add Record to Ledger
+                            <Plus className="w-5 h-5 md:w-6 md:h-6 mr-2 md:mr-4" /> Add Record
                         </Button>
                     </div>
 
                     {/* SUMMARY & TERMS */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-20 pt-20 border-t-8 border-slate-900">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-20 pt-8 md:pt-20 border-t-4 md:border-t-8 border-slate-900">
                         <div className="space-y-6">
                             <div className="flex items-center gap-3 px-2">
                                 <CheckCircle className="w-4 h-4 text-emerald-500" />
@@ -442,7 +444,7 @@ export default function NewInvoicePage() {
                             </div>
                             <Textarea
                                 placeholder="Specify payment terms, wire details, or legal footnotes..."
-                                className="min-h-[220px] bg-slate-50/50 border-slate-50 border-4 rounded-[3rem] font-bold px-10 py-10 focus:bg-white focus:ring-[12px] focus:ring-indigo-50/50 transition-all text-sm leading-relaxed outline-none"
+                                className="min-h-[120px] md:min-h-[220px] bg-slate-50/50 border-slate-100 md:border-slate-50 border-2 md:border-4 rounded-xl md:rounded-[3rem] font-bold px-4 md:px-10 py-4 md:py-10 focus:bg-white focus:ring-4 md:focus:ring-[12px] focus:ring-indigo-50/50 transition-all text-sm md:text-sm leading-relaxed outline-none text-slate-900"
                                 value={notes}
                                 onChange={e => setNotes(e.target.value)}
                             />
@@ -460,23 +462,23 @@ export default function NewInvoicePage() {
                                 <div className="h-0.5 bg-slate-100 w-full" />
                             </div>
 
-                            <div className="flex justify-between items-center w-full p-12 bg-slate-900 text-white rounded-[4rem] shadow-2xl shadow-indigo-100 relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:rotate-12 transition-transform duration-1000">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full p-6 md:p-12 bg-slate-900 text-white rounded-2xl md:rounded-[4rem] shadow-2xl shadow-indigo-100 relative overflow-hidden group gap-4">
+                                <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:rotate-12 transition-transform duration-1000 hidden md:block">
                                     <ShieldCheck className="w-32 h-32" />
                                 </div>
                                 <div className="relative z-10">
-                                    <span className="font-black uppercase tracking-[0.6em] text-[10px] text-slate-400 block mb-2">Total Net Value</span>
-                                    <span className="text-6xl font-black tracking-tighter flex items-center gap-4">
-                                        <span className="text-white/20 italic text-3xl">{getCurrencySymbol(currency)}</span>
+                                    <span className="font-black uppercase tracking-widest md:tracking-[0.6em] text-[11px] md:text-[10px] text-slate-400 block mb-1 md:mb-2">Total Net Value</span>
+                                    <span className="text-3xl md:text-6xl font-black tracking-tighter flex items-center gap-2 md:gap-4">
+                                        <span className="text-white/20 italic text-xl md:text-3xl">{getCurrencySymbol(currency)}</span>
                                         <span>{calculateTotal().toLocaleString()}</span>
                                     </span>
                                 </div>
-                                <div className="text-right relative z-10">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-2 flex items-center justify-end gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                                <div className="text-left sm:text-right relative z-10">
+                                    <p className="text-[11px] md:text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-1 md:mb-2 flex items-center justify-start sm:justify-end gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping inline-block" />
                                         Ledger Ready
                                     </p>
-                                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest max-w-[120px]">Verified transaction through secure gateway</p>
+                                    <p className="text-[11px] md:text-[9px] font-bold text-slate-500 uppercase tracking-widest max-w-[180px] md:max-w-[120px]">Verified transaction through secure gateway</p>
                                 </div>
                             </div>
                         </div>
@@ -484,8 +486,8 @@ export default function NewInvoicePage() {
                 </CardContent>
 
                 {/* Visual Footer Decor */}
-                <div className="bg-slate-50 px-16 py-8 border-t border-slate-100 flex justify-between items-center">
-                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.8em]">End of Ledger Record &bull; SECURE SYSTEM</p>
+                <div className="bg-slate-50 px-4 md:px-16 py-4 md:py-8 border-t border-slate-100 flex justify-between items-center">
+                    <p className="text-[11px] md:text-[10px] text-slate-400 font-bold md:font-black uppercase tracking-widest md:tracking-[0.8em]">End of Ledger &bull; SECURE</p>
                     <div className="flex gap-1">
                         {[1, 2, 3, 4, 5].map(i => <div key={i} className="w-3 h-1 bg-slate-200 rounded-full" />)}
                     </div>

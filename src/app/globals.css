@@ -464,38 +464,42 @@ body {
 
 }
 
-/* ==========================================
-   MOBILE-FIRST RESPONSIVE STYLES
-   ========================================== */
+/* ============================================
+   PROPFLOW MOBILE OPTIMIZATION SYSTEM
+   Production-Grade Mobile UX
+   ============================================ */
 
-/* Base mobile styles */
+/* ----- ROOT MOBILE VARIABLES ----- */
+@media (max-width: 768px) {
+  :root {
+    --mobile-padding: 16px;
+    --mobile-gap: 12px;
+    --mobile-input-height: 48px;
+    --mobile-button-height: 48px;
+    --mobile-font-size-base: 16px;
+    --mobile-font-size-sm: 14px;
+    --mobile-font-size-xs: 12px;
+    --mobile-touch-target: 44px;
+    --mobile-border-radius: 12px;
+  }
+}
+
+/* ----- BASE MOBILE STYLES ----- */
 @media (max-width: 767px) {
 
   /* Prevent iOS text size adjustment */
   html {
     -webkit-text-size-adjust: 100%;
     font-size: 16px;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Prevent horizontal overflow */
   body {
     overflow-x: hidden;
-  }
-
-  /* Minimum touch target size - CRITICAL */
-  button,
-  a,
-  [role="button"],
-  input[type="button"],
-  input[type="submit"] {
-    min-height: 44px;
-  }
-
-  /* Prevent zoom on input focus (iOS) */
-  input,
-  select,
-  textarea {
-    font-size: 16px !important;
+    font-size: 16px;
+    line-height: 1.6;
   }
 
   /* Better tap highlighting */
@@ -523,7 +527,379 @@ body {
   }
 }
 
-/* Safe area insets for notched phones (iPhone X+) */
+/* ----- PREVENT iOS INPUT ZOOM ----- */
+@media (max-width: 768px) {
+
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="search"],
+  input[type="date"],
+  input[type="datetime-local"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+
+  /* Number inputs - ensure digits are visible */
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
+/* ----- BUTTONS - PROPER TOUCH TARGETS ----- */
+@media (max-width: 768px) {
+
+  button,
+  a,
+  [role="button"],
+  input[type="button"],
+  input[type="submit"] {
+    min-height: 44px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Icon-only buttons */
+  button:has(svg:only-child),
+  [role="button"]:has(svg:only-child) {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* ----- DIALOGS & MODALS - MOBILE FULL SCREEN ----- */
+@media (max-width: 768px) {
+
+  /* Dialog content - nearly full screen, scrollable */
+  [data-slot="dialog-content"],
+  [role="dialog"]>[data-state] {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Dialog close button - larger touch target */
+  button[aria-label="Close"],
+  [data-slot="dialog-close"] {
+    width: 44px !important;
+    height: 44px !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* ----- SHEETS (Bottom/Side Drawers) ----- */
+@media (max-width: 768px) {
+
+  [data-slot="sheet-content"],
+  .SheetContent {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  [data-side="bottom"] {
+    max-height: 90vh !important;
+    border-radius: 16px 16px 0 0 !important;
+  }
+}
+
+/* ----- CARDS & CONTAINERS - BREATHING ROOM ----- */
+@media (max-width: 768px) {
+
+  /* Oversized padding → mobile-appropriate */
+  .p-16 {
+    padding: 16px !important;
+  }
+
+  .p-12 {
+    padding: 16px !important;
+  }
+
+  .px-16 {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  .py-16 {
+    padding-top: 16px !important;
+    padding-bottom: 16px !important;
+  }
+
+  .px-10 {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .px-8 {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .gap-16 {
+    gap: 24px !important;
+  }
+
+  .gap-20 {
+    gap: 24px !important;
+  }
+
+  .space-y-20> :not([hidden])~ :not([hidden]) {
+    margin-top: 24px !important;
+  }
+
+  .space-y-10> :not([hidden])~ :not([hidden]) {
+    margin-top: 16px !important;
+  }
+
+  /* Cards with extreme rounding → mobile rounding */
+  .rounded-\[4rem\] {
+    border-radius: 20px !important;
+  }
+
+  .rounded-\[3rem\] {
+    border-radius: 16px !important;
+  }
+
+  .rounded-\[2\.5rem\] {
+    border-radius: 14px !important;
+  }
+
+  .rounded-\[2rem\] {
+    border-radius: 12px !important;
+  }
+}
+
+/* ----- TEXT - READABLE SIZES ON MOBILE ----- */
+@media (max-width: 768px) {
+  h1 {
+    font-size: 28px !important;
+    line-height: 1.2;
+  }
+
+  h2 {
+    font-size: 22px !important;
+    line-height: 1.3;
+  }
+
+  h3 {
+    font-size: 18px !important;
+    line-height: 1.35;
+  }
+
+  h4,
+  h5,
+  h6 {
+    font-size: 16px !important;
+    line-height: 1.4;
+  }
+
+  /* Header title on Invoice: 'New Invoice' text-6xl → mobile-readable */
+  .text-6xl {
+    font-size: 32px !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  .text-5xl {
+    font-size: 28px !important;
+  }
+
+  .text-4xl {
+    font-size: 24px !important;
+  }
+
+  .text-3xl {
+    font-size: 22px !important;
+  }
+
+  /* Minimum small text readability */
+  .text-xs {
+    font-size: 12px !important;
+    line-height: 1.5;
+  }
+
+  .text-\[10px\] {
+    font-size: 11px !important;
+    letter-spacing: 0.08em !important;
+  }
+
+  .text-\[9px\] {
+    font-size: 11px !important;
+  }
+
+  .text-\[8px\] {
+    font-size: 11px !important;
+  }
+}
+
+/* ----- PAGE LAYOUTS ----- */
+@media (max-width: 768px) {
+
+  /* Main content area breathing room */
+  main,
+  .main-content {
+    padding-bottom: 100px !important;
+  }
+
+  /* Two/Three/Four column grids → stack vertically */
+  .grid-cols-2,
+  .md\:grid-cols-2,
+  .lg\:grid-cols-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .grid-cols-3,
+  .md\:grid-cols-3,
+  .lg\:grid-cols-3 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .grid-cols-4,
+  .md\:grid-cols-4,
+  .lg\:grid-cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ----- INVOICE FORM SPECIFIC FIXES ----- */
+@media (max-width: 768px) {
+
+  /* The CardHeader with p-16 on invoice new page */
+  .CardHeader,
+  [class*="CardHeader"] {
+    padding: 16px !important;
+  }
+
+  /* Invoice amount inputs: ensure large, clear numbers visible */
+  input[type="number"] {
+    color: #0f172a !important;
+    font-weight: 700 !important;
+  }
+
+  /* Line-item description on mobile */
+  .h-20 {
+    height: 56px !important;
+  }
+
+  /* Amount prefix $ sign position fix */
+  .absolute.left-6 {
+    left: 12px !important;
+  }
+
+  .absolute.left-8 {
+    left: 16px !important;
+  }
+
+  /* Total Box: p-12 black box is too wide on mobile */
+  .bg-slate-900.text-white.rounded-\[4rem\] {
+    padding: 20px !important;
+    border-radius: 20px !important;
+  }
+
+  /* Total number visible */
+  .bg-slate-900 .text-6xl {
+    font-size: 32px !important;
+  }
+
+  /* Notes textarea oversized on mobile */
+  .min-h-\[220px\] {
+    min-height: 120px !important;
+    padding: 16px !important;
+    border-radius: 16px !important;
+  }
+
+  /* Add Record to Ledger button */
+  .h-24 {
+    height: 56px !important;
+  }
+
+  /* Currency symbol left-padding */
+  .pl-20 {
+    padding-left: 40px !important;
+  }
+
+  .pl-24 {
+    padding-left: 48px !important;
+  }
+}
+
+/* ----- DROPDOWN MENUS ----- */
+@media (max-width: 768px) {
+
+  [data-slot="dropdown-content"],
+  .DropdownMenuContent,
+  [role="menu"] {
+    min-width: 200px !important;
+    max-width: calc(100vw - 32px) !important;
+  }
+
+  [data-slot="dropdown-item"],
+  .DropdownMenuItem,
+  [role="menuitem"] {
+    min-height: 44px !important;
+    padding: 12px 16px !important;
+    font-size: 15px !important;
+  }
+}
+
+/* ----- TOASTS/NOTIFICATIONS ----- */
+@media (max-width: 768px) {
+
+  [data-sonner-toaster],
+  .Toaster {
+    bottom: 16px !important;
+    left: 16px !important;
+    right: 16px !important;
+  }
+
+  [data-sonner-toast],
+  .Toast {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* ----- SAFE AREAS (iPhone notch/Dynamic Island) ----- */
+@supports (padding: max(0px)) {
+  @media (max-width: 768px) {
+    .safe-area-top {
+      padding-top: max(16px, env(safe-area-inset-top));
+    }
+
+    .safe-area-bottom {
+      padding-bottom: max(16px, env(safe-area-inset-bottom));
+    }
+
+    .safe-area-left {
+      padding-left: max(16px, env(safe-area-inset-left));
+    }
+
+    .safe-area-right {
+      padding-right: max(16px, env(safe-area-inset-right));
+    }
+
+    .fixed-bottom,
+    [class*="fixed"][class*="bottom"] {
+      padding-bottom: max(16px, env(safe-area-inset-bottom));
+    }
+  }
+}
+
+/* Legacy safe area classes */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
@@ -556,6 +932,30 @@ body {
 
   .xs\:flex {
     display: flex;
+  }
+}
+
+/* ----- FOCUS STATES FOR ACCESSIBILITY ----- */
+@media (max-width: 768px) {
+  *:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+  }
+
+  *:focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+
+/* ----- SCROLL BEHAVIOR ----- */
+@media (max-width: 768px) {
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 }
 

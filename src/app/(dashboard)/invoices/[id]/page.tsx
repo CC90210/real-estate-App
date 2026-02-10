@@ -304,15 +304,15 @@ export default function InvoiceViewPage() {
 
     if (error || !invoice) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[70vh] text-center p-12 bg-white rounded-[4rem] shadow-2xl border-4 border-slate-50 mx-6">
-                <div className="w-24 h-24 bg-rose-50 rounded-[2.5rem] flex items-center justify-center mb-8 border-2 border-rose-100">
-                    <XCircle className="w-12 h-12 text-rose-500" />
+            <div className="flex flex-col items-center justify-center min-h-[70vh] text-center p-6 md:p-12 bg-white rounded-2xl md:rounded-[4rem] shadow-2xl border-2 md:border-4 border-slate-50 mx-4 md:mx-6">
+                <div className="w-20 h-20 md:w-24 md:h-24 bg-rose-50 rounded-2xl md:rounded-[2.5rem] flex items-center justify-center mb-6 md:mb-8 border-2 border-rose-100">
+                    <XCircle className="w-10 h-10 md:w-12 md:h-12 text-rose-500" />
                 </div>
-                <h2 className="text-5xl font-black mb-4 uppercase tracking-tighter text-slate-900">System Link Error</h2>
-                <p className="text-slate-500 mb-10 font-bold max-w-md text-lg">The requested financial ledger entry could not be retrieved. Please verify the ID or your access level.</p>
+                <h2 className="text-2xl md:text-5xl font-black mb-3 md:mb-4 uppercase tracking-tighter text-slate-900">System Link Error</h2>
+                <p className="text-slate-500 mb-6 md:mb-10 font-bold max-w-md text-sm md:text-lg">The requested financial ledger entry could not be retrieved. Please verify the ID or your access level.</p>
                 <Button
                     onClick={() => router.push('/invoices')}
-                    className="h-16 px-12 bg-slate-900 text-white hover:bg-slate-800 rounded-2xl font-black uppercase tracking-widest text-xs shadow-2xl shadow-slate-200"
+                    className="h-12 md:h-16 px-8 md:px-12 bg-slate-900 text-white hover:bg-slate-800 rounded-2xl font-black uppercase tracking-widest text-xs shadow-2xl shadow-slate-200 w-full sm:w-auto"
                 >
                     Back to Terminal
                 </Button>
@@ -538,7 +538,7 @@ export default function InvoiceViewPage() {
                         </div>
                         <div className="flex flex-col justify-center items-start md:items-end md:text-right md:pr-4">
                             <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">Total Amount Due</h3>
-                            <p className="text-5xl md:text-6xl font-black text-slate-900 tracking-tighter mb-4">
+                            <p className="text-4xl md:text-6xl font-black text-slate-900 tracking-tighter mb-4">
                                 <span className="text-slate-300 mr-2">{getCurrencySymbol(invoice.currency)}</span>
                                 {Number(invoice.total || 0).toLocaleString()}
                             </p>
@@ -552,8 +552,8 @@ export default function InvoiceViewPage() {
                     </div>
 
                     {/* LINE ITEMS TABLE */}
-                    <div className="mb-8 md:mb-12 overflow-x-auto rounded-3xl border border-slate-100 shadow-sm scrollbar-hide">
-                        <table className="w-full text-[10px] md:text-[11px] min-w-[600px] md:min-w-0">
+                    <div className="mb-8 md:mb-12 overflow-x-auto rounded-2xl md:rounded-3xl border border-slate-100 shadow-sm scrollbar-hide">
+                        <table className="w-full text-[10px] md:text-[11px] min-w-[500px] md:min-w-0">
                             <thead>
                                 <tr className="bg-slate-900 text-white">
                                     <th className="text-left p-4 md:p-5 font-black uppercase text-[8px] md:text-[9px] tracking-widest">Service Description</th>
