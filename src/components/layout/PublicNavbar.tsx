@@ -1,17 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Building2, Menu, X, ArrowRight, Sparkles } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Building2, Menu, X, ArrowRight, Sparkles, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navLinks = [
-    { label: 'Features', href: '/features' },
-    { label: 'Solutions', href: '/solutions' },
-    { label: 'Pricing', href: '/pricing' },
+    { label: 'Features', href: '/features', description: 'AI-powered property tools' },
+    { label: 'Solutions', href: '/solutions', description: 'Enterprise deployments' },
+    { label: 'Pricing', href: '/pricing', description: 'Custom plans & quotes' },
 ];
 
 export function PublicNavbar() {
@@ -32,134 +31,211 @@ export function PublicNavbar() {
         setIsOpen(false);
     }, [pathname]);
 
+    // Lock body scroll when mobile menu is open
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+            document.body.style.position = 'fixed';
+            document.body.style.width = '100%';
+            document.body.style.top = `-${window.scrollY}px`;
+        } else {
+            const scrollY = document.body.style.top;
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.width = '';
+            document.body.style.top = '';
+            if (scrollY) {
+                window.scrollTo(0, parseInt(scrollY || '0') * -1);
+            }
+        }
+
+        return () => {
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.width = '';
+            document.body.style.top = '';
+        };
+    }, [isOpen]);
+
+    const closeMenu = useCallback(() => setIsOpen(false), []);
+
     return (
-        <nav
-            className={cn(
-                "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-                scrolled || isOpen ? "glass py-4 shadow-lg shadow-blue-500/5" : "bg-transparent py-6"
-            )}
-        >
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex items-center justify-between">
-                    {/* Logo */}
-                    <Link href="/" className="flex items-center gap-3 group relative z-50">
-                        <div className="h-10 w-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200 group-hover:scale-110 transition-transform duration-300">
-                            <Building2 className="h-6 w-6 text-white" />
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="text-xl font-black tracking-tight leading-none text-slate-900">PropFlow</span>
-                            <span className="text-[10px] uppercase tracking-widest font-bold text-blue-600 opacity-80 mt-1">Intelligence</span>
-                        </div>
-                    </Link>
+        <>
+            <nav
+                className={cn(
+                    "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
+                    scrolled ? "bg-white/95 backdrop-blur-xl py-3 shadow-lg shadow-slate-900/5 border-b border-slate-100" : "bg-transparent py-5"
+                )}
+            >
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex items-center justify-between">
+                        {/* Logo */}
+                        <Link href="/" className="flex items-center gap-3 group relative z-[110]">
+                            <div className="h-10 w-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200/50 group-hover:scale-110 transition-transform duration-300">
+                                <Building2 className="h-5 w-5 text-white" />
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-lg font-black tracking-tight leading-none text-slate-900">PropFlow</span>
+                                <span className="text-[9px] uppercase tracking-[0.2em] font-bold text-blue-600 mt-0.5">Intelligence</span>
+                            </div>
+                        </Link>
 
-                    {/* Desktop Navigation */}
-                    <div className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-600 uppercase tracking-widest">
-                        {navLinks.map((link) => (
-                            <Link
-                                key={link.href}
-                                href={link.href}
-                                className={cn(
-                                    "hover:text-blue-600 transition-colors",
-                                    pathname === link.href && "text-blue-600"
-                                )}
-                            >
-                                {link.label}
+                        {/* Desktop Navigation */}
+                        <div className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-600 uppercase tracking-widest">
+                            {navLinks.map((link) => (
+                                <Link
+                                    key={link.href}
+                                    href={link.href}
+                                    className={cn(
+                                        "hover:text-blue-600 transition-colors",
+                                        pathname === link.href && "text-blue-600"
+                                    )}
+                                >
+                                    {link.label}
+                                </Link>
+                            ))}
+                        </div>
+
+                        {/* Desktop CTAs */}
+                        <div className="hidden md:flex items-center gap-4">
+                            <Link href="/login">
+                                <Button variant="ghost" className="font-bold text-slate-600 hover:text-blue-600">
+                                    Sign In
+                                </Button>
                             </Link>
-                        ))}
+                            <Link href="/contact">
+                                <Button className="font-bold px-6 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 rounded-xl">
+                                    Request Access
+                                </Button>
+                            </Link>
+                        </div>
+
+                        {/* Mobile Menu Button */}
+                        <button
+                            className="md:hidden relative z-[110] w-11 h-11 flex items-center justify-center rounded-xl bg-slate-100/80 text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-all active:scale-95"
+                            onClick={() => setIsOpen(!isOpen)}
+                            aria-label="Toggle Menu"
+                        >
+                            {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                        </button>
+                    </div>
+                </div>
+            </nav>
+
+            {/* ===== MOBILE FULLSCREEN OVERLAY ===== */}
+            {/* This is rendered OUTSIDE the nav to avoid any z-index inheritance issues */}
+            <div
+                className={cn(
+                    "fixed inset-0 z-[100] md:hidden transition-all duration-300",
+                    isOpen ? "visible" : "invisible pointer-events-none"
+                )}
+            >
+                {/* Backdrop - solid dark overlay */}
+                <div
+                    className={cn(
+                        "absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300",
+                        isOpen ? "opacity-100" : "opacity-0"
+                    )}
+                    onClick={closeMenu}
+                />
+
+                {/* Drawer Panel */}
+                <div
+                    className={cn(
+                        "absolute right-0 top-0 bottom-0 w-full max-w-[340px] bg-white shadow-2xl shadow-slate-900/20 transition-transform duration-300 ease-out flex flex-col",
+                        isOpen ? "translate-x-0" : "translate-x-full"
+                    )}
+                >
+                    {/* Drawer Header */}
+                    <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-100">
+                        <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center shadow-md">
+                                <Building2 className="h-4 w-4 text-white" />
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-base font-black tracking-tight leading-none text-slate-900">PropFlow</span>
+                                <span className="text-[8px] uppercase tracking-[0.2em] font-bold text-blue-600 mt-0.5">Intelligence</span>
+                            </div>
+                        </div>
+                        <button
+                            onClick={closeMenu}
+                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition-colors active:scale-95"
+                            aria-label="Close Menu"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
                     </div>
 
-                    {/* CTAs */}
-                    <div className="hidden md:flex items-center gap-4">
-                        <Link href="/login">
-                            <Button variant="ghost" className="font-bold text-slate-600 hover:text-blue-600">
-                                Sign In
-                            </Button>
-                        </Link>
-                        <Link href="/contact">
-                            <Button className="font-bold px-6 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 rounded-xl">
-                                Request Access
-                            </Button>
-                        </Link>
+                    {/* Drawer Body - Scrollable */}
+                    <div className="flex-1 overflow-y-auto overscroll-contain px-6 py-6">
+                        {/* Section Label */}
+                        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 mb-4 px-1">
+                            Navigation
+                        </p>
+
+                        {/* Nav Links */}
+                        <div className="space-y-1 mb-8">
+                            {navLinks.map((link) => (
+                                <Link
+                                    key={link.href}
+                                    href={link.href}
+                                    onClick={closeMenu}
+                                    className={cn(
+                                        "flex items-center justify-between px-4 py-4 rounded-2xl transition-all active:scale-[0.98]",
+                                        pathname === link.href
+                                            ? "bg-blue-50 text-blue-700"
+                                            : "text-slate-900 hover:bg-slate-50 active:bg-slate-100"
+                                    )}
+                                >
+                                    <div>
+                                        <span className="block text-lg font-bold tracking-tight">
+                                            {link.label}
+                                        </span>
+                                        <span className="block text-xs text-slate-400 font-medium mt-0.5">
+                                            {link.description}
+                                        </span>
+                                    </div>
+                                    <ChevronRight className={cn(
+                                        "h-4 w-4 flex-shrink-0",
+                                        pathname === link.href ? "text-blue-400" : "text-slate-300"
+                                    )} />
+                                </Link>
+                            ))}
+                        </div>
+
+                        {/* Divider */}
+                        <div className="h-px bg-slate-100 mb-6" />
+
+                        {/* CTA Buttons */}
+                        <div className="space-y-3">
+                            <Link href="/contact" onClick={closeMenu} className="block">
+                                <Button className="w-full h-14 rounded-2xl font-bold text-base bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200/50 transition-all active:scale-[0.98]">
+                                    Request Access
+                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                </Button>
+                            </Link>
+                            <Link href="/login" onClick={closeMenu} className="block">
+                                <Button variant="outline" className="w-full h-14 rounded-2xl font-bold text-base border-2 border-slate-200 text-slate-700 hover:bg-slate-50 transition-all active:scale-[0.98]">
+                                    Partner Sign In
+                                </Button>
+                            </Link>
+                        </div>
                     </div>
 
-                    {/* Mobile Menu Button */}
-                    <button
-                        className="md:hidden relative z-50 p-2 text-slate-600 hover:text-blue-600 transition-colors"
-                        onClick={() => setIsOpen(!isOpen)}
-                        aria-label="Toggle Menu"
-                    >
-                        {isOpen ? <X className="h-7 w-7" /> : <Menu className="h-7 w-7" />}
-                    </button>
+                    {/* Drawer Footer */}
+                    <div className="px-6 pb-6 pt-2 mt-auto">
+                        <div className="p-5 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100/50">
+                            <div className="flex items-center gap-2 text-blue-600 font-bold text-[11px] uppercase tracking-widest mb-2">
+                                <Sparkles className="h-3.5 w-3.5" />
+                                <span>Enterprise Ready</span>
+                            </div>
+                            <p className="text-[13px] font-medium text-slate-500 leading-relaxed">
+                                Bespoke infrastructure for modern real estate agencies.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
-
-            {/* Mobile Drawer */}
-            <AnimatePresence>
-                {isOpen && (
-                    <>
-                        {/* Backdrop */}
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => setIsOpen(false)}
-                            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm md:hidden"
-                        />
-
-                        {/* Content */}
-                        <motion.div
-                            initial={{ x: '100%' }}
-                            animate={{ x: 0 }}
-                            exit={{ x: '100%' }}
-                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                            className="fixed right-0 top-0 bottom-0 w-[85%] max-w-sm bg-white shadow-2xl md:hidden flex flex-col pt-24 px-8 pb-10"
-                        >
-                            <div className="space-y-8 flex-1">
-                                <div className="space-y-2">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4 ml-1">Navigation</p>
-                                    {navLinks.map((link) => (
-                                        <Link
-                                            key={link.href}
-                                            href={link.href}
-                                            className={cn(
-                                                "block text-3xl font-black tracking-tight py-2 transition-colors",
-                                                pathname === link.href ? "text-blue-600" : "text-slate-900"
-                                            )}
-                                        >
-                                            {link.label}
-                                        </Link>
-                                    ))}
-                                </div>
-
-                                <div className="pt-8 border-t border-slate-100 flex flex-col gap-4">
-                                    <Link href="/contact" className="w-full">
-                                        <Button className="w-full h-16 rounded-2xl font-black bg-blue-600 hover:bg-blue-700 text-lg shadow-xl shadow-blue-200">
-                                            Request Access
-                                        </Button>
-                                    </Link>
-                                    <Link href="/login" className="w-full">
-                                        <Button variant="ghost" className="w-full h-14 rounded-2xl font-bold text-slate-600">
-                                            Partner Sign In
-                                        </Button>
-                                    </Link>
-                                </div>
-                            </div>
-
-                            <div className="mt-auto">
-                                <div className="p-6 rounded-3xl bg-blue-50 border border-blue-100/50">
-                                    <div className="flex items-center gap-2 text-blue-600 font-bold text-xs uppercase tracking-widest mb-2">
-                                        <Sparkles className="h-3 w-3" />
-                                        <span>Enterprise Ready</span>
-                                    </div>
-                                    <p className="text-sm font-medium text-slate-500 leading-relaxed">
-                                        Bespoke infrastructure for modern agencies.
-                                    </p>
-                                </div>
-                            </div>
-                        </motion.div>
-                    </>
-                )}
-            </AnimatePresence>
-        </nav>
+        </>
     );
 }
