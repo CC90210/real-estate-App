@@ -145,28 +145,28 @@ export default function ApplicationDetailsPage() {
     return (
         <div className="max-w-6xl mx-auto pb-20 space-y-8 animate-in fade-in duration-700">
             {/* Header Navigation */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <Button
                     variant="ghost"
                     onClick={() => router.push('/applications')}
-                    className="rounded-xl gap-2 font-bold text-slate-500 hover:bg-slate-100"
+                    className="rounded-xl gap-2 font-bold text-slate-500 hover:bg-slate-100 self-start"
                 >
-                    <ArrowLeft className="w-4 h-4" /> Back to Intelligence
+                    <ArrowLeft className="w-4 h-4" /> Back
                 </Button>
                 <div className="flex gap-2">
                     <Button
                         onClick={() => setShowEditModal(true)}
                         variant="outline"
-                        className="rounded-xl font-bold bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                        className="rounded-xl font-bold bg-white text-slate-700 border-slate-200 hover:bg-slate-50 text-xs sm:text-sm"
                     >
-                        <Edit className="w-4 h-4 mr-2" /> Edit Record
+                        <Edit className="w-4 h-4 mr-1.5 sm:mr-2" /> Edit
                     </Button>
                     <Button
                         onClick={handleDelete}
                         variant="ghost"
-                        className="text-red-600 hover:bg-red-50 rounded-xl"
+                        className="text-red-600 hover:bg-red-50 rounded-xl text-xs sm:text-sm"
                     >
-                        <Trash2 className="w-4 h-4 mr-2" /> Delete Record
+                        <Trash2 className="w-4 h-4 mr-1.5 sm:mr-2" /> Delete
                     </Button>
                 </div>
             </div>

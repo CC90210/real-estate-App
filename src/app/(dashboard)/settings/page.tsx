@@ -386,22 +386,22 @@ export default function SettingsPage() {
     }
 
     return (
-        <div className="max-w-6xl mx-auto space-y-12 pb-20 p-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="max-w-6xl mx-auto space-y-8 md:space-y-12 pb-20 p-4 md:p-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
                 <div>
                     <div className="flex items-center gap-2 mb-3">
                         <Badge className="bg-slate-900 text-[10px] font-black tracking-widest px-3 py-1">PropFlow OS v2.0</Badge>
                         <span className="text-slate-300">•</span>
                         <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Enterprise Workspace</p>
                     </div>
-                    <h1 className="text-5xl font-black tracking-tighter text-slate-900 leading-none">Settings.</h1>
-                    <p className="text-slate-500 font-medium mt-4 text-lg">Manage your profile, security, and company branding.</p>
+                    <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-slate-900 leading-none">Settings.</h1>
+                    <p className="text-slate-500 font-medium mt-3 md:mt-4 text-base md:text-lg">Manage your profile, security, and company branding.</p>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-12">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 md:gap-12">
                 {/* Lateral Navigation */}
-                <div className="space-y-2">
+                <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0">
                     <NavBtn
                         active={activeTab === 'profile'}
                         onClick={() => setActiveTab('profile')}
@@ -443,21 +443,21 @@ export default function SettingsPage() {
                 {/* Main Content Area */}
                 <div className="lg:col-span-3 space-y-8">
                     {activeTab === 'profile' && (
-                        <Card className="border-none shadow-2xl bg-white rounded-[2.5rem] overflow-hidden">
-                            <CardHeader className="p-10 pb-6 border-b border-slate-50">
-                                <CardTitle className="text-2xl font-black text-slate-900">Profile</CardTitle>
-                                <CardDescription className="text-slate-400 font-medium leading-relaxed">Your personal information shown on documents and invoices.</CardDescription>
+                        <Card className="border-none shadow-2xl bg-white rounded-2xl md:rounded-[2.5rem] overflow-hidden">
+                            <CardHeader className="p-5 md:p-10 pb-4 md:pb-6 border-b border-slate-50">
+                                <CardTitle className="text-xl md:text-2xl font-black text-slate-900">Profile</CardTitle>
+                                <CardDescription className="text-slate-400 font-medium leading-relaxed text-sm">Your personal information shown on documents and invoices.</CardDescription>
                             </CardHeader>
-                            <CardContent className="p-10 space-y-10">
-                                <div className="flex items-center gap-8">
-                                    <div className="w-24 h-24 rounded-[2rem] bg-slate-900 flex items-center justify-center text-white text-3xl font-black border-8 border-slate-50 shadow-2xl ring-1 ring-slate-100">
+                            <CardContent className="p-5 md:p-10 space-y-6 md:space-y-10">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-8">
+                                    <div className="w-16 h-16 md:w-24 md:h-24 rounded-2xl md:rounded-[2rem] bg-slate-900 flex items-center justify-center text-white text-2xl md:text-3xl font-black border-4 md:border-8 border-slate-50 shadow-2xl ring-1 ring-slate-100 shrink-0">
                                         {profile?.full_name?.charAt(0) || 'A'}
                                     </div>
-                                    <div className="space-y-2">
-                                        <Badge className="bg-blue-600 hover:bg-blue-600 text-white font-black uppercase text-[10px] tracking-widest px-4 py-1.5 rounded-full">
+                                    <div className="space-y-1.5 min-w-0">
+                                        <Badge className="bg-blue-600 hover:bg-blue-600 text-white font-black uppercase text-[10px] tracking-widest px-3 md:px-4 py-1 md:py-1.5 rounded-full">
                                             Authenticated {profile?.role || 'Agent'}
                                         </Badge>
-                                        <p className="text-lg font-black text-slate-900 tracking-tight">{profile?.email}</p>
+                                        <p className="text-base md:text-lg font-black text-slate-900 tracking-tight truncate">{profile?.email}</p>
                                         <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Platform Join Date: {new Date(profile?.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</p>
                                     </div>
                                 </div>
@@ -486,7 +486,7 @@ export default function SettingsPage() {
                                 <Button
                                     onClick={handleSaveProfile}
                                     disabled={isSaving}
-                                    className="w-full h-16 bg-slate-900 hover:bg-slate-800 text-white rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-3"
+                                    className="w-full h-14 md:h-16 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl md:rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-3"
                                 >
                                     {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
                                     Save Profile
@@ -496,16 +496,16 @@ export default function SettingsPage() {
                     )}
 
                     {activeTab === 'security' && (
-                        <Card className="border-none shadow-2xl bg-white rounded-[2.5rem] overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
-                            <CardHeader className="p-10 pb-6 border-b border-slate-50">
-                                <CardTitle className="text-2xl font-black text-slate-900 flex items-center gap-3">
-                                    <Shield className="w-8 h-8 text-blue-600" /> Account Security
+                        <Card className="border-none shadow-2xl bg-white rounded-2xl md:rounded-[2.5rem] overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
+                            <CardHeader className="p-5 md:p-10 pb-4 md:pb-6 border-b border-slate-50">
+                                <CardTitle className="text-xl md:text-2xl font-black text-slate-900 flex items-center gap-3">
+                                    <Shield className="w-6 h-6 md:w-8 md:h-8 text-blue-600" /> Account Security
                                 </CardTitle>
-                                <CardDescription className="text-slate-400 font-medium">Manage your password and security settings.</CardDescription>
+                                <CardDescription className="text-slate-400 font-medium text-sm">Manage your password and security settings.</CardDescription>
                             </CardHeader>
-                            <CardContent className="p-10 space-y-8">
+                            <CardContent className="p-5 md:p-10 space-y-6 md:space-y-8">
                                 <div className="space-y-6">
-                                    <div className="flex items-center justify-between p-6 bg-blue-50/50 rounded-3xl border border-blue-100">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 md:p-6 bg-blue-50/50 rounded-2xl md:rounded-3xl border border-blue-100">
                                         <div className="flex items-center gap-4">
                                             <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-sm border border-blue-100">
                                                 <Lock className="w-6 h-6" />
@@ -564,14 +564,14 @@ export default function SettingsPage() {
                     )}
 
                     {activeTab === 'notifications' && (
-                        <Card className="border-none shadow-2xl bg-white rounded-[2.5rem] overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
-                            <CardHeader className="p-10 pb-6 border-b border-slate-50">
-                                <CardTitle className="text-2xl font-black text-slate-900 flex items-center gap-3">
-                                    <Bell className="w-8 h-8 text-amber-500" /> Notification Preferences
+                        <Card className="border-none shadow-2xl bg-white rounded-2xl md:rounded-[2.5rem] overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
+                            <CardHeader className="p-5 md:p-10 pb-4 md:pb-6 border-b border-slate-50">
+                                <CardTitle className="text-xl md:text-2xl font-black text-slate-900 flex items-center gap-3">
+                                    <Bell className="w-6 h-6 md:w-8 md:h-8 text-amber-500" /> Notification Preferences
                                 </CardTitle>
-                                <CardDescription className="text-slate-400 font-medium">Control how and when you receive updates.</CardDescription>
+                                <CardDescription className="text-slate-400 font-medium text-sm">Control how and when you receive updates.</CardDescription>
                             </CardHeader>
-                            <CardContent className="p-10 space-y-6">
+                            <CardContent className="p-5 md:p-10 space-y-6">
                                 <ToggleSection
                                     title="New Application Alerts"
                                     description="Get notified when a new tenant application is submitted."
@@ -630,18 +630,18 @@ export default function SettingsPage() {
                     )}
 
                     {activeTab === 'branding' && (
-                        <Card className="border-none shadow-2xl bg-white rounded-[2.5rem] overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
-                            <CardHeader className="p-10 pb-6 border-b border-slate-50">
-                                <CardTitle className="text-2xl font-black text-slate-900 flex items-center gap-3">
-                                    <Palette className="w-8 h-8 text-indigo-600" /> Branding & UI
+                        <Card className="border-none shadow-2xl bg-white rounded-2xl md:rounded-[2.5rem] overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
+                            <CardHeader className="p-5 md:p-10 pb-4 md:pb-6 border-b border-slate-50">
+                                <CardTitle className="text-xl md:text-2xl font-black text-slate-900 flex items-center gap-3">
+                                    <Palette className="w-6 h-6 md:w-8 md:h-8 text-indigo-600" /> Branding & UI
                                 </CardTitle>
                                 <CardDescription className="text-slate-400 font-medium">
                                     This data appears on ALL generated documents, invoices, and proposals.
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent className="p-10 space-y-10">
+                            <CardContent className="p-5 md:p-10 space-y-8 md:space-y-10">
                                 {/* COMPANY IDENTITY - Critical for Documents */}
-                                <div className={cn("p-8 rounded-[2rem] border", `bg-gradient-to-br ${colors.lighter} ${colors.bgLight}`, colors.border)}>
+                                <div className={cn("p-4 md:p-8 rounded-2xl md:rounded-[2rem] border", `bg-gradient-to-br ${colors.lighter} ${colors.bgLight}`, colors.border)}>
                                     <div className="flex items-center gap-3 mb-6">
                                         <div className={cn("p-3 rounded-2xl", colors.bg)}>
                                             <Sparkles className="w-5 h-5 text-white" />
@@ -852,21 +852,21 @@ function NavBtn({ active, onClick, icon: Icon, label, description }: any) {
         <button
             onClick={onClick}
             className={cn(
-                "w-full flex items-center gap-4 px-6 py-5 rounded-[1.5rem] transition-all duration-300 text-left group",
+                "flex items-center gap-3 lg:gap-4 px-4 lg:px-6 py-3 lg:py-5 rounded-xl lg:rounded-[1.5rem] transition-all duration-300 text-left group shrink-0 lg:w-full whitespace-nowrap",
                 active
                     ? "bg-white shadow-[0_20px_50px_rgba(37,99,235,0.1)] text-blue-600 border border-blue-50"
                     : "text-slate-400 hover:bg-slate-50 hover:text-slate-600"
             )}
         >
             <div className={cn(
-                "p-3 rounded-2xl transition-all duration-300",
+                "p-2.5 lg:p-3 rounded-xl lg:rounded-2xl transition-all duration-300",
                 active ? "bg-blue-600 text-white shadow-xl shadow-blue-200" : "bg-slate-100 text-slate-400 group-hover:bg-white group-hover:shadow-md"
             )}>
-                <Icon className="w-5 h-5" />
+                <Icon className="w-4 h-4 lg:w-5 lg:h-5" />
             </div>
             <div>
-                <p className="font-black text-sm tracking-tight">{label}</p>
-                <p className={cn("text-[10px] font-bold uppercase tracking-wider", active ? "text-blue-400" : "text-slate-400")}>{description}</p>
+                <p className="font-black text-xs lg:text-sm tracking-tight">{label}</p>
+                <p className={cn("text-[10px] font-bold uppercase tracking-wider hidden lg:block", active ? "text-blue-400" : "text-slate-400")}>{description}</p>
             </div>
         </button>
     );

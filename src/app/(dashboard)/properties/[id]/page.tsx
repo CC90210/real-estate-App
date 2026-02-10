@@ -33,22 +33,24 @@ export default async function PropertyDetailsPage({ params }: { params: { id: st
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500 pb-20">
-            <div className="flex items-center gap-4">
-                <Link href={`/areas/${property.buildings?.area_id}/buildings/${property.building_id}`}>
-                    <Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-100">
-                        <ArrowLeft className="w-5 h-5 text-slate-500" />
-                    </Button>
-                </Link>
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900">{property.address}</h1>
-                    <div className="flex items-center gap-2 text-slate-500 mt-1">
-                        <MapPin className="w-4 h-4" />
-                        <span>{property.buildings?.name}</span>
-                        <span>•</span>
-                        <span className="text-blue-600 font-medium">{property.buildings?.area?.name}</span>
+            <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                    <Link href={`/areas/${property.buildings?.area_id}/buildings/${property.building_id}`}>
+                        <Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-100 shrink-0 mt-1">
+                            <ArrowLeft className="w-5 h-5 text-slate-500" />
+                        </Button>
+                    </Link>
+                    <div className="min-w-0 flex-1">
+                        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 break-words">{property.address}</h1>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-slate-500 mt-1 text-sm">
+                            <MapPin className="w-4 h-4 shrink-0" />
+                            <span className="truncate">{property.buildings?.name}</span>
+                            <span className="hidden sm:inline">•</span>
+                            <span className="text-blue-600 font-medium">{property.buildings?.area?.name}</span>
+                        </div>
                     </div>
                 </div>
-                <div className="ml-auto flex gap-2">
+                <div className="flex gap-2 pl-0 sm:pl-12">
                     <EditPropertyModal property={property} />
                     <DeletePropertyButton propertyId={property.id} propertyName={property.address} />
                 </div>

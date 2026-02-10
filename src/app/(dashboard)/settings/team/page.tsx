@@ -225,30 +225,30 @@ export default function TeamPage() {
                                 return (
                                     <Card key={member.id}>
                                         <CardContent className="p-4">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                                <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                                                    <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
                                                         {member.avatar_url ? (
-                                                            <img src={member.avatar_url} className="h-12 w-12 rounded-full" />
+                                                            <img src={member.avatar_url} className="h-10 w-10 sm:h-12 sm:w-12 rounded-full" />
                                                         ) : (
-                                                            <span className="text-lg font-medium">
+                                                            <span className="text-base sm:text-lg font-medium">
                                                                 {member.full_name?.[0] || member.email?.[0] || '?'}
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <div>
+                                                    <div className="min-w-0">
                                                         <div className="flex items-center gap-2">
-                                                            <p className="font-medium">
+                                                            <p className="font-medium truncate">
                                                                 {member.full_name || 'Unnamed User'}
                                                             </p>
                                                             {isCurrentUser && (
                                                                 <Badge variant="outline">You</Badge>
                                                             )}
                                                         </div>
-                                                        <p className="text-sm text-gray-500">{member.email}</p>
+                                                        <p className="text-sm text-gray-500 truncate">{member.email}</p>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-3">
+                                                <div className="flex items-center gap-2 sm:gap-3 ml-13 sm:ml-0">
                                                     <div className={`flex items-center gap-1 px-2 py-1 rounded-full ${role.bg}`}>
                                                         <RoleIcon className={`h-3 w-3 ${role.color}`} />
                                                         <span className={`text-xs font-medium ${role.color}`}>
@@ -304,19 +304,19 @@ export default function TeamPage() {
                                 return (
                                     <Card key={invite.id}>
                                         <CardContent className="p-4">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-4">
-                                                    <div className={`h-10 w-10 rounded-full ${role.bg} flex items-center justify-center`}>
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                                <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                                                    <div className={`h-10 w-10 rounded-full ${role.bg} flex items-center justify-center shrink-0`}>
                                                         <RoleIcon className={`h-5 w-5 ${role.color}`} />
                                                     </div>
-                                                    <div>
-                                                        <p className="font-medium">{role.label} Invitation</p>
-                                                        <p className="text-sm text-gray-500">
+                                                    <div className="min-w-0">
+                                                        <p className="font-medium truncate">{role.label} Invitation</p>
+                                                        <p className="text-sm text-gray-500 truncate">
                                                             {invite.email || 'Link-based invite'}
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-2 ml-13 sm:ml-0">
                                                     <Button
                                                         variant="outline"
                                                         size="sm"

@@ -368,7 +368,7 @@ export default function InvoiceViewPage() {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-hide">
+                <div className="flex items-center gap-2 flex-wrap pb-1 md:pb-0">
                     <div className={`hidden md:flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${currentStatus.color} ${invoice.status === 'draft' ? 'hidden' : ''}`}>
                         <StatusIcon className="w-3 h-3" />
                         {currentStatus.label}
@@ -376,7 +376,7 @@ export default function InvoiceViewPage() {
 
                     <div className="h-6 w-px bg-slate-200 mx-1 hidden md:block" />
 
-                    <div className="flex gap-1.5 whitespace-nowrap">
+                    <div className="flex gap-1.5 flex-wrap">
                         {/* Always show Paid option if not paid already */}
                         {invoice.status !== 'paid' && (
                             <Button

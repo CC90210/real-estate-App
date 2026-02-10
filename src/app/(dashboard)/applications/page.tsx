@@ -335,27 +335,27 @@ function ApplicationCard({ application, onApprove, onDeny, onDelete, isUpdating 
                     </div>
                 </div>
 
-                <div className="flex lg:flex-col gap-3 p-8 lg:border-l border-slate-100 bg-slate-50/50">
+                <div className="grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-3 p-4 lg:p-8 lg:border-l border-t lg:border-t-0 border-slate-100 bg-slate-50/50">
                     <Button
                         onClick={() => setShowEditModal(true)}
-                        className="flex-1 lg:flex-none h-14 bg-white hover:bg-slate-50 text-slate-900 border border-slate-200 rounded-2xl font-black transition-all hover:scale-105"
+                        className="h-12 lg:h-14 bg-white hover:bg-slate-50 text-slate-900 border border-slate-200 rounded-xl lg:rounded-2xl font-bold lg:font-black text-xs transition-all hover:scale-105 px-3"
                     >
-                        <Edit className="h-5 w-5 mr-3 text-slate-400" />
-                        Edit Record
+                        <Edit className="h-4 w-4 mr-1.5 lg:mr-3 text-slate-400 shrink-0" />
+                        <span className="truncate">Edit</span>
                     </Button>
 
                     <Button
                         onClick={onApprove}
                         disabled={isUpdating || application.status === 'approved'}
                         className={cn(
-                            "flex-1 lg:flex-none h-14 rounded-2xl shadow-lg font-black transition-all hover:scale-105",
+                            "h-12 lg:h-14 rounded-xl lg:rounded-2xl shadow-lg font-bold lg:font-black text-xs transition-all hover:scale-105 px-3",
                             application.status === 'approved'
                                 ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
                                 : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/20"
                         )}
                     >
-                        <CheckCircle className="h-5 w-5 mr-3" />
-                        {application.status === 'approved' ? 'Clearance Active' : 'Issue Clearance'}
+                        <CheckCircle className="h-4 w-4 mr-1.5 lg:mr-3 shrink-0" />
+                        <span className="truncate">{application.status === 'approved' ? 'Approved' : 'Approve'}</span>
                     </Button>
 
                     <Button
@@ -363,23 +363,23 @@ function ApplicationCard({ application, onApprove, onDeny, onDelete, isUpdating 
                         onClick={onDeny}
                         disabled={isUpdating || application.status === 'denied'}
                         className={cn(
-                            "flex-1 lg:flex-none h-14 rounded-2xl font-black transition-all hover:scale-105",
+                            "h-12 lg:h-14 rounded-xl lg:rounded-2xl font-bold lg:font-black text-xs transition-all hover:scale-105 px-3",
                             application.status === 'denied'
                                 ? "border-slate-100 bg-slate-50 text-slate-400 cursor-not-allowed shadow-none"
                                 : "border-rose-100 bg-white text-rose-600 hover:bg-rose-50"
                         )}
                     >
-                        <XCircle className="h-5 w-5 mr-3" />
-                        {application.status === 'denied' ? 'Rejection Active' : 'Reject Protocol'}
+                        <XCircle className="h-4 w-4 mr-1.5 lg:mr-3 shrink-0" />
+                        <span className="truncate">{application.status === 'denied' ? 'Denied' : 'Reject'}</span>
                     </Button>
 
                     <Button
                         variant="outline"
                         onClick={onDelete}
-                        className="flex-1 lg:flex-none h-14 border-slate-200 bg-white text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-2xl font-black transition-all hover:scale-105 group/delete"
+                        className="h-12 lg:h-14 border-slate-200 bg-white text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl lg:rounded-2xl font-bold lg:font-black text-xs transition-all hover:scale-105 group/delete px-3"
                     >
-                        <Trash2 className="h-5 w-5 mr-2 group-hover/delete:text-rose-600" />
-                        Purge Case
+                        <Trash2 className="h-4 w-4 mr-1.5 lg:mr-2 group-hover/delete:text-rose-600 shrink-0" />
+                        <span className="truncate">Delete</span>
                     </Button>
                 </div>
             </div>
