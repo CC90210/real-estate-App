@@ -60,20 +60,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
             .single();
 
         if (error || !data) {
-            console.warn('Profile missing or error fetching, attempting repair...', error);
-            const { error: repairError } = await supabase.rpc('ensure_user_profile');
-
-            if (!repairError) {
-                const { data: refetched, error: refetchError } = await supabase
-                    .from('profiles')
-                    .select('*, company:companies(*)')
-                    .eq('id', userId)
-                    .single();
-
-                if (!refetchError && refetched) {
-                    return refetched;
-                }
-            }
+            console.warn('Profile missing or error fetching:', error);
+            // Safety Pin: Disabled automatic RPC repair to prevent recursive DB loops
+            // const { error: repairError } = await supabase.rpc('ensure_user_profile');
             return null;
         }
 
