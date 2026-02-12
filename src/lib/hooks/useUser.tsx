@@ -95,6 +95,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 setUser(session.user);
                 const profileData = await fetchProfile(session.user.id);
                 setProfile(profileData);
+
+                // Auto-onboarding redirect for logged-in users with no profile
+                // Only if NOT already on onboarding or sign-in pages
+                const path = window.location.pathname;
+                if (!profileData && !path.startsWith('/onboarding') && !path.startsWith('/login') && !path.startsWith('/auth')) {
+                    window.location.href = '/onboarding';
+                }
             }
             setIsLoading(false);
         };

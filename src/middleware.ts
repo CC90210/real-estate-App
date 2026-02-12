@@ -54,20 +54,19 @@ export async function middleware(request: NextRequest) {
         }
     )
 
-    // Get the session
+    // IMPORTANT: Only check session. DO NOT query database in middleware (Edge runtime).
+    // Database queries in middleware cause 504 Gateway Timeouts.
     const { data: { session } } = await supabase.auth.getSession()
 
     const pathname = request.nextUrl.pathname
 
     // Public routes that don't require auth
-    // Add landing page "/" to public routes
+    // These are matched EXACTLY or via prefixes
     const publicRoutes = ['/', '/login', '/signup', '/forgot-password', '/reset-password', '/pricing', '/features', '/solutions', '/terms', '/privacy']
-    const isPublicRoute = publicRoutes.includes(pathname) || pathname.startsWith('/join/') || pathname.startsWith('/auth/')
-
-    // Auth callback route
-    if (pathname.startsWith('/auth/callback')) {
-        return response
-    }
+    const isPublicRoute = publicRoutes.includes(pathname) ||
+        pathname.startsWith('/join/') ||
+        pathname.startsWith('/auth/') ||
+        pathname.startsWith('/blog')
 
     // If no session and trying to access protected route
     if (!session && !isPublicRoute) {
@@ -76,74 +75,24 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(redirectUrl)
     }
 
-    // If has session and on public route (except home), redirect to dashboard
+    // If has session and on auth routes, redirect to dashboard
     if (session && (pathname === '/login' || pathname === '/signup')) {
         return NextResponse.redirect(new URL('/dashboard', request.url))
-    }
-
-    // If has session, verify profile exists
-    if (session && !isPublicRoute) {
-        // Skip profile check for onboarding to avoid loops
-        if (pathname.startsWith('/onboarding')) {
-            return response
-        }
-
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('id, company_id, role')
-            .eq('id', session.user.id)
-            .single()
-
-        // No profile - redirect to onboarding
-        if (!profile) {
-            return NextResponse.redirect(new URL('/onboarding', request.url))
-        }
-
-        // Role-based redirection logic
-        if (pathname === '/dashboard') {
-            if (profile.role === 'tenant') {
-                return NextResponse.redirect(new URL('/tenant/dashboard', request.url))
-            }
-        }
-
-        // If on public route but logged in, redirect correctly
-        if (session && (pathname === '/login' || pathname === '/signup')) {
-            const dest = profile.role === 'tenant' ? '/tenant/dashboard' : '/dashboard'
-            return NextResponse.redirect(new URL(dest, request.url))
-        }
-
-        // No company - redirect to onboarding (Skip for tenants who might not have a company_id yet)
-        if (profile && !profile.company_id && profile.role !== 'tenant') {
-            return NextResponse.redirect(new URL('/onboarding', request.url))
-        }
     }
 
     // ==========================================
     // SECURITY HEADERS - ENTERPRISE GRADE
     // ==========================================
-
-    // Prevent clickjacking attacks
     response.headers.set('X-Frame-Options', 'DENY')
-
-    // Prevent MIME type sniffing
     response.headers.set('X-Content-Type-Options', 'nosniff')
-
-    // Enable XSS filter
     response.headers.set('X-XSS-Protection', '1; mode=block')
-
-    // Referrer policy - don't leak URLs
     response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-
-    // Permissions policy - disable unnecessary browser features
-    response.headers.set('Permissions-Policy',
-        'camera=(), microphone=(), geolocation=(), interest-cohort=()'
-    )
+    response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), interest-cohort=()')
 
     // Content Security Policy - strict mode
-    // We append the CSP to ensure it doesn't break standard Next.js functionality
     response.headers.set('Content-Security-Policy',
         "default-src 'self'; " +
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://va.vercel-scripts.com; " +
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://va.vercel-scripts.com https://*.supabase.co; " +
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
         "font-src 'self' https://fonts.gstatic.com; " +
         "img-src 'self' data: https: blob:; " +
@@ -152,9 +101,7 @@ export async function middleware(request: NextRequest) {
     )
 
     // Strict Transport Security - force HTTPS
-    response.headers.set('Strict-Transport-Security',
-        'max-age=31536000; includeSubDomains; preload'
-    )
+    response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload')
 
     return response
 }
@@ -166,9 +113,10 @@ export const config = {
          * - _next/static (static files)
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
-         * - public folder
-         * - api routes
+         * - public folder assets (.png, .jpg, .svg, .css, .js)
+         * - api routes (handled separately)
          */
-        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|api).*)',
+        '/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp|css|js|woff2?|ico)$).*)',
     ],
 }
+

@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { MobileHeader } from '@/components/mobile/MobileHeader'
 import { MobileQuickFind } from '@/components/mobile/MobileQuickFind'
 import { DesktopSidebar } from '@/components/DesktopSidebar'
@@ -17,8 +19,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 }
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
+    const router = useRouter()
     const { open, setOpen } = useQuickFind()
-    const { profile, company } = useAuth()
+    const { profile, company, role, isLoading } = useAuth()
+
+    // Protected Route Logic (Fallback to middleware)
+    useEffect(() => {
+        if (!isLoading) {
+            if (!profile) {
+                router.push('/onboarding')
+            } else if ((role as string) === 'tenant') {
+                router.push('/tenant/dashboard')
+            }
+        }
+    }, [profile, role, isLoading, router])
+
+    if (isLoading) return null
 
     return (
         <div className="min-h-screen bg-[#fcfdfe]">

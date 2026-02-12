@@ -1,6 +1,6 @@
 // PropFlow Database Types
 
-export type UserRole = 'admin' | 'agent' | 'landlord';
+export type UserRole = 'admin' | 'agent' | 'landlord' | 'tenant';
 
 export type PropertyStatus = 'available' | 'pending' | 'rented' | 'maintenance';
 
