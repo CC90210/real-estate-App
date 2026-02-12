@@ -2,16 +2,16 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 /**
- * PROPFLOW EDGE INFRASTRUCTURE (V4 - HIGH AVAILABILITY)
- * This middleware is optimized for < 50ms execution time to prevent 504 Gateway Timeouts.
- * Database queries have been completely removed from the Edge runtime.
- * Public routes bypass Supabase network calls entirely.
+ * PROPFLOW EDGE INFRASTRUCTURE (V5 - ZERO BLOCKING)
+ * This middleware is designed to NEVER block public or auth-page requests.
+ * 504 Gateway Timeouts are avoided by keeping network calls out of the critical path
+ * for landing, login, and signup pages.
  */
 
 export async function middleware(request: NextRequest) {
     const pathname = request.nextUrl.pathname
 
-    // 1. FAST PATH: Ignore static assets that the matcher might have missed
+    // 1. FAST PATH: Static Assets & Internal Next.js requests
     if (
         pathname.includes('.') ||
         pathname.startsWith('/_next') ||
@@ -28,20 +28,20 @@ export async function middleware(request: NextRequest) {
         pathname.startsWith('/auth/') ||
         pathname.startsWith('/blog')
 
-    // 3. INITIALIZE RESPONSE
+    // 3. PERFORMANCE OPTIMIZATION: Bypassing session checks for ALL public routes
+    // This fixed the "Sign In" and "Get Started" button hangs/timeouts.
+    // Redirection for logged-in users visiting /login is now handled on the client.
+    if (isPublicRoute) {
+        return applySecurityHeaders(NextResponse.next())
+    }
+
+    // 4. SUPABASE AUTH HANDLER (ONLY for protected routes e.g. /dashboard)
     let response = NextResponse.next({
         request: {
             headers: request.headers,
         },
     })
 
-    // 4. PERFORMANCE OPTIMIZATION: Bypass Supabase for Public Routes
-    // Most users entering via propflow.pro will hit this path, ensuring a < 20ms load.
-    if (isPublicRoute && pathname !== '/login' && pathname !== '/signup') {
-        return applySecurityHeaders(response)
-    }
-
-    // 5. SUPABASE AUTH HANDLER (Optimized for Edge)
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -64,18 +64,15 @@ export async function middleware(request: NextRequest) {
         }
     )
 
-    // Optimized session check (only hits regional Supabase Auth)
+    // Only run session check for protected dashboard routes
+    // This prevents the entire site from crashing if Supabase Auth has latency.
     const { data: { session } } = await supabase.auth.getSession()
 
-    // 6. REDIRECTION RULES (Client-side handles profile-specific logic)
-    if (!session && !isPublicRoute) {
+    // 5. PROTECTED ROUTE REDIRECTION
+    if (!session) {
         const redirectUrl = new URL('/login', request.url)
         redirectUrl.searchParams.set('redirect', pathname)
         return NextResponse.redirect(redirectUrl)
-    }
-
-    if (session && (pathname === '/login' || pathname === '/signup')) {
-        return NextResponse.redirect(new URL('/dashboard', request.url))
     }
 
     return applySecurityHeaders(response)
@@ -83,7 +80,6 @@ export async function middleware(request: NextRequest) {
 
 /**
  * Apply Enterprise-Grade Security Headers
- * Optimized for reduced header size and peak privacy.
  */
 function applySecurityHeaders(response: NextResponse) {
     const headers = response.headers
@@ -111,15 +107,6 @@ function applySecurityHeaders(response: NextResponse) {
 
 export const config = {
     matcher: [
-        /*
-         * Match all request paths except for the ones starting with:
-         * - _next/static (static files)
-         * - _next/image (image optimization files)
-         * - favicon.ico (favicon file)
-         * - public assets
-         */
         '/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp|css|js|woff2?|ico|csv|txt)$).*)',
     ],
 }
-
-

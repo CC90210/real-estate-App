@@ -11,9 +11,13 @@ import { Loader2, Eye, EyeOff } from 'lucide-react'
 import Link from 'next/link'
 import { Logo } from '@/components/brand/Logo'
 
+import { useAuth } from '@/lib/hooks/useAuth'
+import { useEffect } from 'react'
+
 function LoginForm() {
     const router = useRouter()
     const searchParams = useSearchParams()
+    const { isAuthenticated, isLoading: authLoading } = useAuth()
     const redirectTo = searchParams.get('redirect') || '/dashboard'
     const supabase = createClient()
 
@@ -21,6 +25,13 @@ function LoginForm() {
     const [password, setPassword] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
+
+    // Client-side redirect if already authenticated
+    useEffect(() => {
+        if (!authLoading && isAuthenticated) {
+            router.push(redirectTo)
+        }
+    }, [isAuthenticated, authLoading, router, redirectTo])
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()

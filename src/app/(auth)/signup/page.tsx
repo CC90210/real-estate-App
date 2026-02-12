@@ -12,9 +12,20 @@ import { Loader2, Building2, Eye, EyeOff, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 import { useUser } from '@/lib/hooks/useUser'
 
+import { useAuth } from '@/lib/hooks/useAuth'
+import { useEffect } from 'react'
+
 export default function SignupPage() {
     const router = useRouter()
     const { signUp } = useUser()
+    const { isAuthenticated, isLoading: authLoading } = useAuth()
+
+    // Client-side redirect if already authenticated
+    useEffect(() => {
+        if (!authLoading && isAuthenticated) {
+            router.push('/dashboard')
+        }
+    }, [isAuthenticated, authLoading, router])
 
     const [formData, setFormData] = useState({
         email: '',
