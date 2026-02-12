@@ -3,238 +3,202 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import { useCompanyId } from '@/lib/hooks/useCompanyId'
-import { useAccentColor } from '@/lib/hooks/useAccentColor'
-import { cn } from '@/lib/utils'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { formatDistanceToNow } from 'date-fns'
+import {
+    Activity,
+    Home,
+    User,
+    FileText,
+    DollarSign,
+    Wrench,
+    Users,
+    Settings,
+    Search,
+    Filter,
+    Loader2
+} from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import {
-    Activity, Search, Home, ClipboardList, FileText, Users,
-    Settings, Zap, Loader2, Calendar, Receipt, BookOpen,
-    Wrench, CheckCircle, UserPlus, Key, Upload, Download,
-    Edit, Trash2, Eye, Send
-} from 'lucide-react'
-import { formatDistanceToNow, format } from 'date-fns'
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
+import { cn } from '@/lib/utils'
 
-const actionIcons: Record<string, any> = {
-    property_created: Home,
-    property_updated: Edit,
-    property_deleted: Trash2,
-    application_created: ClipboardList,
-    application_updated: Edit,
-    application_approved: CheckCircle,
-    document_generated: FileText,
-    invoice_created: Receipt,
-    invoice_paid: CheckCircle,
-    showing_created: Calendar,
-    showing_completed: CheckCircle,
-    team_member_invited: UserPlus,
-    team_member_joined: Users,
-    lease_created: BookOpen,
-    lease_renewed: BookOpen,
-    maintenance_created: Wrench,
-    maintenance_completed: CheckCircle,
-    settings_updated: Settings,
-    data_export: Download,
-    login: Key,
-    webhook_sent: Send,
-}
-
-const actionColors: Record<string, string> = {
-    created: 'bg-blue-100 text-blue-600',
-    updated: 'bg-amber-100 text-amber-600',
-    deleted: 'bg-red-100 text-red-600',
-    approved: 'bg-emerald-100 text-emerald-600',
-    denied: 'bg-red-100 text-red-600',
-    completed: 'bg-emerald-100 text-emerald-600',
-    paid: 'bg-emerald-100 text-emerald-600',
-    invited: 'bg-indigo-100 text-indigo-600',
-    joined: 'bg-indigo-100 text-indigo-600',
-    generated: 'bg-purple-100 text-purple-600',
-    renewed: 'bg-blue-100 text-blue-600',
-    exported: 'bg-slate-100 text-slate-600',
-    login: 'bg-slate-100 text-slate-600',
-    sent: 'bg-sky-100 text-sky-600',
-}
-
-function getActionColor(action: string) {
-    for (const [key, color] of Object.entries(actionColors)) {
-        if (action.includes(key)) return color
-    }
-    return 'bg-slate-100 text-slate-600'
-}
-
-function getActionIcon(action: string) {
-    return actionIcons[action] || Activity
+interface ActivityItem {
+    id: string
+    type: string
+    title: string
+    description: string
+    user: { full_name: string; email: string } | null
+    created_at: string
+    metadata: any
 }
 
 export default function ActivityPage() {
     const supabase = createClient()
-    const companyId = useCompanyId()
-    const { colors } = useAccentColor()
     const [search, setSearch] = useState('')
-    const [page, setPage] = useState(0)
-    const pageSize = 30
+    const [filter, setFilter] = useState<string>('all')
 
-    const { data, isLoading } = useQuery({
-        queryKey: ['activity', companyId, page],
+    const { data: activities, isLoading } = useQuery({
+        queryKey: ['activity-feed', filter],
         queryFn: async () => {
-            if (!companyId) return { logs: [], count: 0 }
-            const from = page * pageSize
-            const to = from + pageSize - 1
-
-            const { data: logs, error, count } = await supabase
+            let query = supabase
                 .from('activity_log')
-                .select('*, profiles:user_id(full_name, email, avatar_url)', { count: 'exact' })
-                .eq('company_id', companyId)
+                .select(`
+                    id,
+                    type,
+                    title,
+                    description,
+                    created_at,
+                    metadata,
+                    user:profiles(full_name, email)
+                `)
                 .order('created_at', { ascending: false })
-                .range(from, to)
+                .limit(50)
 
+            if (filter !== 'all') {
+                query = query.ilike('type', `${filter}.%`)
+            }
+
+            const { data, error } = await query
             if (error) throw error
-            return { logs: logs || [], count: count || 0 }
+
+            return (data as any[]).map(item => ({
+                ...item,
+                user: Array.isArray(item.user) ? item.user[0] : item.user
+            })) as ActivityItem[]
         },
-        enabled: !!companyId,
     })
 
-    const logs = data?.logs || []
-    const totalPages = Math.ceil((data?.count || 0) / pageSize)
-
-    const filtered = search
-        ? logs.filter((log: any) =>
-            log.action?.toLowerCase().includes(search.toLowerCase()) ||
-            log.description?.toLowerCase().includes(search.toLowerCase()) ||
-            log.profiles?.full_name?.toLowerCase().includes(search.toLowerCase())
-        )
-        : logs
-
-    // Group by date
-    const grouped = filtered.reduce((acc: Record<string, any[]>, log: any) => {
-        const date = format(new Date(log.created_at), 'yyyy-MM-dd')
-        if (!acc[date]) acc[date] = []
-        acc[date].push(log)
-        return acc
-    }, {})
-
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-[500px]">
-                <Loader2 className={cn("w-10 h-10 animate-spin", colors.text)} />
-            </div>
-        )
+    const getIcon = (type: string) => {
+        const category = type.split('.')[0]
+        switch (category) {
+            case 'property': return <Home className="h-4 w-4" />
+            case 'application': return <User className="h-4 w-4" />
+            case 'document': return <FileText className="h-4 w-4" />
+            case 'invoice': return <DollarSign className="h-4 w-4" />
+            case 'maintenance': return <Wrench className="h-4 w-4" />
+            case 'team': return <Users className="h-4 w-4" />
+            case 'settings': return <Settings className="h-4 w-4" />
+            default: return <Activity className="h-4 w-4" />
+        }
     }
 
+    const getIconColor = (type: string) => {
+        const category = type.split('.')[0]
+        switch (category) {
+            case 'property': return 'bg-blue-50 text-blue-600'
+            case 'application': return 'bg-purple-50 text-purple-600'
+            case 'document': return 'bg-indigo-50 text-indigo-600'
+            case 'invoice': return 'bg-emerald-50 text-emerald-600'
+            case 'maintenance': return 'bg-rose-50 text-rose-600'
+            case 'team': return 'bg-pink-50 text-pink-600'
+            default: return 'bg-slate-50 text-slate-600'
+        }
+    }
+
+    const filteredActivities = activities?.filter(a =>
+        a.title.toLowerCase().includes(search.toLowerCase()) ||
+        a.description?.toLowerCase().includes(search.toLowerCase())
+    )
+
     return (
-        <div className="p-6 lg:p-10 space-y-8 animate-in fade-in duration-500">
-            {/* Header */}
-            <div>
-                <div className={cn("flex items-center gap-2 font-black text-[10px] uppercase tracking-[0.2em] mb-1", colors.text)}>
-                    <Activity className="h-3 w-3" />
-                    <span>Audit Trail</span>
+        <div className="p-6 lg:p-10 max-w-5xl mx-auto min-h-screen">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+                <div>
+                    <div className="flex items-center gap-2 text-[10px] font-black text-rose-600 uppercase tracking-[0.3em] mb-3">
+                        <div className="h-2 w-2 bg-rose-600 rounded-full animate-pulse" />
+                        Live Audit Trail
+                    </div>
+                    <h1 className="text-4xl font-black text-slate-900 tracking-tight">System Activity</h1>
+                    <p className="text-lg font-medium text-slate-500 mt-2">Track every event across your organization.</p>
                 </div>
-                <h1 className="text-3xl lg:text-4xl font-black tracking-tight text-slate-900">Activity Feed</h1>
-                <p className="text-slate-500 font-medium mt-1">Track all actions across your organization.</p>
-            </div>
 
-            {/* Search */}
-            <div className="relative max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input
-                    placeholder="Search activity..."
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    className="pl-10 rounded-xl"
-                />
-            </div>
-
-            {/* Timeline */}
-            {Object.keys(grouped).length === 0 ? (
-                <Card className="border-dashed border-2">
-                    <CardContent className="flex flex-col items-center justify-center py-16">
-                        <Activity className="w-12 h-12 text-slate-200 mb-4" />
-                        <p className="text-lg font-bold text-slate-400">No activity yet</p>
-                        <p className="text-sm text-slate-300 mt-1">Actions will appear here as they happen</p>
-                    </CardContent>
-                </Card>
-            ) : (
-                <div className="space-y-8">
-                    {Object.entries(grouped).map(([date, entries]) => (
-                        <div key={date}>
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="h-px flex-1 bg-slate-100" />
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">
-                                    {format(new Date(date), 'EEEE, MMMM d, yyyy')}
-                                </span>
-                                <div className="h-px flex-1 bg-slate-100" />
+                <div className="flex flex-wrap gap-3">
+                    <div className="relative w-full sm:w-64">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Input
+                            placeholder="Filter by keyword..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-10 h-11 bg-white border-slate-100 rounded-xl font-bold text-sm shadow-sm"
+                        />
+                    </div>
+                    <Select value={filter} onValueChange={setFilter}>
+                        <SelectTrigger className="w-full sm:w-44 h-11 bg-white border-slate-100 rounded-xl font-bold text-sm shadow-sm">
+                            <div className="flex items-center gap-2">
+                                <Filter className="h-4 w-4 text-slate-400" />
+                                <SelectValue placeholder="Category" />
                             </div>
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-slate-100 font-bold">
+                            <SelectItem value="all">All Activity</SelectItem>
+                            <SelectItem value="property">Properties</SelectItem>
+                            <SelectItem value="application">Applications</SelectItem>
+                            <SelectItem value="document">Documents</SelectItem>
+                            <SelectItem value="invoice">Invoices</SelectItem>
+                            <SelectItem value="maintenance">Maintenance</SelectItem>
+                            <SelectItem value="team">Team Management</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
 
-                            <div className="space-y-2">
-                                {(entries as any[]).map((log: any) => {
-                                    const IconComponent = getActionIcon(log.action)
-                                    const colorClass = getActionColor(log.action)
-
-                                    return (
-                                        <div
-                                            key={log.id}
-                                            className="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-50/50 transition-colors group"
-                                        >
-                                            <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5", colorClass)}>
-                                                <IconComponent className="w-4 h-4" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-start justify-between gap-2">
-                                                    <div>
-                                                        <span className="text-sm font-semibold text-slate-700">
-                                                            {log.profiles?.full_name || 'System'}
-                                                        </span>
-                                                        <span className="text-sm text-slate-400 ml-1.5">
-                                                            {log.description || log.action?.replace(/_/g, ' ')}
-                                                        </span>
-                                                    </div>
-                                                    <span className="text-[10px] font-medium text-slate-300 whitespace-nowrap flex-shrink-0">
-                                                        {format(new Date(log.created_at), 'h:mm a')}
-                                                    </span>
-                                                </div>
-                                                {log.entity_type && (
-                                                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-wider mt-0.5">
-                                                        {log.entity_type}
-                                                        {log.entity_id && ` • ${log.entity_id.slice(0, 8)}...`}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )
-                                })}
+            {isLoading ? (
+                <div className="space-y-4">
+                    {[...Array(6)].map((_, i) => (
+                        <div key={i} className="h-24 bg-slate-50 border border-slate-100 rounded-3xl animate-pulse" />
+                    ))}
+                </div>
+            ) : filteredActivities?.length === 0 ? (
+                <div className="flex flex-col items-center justify-center p-20 bg-white border border-dashed border-slate-200 rounded-[3rem] text-center">
+                    <div className="h-20 w-20 bg-slate-50 rounded-full flex items-center justify-center mb-6">
+                        <Activity className="h-8 w-8 text-slate-200" />
+                    </div>
+                    <h3 className="text-xl font-black text-slate-900 mb-2">No activity recorded</h3>
+                    <p className="text-slate-500 font-medium max-w-xs">Events will show up here in real-time as your team uses the platform.</p>
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    {filteredActivities?.map((activity) => (
+                        <div
+                            key={activity.id}
+                            className="bg-white rounded-[2rem] border border-slate-50 p-6 flex items-start gap-6 hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300 group"
+                        >
+                            <div className={cn(
+                                "h-14 w-14 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm transition-transform group-hover:scale-110 duration-300",
+                                getIconColor(activity.type)
+                            )}>
+                                {getIcon(activity.type)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1">
+                                    <p className="font-black text-slate-900 text-lg group-hover:text-blue-600 transition-colors">
+                                        {activity.title}
+                                    </p>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full">
+                                        {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
+                                    </p>
+                                </div>
+                                {activity.description && (
+                                    <p className="text-sm font-medium text-slate-500 mt-1 max-w-2xl leading-relaxed">
+                                        {activity.description}
+                                    </p>
+                                )}
+                                <div className="flex items-center gap-2 mt-4">
+                                    <div className="h-5 w-5 bg-slate-100 rounded-full flex items-center justify-center">
+                                        <Users className="h-3 w-3 text-slate-400" />
+                                    </div>
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        {activity.user?.full_name || 'System Auto'}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     ))}
-                </div>
-            )}
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-2 pt-4">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage(p => Math.max(0, p - 1))}
-                        disabled={page === 0}
-                        className="font-bold"
-                    >
-                        Previous
-                    </Button>
-                    <span className="text-xs font-medium text-slate-400">
-                        Page {page + 1} of {totalPages}
-                    </span>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-                        disabled={page >= totalPages - 1}
-                        className="font-bold"
-                    >
-                        Next
-                    </Button>
                 </div>
             )}
         </div>
