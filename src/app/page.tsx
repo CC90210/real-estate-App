@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { PublicNavbar } from '@/components/layout/PublicNavbar';
 import { PublicFooter } from '@/components/layout/PublicFooter';
 import { Building2, ArrowRight, Zap, Shield, Sparkles, Star } from 'lucide-react';
+import { FuturisticBuilding } from '@/components/brand/FuturisticBuilding';
 import { useEffect, useState } from 'react';
 
 export default function HomePage() {
@@ -23,6 +24,22 @@ export default function HomePage() {
         <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
           <div className="absolute top-[20%] left-[10%] w-[40rem] h-[40rem] bg-blue-50 rounded-full blur-[100px] opacity-60 animate-float" />
           <div className="absolute bottom-[20%] right-[10%] w-[30rem] h-[30rem] bg-indigo-50 rounded-full blur-[80px] opacity-40 animate-float" style={{ animationDelay: '-3s' }} />
+
+          {/* Futuristic Buildings - Side Decor */}
+          <FuturisticBuilding
+            className="absolute -left-20 bottom-0 w-[400px] h-[800px] opacity-[0.07] group-hover:opacity-10 transition-opacity"
+            color="blue"
+          />
+          <FuturisticBuilding
+            className="absolute -right-20 bottom-20 w-[300px] h-[600px] opacity-[0.05] scale-x-[-1]"
+            color="indigo"
+            delay="-2s"
+          />
+          <FuturisticBuilding
+            className="absolute left-[15%] -bottom-40 w-[250px] h-[500px] opacity-[0.03]"
+            color="emerald"
+            delay="-5s"
+          />
         </div>
 
         {/* Hero Section */}

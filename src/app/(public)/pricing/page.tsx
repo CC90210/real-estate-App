@@ -9,6 +9,7 @@ import { PLANS, PlanId } from '@/lib/stripe/plans'
 import { PublicNavbar } from '@/components/layout/PublicNavbar'
 import { PublicFooter } from '@/components/layout/PublicFooter'
 import { cn } from '@/lib/utils'
+import { FuturisticBuilding } from '@/components/brand/FuturisticBuilding'
 
 export default function PricingPage() {
     const router = useRouter()
@@ -48,10 +49,26 @@ export default function PricingPage() {
     }
 
     return (
-        <div className="min-h-screen bg-[#fdfeff] selection:bg-indigo-100 selection:text-indigo-900">
+        <div className="min-h-screen bg-[#fdfeff] selection:bg-indigo-100 selection:text-indigo-900 relative overflow-hidden">
             <PublicNavbar />
 
-            <main className="pt-32 pb-24">
+            {/* Background Decoration */}
+            <div className="fixed inset-0 pointer-events-none -z-10">
+                <div className="absolute top-[20%] -right-20 w-[40rem] h-[40rem] bg-indigo-50 rounded-full blur-[120px] opacity-40 animate-pulse" />
+                <div className="absolute bottom-[10%] -left-20 w-[30rem] h-[30rem] bg-blue-50 rounded-full blur-[100px] opacity-30 animate-pulse" style={{ animationDelay: '-2s' }} />
+
+                <FuturisticBuilding
+                    className="absolute -right-10 bottom-0 w-[400px] h-[800px] opacity-[0.06] scale-x-[-1]"
+                    color="indigo"
+                />
+                <FuturisticBuilding
+                    className="absolute -left-10 top-[30%] w-[300px] h-[600px] opacity-[0.04]"
+                    color="blue"
+                    delay="-3s"
+                />
+            </div>
+
+            <main className="pt-32 pb-24 relative z-10">
                 {/* Header Section */}
                 <div className="max-w-7xl mx-auto px-4 text-center mb-20">
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-50 border border-indigo-100/50 text-indigo-600 text-[10px] font-black uppercase tracking-[0.2em] mb-8 shadow-sm">

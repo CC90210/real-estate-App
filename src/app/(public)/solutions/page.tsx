@@ -2,27 +2,27 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import {
-    Building2,
     Users,
     Home,
     Building,
     ArrowRight,
     CheckCircle2,
-    Sparkles,
-    LayoutDashboard,
     Zap
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PublicNavbar } from '@/components/layout/PublicNavbar'
 import { PublicFooter } from '@/components/layout/PublicFooter'
+import { FuturisticBuilding } from '@/components/brand/FuturisticBuilding'
+import { SolutionsVisual } from '@/components/brand/SolutionsVisual'
 
 export const metadata: Metadata = {
-    title: 'Solutions',
+    title: 'Solutions - PropFlow',
     description: 'Tailored property management solutions for Leasing Agents, Property Managers, and Modern Landlords.',
 }
 
 const solutions = [
     {
+        id: 'leasing',
         icon: Users,
         title: 'For Leasing Agents',
         tagline: 'Scale your leasing performance.',
@@ -38,6 +38,7 @@ const solutions = [
         gradient: 'from-blue-600 to-indigo-700'
     },
     {
+        id: 'management',
         icon: Building,
         title: 'For Property Managers',
         tagline: 'Absolute portfolio control.',
@@ -53,6 +54,7 @@ const solutions = [
         gradient: 'from-indigo-600 to-indigo-800'
     },
     {
+        id: 'investment',
         icon: Home,
         title: 'For Modern Landlords',
         tagline: 'Frictionless investment visibility.',
@@ -71,10 +73,26 @@ const solutions = [
 
 export default function SolutionsPage() {
     return (
-        <div className="min-h-screen bg-[#fdfeff]">
+        <div className="min-h-screen bg-[#fdfeff] relative overflow-hidden">
             <PublicNavbar />
 
-            <main className="pt-32 pb-24">
+            {/* Background Decoration */}
+            <div className="fixed inset-0 pointer-events-none -z-10">
+                <div className="absolute top-[10%] -left-20 w-[40rem] h-[40rem] bg-blue-50 rounded-full blur-[120px] opacity-40 animate-pulse" />
+                <div className="absolute top-[40%] -right-20 w-[30rem] h-[30rem] bg-indigo-50 rounded-full blur-[100px] opacity-30 animate-pulse" style={{ animationDelay: '-3s' }} />
+
+                <FuturisticBuilding
+                    className="absolute -left-10 bottom-20 w-[350px] h-[700px] opacity-[0.04]"
+                    color="blue"
+                />
+                <FuturisticBuilding
+                    className="absolute -right-10 top-40 w-[250px] h-[500px] opacity-[0.03] scale-x-[-1]"
+                    color="indigo"
+                    delay="-4s"
+                />
+            </div>
+
+            <main className="pt-32 pb-24 relative z-10">
                 {/* Hero section */}
                 <div className="max-w-7xl mx-auto px-4 text-center mb-16 lg:mb-32">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100/50 text-blue-600 text-xs font-bold mb-6">
@@ -146,16 +164,14 @@ export default function SolutionsPage() {
                                 {/* Visual Section */}
                                 <div className="flex-1 w-full group order-1 lg:order-none">
                                     <div className={cn(
-                                        "aspect-square sm:aspect-video lg:aspect-square rounded-[2rem] sm:rounded-[3rem] bg-gradient-to-br overflow-hidden p-1 relative",
+                                        "aspect-square sm:aspect-video lg:aspect-square rounded-[2.5rem] sm:rounded-[4rem] bg-gradient-to-br overflow-hidden relative shadow-2xl",
                                         solution.gradient
                                     )}>
-                                        <div className="absolute inset-0 bg-slate-900/10 group-hover:bg-transparent transition-colors duration-500" />
-                                        <div className="w-full h-full rounded-[1.8rem] sm:rounded-[2.8rem] bg-white/10 backdrop-blur-3xl flex items-center justify-center border border-white/20">
-                                            <Icon className="h-24 w-24 sm:h-32 sm:w-32 text-white/40 group-hover:scale-110 transition-transform duration-700" />
-                                        </div>
-                                        {/* Abstract UI Elements - Hidden on small phones to avoid clutter */}
-                                        <div className="hidden sm:block absolute top-10 right-10 w-40 h-20 bg-white/20 backdrop-blur-md rounded-2xl border border-white/30 animate-float shadow-2xl" />
-                                        <div className="hidden sm:block absolute bottom-10 left-10 w-32 h-32 bg-white/20 backdrop-blur-md rounded-full border border-white/30 animate-float shadow-2xl" style={{ animationDelay: '-2s' }} />
+                                        <SolutionsVisual type={solution.id as any} className="w-full h-full" />
+
+                                        {/* Abstract Blur Elements */}
+                                        <div className="absolute -top-20 -right-20 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+                                        <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-black/10 rounded-full blur-3xl" />
                                     </div>
                                 </div>
                             </div>
