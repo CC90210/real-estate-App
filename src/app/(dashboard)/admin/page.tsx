@@ -118,7 +118,7 @@ export default function PlatformAdminPage() {
                             <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-0 font-black">PRO</Badge>
                         </div>
                         <h3 className="text-slate-500 text-sm font-bold uppercase tracking-widest mb-1">MRR (EST)</h3>
-                        <p className="text-3xl font-black text-slate-900">${(stats.plansCount.professional * 49 + stats.plansCount.enterprise * 199).toLocaleString()}</p>
+                        <p className="text-3xl font-black text-slate-900">${((stats.plansCount?.professional || 0) * 49 + (stats.plansCount?.enterprise || 0) * 199).toLocaleString()}</p>
                     </CardContent>
                 </Card>
             </div>

@@ -40,7 +40,7 @@ export class StatsService {
         return change > 0 ? `+${change.toFixed(0)}%` : `${change.toFixed(0)}%`;
     }
 
-    async getDashboardStats(companyId: string, userId?: string, isLandlord?: boolean): Promise<DashboardStats> {
+    async getDashboardStats(companyId: string, userId?: string, isLandlord?: boolean): Promise<DashboardStats & { recentActivity: ActivityItem[] }> {
         // High-performance single database call
         const { data, error } = await this.supabase.rpc('get_enhanced_dashboard_stats', {
             p_company_id: companyId,
@@ -50,7 +50,6 @@ export class StatsService {
 
         if (error || !data) {
             console.error('Core stats fetch failed, falling back to manual counts...', error);
-            // In case RPC isn't deployed yet, return empty stats or proceed with original logic
             return {
                 totalProperties: 0,
                 availableProperties: 0,
@@ -65,12 +64,14 @@ export class StatsService {
                 totalAreas: 0,
                 totalBuildings: 0,
                 openMaintenance: 0,
-                upcomingShowings: 0
+                upcomingShowings: 0,
+                recentActivity: []
             };
         }
 
         return {
             ...data,
+            recentActivity: data.recent_activity || [],
             propertyTrend: this.calcTrend(data.currentWeekProps || 0, data.lastWeekProps || 0),
             applicationTrend: this.calcTrend(data.currentWeekApps || 0, data.lastWeekApps || 0)
         };

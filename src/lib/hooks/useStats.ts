@@ -21,22 +21,14 @@ export function useStats() {
         staleTime: 1000 * 60 * 2, // 2 minutes
     })
 
-    const activityQuery = useQuery({
-        queryKey: ['recent-activity', companyId],
-        queryFn: () => statsService.getRecentActivity(companyId!),
-        enabled: !!companyId,
-        staleTime: 1000 * 60 * 1, // 1 minute
-    })
-
     return {
         stats: statsQuery.data as DashboardStats | undefined,
         isLoading: statsQuery.isLoading,
         error: statsQuery.error,
-        recentActivity: activityQuery.data as ActivityItem[] | undefined,
-        activityLoading: activityQuery.isLoading,
+        recentActivity: statsQuery.data?.recentActivity as ActivityItem[] | undefined,
+        activityLoading: statsQuery.isLoading,
         refetch: () => {
             statsQuery.refetch()
-            activityQuery.refetch()
         }
     }
 }

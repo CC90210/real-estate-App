@@ -15,7 +15,7 @@ interface TierGuardProps {
 }
 
 export function TierGuard({ children, feature, fallback }: TierGuardProps) {
-    const { company, isLoading } = useAuth();
+    const { company, isLoading, hasFullAccess } = useAuth();
     const router = useRouter();
 
     if (isLoading) {
@@ -27,6 +27,11 @@ export function TierGuard({ children, feature, fallback }: TierGuardProps) {
                 </div>
             </div>
         );
+    }
+
+    // Bypass for Super Admins/Partners
+    if (hasFullAccess) {
+        return <>{children}</>;
     }
 
     // Default to 'tier_1' if company tier is missing/undefined
