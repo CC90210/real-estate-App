@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { useUser } from '@/lib/hooks/useUser';
 import { useAccentColor } from '@/lib/hooks/useAccentColor';
 import Link from 'next/link';
+import { Logo } from '@/components/brand/Logo';
 
 export function TenantSidebar() {
     const pathname = usePathname();
@@ -41,15 +42,10 @@ export function TenantSidebar() {
     return (
         <div className="hidden lg:flex flex-col w-64 bg-white border-r border-slate-100 h-screen fixed left-0 top-0 z-50">
             <div className="p-6">
-                <Link href="/tenant/dashboard" className="flex items-center gap-3 group">
-                    <div className={cn("p-2 rounded-xl shadow-lg transition-all group-hover:scale-110", colors.bg)}>
-                        <Home className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                        <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none">PropFlow</h1>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Tenant Portal</p>
-                    </div>
-                </Link>
+                <Logo
+                    size="md"
+                    className="mb-4"
+                />
             </div>
 
             <nav className="flex-1 px-4 space-y-1 mt-6">

@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Building2, Menu, X, ArrowRight, Sparkles, ChevronRight } from 'lucide-react';
+import { Menu, X, ArrowRight, Sparkles, ChevronRight } from 'lucide-react';
+import { LogoLink } from '@/components/brand/Logo';
 import { cn } from '@/lib/utils';
 
 const navLinks = [
@@ -69,16 +70,7 @@ export function PublicNavbar() {
             >
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between">
-                        {/* Logo */}
-                        <Link href="/" className="flex items-center gap-3 group relative z-[110]">
-                            <div className="h-10 w-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200/50 group-hover:scale-110 transition-transform duration-300">
-                                <Building2 className="h-5 w-5 text-white" />
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-lg font-black tracking-tight leading-none text-slate-900">PropFlow</span>
-                                <span className="text-[9px] uppercase tracking-[0.2em] font-bold text-blue-600 mt-0.5">Intelligence</span>
-                            </div>
-                        </Link>
+                        <LogoLink size="md" />
 
                         {/* Desktop Navigation */}
                         <div className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-600 uppercase tracking-widest">
@@ -148,15 +140,7 @@ export function PublicNavbar() {
                 >
                     {/* Drawer Header */}
                     <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-100">
-                        <div className="flex items-center gap-3">
-                            <div className="h-9 w-9 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center shadow-md">
-                                <Building2 className="h-4 w-4 text-white" />
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-base font-black tracking-tight leading-none text-slate-900">PropFlow</span>
-                                <span className="text-[8px] uppercase tracking-[0.2em] font-bold text-blue-600 mt-0.5">Intelligence</span>
-                            </div>
-                        </div>
+                        <LogoLink size="sm" />
                         <button
                             onClick={closeMenu}
                             className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition-colors active:scale-95"

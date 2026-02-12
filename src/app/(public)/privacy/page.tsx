@@ -155,14 +155,14 @@ export default function PrivacyPolicyPage() {
                             <li><strong>Objection:</strong> Object to certain data processing</li>
                         </ul>
                         <p>
-                            To exercise these rights, contact us at privacy@propflow.agency. We will respond within 30 days.
+                            To exercise these rights, contact us at propflowpartners@gmail.com. We will respond within 30 days.
                         </p>
 
                         <h2 className="text-2xl">14. Contact Us</h2>
                         <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100 mt-6">
                             <p className="font-black text-slate-900 mb-1">PropFlow Inc.</p>
                             <p className="text-slate-600 italic mb-4">Privacy Team</p>
-                            <p className="text-slate-600">Email: privacy@propflow.agency</p>
+                            <p className="text-slate-600">Email: propflowpartners@gmail.com</p>
                             <p className="text-slate-600">Address: Toronto, Ontario, Canada</p>
                         </div>
                     </div>

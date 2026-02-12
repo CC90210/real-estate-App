@@ -180,7 +180,7 @@ export default function TermsOfServicePage() {
                         </p>
                         <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100 mt-6">
                             <p className="font-black text-slate-900 mb-1">PropFlow Inc.</p>
-                            <p className="text-slate-600">Email: legal@propflow.agency</p>
+                            <p className="text-slate-600">Email: propflowpartners@gmail.com</p>
                             <p className="text-slate-600">Address: Toronto, Ontario, Canada</p>
                         </div>
                     </div>

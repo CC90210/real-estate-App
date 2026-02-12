@@ -45,13 +45,13 @@ export default function ContactPage() {
                                 <ContactItem
                                     icon={Mail}
                                     title="Enterprise Inquiry"
-                                    content="partners@propflow.agency"
+                                    content="propflowpartners@gmail.com"
                                     sub="Response within 12 hours"
                                 />
                                 <ContactItem
                                     icon={MessageSquare}
                                     title="Technical Consultation"
-                                    content="dev@propflow.agency"
+                                    content="propflowpartners@gmail.com"
                                     sub="Direct line to developers"
                                 />
                                 <ContactItem

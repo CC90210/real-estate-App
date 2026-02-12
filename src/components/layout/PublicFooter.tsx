@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Building2 } from 'lucide-react';
+import { LogoLink } from '@/components/brand/Logo';
 import { cn } from '@/lib/utils';
 
 export function PublicFooter() {
@@ -10,12 +10,7 @@ export function PublicFooter() {
             <div className="max-w-7xl mx-auto">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-12 md:gap-8">
                     {/* Brand */}
-                    <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                            <Building2 className="h-5 w-5 text-white" />
-                        </div>
-                        <span className="text-lg font-black tracking-tight text-slate-900">PropFlow</span>
-                    </div>
+                    <LogoLink size="md" />
 
                     {/* Navigation Links */}
                     <div className="flex flex-wrap justify-center gap-6 sm:gap-10 text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">

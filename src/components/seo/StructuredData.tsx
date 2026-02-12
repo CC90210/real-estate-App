@@ -21,7 +21,7 @@ export function OrganizationSchema() {
         contactPoint: {
             '@type': 'ContactPoint',
             contactType: 'customer service',
-            email: 'support@propflow.io'
+            email: 'propflowpartners@gmail.com'
         },
         sameAs: [
             'https://twitter.com/propflow',

@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { Loader2, Building2, Eye, EyeOff } from 'lucide-react'
+import { Loader2, Eye, EyeOff } from 'lucide-react'
 import Link from 'next/link'
+import { Logo } from '@/components/brand/Logo'
 
 function LoginForm() {
     const router = useRouter()
@@ -73,12 +74,7 @@ function LoginForm() {
             {/* Left Panel - Branding */}
             <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-blue-800 p-12 flex-col justify-between">
                 <div>
-                    <div className="flex items-center gap-3 text-white">
-                        <div className="h-10 w-10 bg-white/20 rounded-lg flex items-center justify-center">
-                            <Building2 className="h-6 w-6" />
-                        </div>
-                        <span className="text-xl font-bold">PropFlow</span>
-                    </div>
+                    <Logo theme="light" />
                 </div>
 
                 <div>
@@ -105,11 +101,8 @@ function LoginForm() {
             <div className="flex-1 flex items-center justify-center p-8">
                 <div className="w-full max-w-md">
                     {/* Mobile Logo */}
-                    <div className="lg:hidden flex items-center gap-3 mb-8">
-                        <div className="h-10 w-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                            <Building2 className="h-6 w-6 text-white" />
-                        </div>
-                        <span className="text-xl font-bold">PropFlow</span>
+                    <div className="lg:hidden mb-8">
+                        <Logo theme="dark" />
                     </div>
 
                     <h2 className="text-2xl font-bold mb-2">Welcome back</h2>

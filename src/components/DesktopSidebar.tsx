@@ -33,9 +33,9 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { useAccentColor } from '@/lib/hooks/useAccentColor';
-
 import { usePlanLimits } from '@/lib/hooks/usePlanLimits';
 import { PLANS, FeatureKey } from '@/lib/plans';
+import { Logo } from '@/components/brand/Logo';
 
 const navItems = [
     { id: 'dashboard', name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'agent', 'landlord'] },
@@ -86,17 +86,10 @@ export function DesktopSidebar({ className, onQuickFindOpen }: DesktopSidebarPro
     return (
         <aside className={cn("hidden lg:flex flex-col h-full w-64 bg-[#fcfdfe] border-r border-slate-200/60 shadow-[1px_0_10px_rgba(0,0,0,0.02)] fixed left-0 top-0 bottom-0 z-30", className)}>
             <div className="p-8 pb-4">
-                <Link href="/dashboard" className="flex items-center gap-3 group transition-all mb-6">
-                    <div
-                        className={cn("w-10 h-10 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform bg-gradient-to-br", colors.gradient, colors.shadow)}
-                    >
-                        <Zap className="w-6 h-6 text-white fill-white" />
-                    </div>
-                    <div>
-                        <h1 className="text-xl font-black tracking-tight text-slate-900 leading-none">PropFlow</h1>
-                        <p className={cn("text-[10px] font-bold uppercase tracking-widest mt-1 opacity-70", colors.text)}>Intelligence</p>
-                    </div>
-                </Link>
+                <Logo
+                    size="md"
+                    className="mb-8"
+                />
 
                 <Button
                     variant="outline"
