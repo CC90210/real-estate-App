@@ -32,7 +32,6 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/useUser';
 import { useAccentColor } from '@/lib/hooks/useAccentColor';
-import { usePlanLimits } from '@/lib/hooks/usePlanLimits';
 import { PLANS, FeatureKey } from '@/lib/plans';
 import { Logo } from '@/components/brand/Logo';
 
@@ -63,9 +62,8 @@ export function DesktopSidebar({ className, onQuickFindOpen }: DesktopSidebarPro
     const pathname = usePathname();
     const router = useRouter();
     const supabase = createClient();
-    const { role, isSuperAdmin } = useUser();
+    const { role, isSuperAdmin, plan, planName, hasFullAccess, isPartner } = useUser();
     const { colors } = useAccentColor();
-    const { data: planData, isLoading: isLoadingPlan } = usePlanLimits();
 
     const handleSignOut = async () => {
         await supabase.auth.signOut();
@@ -73,9 +71,7 @@ export function DesktopSidebar({ className, onQuickFindOpen }: DesktopSidebarPro
     };
 
     const userRole = role || 'agent';
-    const plan = planData?.plan || 'essentials';
-    const hasFullAccess = planData?.hasFullAccess || isSuperAdmin || false;
-    const planConfig = PLANS[plan];
+    const planConfig = PLANS[plan] || PLANS.essentials;
 
     // Full access users see everything from enterprise nav, otherwise check plan
     const allowedNav = hasFullAccess ? PLANS.enterprise.nav : planConfig.nav;
@@ -153,26 +149,24 @@ export function DesktopSidebar({ className, onQuickFindOpen }: DesktopSidebarPro
             </nav>
 
             <div className="p-4 mt-auto">
-                {planData && (
-                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 mb-4">
-                        <div className="flex flex-col mb-1">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                {planData.hasFullAccess ? 'Access Level' : 'Active Plan'}
-                            </span>
-                            <span className={cn("text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg bg-white border border-slate-200 inline-block", colors.text)}>
-                                {planData.isSuperAdmin ? '🔑 Super Admin' :
-                                    planData.isPartner ? '🤝 Partner' :
-                                        planData.planName}
-                            </span>
-                        </div>
-                        {!planData.hasFullAccess && (
-                            <Link href="/pricing" className="text-[10px] font-bold text-blue-600 hover:underline mt-2 inline-block">Upgrade membership →</Link>
-                        )}
+                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 mb-4">
+                    <div className="flex flex-col mb-1">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                            {hasFullAccess ? 'Access Level' : 'Active Plan'}
+                        </span>
+                        <span className={cn("text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg bg-white border border-slate-200 inline-block", colors.text)}>
+                            {isSuperAdmin ? '🔑 Super Admin' :
+                                isPartner ? '🤝 Partner' :
+                                    planName}
+                        </span>
                     </div>
-                )}
+                    {!hasFullAccess && (
+                        <Link href="/pricing" className="text-[10px] font-bold text-blue-600 hover:underline mt-2 inline-block">Upgrade membership →</Link>
+                    )}
+                </div>
 
                 <div className="pt-4 border-t border-slate-100 flex flex-col gap-2">
-                    {(isSuperAdmin || planData?.isSuperAdmin) && (
+                    {isSuperAdmin && (
                         <Button
                             variant="ghost"
                             onClick={() => router.push('/admin')}

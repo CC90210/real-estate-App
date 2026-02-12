@@ -173,9 +173,9 @@ export async function canAccessFeature(
         }
 
         const featureNames: Record<string, string> = {
-            showingsCalendar: 'Showings Calendar',
-            invoiceGeneration: 'Invoice Generation',
-            advancedAnalytics: 'Advanced Analytics',
+            showings: 'Showings',
+            invoices: 'Invoices',
+            analytics: 'Analytics',
             automations: 'Automations',
             paymentProcessing: 'Payment Processing',
             customIntegrations: 'Custom Integrations',

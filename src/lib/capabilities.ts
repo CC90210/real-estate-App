@@ -13,21 +13,21 @@ export interface TierConfig {
 export const TIERS: Record<SubscriptionTier, TierConfig> = {
     tier_1: {
         label: 'Essentials',
-        features: ['crm', 'properties', 'contacts', 'dashboard'],
+        features: ['crm', 'properties', 'dashboard'],
         price: '$29/mo',
         description: 'For solo agents starting their journey.',
         color: 'bg-slate-100 text-slate-600'
     },
     tier_2: {
         label: 'Professional',
-        features: ['crm', 'properties', 'contacts', 'dashboard', 'documents', 'applications'],
+        features: ['crm', 'properties', 'dashboard', 'documents', 'applications'],
         price: '$49/mo',
         description: 'Automate your paper trail.',
         color: 'bg-blue-100 text-blue-700'
     },
     tier_3: {
         label: 'Business Elite',
-        features: ['crm', 'properties', 'contacts', 'dashboard', 'documents', 'applications', 'invoices', 'showings', 'approvals'],
+        features: ['crm', 'properties', 'dashboard', 'documents', 'applications', 'invoices', 'showings', 'approvals'],
         price: '$79/mo',
         description: 'Run your entire brokerage.',
         color: 'bg-indigo-100 text-indigo-700'

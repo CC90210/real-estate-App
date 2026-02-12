@@ -116,23 +116,6 @@ export async function GET(req: Request) {
                 break
             }
 
-            case 'contacts': {
-                const { data } = await supabase
-                    .from('contacts')
-                    .select('name, email, phone, type, company_name, address, tags, notes, created_at')
-                    .eq('company_id', profile.company_id)
-                    .order('name')
-
-                const headers = ['Name', 'Email', 'Phone', 'Type', 'Company', 'Address', 'Tags', 'Notes', 'Added']
-                const rows = (data || []).map(c => [
-                    c.name, c.email || '', c.phone || '', c.type,
-                    c.company_name || '', c.address || '',
-                    (c.tags || []).join('; '), c.notes || '', c.created_at
-                ])
-                csvContent = generateCSV(headers, rows)
-                break
-            }
-
             default:
                 return NextResponse.json({ error: 'Invalid export type' }, { status: 400 })
         }

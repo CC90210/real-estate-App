@@ -13,9 +13,9 @@ export const PLANS = {
             properties: 25,
             teamMembers: 1,
             // Feature access
-            showingsCalendar: false,
-            invoiceGeneration: false,
-            advancedAnalytics: false,
+            showings: false,
+            invoices: false,
+            analytics: false,
             automations: false,
             paymentProcessing: false,
             customIntegrations: false,
@@ -44,9 +44,9 @@ export const PLANS = {
         limits: {
             properties: 100,
             teamMembers: 5,
-            showingsCalendar: true,
-            invoiceGeneration: true,
-            advancedAnalytics: true,
+            showings: true,
+            invoices: true,
+            analytics: true,
             automations: true,        // Can purchase add-on
             paymentProcessing: true,  // Can enable Stripe Connect
             customIntegrations: false,
@@ -73,9 +73,9 @@ export const PLANS = {
         limits: {
             properties: Infinity,
             teamMembers: Infinity,
-            showingsCalendar: true,
-            invoiceGeneration: true,
-            advancedAnalytics: true,
+            showings: true,
+            invoices: true,
+            analytics: true,
             automations: true,
             paymentProcessing: true,
             customIntegrations: true,

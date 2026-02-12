@@ -4,7 +4,8 @@ import { createClient } from '@/lib/supabase/client'
 import { PLANS, PlanId } from '@/lib/plans'
 
 export interface PlanInfo {
-    planId: PlanId
+    plan: PlanId
+    planId: PlanId  // Alias for compatibility
     planName: string
     status: 'active' | 'trialing' | 'lifetime' | 'past_due' | 'cancelled' | 'none'
     isSuperAdmin: boolean
@@ -94,6 +95,7 @@ export async function getPlanInfo(companyId?: string): Promise<PlanInfo> {
         // If has full access, give enterprise
         if (hasFullAccess) {
             return {
+                plan: 'enterprise',
                 planId: 'enterprise',
                 planName: isSuperAdmin ? 'Super Admin' :
                     isPartner ? `Partner (${profile.partner_type || 'Founding'})` :
@@ -121,6 +123,7 @@ export async function getPlanInfo(companyId?: string): Promise<PlanInfo> {
         const teamLimit = planConfig.limits.teamMembers
 
         return {
+            plan: planId,
             planId,
             planName: planConfig.name,
             status: status as any,
@@ -150,6 +153,7 @@ export async function getPlanInfo(companyId?: string): Promise<PlanInfo> {
 function getDefaultPlanInfo(status: string, giveAccess = false): PlanInfo {
     if (giveAccess) {
         return {
+            plan: 'enterprise',
             planId: 'enterprise',
             planName: 'Access Granted',
             status: 'active',
@@ -166,6 +170,7 @@ function getDefaultPlanInfo(status: string, giveAccess = false): PlanInfo {
     }
 
     return {
+        plan: 'essentials',
         planId: 'essentials',
         planName: 'Essentials',
         status: status as any,
