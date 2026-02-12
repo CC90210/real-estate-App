@@ -1,71 +1,32 @@
 'use client'
 
+import { useQuery } from '@tanstack/react-query'
+import { getPlanInfo, PlanInfo } from '@/lib/services/plan-service'
 import { useUser } from '@/lib/hooks/useUser'
-import { PlanId } from '@/lib/plans'
 
-export interface PlanLimits {
-    isSuperAdmin: boolean
-    isPartner: boolean
-    hasFullAccess: boolean
-    isActive: boolean
-    isLifetime: boolean
-    plan: PlanId | null
-    planName: string
-    status: string
-    usage: {
-        properties: number
-        teamMembers: number
-    }
-    limits: {
-        properties: number
-        teamMembers: number
-    }
-    features: Record<string, boolean>
-    canAddProperty: boolean
-    canAddTeamMember: boolean
-}
+export type { PlanInfo as PlanLimits }
 
 /**
- * usePlanLimits is now a thin wrapper around useUser context 
- * to provide instant, globally-synced plan data without extra network calls.
+ * usePlanLimits - Fetches actual plan data AND usage counts
+ * Uses React Query for caching and automatic revalidation
  */
 export function usePlanLimits() {
-    const {
-        profile,
-        isSuperAdmin,
-        isPartner,
-        hasFullAccess,
-        plan,
-        planName,
-        features,
-        isLoading
-    } = useUser()
+    const { profile, isLoading: userLoading } = useUser()
+    const companyId = profile?.company?.id || profile?.company_id
 
-    // Usage is still useful to have, maybe we can fetch it once in layout?
-    // For now, let's keep it simple and just provide the gating info instantly.
+    const { data, isLoading, error, refetch } = useQuery<PlanInfo>({
+        queryKey: ['plan-limits', companyId],
+        queryFn: () => getPlanInfo(companyId),
+        enabled: !userLoading && !!companyId,
+        staleTime: 30000, // Cache for 30 seconds
+        gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+        refetchOnWindowFocus: false,
+    })
 
     return {
-        data: {
-            isSuperAdmin,
-            isPartner,
-            hasFullAccess,
-            isActive: true, // If we're logged in and have a plan, we're active
-            isLifetime: profile?.company?.is_lifetime_access || false,
-            plan,
-            planName,
-            status: profile?.company?.subscription_status || 'active',
-            usage: {
-                properties: 0, // Simplified to avoid slow counting queries on every gated element
-                teamMembers: 0
-            },
-            limits: {
-                properties: hasFullAccess ? Infinity : 25,
-                teamMembers: hasFullAccess ? Infinity : 1,
-            },
-            features,
-            canAddProperty: true,
-            canAddTeamMember: true,
-        },
-        isLoading
+        data: data || null,
+        isLoading: userLoading || isLoading,
+        error,
+        refetch,
     }
 }
