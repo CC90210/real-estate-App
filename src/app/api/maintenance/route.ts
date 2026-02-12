@@ -12,28 +12,32 @@ export async function POST(req: Request) {
 
     try {
         const body = await req.json()
-        const { property_id, title, description, category, priority } = body
+        const { property_id, title, description, category, priority, photos, company_id: bodyCompanyId } = body
 
         const { data: profile } = await supabase
             .from('profiles')
-            .select('company_id, full_name')
+            .select('company_id, full_name, role')
             .eq('id', user.id)
             .single()
 
-        if (!profile?.company_id) {
-            return NextResponse.json({ error: 'No company found' }, { status: 400 })
+        // Use company from profile OR from body (tenants use property company)
+        const companyId = profile?.company_id || bodyCompanyId
+
+        if (!companyId) {
+            return NextResponse.json({ error: 'No company context found' }, { status: 400 })
         }
 
         const { data: request, error } = await supabase
             .from('maintenance_requests')
             .insert({
-                company_id: profile.company_id,
+                company_id: companyId,
                 property_id,
                 title,
                 description,
                 category: category || 'general',
                 priority: priority || 'medium',
                 submitted_by: user.id,
+                photos: photos || [],
             })
             .select('*, properties(address)')
             .single()
@@ -45,7 +49,7 @@ export async function POST(req: Request) {
         // Log activity
         await supabase.from('activity_log').insert({
             user_id: user.id,
-            company_id: profile.company_id,
+            company_id: companyId,
             action: 'maintenance_created',
             entity_type: 'maintenance_request',
             entity_id: request.id,
@@ -54,9 +58,9 @@ export async function POST(req: Request) {
 
         // Notify company members about new maintenance request
         await notifyCompanyMembers({
-            companyId: profile.company_id,
+            companyId: companyId,
             title: `New Maintenance Request: ${title}`,
-            message: `${profile.full_name || 'A user'} submitted a ${priority} priority ${category} request for ${request.properties?.address || 'a property'}.`,
+            message: `${profile?.full_name || 'A user'} submitted a ${priority} priority ${category} request for ${request.properties?.address || 'a property'}.`,
             type: priority === 'emergency' ? 'error' : 'action',
             category: 'maintenance',
             actionUrl: '/maintenance',

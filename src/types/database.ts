@@ -21,6 +21,7 @@ export interface Profile {
   full_name: string;
   avatar_url: string | null;
   role: UserRole;
+  is_super_admin: boolean;
   company_id: string | null;
   phone: string | null;
   created_at: string;

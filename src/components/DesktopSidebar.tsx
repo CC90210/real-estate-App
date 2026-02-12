@@ -23,6 +23,7 @@ import {
     Contact,
     BarChart3,
     Activity,
+    ShieldAlert,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -59,7 +60,7 @@ export function DesktopSidebar({ className, onQuickFindOpen }: DesktopSidebarPro
     const pathname = usePathname();
     const router = useRouter();
     const supabase = createClient();
-    const { role } = useUser();
+    const { role, isSuperAdmin } = useUser();
     const { colors } = useAccentColor();
 
     const handleSignOut = async () => {
@@ -133,15 +134,24 @@ export function DesktopSidebar({ className, onQuickFindOpen }: DesktopSidebarPro
             </nav>
 
             <div className="p-4 mt-auto">
-                <div className="p-1 rounded-2xl bg-slate-100/50 border border-slate-200/50">
+                {/* Logout Button */}
+                <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col gap-2">
+                    {isSuperAdmin && (
+                        <Button
+                            variant="ghost"
+                            onClick={() => router.push('/admin')}
+                            className="w-full justify-start text-xs font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
+                        >
+                            <ShieldAlert className="w-4 h-4 mr-3" />
+                            Platform Admin
+                        </Button>
+                    )}
                     <Button
                         variant="ghost"
-                        className="w-full justify-start gap-3 text-slate-500 hover:text-red-600 hover:bg-white rounded-xl font-bold py-6 transition-all"
                         onClick={handleSignOut}
+                        className="w-full justify-start text-slate-500 hover:text-red-600 hover:bg-red-50"
                     >
-                        <div className="p-2 rounded-lg bg-white shadow-sm transition-colors group-hover:bg-red-50">
-                            <LogOut className="w-4 h-4" />
-                        </div>
+                        <LogOut className="w-5 h-5 mr-3" />
                         Sign Out
                     </Button>
                 </div>

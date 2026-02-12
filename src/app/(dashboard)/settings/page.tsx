@@ -11,10 +11,11 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { User, Shield, Bell, Palette, Save, Loader2, Sparkles, CheckCircle2, Lock, Eye, EyeOff, Upload, Image as ImageIcon, X, Users } from 'lucide-react';
+import { User, Shield, Bell, Palette, Save, Loader2, Sparkles, CheckCircle2, Lock, Eye, EyeOff, Upload, Image as ImageIcon, X, Users, Banknote } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAccentColor } from '@/lib/hooks/useAccentColor';
 import { TeamManagementCard } from '@/components/settings/TeamManagementCard';
+import { PayoutsSettingsCard } from '@/components/settings/PayoutsSettingsCard';
 
 // Define accent colors with static classes - Tailwind can't use dynamic class names
 const accentColors = [
@@ -30,7 +31,7 @@ export default function SettingsPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [isUploadingLogo, setIsUploadingLogo] = useState(false);
     const [profile, setProfile] = useState<any>(null);
-    const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'notifications' | 'branding' | 'team'>('profile');
+    const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'notifications' | 'branding' | 'team' | 'payouts'>('profile');
     const supabase = createClient();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { colors } = useAccentColor();
@@ -53,7 +54,7 @@ export default function SettingsPage() {
 
     useEffect(() => {
         const tab = searchParams.get('tab');
-        if (tab && ['profile', 'security', 'notifications', 'branding', 'team'].includes(tab)) {
+        if (tab && ['profile', 'security', 'notifications', 'branding', 'team', 'payouts'].includes(tab)) {
             setActiveTab(tab as any);
         }
     }, [searchParams]);
@@ -446,6 +447,13 @@ export default function SettingsPage() {
                         icon={Users}
                         label="Team Management"
                         description="Access & Permissions"
+                    />
+                    <NavBtn
+                        active={activeTab === 'payouts'}
+                        onClick={() => setActiveTab('payouts')}
+                        icon={Banknote}
+                        label="Payouts"
+                        description="Stripe Connect"
                         last={true as boolean}
                     />
                 </div>

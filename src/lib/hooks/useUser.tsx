@@ -11,6 +11,7 @@ interface UserContextType {
     isLoading: boolean;
     isAuthenticated: boolean;
     role: UserRole | null;
+    isSuperAdmin: boolean;
     signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
     signUp: (email: string, password: string, fullName: string, role: UserRole, companyName?: string, jobTitle?: string) => Promise<{ error: Error | null }>;
     signOut: () => Promise<void>;
@@ -26,6 +27,7 @@ const MOCK_PROFILES: Record<string, Profile> = {
         email: 'admin@example.com',
         full_name: 'Jessica Pearson',
         role: 'admin',
+        is_super_admin: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         avatar_url: null,
@@ -37,6 +39,7 @@ const MOCK_PROFILES: Record<string, Profile> = {
         email: 'agent@example.com',
         full_name: 'Mike Ross',
         role: 'agent',
+        is_super_admin: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         avatar_url: null,
@@ -48,6 +51,7 @@ const MOCK_PROFILES: Record<string, Profile> = {
         email: 'landlord@example.com',
         full_name: 'Sarah Mitchell',
         role: 'landlord',
+        is_super_admin: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         avatar_url: null,
@@ -187,6 +191,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
                     email: email,
                     full_name: 'Demo User',
                     role: 'agent',
+                    is_super_admin: false,
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString(),
                     avatar_url: null,
@@ -274,7 +279,18 @@ export function UserProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <UserContext.Provider value={{ user, profile, isLoading, isAuthenticated: !!user, role: profile?.role || null, signIn, signUp, signOut, refreshProfile }}>
+        <UserContext.Provider value={{
+            user,
+            profile,
+            isLoading,
+            isAuthenticated: !!user,
+            role: profile?.role || null,
+            isSuperAdmin: !!profile?.is_super_admin,
+            signIn,
+            signUp,
+            signOut,
+            refreshProfile
+        }}>
             {children}
         </UserContext.Provider>
     );

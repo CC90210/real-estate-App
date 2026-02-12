@@ -90,7 +90,7 @@ export async function middleware(request: NextRequest) {
 
         const { data: profile } = await supabase
             .from('profiles')
-            .select('id, company_id')
+            .select('id, company_id, role')
             .eq('id', session.user.id)
             .single()
 
@@ -99,8 +99,21 @@ export async function middleware(request: NextRequest) {
             return NextResponse.redirect(new URL('/onboarding', request.url))
         }
 
-        // No company - redirect to onboarding
-        if (profile && !profile.company_id) {
+        // Role-based redirection logic
+        if (pathname === '/dashboard') {
+            if (profile.role === 'tenant') {
+                return NextResponse.redirect(new URL('/tenant/dashboard', request.url))
+            }
+        }
+
+        // If on public route but logged in, redirect correctly
+        if (session && (pathname === '/login' || pathname === '/signup')) {
+            const dest = profile.role === 'tenant' ? '/tenant/dashboard' : '/dashboard'
+            return NextResponse.redirect(new URL(dest, request.url))
+        }
+
+        // No company - redirect to onboarding (Skip for tenants who might not have a company_id yet)
+        if (profile && !profile.company_id && profile.role !== 'tenant') {
             return NextResponse.redirect(new URL('/onboarding', request.url))
         }
     }

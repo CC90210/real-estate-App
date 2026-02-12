@@ -19,6 +19,7 @@ import { useUser } from '@/lib/hooks/useUser';
 import { useLandlords } from '@/lib/hooks/useProperties';
 import { cn } from '@/lib/utils';
 import { useAccentColor } from '@/lib/hooks/useAccentColor';
+import { PhotoUpload } from '@/components/common/PhotoUpload';
 
 interface NewPropertyModalProps {
     open?: boolean; // Controlled state
@@ -259,6 +260,20 @@ export function NewPropertyModal({ open: controlledOpen, onOpenChange }: NewProp
                             </Select>
                             {errors.landlord_id && <p className="text-red-500 text-xs">Owner assignment is required</p>}
                         </div>
+                    </div>
+
+                    {/* SECTION: PHOTOS */}
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                            <Plus className="w-5 h-5 text-slate-400" />
+                            <h3 className="font-bold text-slate-900">Property Photos</h3>
+                        </div>
+                        <PhotoUpload
+                            value={watch('photos') || []}
+                            onChange={(urls) => setValue('photos', urls)}
+                            maxPhotos={15}
+                            folder="temp_uploads"
+                        />
                     </div>
 
                     {/* ACTIONS */}

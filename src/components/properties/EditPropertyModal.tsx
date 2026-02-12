@@ -12,6 +12,7 @@ import { Edit, Loader2, Upload, X, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
+import { PhotoUpload } from '@/components/common/PhotoUpload';
 
 interface EditPropertyModalProps {
     property: any;
@@ -104,42 +105,6 @@ export function EditPropertyModal({ property }: EditPropertyModalProps) {
         } finally {
             setIsLoading(false);
         }
-    };
-
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!e.target.files || e.target.files.length === 0) return;
-
-        setUploading(true);
-        const file = e.target.files[0];
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${property.id}-${Date.now()}.${fileExt}`;
-        const filePath = `${fileName}`;
-
-        try {
-            const { error: uploadError } = await supabase.storage
-                .from('properties')
-                .upload(filePath, file);
-
-            if (uploadError) throw uploadError;
-
-            const { data: { publicUrl } } = supabase.storage
-                .from('properties')
-                .getPublicUrl(filePath);
-
-            setPhotos([...photos, publicUrl]);
-            toast.success("Image uploaded!");
-        } catch (error: any) {
-            console.error("Upload error:", error);
-            toast.error("Upload failed. Ensure 'properties' bucket exists.");
-        } finally {
-            setUploading(false);
-        }
-    };
-
-    const removePhoto = (index: number) => {
-        const newPhotos = [...photos];
-        newPhotos.splice(index, 1);
-        setPhotos(newPhotos);
     };
 
     const toggleAmenity = (amenity: string) => {
@@ -285,8 +250,8 @@ export function EditPropertyModal({ property }: EditPropertyModalProps) {
                                     key={amenity}
                                     variant={amenities.includes(amenity) ? "default" : "outline"}
                                     className={`cursor-pointer transition-all ${amenities.includes(amenity)
-                                            ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                            : 'hover:bg-slate-100'
+                                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                        : 'hover:bg-slate-100'
                                         }`}
                                     onClick={() => toggleAmenity(amenity)}
                                 >
@@ -330,33 +295,14 @@ export function EditPropertyModal({ property }: EditPropertyModalProps) {
                         )}
                     </div>
 
-                    {/* Photo Gallery */}
                     <div className="space-y-4">
-                        <Label>Photo Gallery</Label>
-                        <div className="grid grid-cols-4 gap-4">
-                            {photos.map((photo, i) => (
-                                <div key={i} className="relative aspect-video bg-slate-100 rounded-lg overflow-hidden group">
-                                    <img src={photo} alt="Property" className="w-full h-full object-cover" />
-                                    <button
-                                        onClick={() => removePhoto(i)}
-                                        className="absolute top-1 right-1 p-1 bg-red-500 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                                    >
-                                        <X className="w-3 h-3" />
-                                    </button>
-                                </div>
-                            ))}
-                            <label className="flex flex-col items-center justify-center aspect-video border-2 border-dashed border-slate-200 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors">
-                                {uploading ? (
-                                    <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
-                                ) : (
-                                    <>
-                                        <Upload className="w-6 h-6 text-slate-400 mb-2" />
-                                        <span className="text-xs text-slate-500 font-medium">Add Photo</span>
-                                    </>
-                                )}
-                                <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={uploading} />
-                            </label>
-                        </div>
+                        <Label>Property Photos</Label>
+                        <PhotoUpload
+                            value={photos}
+                            onChange={setPhotos}
+                            maxPhotos={15}
+                            folder={`properties/${property.id}`}
+                        />
                     </div>
                 </div>
 
