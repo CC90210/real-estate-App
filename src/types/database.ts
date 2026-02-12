@@ -22,6 +22,8 @@ export interface Profile {
   avatar_url: string | null;
   role: UserRole;
   is_super_admin: boolean;
+  is_partner?: boolean;
+  partner_type?: 'referral' | 'agency' | 'enterprise';
   company_id: string | null;
   phone: string | null;
   created_at: string;

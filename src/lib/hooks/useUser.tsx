@@ -12,6 +12,8 @@ interface UserContextType {
     isAuthenticated: boolean;
     role: UserRole | null;
     isSuperAdmin: boolean;
+    isPartner: boolean;
+    hasFullAccess: boolean;
     signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
     signUp: (email: string, password: string, fullName: string, role: UserRole, companyName?: string, jobTitle?: string) => Promise<{ error: Error | null }>;
     signOut: () => Promise<void>;
@@ -286,6 +288,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
             isAuthenticated: !!user,
             role: profile?.role || null,
             isSuperAdmin: !!profile?.is_super_admin,
+            isPartner: !!profile?.is_partner,
+            hasFullAccess: !!profile?.is_super_admin || !!profile?.is_partner,
             signIn,
             signUp,
             signOut,

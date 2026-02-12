@@ -76,7 +76,7 @@ export function DesktopSidebar({ className, onQuickFindOpen }: DesktopSidebarPro
 
     const userRole = role || 'agent';
     const plan = planData?.plan || 'essentials';
-    const hasFullAccess = planData?.hasFullAccess || false;
+    const hasFullAccess = planData?.hasFullAccess || isSuperAdmin || false;
     const planConfig = PLANS[plan];
 
     // Full access users see everything from enterprise nav, otherwise check plan
