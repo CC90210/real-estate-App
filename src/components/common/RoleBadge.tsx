@@ -28,6 +28,12 @@ export function RoleBadge({ role, className }: RoleBadgeProps) {
             icon: User,
             variant: 'outline' as const,
             className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+        },
+        tenant: {
+            label: 'Tenant',
+            icon: User,
+            variant: 'outline' as const,
+            className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
         }
     };
 
