@@ -14,6 +14,7 @@ import { PublicNavbar } from '@/components/layout/PublicNavbar'
 import { PublicFooter } from '@/components/layout/PublicFooter'
 import { FuturisticBuilding } from '@/components/brand/FuturisticBuilding'
 import { SolutionsVisual } from '@/components/brand/SolutionsVisual'
+import { DataStream } from '@/components/brand/CyberEffects'
 
 export const metadata: Metadata = {
     title: 'Solutions - PropFlow',
@@ -77,19 +78,40 @@ export default function SolutionsPage() {
             <PublicNavbar />
 
             {/* Background Decoration */}
-            <div className="fixed inset-0 pointer-events-none -z-10">
-                <div className="absolute top-[10%] -left-20 w-[40rem] h-[40rem] bg-blue-50 rounded-full blur-[120px] opacity-40 animate-pulse" />
-                <div className="absolute top-[40%] -right-20 w-[30rem] h-[30rem] bg-indigo-50 rounded-full blur-[100px] opacity-30 animate-pulse" style={{ animationDelay: '-3s' }} />
+            <div className="fixed inset-0 pointer-events-none -z-10 bg-gradient-to-b from-white via-blue-50/10 to-white">
+                <div className="absolute top-[10%] -left-20 w-[40rem] h-[40rem] bg-blue-50/50 rounded-full blur-[120px] opacity-40 animate-pulse" />
+                <div className="absolute top-[40%] -right-20 w-[30rem] h-[30rem] bg-indigo-50/40 rounded-full blur-[100px] opacity-30 animate-pulse" style={{ animationDelay: '-3s' }} />
 
                 <FuturisticBuilding
-                    className="absolute -left-10 bottom-20 w-[350px] h-[700px] opacity-[0.04]"
+                    className="absolute -left-10 bottom-20 w-[350px] opacity-[0.1]"
                     color="blue"
+                    height={800}
+                    opacity={0.12}
                 />
                 <FuturisticBuilding
-                    className="absolute -right-10 top-40 w-[250px] h-[500px] opacity-[0.03] scale-x-[-1]"
+                    className="absolute left-[8%] top-[20%] w-[200px] opacity-[0.06]"
+                    color="emerald"
+                    height={400}
+                    opacity={0.08}
+                    delay="-2s"
+                />
+                <FuturisticBuilding
+                    className="absolute -right-10 top-40 w-[250px] opacity-[0.08] scale-x-[-1]"
                     color="indigo"
+                    height={600}
+                    opacity={0.1}
                     delay="-4s"
                 />
+                <FuturisticBuilding
+                    className="absolute right-[12%] bottom-[10%] w-[280px] opacity-[0.07]"
+                    color="blue"
+                    height={500}
+                    opacity={0.09}
+                    delay="-1s"
+                />
+
+                <DataStream className="left-[20%] top-0" color="blue" delay="1s" />
+                <DataStream className="right-[30%] top-[40%]" color="indigo" delay="3s" />
             </div>
 
             <main className="pt-32 pb-24 relative z-10">

@@ -6,6 +6,7 @@ import { PublicNavbar } from '@/components/layout/PublicNavbar';
 import { PublicFooter } from '@/components/layout/PublicFooter';
 import { Building2, ArrowRight, Zap, Shield, Sparkles, Star } from 'lucide-react';
 import { FuturisticBuilding } from '@/components/brand/FuturisticBuilding';
+import { CyberGrid, DataStream } from '@/components/brand/CyberEffects';
 import { useEffect, useState } from 'react';
 
 export default function HomePage() {
@@ -20,26 +21,43 @@ export default function HomePage() {
       <PublicNavbar />
 
       <main className="pt-20">
-        {/* Floating Background Elements */}
-        <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
-          <div className="absolute top-[20%] left-[10%] w-[40rem] h-[40rem] bg-blue-50 rounded-full blur-[100px] opacity-60 animate-float" />
-          <div className="absolute bottom-[20%] right-[10%] w-[30rem] h-[30rem] bg-indigo-50 rounded-full blur-[80px] opacity-40 animate-float" style={{ animationDelay: '-3s' }} />
+        {/* Deep Multi-Layered Background */}
+        <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden bg-gradient-to-b from-white via-blue-50/20 to-white">
+          <CyberGrid />
 
-          {/* Futuristic Buildings - Side Decor */}
+          {/* Ambient Glows */}
+          <div className="absolute top-[10%] left-[-5%] w-[50rem] h-[50rem] bg-blue-100/30 rounded-full blur-[120px] animate-pulse-soft" />
+          <div className="absolute bottom-[10%] right-[-5%] w-[40rem] h-[40rem] bg-indigo-100/20 rounded-full blur-[100px] animate-pulse-soft" style={{ animationDelay: '-4s' }} />
+
+          {/* Detailed Futuristic Skyline - Far Background */}
+          <div className="absolute inset-x-0 bottom-0 flex items-end justify-between px-10 gap-4 opacity-40">
+            <FuturisticBuilding color="blue" height={400} opacity={0.08} className="w-32" delay="-3s" />
+            <FuturisticBuilding color="indigo" height={550} opacity={0.06} className="w-24 hidden lg:block" delay="-1s" />
+            <FuturisticBuilding color="emerald" height={300} opacity={0.05} className="w-20 hidden xl:block" delay="-5s" />
+            <FuturisticBuilding color="blue" height={500} opacity={0.07} className="w-28 hidden lg:block" delay="-2s" />
+            <FuturisticBuilding color="indigo" height={350} opacity={0.05} className="w-24" delay="-4s" />
+          </div>
+
+          {/* Hero Side Buildings - More Visible */}
           <FuturisticBuilding
-            className="absolute -left-20 bottom-0 w-[400px] h-[800px] opacity-[0.07] group-hover:opacity-10 transition-opacity"
+            className="absolute -left-16 top-1/2 -translate-y-1/2 w-[450px] h-[900px] opacity-[0.12] lg:opacity-[0.15]"
             color="blue"
+            height={900}
+            opacity={0.15}
           />
           <FuturisticBuilding
-            className="absolute -right-20 bottom-20 w-[300px] h-[600px] opacity-[0.05] scale-x-[-1]"
+            className="absolute -right-16 top-1/4 w-[350px] h-[700px] opacity-[0.1] lg:opacity-[0.12] scale-x-[-1]"
             color="indigo"
-            delay="-2s"
+            height={700}
+            opacity={0.12}
+            delay="-3s"
           />
-          <FuturisticBuilding
-            className="absolute left-[15%] -bottom-40 w-[250px] h-[500px] opacity-[0.03]"
-            color="emerald"
-            delay="-5s"
-          />
+
+          {/* Floating Data Streams */}
+          <DataStream className="left-[15%] top-1/4" delay="0s" color="blue" />
+          <DataStream className="right-[20%] top-1/3" delay="1s" color="indigo" />
+          <DataStream className="left-[40%] top-1/2" delay="2.5s" color="emerald" />
+          <DataStream className="right-[10%] top-2/3" delay="1.5s" color="blue" />
         </div>
 
         {/* Hero Section */}
