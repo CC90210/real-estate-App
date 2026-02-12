@@ -1,6 +1,15 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Lazily initialize Resend to avoid build-time errors when API key is missing
+let resendInstance: Resend | null = null
+
+function getResend() {
+    if (!process.env.RESEND_API_KEY) return null
+    if (!resendInstance) {
+        resendInstance = new Resend(process.env.RESEND_API_KEY)
+    }
+    return resendInstance
+}
 
 const FROM_EMAIL = process.env.FROM_EMAIL || 'PropFlow <noreply@propflow.app>'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
@@ -19,8 +28,10 @@ export async function sendEmail({
     html: string
     text?: string
 }) {
-    if (!process.env.RESEND_API_KEY) {
-        console.warn('[EMAIL] RESEND_API_KEY not set - email not sent:', subject, 'to:', to)
+    const resend = getResend()
+
+    if (!resend) {
+        console.warn('[EMAIL] Resend not initialized (missing API key) - email not sent:', subject, 'to:', to)
         return { success: false, error: 'Email service not configured' }
     }
 
