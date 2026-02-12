@@ -76,8 +76,11 @@ export function DesktopSidebar({ className, onQuickFindOpen }: DesktopSidebarPro
 
     const userRole = role || 'agent';
     const plan = planData?.plan || 'essentials';
+    const hasFullAccess = planData?.hasFullAccess || false;
     const planConfig = PLANS[plan];
-    const allowedNav = planConfig.nav;
+
+    // Full access users see everything from enterprise nav, otherwise check plan
+    const allowedNav = hasFullAccess ? PLANS.enterprise.nav : planConfig.nav;
 
     const filteredNavItems = navItems.filter(item =>
         item.roles.includes(userRole)
@@ -152,17 +155,26 @@ export function DesktopSidebar({ className, onQuickFindOpen }: DesktopSidebarPro
             </nav>
 
             <div className="p-4 mt-auto">
-                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 mb-4">
-                    <div className="flex items-baseline justify-between mb-1">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Plan</span>
-                        <span className={cn("text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-white border border-slate-200", colors.text)}>
-                            {plan}
-                        </span>
+                {planData && (
+                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 mb-4">
+                        <div className="flex flex-col mb-1">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                {planData.hasFullAccess ? 'Access Level' : 'Active Plan'}
+                            </span>
+                            <span className={cn("text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg bg-white border border-slate-200 inline-block", colors.text)}>
+                                {planData.isSuperAdmin ? '🔑 Super Admin' :
+                                    planData.isPartner ? '🤝 Partner' :
+                                        planData.planName}
+                            </span>
+                        </div>
+                        {!planData.hasFullAccess && (
+                            <Link href="/pricing" className="text-[10px] font-bold text-blue-600 hover:underline mt-2 inline-block">Upgrade membership →</Link>
+                        )}
                     </div>
-                    <Link href="/pricing" className="text-[10px] font-bold text-blue-600 hover:underline">Upgrade membership →</Link>
-                </div>
+                )}
+
                 <div className="pt-4 border-t border-slate-100 flex flex-col gap-2">
-                    {isSuperAdmin && (
+                    {(isSuperAdmin || planData?.isSuperAdmin) && (
                         <Button
                             variant="ghost"
                             onClick={() => router.push('/admin')}
