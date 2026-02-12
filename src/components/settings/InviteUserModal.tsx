@@ -43,7 +43,7 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
 
             // 3. Insert into Supabase
             const { error } = await supabase
-                .from('invitations')
+                .from('team_invitations')
                 .insert({
                     email,
                     role,

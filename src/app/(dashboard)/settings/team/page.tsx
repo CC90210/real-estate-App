@@ -19,7 +19,9 @@ import {
     User,
     Building2,
     MoreVertical,
-    Check
+    Check,
+    Clock,
+    AlertTriangle,
 } from 'lucide-react'
 import {
     Dialog,
@@ -45,6 +47,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { formatDistanceToNow } from 'date-fns'
 
 export default function TeamPage() {
     const { profile, company } = useAuth()
@@ -88,65 +91,65 @@ export default function TeamPage() {
         enabled: !!profile?.company_id
     })
 
-    // Create invitation
+    // Create invitation through the API (enforces plan limits)
     const createInvitation = useMutation({
-        mutationFn: async ({ role, email }: { role: string; email?: string }) => {
-            const { data, error } = await supabase
-                .from('team_invitations')
-                .insert({
-                    company_id: profile?.company_id,
-                    role,
-                    email: email || null,
-                    invited_by: profile?.id
-                })
-                .select()
-                .single()
+        mutationFn: async ({ role, email }: { role: string; email: string }) => {
+            const res = await fetch('/api/team/invite', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, role }),
+            })
 
-            if (error) throw error
+            const data = await res.json()
+
+            if (!res.ok) {
+                // Handle specific error codes
+                if (data.code === 'PLAN_LIMIT_REACHED') {
+                    throw new Error(`${data.error} (${data.currentUsage}/${data.limit} members)`)
+                }
+                throw new Error(data.error || 'Failed to create invitation')
+            }
+
             return data
         },
         onSuccess: (data) => {
-            const baseUrl = window.location.origin
-            const link = `${baseUrl}/join/${data.token}`
-            setGeneratedLink(link)
+            setGeneratedLink(data.inviteUrl)
             queryClient.invalidateQueries({ queryKey: ['pending-invitations'] })
             toast.success('Invitation created!')
         },
-        onError: (error: any) => {
-            toast.error('Failed to create invitation', { description: error.message })
+        onError: (error: Error) => {
+            toast.error('Invitation failed', { description: error.message })
         }
     })
 
-    // Revoke invitation
+    // Revoke invitation through the API
     const revokeInvitation = useMutation({
         mutationFn: async (invitationId: string) => {
-            const { error } = await supabase
-                .from('team_invitations')
-                .update({ status: 'revoked' })
-                .eq('id', invitationId)
+            const res = await fetch(`/api/team/invite?id=${invitationId}`, {
+                method: 'DELETE',
+            })
 
-            if (error) throw error
+            if (!res.ok) {
+                const data = await res.json()
+                throw new Error(data.error || 'Failed to revoke')
+            }
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['pending-invitations'] })
             toast.success('Invitation revoked')
+        },
+        onError: (error: Error) => {
+            toast.error('Failed to revoke', { description: error.message })
         }
     })
 
     // Remove team member
     const removeTeamMember = useMutation({
         mutationFn: async (memberId: string) => {
-            // In reality we might want to soft delete or just remove company_id
+            // Remove company_id from profile to disassociate them
             const { error } = await supabase
                 .from('profiles')
-                // For safety, maybe just set company_id to null or have an is_active flag
-                // PROMPT said: update({ is_active: false }) -- assuming is_active exists? 
-                // Let's check schema... crisis_fix_profiles doesn't show is_active. 
-                // But schema.sql might have it?
-                // I'll stick to prompt's code. If is_active is missing it will error, but prompt usually implies schema changes or existing schema.
-                // Actually, I should probably check if is_active exists.
-                // Assuming it does based on prompt. 
-                .update({ is_active: false } as any)
+                .update({ company_id: null })
                 .eq('id', memberId)
 
             if (error) throw error
@@ -154,16 +157,30 @@ export default function TeamPage() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['team-members'] })
             toast.success('Team member removed')
+        },
+        onError: (error: Error) => {
+            toast.error('Failed to remove member', { description: error.message })
         }
     })
 
     const handleCreateInvite = () => {
-        createInvitation.mutate({ role: selectedRole, email: inviteEmail || undefined })
+        if (!inviteEmail?.trim()) {
+            toast.error('Please enter an email address')
+            return
+        }
+        createInvitation.mutate({ role: selectedRole, email: inviteEmail.trim() })
     }
 
-    const copyLink = () => {
-        navigator.clipboard.writeText(generatedLink)
+    const copyLink = (link: string) => {
+        navigator.clipboard.writeText(link)
         toast.success('Link copied to clipboard!')
+    }
+
+    const resetDialog = () => {
+        setInviteDialogOpen(false)
+        setGeneratedLink('')
+        setInviteEmail('')
+        setSelectedRole('agent')
     }
 
     const roleConfig = {
@@ -300,9 +317,10 @@ export default function TeamPage() {
                                 const role = roleConfig[invite.role as keyof typeof roleConfig] || roleConfig.agent
                                 const RoleIcon = role.icon
                                 const inviteLink = `${window.location.origin}/join/${invite.token}`
+                                const isExpired = new Date(invite.expires_at) < new Date()
 
                                 return (
-                                    <Card key={invite.id}>
+                                    <Card key={invite.id} className={isExpired ? 'opacity-60' : ''}>
                                         <CardContent className="p-4">
                                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                                 <div className="flex items-center gap-3 sm:gap-4 min-w-0">
@@ -310,24 +328,38 @@ export default function TeamPage() {
                                                         <RoleIcon className={`h-5 w-5 ${role.color}`} />
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="font-medium truncate">{role.label} Invitation</p>
-                                                        <p className="text-sm text-gray-500 truncate">
-                                                            {invite.email || 'Link-based invite'}
+                                                        <p className="font-medium truncate">
+                                                            {invite.email || `${role.label} Invitation`}
                                                         </p>
+                                                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                                                            <Badge variant="secondary" className="text-xs">
+                                                                {role.label}
+                                                            </Badge>
+                                                            {isExpired ? (
+                                                                <span className="text-red-500 flex items-center gap-1">
+                                                                    <AlertTriangle className="h-3 w-3" />
+                                                                    Expired
+                                                                </span>
+                                                            ) : (
+                                                                <span className="flex items-center gap-1 text-xs">
+                                                                    <Clock className="h-3 w-3" />
+                                                                    Expires {formatDistanceToNow(new Date(invite.expires_at), { addSuffix: true })}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-2 ml-13 sm:ml-0">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={() => {
-                                                            navigator.clipboard.writeText(inviteLink)
-                                                            toast.success('Link copied!')
-                                                        }}
-                                                    >
-                                                        <Copy className="h-4 w-4 mr-1" />
-                                                        Copy Link
-                                                    </Button>
+                                                    {!isExpired && (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => copyLink(inviteLink)}
+                                                        >
+                                                            <Copy className="h-4 w-4 mr-1" />
+                                                            Copy Link
+                                                        </Button>
+                                                    )}
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
@@ -352,18 +384,29 @@ export default function TeamPage() {
             </Tabs>
 
             {/* Invite Dialog */}
-            <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+            <Dialog open={inviteDialogOpen} onOpenChange={(val) => !val && resetDialog()}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Invite Team Member</DialogTitle>
                         <DialogDescription>
-                            Create an invitation link for a new team member. They'll join under {company?.name}.
+                            Send an invitation link to a new team member. They'll join under {company?.name}.
                         </DialogDescription>
                     </DialogHeader>
 
                     {!generatedLink ? (
                         <>
                             <div className="space-y-4 py-4">
+                                <div>
+                                    <Label>Email Address</Label>
+                                    <Input
+                                        type="email"
+                                        placeholder="team@example.com"
+                                        value={inviteEmail}
+                                        onChange={(e) => setInviteEmail(e.target.value)}
+                                        required
+                                    />
+                                </div>
+
                                 <div>
                                     <Label>Role</Label>
                                     <Select value={selectedRole} onValueChange={(v: any) => setSelectedRole(v)}>
@@ -392,27 +435,17 @@ export default function TeamPage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
-
-                                <div>
-                                    <Label>Email (optional)</Label>
-                                    <Input
-                                        type="email"
-                                        placeholder="team@example.com"
-                                        value={inviteEmail}
-                                        onChange={(e) => setInviteEmail(e.target.value)}
-                                    />
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        Leave blank to create a shareable link
-                                    </p>
-                                </div>
                             </div>
 
                             <DialogFooter>
-                                <Button variant="outline" onClick={() => setInviteDialogOpen(false)}>
+                                <Button variant="outline" onClick={resetDialog}>
                                     Cancel
                                 </Button>
-                                <Button onClick={handleCreateInvite} disabled={createInvitation.isPending}>
-                                    Create Invitation
+                                <Button
+                                    onClick={handleCreateInvite}
+                                    disabled={createInvitation.isPending || !inviteEmail.trim()}
+                                >
+                                    {createInvitation.isPending ? 'Creating...' : 'Send Invitation'}
                                 </Button>
                             </DialogFooter>
                         </>
@@ -427,7 +460,7 @@ export default function TeamPage() {
                                 <Label>Share this link</Label>
                                 <div className="flex gap-2 mt-2">
                                     <Input value={generatedLink} readOnly className="font-mono text-sm" />
-                                    <Button onClick={copyLink}>
+                                    <Button onClick={() => copyLink(generatedLink)}>
                                         <Copy className="h-4 w-4" />
                                     </Button>
                                 </div>
@@ -437,11 +470,7 @@ export default function TeamPage() {
                             </div>
 
                             <DialogFooter>
-                                <Button onClick={() => {
-                                    setInviteDialogOpen(false)
-                                    setGeneratedLink('')
-                                    setInviteEmail('')
-                                }}>
+                                <Button onClick={resetDialog}>
                                     Done
                                 </Button>
                             </DialogFooter>
