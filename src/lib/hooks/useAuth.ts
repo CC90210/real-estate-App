@@ -1,36 +1,40 @@
 'use client';
 
 import { useUser } from './useUser';
-import { useQuery } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
 
+/**
+ * useAuth is a refined hook that provides instant access to the authenticated state,
+ * user details, profile, company data, and plan-level attributes.
+ * It is a thin consumer of UserContext, ensuring peak performance.
+ */
 export function useAuth() {
-    const { user, profile, isLoading: userLoading, isAuthenticated, role, signIn, signUp, signOut } = useUser();
-    const supabase = createClient();
-
-    const { data: company, isLoading: companyLoading } = useQuery({
-        queryKey: ['company', profile?.company_id],
-        queryFn: async () => {
-            if (!profile?.company_id) return null;
-            const { data, error } = await supabase
-                .from('companies')
-                .select('*')
-                .eq('id', profile.company_id)
-                .single();
-
-            if (error) return null;
-            return data;
-        },
-        enabled: !!profile?.company_id,
-        staleTime: 1000 * 60 * 5, // 5 minutes
-    });
+    const {
+        user,
+        profile,
+        isLoading,
+        isAuthenticated,
+        role,
+        isSuperAdmin,
+        isPartner,
+        hasFullAccess,
+        plan,
+        planName,
+        signIn,
+        signUp,
+        signOut
+    } = useUser();
 
     return {
         user,
         profile,
-        company,
+        company: profile?.company || null,
         role,
-        isLoading: userLoading || companyLoading,
+        isSuperAdmin,
+        isPartner,
+        hasFullAccess,
+        plan,
+        planName,
+        isLoading,
         isAuthenticated,
         signIn,
         signUp,

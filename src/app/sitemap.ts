@@ -13,7 +13,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
         '/signup',
         '/terms',
         '/privacy',
-        '/contact',
     ]
 
     const staticEntries = staticPages.map(page => ({

@@ -81,7 +81,7 @@ export default function InvoicesPage() {
     }).reduce((sum, i) => sum + Number(i.total || 0), 0) || 0
 
     return (
-        <FeatureGate feature="invoiceGeneration">
+        <FeatureGate feature="invoices">
             <div className="p-6 lg:p-10 space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-1000">
                 {/* Header */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">

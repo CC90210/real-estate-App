@@ -1,34 +1,20 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
+import { useUser } from '@/lib/hooks/useUser';
 
+/**
+ * useCompanyId is now a shortcut to the global UserContext 
+ * to provide instant access to the company ID without extra database hits.
+ */
 export function useCompanyId() {
-    const supabase = createClient();
+    const { profile, isLoading, isAuthenticated } = useUser();
 
-    const { data: companyId, isLoading, error } = useQuery({
-        queryKey: ['company_id'],
-        queryFn: async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return null;
-
-            const { data: profile, error } = await supabase
-                .from('profiles')
-                .select('company_id')
-                .eq('id', user.id)
-                .single();
-
-            if (error) throw error;
-            return profile?.company_id || null;
-        },
-        staleTime: 5 * 60 * 1000, // 5 minutes - company rarely changes
-        gcTime: 10 * 60 * 1000,
-    });
+    const companyId = profile?.company_id || null;
 
     return {
         companyId,
-        isLoading,
-        error,
-        hasCompany: !!companyId
+        isLoading: isLoading,
+        error: null,
+        hasCompany: !!companyId && isAuthenticated
     };
 }

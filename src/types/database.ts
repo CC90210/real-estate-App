@@ -12,7 +12,22 @@ export interface Company {
   id: string;
   name: string;
   logo_url: string | null;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  subscription_plan?: 'essentials' | 'professional' | 'enterprise' | null;
+  subscription_status?: 'active' | 'trialing' | 'past_due' | 'cancelled' | 'inactive' | null;
+  subscription_tier?: string | null;
+  is_lifetime_access?: boolean;
+  automation_enabled?: boolean;
+  feature_flags?: Record<string, boolean>;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  subscription_started_at?: string | null;
+  subscription_ends_at?: string | null;
+  trial_ends_at?: string | null;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface Profile {

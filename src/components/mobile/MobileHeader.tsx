@@ -33,7 +33,6 @@ import {
     ChevronRight,
     Wrench,
     BookOpen,
-    Contact,
     BarChart3,
     Activity
 } from 'lucide-react'
@@ -49,7 +48,6 @@ const navigationItems = [
     { name: 'Showings', href: '/showings', icon: Calendar },
     { name: 'Documents', href: '/documents', icon: FileText },
     { name: 'Invoices', href: '/invoices', icon: Receipt },
-    { name: 'Contacts', href: '/contacts', icon: Contact },
     { name: 'Landlords', href: '/landlords', icon: Users },
     { name: 'Analytics', href: '/analytics', icon: BarChart3 },
     { name: 'Activity', href: '/activity', icon: Activity },

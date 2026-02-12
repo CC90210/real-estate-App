@@ -17,7 +17,6 @@ export function PublicFooter() {
                         <Link href="/features" className="hover:text-blue-600 transition-colors py-2 px-1">Features</Link>
                         <Link href="/solutions" className="hover:text-blue-600 transition-colors py-2 px-1">Solutions</Link>
                         <Link href="/pricing" className="hover:text-blue-600 transition-colors py-2 px-1">Pricing</Link>
-                        <Link href="/contact" className="hover:text-blue-600 transition-colors py-2 px-1">Contact</Link>
                         <Link href="/terms" className="hover:text-blue-600 transition-colors py-2 px-1">Terms</Link>
                         <Link href="/privacy" className="hover:text-blue-600 transition-colors py-2 px-1">Privacy</Link>
                     </div>

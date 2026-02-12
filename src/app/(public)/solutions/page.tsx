@@ -172,12 +172,12 @@ export default function SolutionsPage() {
                                         ))}
                                     </div>
 
-                                    <Link href="/contact" className="block sm:inline-block">
+                                    <Link href="/signup" className="block sm:inline-block">
                                         <Button className={cn(
                                             "w-full sm:w-auto h-16 px-10 rounded-2xl font-black text-lg transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-blue-200",
                                             solution.color
                                         )}>
-                                            Request Bespoke Setup
+                                            Start Your Setup
                                             <ArrowRight className="h-5 w-5 ml-3" />
                                         </Button>
                                     </Link>

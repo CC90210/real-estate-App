@@ -95,9 +95,9 @@ export function PublicNavbar() {
                                     Sign In
                                 </Button>
                             </Link>
-                            <Link href="/contact">
+                            <Link href="/signup">
                                 <Button className="font-bold px-6 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 rounded-xl">
-                                    Request Access
+                                    Get Started
                                 </Button>
                             </Link>
                         </div>
@@ -192,15 +192,15 @@ export function PublicNavbar() {
 
                         {/* CTA Buttons */}
                         <div className="space-y-3">
-                            <Link href="/contact" onClick={closeMenu} className="block">
+                            <Link href="/signup" onClick={closeMenu} className="block">
                                 <Button className="w-full h-14 rounded-2xl font-bold text-base bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200/50 transition-all active:scale-[0.98]">
-                                    Request Access
+                                    Get Started
                                     <ArrowRight className="ml-2 h-4 w-4" />
                                 </Button>
                             </Link>
                             <Link href="/login" onClick={closeMenu} className="block">
                                 <Button variant="outline" className="w-full h-14 rounded-2xl font-bold text-base border-2 border-slate-200 text-slate-700 hover:bg-slate-50 transition-all active:scale-[0.98]">
-                                    Partner Sign In
+                                    Sign In
                                 </Button>
                             </Link>
                         </div>
