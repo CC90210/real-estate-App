@@ -220,3 +220,117 @@ export interface Property {
 }
 
 export type DocumentType = 'property_summary' | 'lease_proposal' | 'showing_sheet' | 'landlord_report';
+
+// === New Feature Types ===
+
+export type LeaseStatus = 'draft' | 'active' | 'expiring' | 'expired' | 'terminated' | 'renewed';
+
+export interface Lease {
+  id: string;
+  company_id: string;
+  property_id: string;
+  tenant_id: string | null;
+  tenant_name: string;
+  tenant_email: string;
+  tenant_phone: string | null;
+  start_date: string;
+  end_date: string;
+  rent_amount: number;
+  deposit_amount: number;
+  payment_day: number;
+  status: LeaseStatus;
+  auto_renew: boolean;
+  renewal_notice_days: number;
+  rent_escalation_pct: number;
+  lease_document_url: string | null;
+  signed_at: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  // Relations
+  property?: Property;
+}
+
+export type MaintenancePriority = 'low' | 'medium' | 'high' | 'emergency';
+export type MaintenanceStatus = 'open' | 'in_progress' | 'pending_parts' | 'scheduled' | 'completed' | 'cancelled';
+export type MaintenanceCategory = 'plumbing' | 'electrical' | 'hvac' | 'appliance' | 'structural' | 'pest' | 'landscaping' | 'security' | 'general' | 'emergency';
+
+export interface MaintenanceRequest {
+  id: string;
+  company_id: string;
+  property_id: string;
+  submitted_by: string | null;
+  assigned_to: string | null;
+  title: string;
+  description: string;
+  category: MaintenanceCategory;
+  priority: MaintenancePriority;
+  status: MaintenanceStatus;
+  photos: string[] | null;
+  estimated_cost: number | null;
+  actual_cost: number | null;
+  scheduled_date: string | null;
+  resolved_at: string | null;
+  resolution_notes: string | null;
+  created_at: string;
+  updated_at: string;
+  // Relations
+  property?: Property;
+  submitter?: Profile;
+  assignee?: Profile;
+}
+
+export type NotificationType = 'info' | 'success' | 'warning' | 'error' | 'action';
+export type NotificationCategory = 'system' | 'application' | 'lease' | 'maintenance' | 'payment' | 'showing' | 'team';
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  company_id: string | null;
+  title: string;
+  message: string;
+  type: NotificationType;
+  category: NotificationCategory;
+  read: boolean;
+  action_url: string | null;
+  action_label: string | null;
+  email_sent: boolean;
+  created_at: string;
+}
+
+export type ContactType = 'prospect' | 'tenant' | 'vendor' | 'landlord' | 'other';
+
+export interface Contact {
+  id: string;
+  company_id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  type: ContactType;
+  company_name: string | null;
+  address: string | null;
+  notes: string | null;
+  tags: string[];
+  property_id: string | null;
+  last_contacted_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Commission {
+  id: string;
+  company_id: string;
+  agent_id: string;
+  property_id: string | null;
+  lease_id: string | null;
+  type: 'lease_signing' | 'renewal' | 'sale' | 'referral';
+  amount: number;
+  percentage: number | null;
+  status: 'pending' | 'approved' | 'paid' | 'cancelled';
+  paid_at: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}

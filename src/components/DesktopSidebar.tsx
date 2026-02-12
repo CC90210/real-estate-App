@@ -1,5 +1,7 @@
 'use client';
 
+import { NotificationBell } from '@/components/notifications/NotificationBell';
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -15,7 +17,12 @@ import {
     LogOut,
     Calendar,
     Receipt,
-    Search
+    Search,
+    Wrench,
+    BookOpen,
+    Contact,
+    BarChart3,
+    Activity,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -30,10 +37,15 @@ const navItems = [
     { name: 'Properties', href: '/properties', icon: Home, roles: ['admin', 'agent', 'landlord'] },
     { name: 'Applications', href: '/applications', icon: ClipboardList, roles: ['admin', 'agent', 'landlord'] },
     { name: 'Approvals', href: '/approvals', icon: CheckCircle, roles: ['admin', 'landlord'] },
+    { name: 'Leases', href: '/leases', icon: BookOpen, roles: ['admin', 'agent', 'landlord'] },
+    { name: 'Maintenance', href: '/maintenance', icon: Wrench, roles: ['admin', 'agent', 'landlord'] },
     { name: 'Showings', href: '/showings', icon: Calendar, roles: ['admin', 'agent'] },
     { name: 'Invoices', href: '/invoices', icon: Receipt, roles: ['admin', 'landlord'] },
     { name: 'Documents', href: '/documents', icon: FileText, roles: ['admin', 'agent'] },
+    { name: 'Contacts', href: '/contacts', icon: Contact, roles: ['admin', 'agent'] },
     { name: 'Landlords', href: '/landlords', icon: Users, roles: ['admin', 'agent'] },
+    { name: 'Analytics', href: '/analytics', icon: BarChart3, roles: ['admin'] },
+    { name: 'Activity', href: '/activity', icon: Activity, roles: ['admin'] },
     { name: 'Automations', href: '/automations', icon: Zap, roles: ['admin', 'agent'] },
     { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'agent', 'landlord'] },
 ];
@@ -85,6 +97,11 @@ export function DesktopSidebar({ className, onQuickFindOpen }: DesktopSidebarPro
                     <span className="flex-1 text-left">Quick Find</span>
                     <kbd className="px-1.5 py-0.5 text-[10px] font-medium bg-slate-100 border border-slate-200 rounded text-slate-500">⌘K</kbd>
                 </Button>
+
+                <div className="mt-3 flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Alerts</span>
+                    <NotificationBell />
+                </div>
             </div>
 
             <nav className="flex-1 px-4 py-2 space-y-1.5 overflow-y-auto">

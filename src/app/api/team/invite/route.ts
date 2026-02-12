@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { canAddTeamMember } from '@/lib/plan-limits'
+import { sendTeamInviteEmail } from '@/lib/email'
 
 const supabaseAdmin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -118,7 +119,22 @@ export async function POST(req: Request) {
             // Non-critical
         }
 
-        // Log for debugging (email sending can be added later)
+        // Send invitation email
+        const companyData = profile.company as any
+        const inviterProfile = await supabaseAdmin
+            .from('profiles')
+            .select('full_name')
+            .eq('id', user.id)
+            .single()
+
+        await sendTeamInviteEmail({
+            email: normalizedEmail,
+            inviterName: inviterProfile.data?.full_name || user.email || 'A colleague',
+            companyName: companyData?.name || 'Your company',
+            role,
+            inviteUrl,
+        })
+
         console.log(`[INVITE SENT] To: ${normalizedEmail}, Link: ${inviteUrl}`)
 
         return NextResponse.json({

@@ -1,5 +1,7 @@
 'use client'
 
+import { NotificationBell } from '@/components/notifications/NotificationBell'
+
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -28,7 +30,12 @@ import {
     Settings,
     LogOut,
     Building2,
-    ChevronRight
+    ChevronRight,
+    Wrench,
+    BookOpen,
+    Contact,
+    BarChart3,
+    Activity
 } from 'lucide-react'
 
 const navigationItems = [
@@ -37,10 +44,15 @@ const navigationItems = [
     { name: 'Properties', href: '/properties', icon: Home },
     { name: 'Applications', href: '/applications', icon: ClipboardList },
     { name: 'Approvals', href: '/approvals', icon: CheckCircle },
+    { name: 'Leases', href: '/leases', icon: BookOpen },
+    { name: 'Maintenance', href: '/maintenance', icon: Wrench },
     { name: 'Showings', href: '/showings', icon: Calendar },
     { name: 'Documents', href: '/documents', icon: FileText },
     { name: 'Invoices', href: '/invoices', icon: Receipt },
+    { name: 'Contacts', href: '/contacts', icon: Contact },
     { name: 'Landlords', href: '/landlords', icon: Users },
+    { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+    { name: 'Activity', href: '/activity', icon: Activity },
     { name: 'Automations', href: '/automations', icon: Zap },
     { name: 'Settings', href: '/settings', icon: Settings },
 ]
@@ -158,16 +170,19 @@ export function MobileHeader({ onQuickFindOpen, companyName, userName }: MobileH
                     <span className="font-bold text-lg">PropFlow</span>
                 </Link>
 
-                {/* Right: Quick Find Button - PROMINENT */}
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-11 w-11 -mr-2 bg-blue-50 hover:bg-blue-100"
-                    onClick={onQuickFindOpen}
-                    aria-label="Quick Find"
-                >
-                    <Search className="h-5 w-5 text-blue-600" />
-                </Button>
+                {/* Right: Notifications + Quick Find */}
+                <div className="flex items-center gap-1">
+                    <NotificationBell />
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-11 w-11 -mr-2 bg-blue-50 hover:bg-blue-100"
+                        onClick={onQuickFindOpen}
+                        aria-label="Quick Find"
+                    >
+                        <Search className="h-5 w-5 text-blue-600" />
+                    </Button>
+                </div>
             </header>
 
             {/* Spacer to push content below fixed header */}
