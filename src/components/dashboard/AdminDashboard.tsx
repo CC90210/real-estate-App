@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useAccentColor } from '@/lib/hooks/useAccentColor'
+import { useStats } from '@/lib/hooks/useStats'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -47,98 +48,7 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
     const { user, profile, company } = useAuth()
     const supabase = createClient()
     const { colors } = useAccentColor()
-
-    // Fetch dashboard stats with real trends
-    const { data: stats, isLoading: statsLoading } = useQuery({
-        queryKey: ['dashboard-stats', company?.id],
-        queryFn: async () => {
-            if (!company?.id) return null;
-
-            // Calculate date ranges for trend comparison
-            const now = new Date();
-            const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-            const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-
-            const [
-                { count: totalProperties },
-                { count: availableProperties },
-                { count: totalApplications },
-                { count: pendingApplications },
-                { count: teamMembers },
-                { count: propertiesThisWeek },
-                { count: propertiesLastWeek },
-                { count: applicationsThisWeek },
-                { count: applicationsLastWeek },
-                { data: paidInvoices },
-                { count: totalAreas },
-                { count: totalBuildings }
-            ] = await Promise.all([
-                supabase.from('properties').select('*', { count: 'exact', head: true }).eq('company_id', company.id),
-                supabase.from('properties').select('*', { count: 'exact', head: true }).eq('company_id', company.id).eq('status', 'available'),
-                supabase.from('applications').select('*', { count: 'exact', head: true }).eq('company_id', company.id),
-                supabase.from('applications').select('*', { count: 'exact', head: true }).eq('company_id', company.id).in('status', ['submitted', 'screening', 'pending_landlord']),
-                supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('company_id', company.id),
-                supabase.from('properties').select('*', { count: 'exact', head: true }).eq('company_id', company.id).gte('created_at', oneWeekAgo.toISOString()),
-                supabase.from('properties').select('*', { count: 'exact', head: true }).eq('company_id', company.id).gte('created_at', twoWeeksAgo.toISOString()).lt('created_at', oneWeekAgo.toISOString()),
-                supabase.from('applications').select('*', { count: 'exact', head: true }).eq('company_id', company.id).gte('created_at', oneWeekAgo.toISOString()),
-                supabase.from('applications').select('*', { count: 'exact', head: true }).eq('company_id', company.id).gte('created_at', twoWeeksAgo.toISOString()).lt('created_at', oneWeekAgo.toISOString()),
-                // Fetch paid invoices for the current month
-                supabase.from('invoices')
-                    .select('total')
-                    .eq('company_id', company.id)
-                    .eq('status', 'paid')
-                    .gte('updated_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()),
-                supabase.from('areas').select('*', { count: 'exact', head: true }).eq('company_id', company.id),
-                supabase.from('buildings').select('*', { count: 'exact', head: true }).eq('company_id', company.id)
-            ]);
-
-            // Calculate actual collected revenue
-            const totalMonthlyRevenue = paidInvoices?.reduce((sum, inv) => sum + (Number(inv.total) || 0), 0) || 0;
-
-            // Calculate real trends
-            const calcTrend = (current: number, previous: number): string | null => {
-                if (previous === 0 && current === 0) return null;
-                if (previous === 0) return current > 0 ? `+${current}` : null;
-                const change = ((current - previous) / previous) * 100;
-                if (change === 0) return null;
-                return change > 0 ? `+${change.toFixed(0)}%` : `${change.toFixed(0)}%`;
-            };
-
-            return {
-                totalProperties: totalProperties || 0,
-                availableProperties: availableProperties || 0,
-                totalApplications: totalApplications || 0,
-                pendingApplications: pendingApplications || 0,
-                teamMembers: teamMembers || 1,
-                totalMonthlyRevenue,
-                rentedCount: 0,
-                propertyTrend: calcTrend(propertiesThisWeek || 0, propertiesLastWeek || 0),
-                applicationTrend: calcTrend(applicationsThisWeek || 0, applicationsLastWeek || 0),
-                totalAreas: totalAreas || 0,
-                totalBuildings: totalBuildings || 0
-            };
-        },
-        enabled: !!company?.id
-    });
-
-    // Fetch recent activity
-    const { data: recentActivity } = useQuery({
-        queryKey: ['recent-activity', company?.id],
-        queryFn: async () => {
-            if (!company?.id) return [];
-            const { data } = await supabase
-                .from('activity_log')
-                .select(`
-                    *,
-                    user:profiles(full_name, avatar_url)
-                `)
-                .eq('company_id', company.id)
-                .order('created_at', { ascending: false })
-                .limit(10)
-            return data || []
-        },
-        enabled: !!company?.id
-    })
+    const { stats, isLoading: statsLoading, recentActivity } = useStats()
 
     // Fetch recent applications
     const { data: recentApplications } = useQuery({
@@ -374,7 +284,7 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                     <CardContent className="p-6 pt-0">
                         {recentApplications && recentApplications.length > 0 ? (
                             <div className="space-y-3">
-                                {recentApplications.map((app, idx) => (
+                                {recentApplications.map((app: any, idx: number) => (
                                     <Link key={app.id} href={`/applications/${app.id}`}>
                                         <div className="group flex items-center justify-between p-4 rounded-2xl bg-slate-50/50 border border-transparent hover:border-indigo-200 hover:bg-white transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/5">
                                             <div className="flex items-center gap-4">
@@ -435,9 +345,9 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                         {recentActivity && recentActivity.length > 0 ? (
                             <div className="relative space-y-6">
                                 <div className="absolute left-[1.1rem] top-3 bottom-3 w-0.5 bg-gradient-to-b from-violet-200 via-slate-200 to-transparent rounded-full" />
-                                {recentActivity.map((activity) => (
+                                {recentActivity.map((activity: any) => (
                                     <div key={activity.id} className="relative pl-10 group">
-                                        <div className="absolute left-0 top-0 h-9 w-9 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center z-10 transition-all group-hover:scale-110 group-hover:shadow-md" style={{ borderColor: `var(--accent-primary)` }}>
+                                        <div className="absolute left-0 top-0 h-9 w-9 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center z-10 transition-all group-hover:scale-110 group-hover:shadow-md" style={{ borderColor: colors.primary }}>
                                             {activity.user?.avatar_url ? (
                                                 <img src={activity.user.avatar_url} className="h-7 w-7 rounded-lg object-cover" />
                                             ) : (

@@ -4,7 +4,7 @@ import { usePlanLimits } from '@/hooks/use-plan-limits'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle, ArrowRight, Zap } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { PLANS } from '@/lib/stripe/plans'
+import { PLANS } from '@/lib/plans'
 
 interface LimitGuardProps {
     type: 'properties' | 'teamMembers'

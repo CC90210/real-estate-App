@@ -1,10 +1,10 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/useAuth'
+import { useStats } from '@/lib/hooks/useStats'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -43,52 +43,7 @@ export default function AgentDashboard({ onQuickFind }: AgentDashboardProps) {
     const { user, profile, company } = useAuth()
     const supabase = createClient()
     const { colors } = useAccentColor()
-
-    // Fetch agent-specific stats
-    const { data: stats, isLoading: statsLoading } = useQuery({
-        queryKey: ['agent-stats', company?.id],
-        queryFn: async () => {
-            if (!company?.id) return null;
-
-            // Calculate date ranges for trend comparison
-            const now = new Date();
-            const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-            const [
-                { count: totalProperties },
-                { count: availableProperties },
-                { count: pendingApplications },
-                { count: upcomingShowings },
-                { count: propertiesLastWeek }, // For trend
-                { count: propertiesThisWeek }, // For trend
-            ] = await Promise.all([
-                supabase.from('properties').select('*', { count: 'exact', head: true }).eq('company_id', company.id),
-                supabase.from('properties').select('*', { count: 'exact', head: true }).eq('company_id', company.id).eq('status', 'available'),
-                supabase.from('applications').select('*', { count: 'exact', head: true }).eq('company_id', company.id).in('status', ['submitted', 'screening']),
-                supabase.from('showings').select('*', { count: 'exact', head: true }).eq('company_id', company.id).gte('scheduled_date', now.toISOString()),
-                supabase.from('properties').select('*', { count: 'exact', head: true }).eq('company_id', company.id).gte('created_at', format(new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')).lt('created_at', format(oneWeekAgo, 'yyyy-MM-dd')),
-                supabase.from('properties').select('*', { count: 'exact', head: true }).eq('company_id', company.id).gte('created_at', format(oneWeekAgo, 'yyyy-MM-dd')),
-            ]);
-
-            // Calculate trend
-            const calcTrend = (current: number, previous: number): string | null => {
-                if (previous === 0 && current === 0) return null;
-                if (previous === 0) return current > 0 ? `+${current}` : null;
-                const change = ((current - previous) / previous) * 100;
-                if (change === 0) return null;
-                return change > 0 ? `+${change.toFixed(0)}%` : `${change.toFixed(0)}%`;
-            };
-
-            return {
-                totalProperties: totalProperties || 0,
-                availableProperties: availableProperties || 0,
-                pendingApplications: pendingApplications || 0,
-                upcomingShowings: upcomingShowings || 0,
-                listingTrend: calcTrend(propertiesThisWeek || 0, propertiesLastWeek || 0)
-            };
-        },
-        enabled: !!company?.id
-    });
+    const { stats, isLoading: statsLoading } = useStats()
 
     // Fetch upcoming showings
     const { data: upcomingShowings } = useQuery({
@@ -198,7 +153,7 @@ export default function AgentDashboard({ onQuickFind }: AgentDashboardProps) {
                     subtitle="Available for rent"
                     icon={Home}
                     gradient="from-blue-500 to-blue-600"
-                    trend={stats?.listingTrend}
+                    trend={stats?.propertyTrend}
                     href="/properties"
                 />
                 <StatCard
@@ -291,7 +246,7 @@ export default function AgentDashboard({ onQuickFind }: AgentDashboardProps) {
                     <CardContent className="p-6 pt-0">
                         {upcomingShowings && upcomingShowings.length > 0 ? (
                             <div className="space-y-3">
-                                {upcomingShowings.map((showing) => (
+                                {upcomingShowings.map((showing: any) => (
                                     <div key={showing.id} className="group flex items-center justify-between p-4 rounded-2xl bg-slate-50/50 border border-transparent hover:border-violet-200 hover:bg-white transition-all duration-300 hover:shadow-lg hover:shadow-violet-500/5">
                                         <div className="flex items-center gap-4">
                                             <div className="h-14 w-14 rounded-xl bg-white border-2 border-slate-100 flex flex-col items-center justify-center text-center shadow-sm">
@@ -353,7 +308,7 @@ export default function AgentDashboard({ onQuickFind }: AgentDashboardProps) {
                     <CardContent className="p-6 pt-0">
                         {recentApplications && recentApplications.length > 0 ? (
                             <div className="space-y-3">
-                                {recentApplications.map((app) => (
+                                {recentApplications.map((app: any) => (
                                     <Link key={app.id} href={`/applications/${app.id}`}>
                                         <div className="group flex items-center justify-between p-3 rounded-xl hover:bg-white hover:shadow-md transition-all cursor-pointer">
                                             <div className="flex items-center gap-3">

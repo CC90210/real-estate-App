@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useCompanyId } from '@/lib/hooks/useCompanyId'
 import { useAccentColor } from '@/lib/hooks/useAccentColor'
+import { useStats } from '@/lib/hooks/useStats'
 import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -124,19 +125,20 @@ export default function AnalyticsPage() {
     const supabase = createClient()
     const companyId = useCompanyId()
     const { colors } = useAccentColor()
+    const { stats: centralizedStats, isLoading: statsLoading } = useStats()
 
-    const { data: stats, isLoading } = useQuery({
-        queryKey: ['analytics', companyId],
+    const { data: analyticsData, isLoading: analyticsLoading } = useQuery({
+        queryKey: ['analytics-extra', companyId.companyId],
         queryFn: async () => {
-            if (!companyId) return null
+            if (!companyId.companyId) return null
 
             const [properties, applications, leases, maintenance, invoices, showings] = await Promise.all([
-                supabase.from('properties').select('status, rent, created_at').eq('company_id', companyId),
-                supabase.from('applications').select('status, created_at').eq('company_id', companyId),
-                supabase.from('leases').select('status, rent_amount, end_date, created_at').eq('company_id', companyId),
-                supabase.from('maintenance_requests').select('status, priority, category, created_at').eq('company_id', companyId),
-                supabase.from('invoices').select('status, total, created_at').eq('company_id', companyId),
-                supabase.from('showings').select('status, created_at').eq('company_id', companyId),
+                supabase.from('properties').select('status, rent, created_at').eq('company_id', companyId.companyId),
+                supabase.from('applications').select('status, created_at').eq('company_id', companyId.companyId),
+                supabase.from('leases').select('status, rent_amount, end_date, created_at').eq('company_id', companyId.companyId),
+                supabase.from('maintenance_requests').select('status, priority, category, created_at').eq('company_id', companyId.companyId),
+                supabase.from('invoices').select('status, total, created_at').eq('company_id', companyId.companyId),
+                supabase.from('showings').select('status, created_at').eq('company_id', companyId.companyId),
             ])
 
             const props = properties.data || []
@@ -154,15 +156,6 @@ export default function AnalyticsPage() {
                 maintenance: props.filter(p => p.status === 'maintenance').length,
             }
 
-            // Revenue calculation
-            const activeLeaseRevenue = leasesData
-                .filter(l => ['active', 'expiring'].includes(l.status))
-                .reduce((s, l) => s + (l.rent_amount || 0), 0)
-
-            // Occupancy rate
-            const totalProps = props.length || 1
-            const occupancyRate = Math.round((propByStatus.rented / totalProps) * 100)
-
             // App pipeline
             const appPipeline = {
                 new: apps.filter(a => a.status === 'new').length,
@@ -171,39 +164,15 @@ export default function AnalyticsPage() {
                 denied: apps.filter(a => a.status === 'denied').length,
             }
 
-            // Maintenance by category
-            const maintByCategory = categories.reduce((acc, cat) => {
-                acc[cat] = maint.filter(m => m.category === cat).length
-                return acc
-            }, {} as Record<string, number>)
-
-            // Active maintenance
-            const openMaint = maint.filter(m => !['completed', 'cancelled'].includes(m.status)).length
-
             return {
-                totalProperties: props.length,
-                totalApplications: apps.length,
-                totalLeases: leasesData.length,
-                activeLeases: leasesData.filter(l => l.status === 'active').length,
-                expiringLeases: leasesData.filter(l => l.status === 'expiring').length,
-                monthlyRevenue: activeLeaseRevenue,
-                occupancyRate,
                 propByStatus,
                 appPipeline,
-                maintByCategory,
-                openMaint,
-                totalInvoices: inv.length,
-                paidInvoices: inv.filter(i => i.status === 'paid').length,
-                invoiceRevenue: inv.filter(i => i.status === 'paid').reduce((s, i) => s + (i.total || 0), 0),
-                totalShowings: shows.length,
             }
         },
-        enabled: !!companyId,
+        enabled: !!companyId.companyId,
     })
 
-    const categories = ['plumbing', 'electrical', 'hvac', 'appliance', 'structural', 'pest', 'general']
-
-    if (isLoading || !stats) {
+    if (statsLoading || !centralizedStats || analyticsLoading) {
         return (
             <div className="flex items-center justify-center min-h-[500px]">
                 <Loader2 className={cn("w-10 h-10 animate-spin", colors.text)} />
@@ -226,32 +195,32 @@ export default function AnalyticsPage() {
                     </div>
                 </div>
 
-                {/* KPI Row */}
+                {/* KPI Row - Using centralized stats for consistency */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatCard
                         label="Total Properties"
-                        value={stats.totalProperties}
+                        value={centralizedStats.totalProperties}
                         icon={Home}
                         color="bg-blue-100 text-blue-600"
                         gradient="bg-blue-500"
                     />
                     <StatCard
                         label="Monthly Revenue"
-                        value={`$${stats.monthlyRevenue.toLocaleString()}`}
+                        value={`$${centralizedStats.totalMonthlyRevenue.toLocaleString()}`}
                         icon={DollarSign}
                         color="bg-emerald-100 text-emerald-600"
                         gradient="bg-emerald-500"
                     />
                     <StatCard
                         label="Occupancy Rate"
-                        value={`${stats.occupancyRate}%`}
+                        value={`${Math.round((centralizedStats.rentedProperties / (centralizedStats.totalProperties || 1)) * 100)}%`}
                         icon={TrendingUp}
                         color="bg-indigo-100 text-indigo-600"
                         gradient="bg-indigo-500"
                     />
                     <StatCard
-                        label="Active Leases"
-                        value={stats.activeLeases}
+                        label="Active Listings"
+                        value={centralizedStats.availableProperties}
                         icon={BookOpen}
                         color="bg-amber-100 text-amber-600"
                         gradient="bg-amber-500"
@@ -267,13 +236,13 @@ export default function AnalyticsPage() {
                         </CardHeader>
                         <CardContent className="flex justify-center py-6">
                             <RingChart
-                                total={stats.totalProperties}
+                                total={centralizedStats.totalProperties}
                                 label="Properties"
                                 segments={[
-                                    { name: 'Available', value: stats.propByStatus.available, color: '#3b82f6' },
-                                    { name: 'Rented', value: stats.propByStatus.rented, color: '#10b981' },
-                                    { name: 'Pending', value: stats.propByStatus.pending, color: '#f59e0b' },
-                                    { name: 'Maintenance', value: stats.propByStatus.maintenance, color: '#ef4444' },
+                                    { name: 'Available', value: centralizedStats.availableProperties, color: '#3b82f6' },
+                                    { name: 'Rented', value: centralizedStats.rentedProperties, color: '#10b981' },
+                                    { name: 'Pending', value: centralizedStats.pendingApplications, color: '#f59e0b' }, // Simplified
+                                    { name: 'Maintenance', value: centralizedStats.openMaintenance, color: '#ef4444' },
                                 ]}
                             />
                         </CardContent>
@@ -288,10 +257,8 @@ export default function AnalyticsPage() {
                             <BarChartSimple
                                 label=""
                                 data={[
-                                    { name: 'New', value: stats.appPipeline.new, color: 'bg-blue-500' },
-                                    { name: 'Screening', value: stats.appPipeline.screening, color: 'bg-amber-500' },
-                                    { name: 'Approved', value: stats.appPipeline.approved, color: 'bg-emerald-500' },
-                                    { name: 'Denied', value: stats.appPipeline.denied, color: 'bg-red-500' },
+                                    { name: 'Pending Review', value: centralizedStats.pendingApplications, color: 'bg-amber-500' },
+                                    { name: 'Total', value: centralizedStats.totalApplications, color: 'bg-blue-500' },
                                 ]}
                             />
                         </CardContent>
@@ -306,7 +273,7 @@ export default function AnalyticsPage() {
                                 <Wrench className="w-6 h-6 text-orange-600" />
                             </div>
                             <div>
-                                <p className="text-2xl font-black text-slate-900">{stats.openMaint}</p>
+                                <p className="text-2xl font-black text-slate-900">{centralizedStats.openMaintenance}</p>
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Open Maintenance</p>
                             </div>
                         </CardContent>
@@ -317,8 +284,8 @@ export default function AnalyticsPage() {
                                 <Calendar className="w-6 h-6 text-purple-600" />
                             </div>
                             <div>
-                                <p className="text-2xl font-black text-slate-900">{stats.totalShowings}</p>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Showings</p>
+                                <p className="text-2xl font-black text-slate-900">{centralizedStats.upcomingShowings}</p>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Upcoming Showings</p>
                             </div>
                         </CardContent>
                     </Card>
@@ -328,7 +295,7 @@ export default function AnalyticsPage() {
                                 <ClipboardList className="w-6 h-6 text-sky-600" />
                             </div>
                             <div>
-                                <p className="text-2xl font-black text-slate-900">{stats.totalApplications}</p>
+                                <p className="text-2xl font-black text-slate-900">{centralizedStats.totalApplications}</p>
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Applications</p>
                             </div>
                         </CardContent>
@@ -336,38 +303,15 @@ export default function AnalyticsPage() {
                     <Card className="border-0 shadow-sm bg-gradient-to-br from-rose-50 to-white">
                         <CardContent className="p-5 flex items-center gap-4">
                             <div className="w-12 h-12 rounded-2xl bg-rose-100 flex items-center justify-center">
-                                <AlertTriangle className="w-6 h-6 text-rose-600" />
+                                <Users className="w-6 h-6 text-rose-600" />
                             </div>
                             <div>
-                                <p className="text-2xl font-black text-slate-900">{stats.expiringLeases}</p>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Expiring Leases</p>
+                                <p className="text-2xl font-black text-slate-900">{centralizedStats.teamMembers}</p>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Team Members</p>
                             </div>
                         </CardContent>
                     </Card>
                 </div>
-
-                {/* Invoice Summary */}
-                <Card className="border-0 shadow-sm">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-wider">Invoice Summary</CardTitle>
-                    </CardHeader>
-                    <CardContent className="py-6">
-                        <div className="grid grid-cols-3 gap-4 text-center">
-                            <div>
-                                <p className="text-3xl font-black text-slate-900">{stats.totalInvoices}</p>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">Total</p>
-                            </div>
-                            <div>
-                                <p className="text-3xl font-black text-emerald-600">{stats.paidInvoices}</p>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">Paid</p>
-                            </div>
-                            <div>
-                                <p className="text-3xl font-black text-slate-900">${stats.invoiceRevenue.toLocaleString()}</p>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">Revenue</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
             </div>
         </FeatureGate>
     )

@@ -2,28 +2,37 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import { PLANS, PlanId } from '@/lib/stripe/plans'
+import { PLANS, PlanId } from '@/lib/plans'
 
 export interface PlanLimits {
+    // Access flags
+    isSuperAdmin: boolean
+    isPartner: boolean
+    hasFullAccess: boolean
+    isActive: boolean
+    isLifetime: boolean
+
+    // Plan info
     plan: PlanId | null
     planName: string
+    status: string
+
+    // Usage
     usage: {
         properties: number
         teamMembers: number
     }
+
+    // Limits
     limits: {
         properties: number
         teamMembers: number
     }
-    features: {
-        showingsCalendar: boolean
-        invoiceGeneration: boolean
-        advancedAnalytics: boolean
-        automations: boolean
-        paymentProcessing: boolean
-        customIntegrations: boolean
-        [key: string]: boolean
-    }
+
+    // Feature access
+    features: Record<string, boolean>
+
+    // Convenience booleans
     canAddProperty: boolean
     canAddTeamMember: boolean
 }
@@ -37,12 +46,18 @@ export function usePlanLimits() {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error('Not authenticated')
 
-            // Get profile and company
-            const { data: profile } = await supabase
+            // Get profile and company info
+            let { data: profile } = await supabase
                 .from('profiles')
                 .select(`
+                    id,
+                    email,
                     company_id,
+                    is_super_admin,
+                    is_partner,
+                    partner_type,
                     company:companies(
+                        id,
                         subscription_plan,
                         subscription_status,
                         is_lifetime_access,
@@ -52,29 +67,74 @@ export function usePlanLimits() {
                 .eq('id', user.id)
                 .single()
 
-            const companyData = (profile as any)?.company
-            let plan = companyData?.subscription_plan as PlanId | null
-            const isLifetime = companyData?.is_lifetime_access === true
-
-            // IF LIFETIME ACCESS IS ACTIVE -> GRANT ENTERPRISE
-            if (isLifetime) {
-                plan = 'enterprise'
+            // SELF-HEALING: If no profile or no company_id, try to repair
+            if (!profile || !profile.company_id) {
+                const { data: repairData, error: repairError } = await supabase.rpc('ensure_user_profile')
+                if (!repairError) {
+                    const { data: refetchedProfile } = await supabase
+                        .from('profiles')
+                        .select(`
+                            id,
+                            email,
+                            company_id,
+                            is_super_admin,
+                            is_partner,
+                            partner_type,
+                            company:companies(
+                                id,
+                                subscription_plan,
+                                subscription_status,
+                                is_lifetime_access,
+                                feature_flags
+                            )
+                        `)
+                        .eq('id', user.id)
+                        .single()
+                    profile = refetchedProfile
+                }
             }
 
-            // DEFAULT TO ESSENTIALS (Trial/Grace) if no plan
-            const currentPlan = plan || 'essentials'
-            const planConfig = (PLANS as any)[currentPlan]
+            if (!profile?.company_id) {
+                return {
+                    isSuperAdmin: false,
+                    isPartner: false,
+                    hasFullAccess: false,
+                    isActive: false,
+                    isLifetime: false,
+                    plan: 'essentials',
+                    planName: 'Starter Grace',
+                    status: 'active',
+                    usage: { properties: 0, teamMembers: 0 },
+                    limits: { properties: 5, teamMembers: 1 },
+                    features: PLANS.essentials.features,
+                    canAddProperty: true,
+                    canAddTeamMember: true,
+                }
+            }
+
+            const companyData: any = Array.isArray(profile.company) ? profile.company[0] : profile.company
+            const isLifetime = companyData?.is_lifetime_access === true
+            const isSuperAdmin = profile.is_super_admin || false
+            const isPartner = profile.is_partner || false
+            const hasFullAccess = isSuperAdmin || isPartner || isLifetime
+
+            // Extract plan info
+            const rawPlan = hasFullAccess ? 'enterprise' : (companyData?.subscription_plan || 'essentials')
+            const planId = rawPlan as PlanId
+            const status = companyData?.subscription_status || 'active'
+            const isActive = ['active', 'trialing', 'past_due'].includes(status) || hasFullAccess
+            const plan = PLANS[planId] || PLANS.essentials
 
             // Get current usage
             const [propertiesRes, teamRes] = await Promise.all([
                 supabase
                     .from('properties')
                     .select('id', { count: 'exact', head: true })
-                    .eq('company_id', profile?.company_id),
+                    .eq('company_id', profile.company_id),
                 supabase
                     .from('profiles')
                     .select('id', { count: 'exact', head: true })
-                    .eq('company_id', profile?.company_id),
+                    .eq('company_id', profile.company_id),
             ])
 
             const usage = {
@@ -82,32 +142,31 @@ export function usePlanLimits() {
                 teamMembers: teamRes.count || 0,
             }
 
-            // Limits (If no plan and not lifetime, we give a small grace limit)
-            const limits = {
-                properties: planConfig?.limits.properties ?? (plan ? 0 : 5),
-                teamMembers: planConfig?.limits.teamMembers ?? (plan ? 0 : 1),
-            }
-
-            // Feature Flags Override
+            const limits = plan.limits
             const featureOverrides = companyData?.feature_flags || {}
 
+            // Merge features
+            const features = {
+                ...plan.features,
+                ...featureOverrides
+            }
+
             return {
-                plan: plan,
-                planName: isLifetime ? 'Enterprise (Lifetime)' : (planConfig?.name || 'Starter Grace'),
+                isSuperAdmin,
+                isPartner,
+                hasFullAccess,
+                isActive,
+                isLifetime,
+                plan: planId,
+                planName: isLifetime ? 'Enterprise (Lifetime)' : plan.name,
+                status,
                 usage,
                 limits,
-                features: {
-                    showingsCalendar: featureOverrides.showingsCalendar ?? planConfig?.limits.showingsCalendar ?? false,
-                    invoiceGeneration: featureOverrides.invoiceGeneration ?? planConfig?.limits.invoiceGeneration ?? false,
-                    advancedAnalytics: featureOverrides.advancedAnalytics ?? planConfig?.limits.advancedAnalytics ?? false,
-                    automations: featureOverrides.automations ?? planConfig?.limits.automations ?? false,
-                    paymentProcessing: featureOverrides.paymentProcessing ?? planConfig?.limits.paymentProcessing ?? false,
-                    customIntegrations: featureOverrides.customIntegrations ?? planConfig?.limits.customIntegrations ?? false,
-                },
-                canAddProperty: usage.properties < limits.properties,
-                canAddTeamMember: usage.teamMembers < limits.teamMembers,
+                features,
+                canAddProperty: isActive && (limits.properties === Infinity || usage.properties < limits.properties),
+                canAddTeamMember: isActive && (limits.teamMembers === Infinity || usage.teamMembers < limits.teamMembers),
             }
         },
-        staleTime: 30000, // Cache for 30 seconds
+        staleTime: 60000,
     })
 }

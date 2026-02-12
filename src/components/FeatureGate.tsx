@@ -4,7 +4,7 @@ import { usePlanLimits, PlanLimits } from '@/hooks/use-plan-limits'
 import { Button } from '@/components/ui/button'
 import { Lock, Sparkles, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { PLANS, PlanId } from '@/lib/stripe/plans'
+import { PLANS, PlanId } from '@/lib/plans'
 
 interface FeatureGateProps {
     feature: keyof PlanLimits['features']
@@ -28,7 +28,7 @@ export function FeatureGate({ feature, children, fallback }: FeatureGateProps) {
         const featureKey = feature as string;
         // Find which plan unlocks this feature
         let requiredPlan: PlanId = 'professional'
-        if (!(PLANS.professional.limits as any)[featureKey]) {
+        if (!(PLANS.professional.features as any)[featureKey]) {
             requiredPlan = 'enterprise'
         }
 

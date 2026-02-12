@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/useAuth'
+import { useStats } from '@/lib/hooks/useStats'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -42,78 +43,10 @@ export default function LandlordDashboard({ onQuickFind }: LandlordDashboardProp
     const { user, profile, company } = useAuth()
     const supabase = createClient()
     const { colors } = useAccentColor()
-
-    // Fetch landlord-specific stats
-    const { data: stats, isLoading: statsLoading } = useQuery({
-        queryKey: ['landlord-stats', user?.id, company?.id],
-        queryFn: async () => {
-            if (!user?.id || !company?.id) return null
-
-            // Get properties owned by this landlord
-            const { data: properties } = await supabase
-                .from('properties')
-                .select('id, rent, status')
-                .eq('company_id', company.id)
-                .eq('owner_id', user.id)
-
-            const propertyIds = properties?.map(p => p.id) || []
-            const totalProperties = properties?.length || 0
-            const rentedProperties = properties?.filter(p => p.status === 'rented') || []
-            const monthlyRevenue = rentedProperties.reduce((sum, p) => sum + (p.rent || 0), 0)
-            const availableProperties = properties?.filter(p => p.status === 'available').length || 0
-
-            // Get applications for landlord's properties
-            const { data: applications } = propertyIds.length > 0
-                ? await supabase
-                    .from('applications')
-                    .select('id, status')
-                    .in('property_id', propertyIds)
-                : { data: [] }
-
-            const pendingApplications = applications?.filter(a =>
-                ['submitted', 'screening', 'pending_landlord'].includes(a.status)
-            ).length || 0
-
-            const approvedApplications = applications?.filter(a => a.status === 'approved').length || 0
-
-            // Get upcoming showings for landlord's properties
-            const { data: showings } = propertyIds.length > 0
-                ? await supabase
-                    .from('showings')
-                    .select('id')
-                    .in('property_id', propertyIds)
-                    .gte('scheduled_date', new Date().toISOString())
-                : { data: [] }
-
-            // Get collected revenue from invoices for landlord's properties
-            const { data: paidInvoices } = propertyIds.length > 0
-                ? await supabase
-                    .from('invoices')
-                    .select('total')
-                    .in('property_id', propertyIds)
-                    .eq('status', 'paid')
-                    .gte('updated_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString())
-                : { data: [] }
-
-            const collectedRevenue = paidInvoices?.reduce((sum, i) => sum + (Number(i.total) || 0), 0) || 0
-
-            return {
-                totalProperties,
-                rentedProperties: rentedProperties.length,
-                availableProperties,
-                monthlyRevenue, // This is projected (rent roll)
-                collectedRevenue, // This is actual (invoices)
-                totalApplications: applications?.length || 0,
-                pendingApplications,
-                approvedApplications,
-                upcomingShowings: showings?.length || 0
-            }
-        },
-        enabled: !!user?.id && !!company?.id
-    })
+    const { stats, isLoading: statsLoading } = useStats()
 
     // Fetch recent applications for landlord's properties
-    const { data: recentApplications, isLoading: appsLoading } = useQuery({
+    const { data: recentApplications } = useQuery({
         queryKey: ['landlord-recent-applications', user?.id],
         queryFn: async () => {
             if (!user?.id) return []
@@ -146,7 +79,7 @@ export default function LandlordDashboard({ onQuickFind }: LandlordDashboardProp
     })
 
     // Fetch landlord's properties
-    const { data: properties, isLoading: propertiesLoading } = useQuery({
+    const { data: properties } = useQuery({
         queryKey: ['landlord-properties', user?.id],
         queryFn: async () => {
             if (!user?.id) return []
@@ -163,7 +96,7 @@ export default function LandlordDashboard({ onQuickFind }: LandlordDashboardProp
         enabled: !!user?.id
     })
 
-    if (statsLoading) {
+    if (statsLoading && !stats) {
         return <DashboardSkeleton />
     }
 
@@ -252,7 +185,7 @@ export default function LandlordDashboard({ onQuickFind }: LandlordDashboardProp
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '200ms' }}>
                 <StatCard
                     title="Collected Revenue"
-                    value={`$${(stats?.collectedRevenue || 0).toLocaleString()}`}
+                    value={`$${(stats?.totalMonthlyRevenue || 0).toLocaleString()}`}
                     subtitle="Invoices paid this month"
                     icon={Wallet}
                     gradient="from-emerald-500 to-emerald-600"
@@ -276,14 +209,7 @@ export default function LandlordDashboard({ onQuickFind }: LandlordDashboardProp
                     urgent={(stats?.pendingApplications || 0) > 0}
                 />
                 <StatCard
-                    title="Approved"
-                    value={stats?.approvedApplications || 0}
-                    subtitle="This month"
-                    icon={ThumbsUp}
-                    gradient="from-blue-500 to-blue-600"
-                />
-                <StatCard
-                    title="Showings"
+                    title="Upcoming"
                     value={stats?.upcomingShowings || 0}
                     subtitle="Scheduled visits"
                     icon={Calendar}

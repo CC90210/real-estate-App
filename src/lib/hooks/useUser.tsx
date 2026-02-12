@@ -79,14 +79,29 @@ export function UserProvider({ children }: { children: ReactNode }) {
             return null;
         }
 
-        const { data, error } = await supabase
+        let { data, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', userId)
             .single();
 
-        if (error) {
-            console.error('Error fetching profile:', error);
+        if (error || !data) {
+            console.error('Profile missing or error fetching, attempting repair...', error);
+            // Try to repair via RPC
+            const { data: repairData, error: repairError } = await supabase.rpc('ensure_user_profile');
+
+            if (!repairError) {
+                // Fetch again after repair
+                const { data: refetched, error: refetchError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', userId)
+                    .single();
+
+                if (!refetchError && refetched) {
+                    return refetched as Profile;
+                }
+            }
             return null;
         }
 
