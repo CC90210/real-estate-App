@@ -38,18 +38,18 @@ import { Logo } from '@/components/brand/Logo';
 const navItems = [
     { id: 'dashboard', name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'agent', 'landlord'] },
     { id: 'areas', name: 'Areas', href: '/areas', icon: MapPin, roles: ['admin', 'agent'] },
-    { id: 'properties', name: 'Properties', href: '/properties', icon: Home, roles: ['admin', 'agent', 'landlord'] },
-    { id: 'applications', name: 'Applications', href: '/applications', icon: ClipboardList, roles: ['admin', 'agent', 'landlord'] },
-    { id: 'approvals', name: 'Approvals', href: '/approvals', icon: CheckCircle, roles: ['admin', 'landlord'] },
-    { id: 'leases', name: 'Leases', href: '/leases', icon: BookOpen, roles: ['admin', 'agent', 'landlord'] },
-    { id: 'maintenance', name: 'Maintenance', href: '/maintenance', icon: Wrench, roles: ['admin', 'agent', 'landlord'] },
+    { id: 'properties', name: 'Properties', href: '/properties', icon: Home, roles: ['admin', 'agent'] },
+    { id: 'applications', name: 'Applications', href: '/applications', icon: ClipboardList, roles: ['admin', 'agent'] },
+    { id: 'approvals', name: 'Approvals', href: '/approvals', icon: CheckCircle, roles: ['admin'] },
+    { id: 'leases', name: 'Leases', href: '/leases', icon: BookOpen, roles: ['admin', 'agent'] },
+    { id: 'maintenance', name: 'Maintenance', href: '/maintenance', icon: Wrench, roles: ['admin', 'agent'] },
     { id: 'showings', name: 'Showings', href: '/showings', icon: Calendar, roles: ['admin', 'agent'] },
-    { id: 'invoices', name: 'Invoices', href: '/invoices', icon: Receipt, roles: ['admin', 'landlord'] },
+    { id: 'invoices', name: 'Invoices', href: '/invoices', icon: Receipt, roles: ['admin', 'agent'] },
     { id: 'documents', name: 'Documents', href: '/documents', icon: FileText, roles: ['admin', 'agent'] },
     { id: 'analytics', name: 'Analytics', href: '/analytics', icon: BarChart3, roles: ['admin'] },
     { id: 'activity', name: 'Activity', href: '/activity', icon: Activity, roles: ['admin'] },
     { id: 'automations', name: 'Automations', href: '/automations', icon: Zap, roles: ['admin', 'agent'] },
-    { id: 'settings', name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'agent', 'landlord'] },
+    { id: 'settings', name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'agent'] },
 ];
 
 interface DesktopSidebarProps {

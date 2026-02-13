@@ -187,7 +187,7 @@ function JoinPageContent() {
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-blue-200">{details.company_name}</span>
                         </h1>
                         <p className="text-slate-300 text-lg font-medium leading-relaxed max-w-md">
-                            Collaborate as an <span className="text-white font-black underline decoration-indigo-500 underline-offset-4">{details.role}</span> within a world-class real estate infrastructure.
+                            Collaborate as a <span className="text-white font-black underline decoration-indigo-500 underline-offset-4">{details.role === 'landlord' ? 'Partner' : details.role}</span> within a world-class real estate infrastructure.
                         </p>
                     </div>
 

@@ -139,19 +139,19 @@ export default function MaintenancePage() {
     const inProgressCount = requests?.filter((r: any) => r.status === 'in_progress').length || 0
     const emergencyCount = requests?.filter((r: any) => r.priority === 'emergency' && r.status !== 'completed').length || 0
 
-    if (isLoading || companyId.isLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-[500px]">
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 className={cn("w-10 h-10 animate-spin", colors.text)} />
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Syncing Maintenance Hub...</p>
-                </div>
-            </div>
-        )
-    }
+    // Instant-On: No full-page blocking loader. 
+    // We show the layout and a subtle "Syncing" status if needed.
+    const isSyncing = isLoading || companyId.isLoading;
 
     return (
         <div className="p-6 lg:p-10 space-y-8 animate-in fade-in duration-500">
+            {/* Syncing Status Indicator (Subtle) */}
+            {isSyncing && (
+                <div className="fixed top-24 right-10 z-50 flex items-center gap-2 bg-white/80 backdrop-blur-sm border border-slate-100 px-3 py-1.5 rounded-full shadow-sm">
+                    <Loader2 className={cn("w-3 h-3 animate-spin", colors.text)} />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Syncing...</span>
+                </div>
+            )}
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
