@@ -11,7 +11,9 @@ import { toast } from 'sonner';
 import { Loader2, ArrowRight, ShieldCheck, Building2, User } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useUser } from '@/lib/hooks/useUser';
 import { cn } from '@/lib/utils';
+import { UserRole } from '@/types/database';
 
 interface InvitationDetails {
     id: string;
@@ -29,6 +31,7 @@ function JoinPageContent() {
     const token = searchParams.get('token');
     const emailParam = searchParams.get('email'); // Optional fallback for UI display
     const supabase = createClient();
+    const { signUp } = useUser();
 
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [isMatchingEmail, setIsMatchingEmail] = useState(false);
@@ -112,23 +115,22 @@ function JoinPageContent() {
 
         setSubmitting(true);
         try {
-            // Sign up the user
-            const { data, error } = await supabase.auth.signUp({
-                email: details.email,
-                password: formData.password,
-                options: {
-                    data: {
-                        full_name: formData.fullName,
-                    }
-                }
-            });
+            // Use the centralized signUp method which handles API call and auto-login
+            const { error: signUpError } = await signUp(
+                details.email.toLowerCase(),
+                formData.password,
+                formData.fullName,
+                details.role as UserRole
+            );
 
-            if (error) throw error;
+            if (signUpError) throw signUpError;
 
-            toast.success("Account created! Redirecting...");
+            toast.success("Account created! Redirecting to dashboard...");
+
+            // Give the session a moment to propagate
             setTimeout(() => {
-                router.push('/dashboard');
-            }, 1500);
+                window.location.href = '/dashboard';
+            }, 1000);
 
         } catch (error: any) {
             toast.error(error.message || "Failed to join company");
