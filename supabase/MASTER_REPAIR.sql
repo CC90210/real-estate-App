@@ -1,14 +1,14 @@
--- MASTER_RECOVERY_V3.sql
--- This script provides the ultimate "total functionality" fix for invitations and signups.
+-- MASTER_RECOVERY_V5 (AMBIGUITY FIX)
+-- This version explicitly cleans up multiple function signatures to resolve the candidate error.
 
--- 1. DROP FUNCTIONS TO RESET SIGNATURES
-DROP FUNCTION IF EXISTS public.get_invitation_by_token(text);
-DROP FUNCTION IF EXISTS public.ensure_user_profile_admin(uuid, text, text, text, text);
-DROP FUNCTION IF EXISTS public.handle_new_user();
-DROP FUNCTION IF EXISTS public.accept_invitation_manually(text);
+-- 1. DROP ALL POSSIBLE VERSIONS OF THE RPC (Resets ambiguity)
+DROP FUNCTION IF EXISTS public.ensure_user_profile_admin(uuid, text, text, text) CASCADE;
+DROP FUNCTION IF EXISTS public.ensure_user_profile_admin(uuid, text, text, text, text) CASCADE;
+DROP FUNCTION IF EXISTS public.get_invitation_by_token(text) CASCADE;
+DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
+DROP FUNCTION IF EXISTS public.accept_invitation_manually(text) CASCADE;
 
 -- 2. THE ULTIMATE "SMART" TRIGGER
--- This ensures that IMMEDIATELY upon auth.users creation, the profile is linked correctly.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 DECLARE
@@ -17,11 +17,9 @@ DECLARE
     c_name text;
     f_name text;
 BEGIN
-    -- Extract metadata
     f_name := COALESCE(new.raw_user_meta_data->>'full_name', 'New Member');
     c_name := COALESCE(new.raw_user_meta_data->>'company_name', 'My Company');
 
-    -- Check for a valid Pending Invitation for this email
     SELECT * INTO invite_record
     FROM public.team_invitations
     WHERE email = new.email
@@ -39,14 +37,11 @@ BEGIN
             full_name = EXCLUDED.full_name,
             updated_at = now();
 
-        -- Mark invitation as accepted
         UPDATE public.team_invitations 
         SET status = 'accepted', accepted_at = now(), accepted_by = new.id
         WHERE id = invite_record.id;
-        
     ELSE
-        -- CREATE NEW COMPANY (Standard Signup)
-        -- We only create a company if the user doesn't already have a profile with one
+        -- CREATE NEW COMPANY
         INSERT INTO public.companies (name, email, trial_ends_at)
         VALUES (c_name, new.email, now() + interval '14 days')
         RETURNING id INTO new_company_id;
@@ -63,31 +58,29 @@ BEGIN
     RETURN new;
 EXCEPTION WHEN OTHERS THEN
     RAISE LOG 'Error in handle_new_user trigger: %', SQLERRM;
-    RETURN new; -- Still allow user creation even if profile fails
+    RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- Re-attach Trigger
+-- 3. RE-ATTACH TRIGGER
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- 3. THE ULTIMATE "SMART" RPC (For API fallback)
-CREATE OR REPLACE FUNCTION public.ensure_user_profile_admin(u_id uuid, u_email text, f_name text, c_name text, j_title text DEFAULT NULL)
+-- 4. THE MASTER RPC (SINGLE SIGNATURE)
+-- This version removes the 'DEFAULT NULL' to prevent candidate ambiguity.
+CREATE OR REPLACE FUNCTION public.ensure_user_profile_admin(u_id uuid, u_email text, f_name text, c_name text, j_title text)
 RETURNS jsonb AS $$
 DECLARE
     new_company_id uuid;
     invite_record record;
     existing_profile record;
 BEGIN
-    -- 1. Get/Check Invitation
     SELECT * INTO invite_record FROM public.team_invitations 
     WHERE email = u_email AND status = 'pending' ORDER BY created_at DESC LIMIT 1;
 
-    -- 2. Upsert Profile
     IF invite_record.id IS NOT NULL THEN
-        -- FORCED SYNC TO INVITATION
         INSERT INTO public.profiles (id, email, full_name, role, company_id, job_title)
         VALUES (u_id, u_email, COALESCE(f_name, 'Team Member'), invite_record.role, invite_record.company_id, j_title)
         ON CONFLICT (id) DO UPDATE SET
@@ -99,7 +92,6 @@ BEGIN
             
         UPDATE public.team_invitations SET status = 'accepted', accepted_at = now(), accepted_by = u_id WHERE id = invite_record.id;
     ELSE
-        -- STANDARD SIGNUP
         SELECT * INTO existing_profile FROM public.profiles WHERE id = u_id;
         
         IF existing_profile.id IS NULL OR existing_profile.company_id IS NULL THEN
@@ -122,7 +114,7 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- 4. ROBUST INVITATION LOOKUP (Branded /Join Page)
+-- 5. ROBUST INVITATION LOOKUP
 CREATE OR REPLACE FUNCTION public.get_invitation_by_token(token_input text)
 RETURNS TABLE (
     id uuid,
@@ -157,7 +149,7 @@ BEGIN
 END;
 $$;
 
--- 5. RELIABLE MANUAL ACCEPTANCE (For already logged in users)
+-- 6. RELIABLE MANUAL ACCEPTANCE
 CREATE OR REPLACE FUNCTION public.accept_invitation_manually(token_input text)
 RETURNS boolean
 LANGUAGE plpgsql
@@ -187,22 +179,9 @@ BEGIN
 END;
 $$;
 
--- 6. PERMISSIVE DASHBOARD ACCESS (Total Authority)
-ALTER TABLE public.team_invitations ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Admins have full control over invitations" ON public.team_invitations;
-CREATE POLICY "Admins have full control over invitations"
-ON public.team_invitations FOR ALL TO authenticated
-USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND (is_super_admin = true OR (role = 'admin' AND company_id = team_invitations.company_id)))
-)
-WITH CHECK (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND (is_super_admin = true OR (role = 'admin' AND company_id = team_invitations.company_id)))
-);
-
--- 7. ENSURE CRITICAL TABLES HAVE RLS-BYPASSING GRANTS
+-- 7. PERMISSIONS
 GRANT ALL ON TABLE public.profiles TO service_role, postgres;
 GRANT ALL ON TABLE public.companies TO service_role, postgres;
 GRANT ALL ON TABLE public.team_invitations TO service_role, postgres;
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO authenticated;
 
-SELECT 'DATABASE MASTER RECOVERY V3 - COMPLETE' as status;
+SELECT 'DATABASE MASTER RECOVERY V5 - AMBIGUITY RESOLVED' as status;

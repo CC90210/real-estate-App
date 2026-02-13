@@ -89,7 +89,7 @@ export async function POST(request: Request) {
             u_email: email,
             f_name: full_name,
             c_name: companyName,
-            j_title: job_title
+            j_title: job_title || null
         });
 
         if (rpcError) {
