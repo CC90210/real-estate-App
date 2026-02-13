@@ -89,6 +89,9 @@ export default function MaintenancePage() {
 
     const createRequest = useMutation({
         mutationFn: async (data: any) => {
+            if (!companyId.companyId) {
+                throw new Error('Not authenticated properly. Please refresh.')
+            }
             const { error } = await supabase
                 .from('maintenance_requests')
                 .insert({
@@ -99,7 +102,7 @@ export default function MaintenancePage() {
             if (error) throw error
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['maintenance'] })
+            queryClient.invalidateQueries({ queryKey: ['maintenance', companyId.companyId] })
             toast.success('Maintenance request submitted')
             setDialogOpen(false)
             setForm({ property_id: '', title: '', description: '', category: 'general', priority: 'medium' })
@@ -118,7 +121,7 @@ export default function MaintenancePage() {
             if (error) throw error
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['maintenance'] })
+            queryClient.invalidateQueries({ queryKey: ['maintenance', companyId.companyId] })
             toast.success('Status updated')
             setDetailOpen(null)
         },
@@ -136,10 +139,13 @@ export default function MaintenancePage() {
     const inProgressCount = requests?.filter((r: any) => r.status === 'in_progress').length || 0
     const emergencyCount = requests?.filter((r: any) => r.priority === 'emergency' && r.status !== 'completed').length || 0
 
-    if (isLoading) {
+    if (isLoading || companyId.isLoading) {
         return (
             <div className="flex items-center justify-center min-h-[500px]">
-                <Loader2 className={cn("w-10 h-10 animate-spin", colors.text)} />
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 className={cn("w-10 h-10 animate-spin", colors.text)} />
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Syncing Maintenance Hub...</p>
+                </div>
             </div>
         )
     }

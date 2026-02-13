@@ -79,6 +79,9 @@ export default function LeasesPage() {
 
     const createLease = useMutation({
         mutationFn: async (leaseData: any) => {
+            if (!companyId.companyId) {
+                throw new Error('Not authenticated properly. Please refresh.')
+            }
             const { data, error } = await supabase
                 .from('leases')
                 .insert({
@@ -95,7 +98,7 @@ export default function LeasesPage() {
             return data
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['leases'] })
+            queryClient.invalidateQueries({ queryKey: ['leases', companyId.companyId] })
             toast.success('Lease created successfully')
             setDialogOpen(false)
             setForm({

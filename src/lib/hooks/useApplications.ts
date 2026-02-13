@@ -113,6 +113,7 @@ export function useUpdateApplication() {
 export function useUpdateApplicationStatus() {
     const queryClient = useQueryClient();
     const supabase = createClient();
+    const { companyId } = useCompanyId();
 
     return useMutation({
         mutationFn: async ({ id, status }: { id: string; status: string }) => {
@@ -124,14 +125,6 @@ export function useUpdateApplicationStatus() {
                 .single();
 
             if (error) throw error;
-
-            // Log activity
-            await supabase.from('activity_log').insert({
-                action: status === 'approved' ? 'APPLICATION_APPROVED' : 'APPLICATION_DENIED',
-                entity_type: 'application',
-                entity_id: id,
-                description: `Application status updated to ${status}`
-            });
 
             // 🚀 TRIGGER AUTOMATION
             // Check if we approved it, if so, trigger lease generation workflow
@@ -158,8 +151,7 @@ export function useUpdateApplicationStatus() {
             return { previous };
         },
         onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: ['applications'] });
-            queryClient.invalidateQueries({ queryKey: ['activity_log'] });
+            queryClient.invalidateQueries({ queryKey: ['applications', companyId] })
             toast.success(`Application ${variables.status}`);
         },
         onError: (err, variables, context) => {

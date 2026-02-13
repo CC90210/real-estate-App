@@ -32,18 +32,19 @@ import { useAuth } from '@/lib/hooks/useAuth'
 
 export default function ActivityPage() {
     const supabase = createClient()
-    const { company } = useAuth()
+    const { company, profile } = useAuth()
+    const companyId = company?.id || profile?.company_id
     const [search, setSearch] = useState('')
     const [filter, setFilter] = useState<string>('all')
     const statsService = new StatsService(supabase)
 
     const { data: activities, isLoading } = useQuery({
-        queryKey: ['activity-feed', company?.id, filter],
+        queryKey: ['activity-feed', companyId, filter],
         queryFn: async () => {
-            if (!company?.id) return []
-            return statsService.getRecentActivity(company.id, 100, filter)
+            if (!companyId) return []
+            return statsService.getRecentActivity(companyId, 100, filter)
         },
-        enabled: !!company?.id,
+        enabled: !!companyId,
     })
 
     const getIcon = (type: string) => {

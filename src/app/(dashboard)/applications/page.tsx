@@ -100,18 +100,6 @@ export default function ApplicationsPage() {
 
             if (error) throw error
 
-            // Log activity
-            if (companyId) {
-                await supabase.from('activity_log').insert({
-                    company_id: companyId,
-                    user_id: user?.id,
-                    action: status === 'approved' ? 'approved' : status === 'denied' ? 'denied' : 'updated',
-                    entity_type: 'application',
-                    entity_id: id,
-                    details: { new_status: status }
-                })
-            }
-
             return data
         },
         onSuccess: () => {

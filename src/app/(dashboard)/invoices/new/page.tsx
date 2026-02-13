@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useCompanyId } from '@/lib/hooks/useCompanyId'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -40,6 +41,7 @@ interface LineItem {
 export default function NewInvoicePage() {
     const router = useRouter()
     const supabase = createClient()
+    const { companyId, isLoading: isCompanyLoading } = useCompanyId()
     const [isLoading, setIsLoading] = useState(false)
     const [isFetching, setIsFetching] = useState(true)
     const [company, setCompany] = useState<any>(null)
@@ -133,7 +135,7 @@ export default function NewInvoicePage() {
             return
         }
 
-        if (!profile?.company_id) {
+        if (!companyId) {
             toast.error('Branding Conflict', { description: 'No company linked to profile. Check settings.' })
             return
         }
@@ -157,7 +159,7 @@ export default function NewInvoicePage() {
             }
 
             const invoiceData = {
-                company_id: profile.company_id,
+                company_id: companyId,
                 invoice_number: finalInvoiceNumber,
                 recipient_name: recipientName,
                 recipient_email: recipientEmail,
@@ -165,7 +167,7 @@ export default function NewInvoicePage() {
                 issue_date: new Date().toISOString(),
                 due_date: dueDate || null,
                 status: 'draft',
-                items: JSON.parse(JSON.stringify(items)), // Deep clone for stability
+                items: JSON.parse(JSON.stringify(items)),
                 subtotal: calculateTotal(),
                 tax_amount: 0,
                 total: calculateTotal(),
@@ -219,7 +221,7 @@ export default function NewInvoicePage() {
         }
     }
 
-    if (isFetching) {
+    if (isFetching || isCompanyLoading) {
         return (
             <div className="max-w-4xl mx-auto p-12 flex flex-col items-center justify-center gap-6 min-h-[60vh]">
                 <div className="relative">
