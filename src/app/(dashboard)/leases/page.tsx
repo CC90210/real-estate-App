@@ -49,32 +49,32 @@ export default function LeasesPage() {
     })
 
     const { data: leases, isLoading } = useQuery({
-        queryKey: ['leases', companyId],
+        queryKey: ['leases', companyId.companyId],
         queryFn: async () => {
-            if (!companyId) return []
+            if (!companyId.companyId) return []
             const { data, error } = await supabase
                 .from('leases')
                 .select('*, properties(address, unit_number)')
-                .eq('company_id', companyId)
+                .eq('company_id', companyId.companyId)
                 .order('created_at', { ascending: false })
             if (error) throw error
             return data || []
         },
-        enabled: !!companyId,
+        enabled: !!companyId.companyId,
     })
 
     const { data: properties } = useQuery({
-        queryKey: ['properties-select', companyId],
+        queryKey: ['properties-select', companyId.companyId],
         queryFn: async () => {
-            if (!companyId) return []
+            if (!companyId.companyId) return []
             const { data } = await supabase
                 .from('properties')
                 .select('id, address, unit_number')
-                .eq('company_id', companyId)
+                .eq('company_id', companyId.companyId)
                 .order('address')
             return data || []
         },
-        enabled: !!companyId,
+        enabled: !!companyId.companyId,
     })
 
     const createLease = useMutation({
@@ -83,7 +83,7 @@ export default function LeasesPage() {
                 .from('leases')
                 .insert({
                     ...leaseData,
-                    company_id: companyId,
+                    company_id: companyId.companyId,
                     rent_amount: parseFloat(leaseData.rent_amount),
                     deposit_amount: parseFloat(leaseData.deposit_amount || '0'),
                     payment_day: parseInt(leaseData.payment_day),

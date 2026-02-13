@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { useCompanyId } from '@/lib/hooks/useCompanyId'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -23,47 +24,49 @@ import { cn } from '@/lib/utils'
 export function PayoutsSettingsCard() {
     const [isConnecting, setIsConnecting] = useState(false)
     const supabase = createClient()
+    const companyContext = useCompanyId()
+    const companyId = companyContext.companyId
 
     // Fetch Connect Account status
     const { data: connectAccount, isLoading, refetch } = useQuery({
-        queryKey: ['stripe-connect-status'],
+        queryKey: ['stripe-connect-status', companyId],
         queryFn: async () => {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) return null
-
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('company_id')
-                .eq('id', user.id)
-                .single()
-
-            if (!profile?.company_id) return null
+            if (!companyId) return null
 
             const { data, error } = await supabase
                 .from('stripe_connect_accounts')
                 .select('*')
-                .eq('company_id', profile.company_id)
+                .eq('company_id', companyId)
                 .maybeSingle()
 
             if (error) throw error
             return data
-        }
+        },
+        enabled: !!companyId
     })
 
     const handleConnect = async () => {
+        if (!companyId) {
+            toast.error("Company not identified. Please refresh.")
+            return
+        }
+
         setIsConnecting(true)
         try {
             const res = await fetch('/api/stripe/connect/onboard', {
                 method: 'POST',
             })
+
             const data = await res.json()
-            if (data.url) {
+
+            if (res.ok && data.url) {
                 window.location.href = data.url
             } else {
                 throw new Error(data.error || 'Failed to generate onboarding link')
             }
         } catch (error: any) {
-            toast.error(error.message)
+            console.error('Stripe Connect error:', error)
+            toast.error(error.message || "An unexpected error occurred")
             setIsConnecting(false)
         }
     }

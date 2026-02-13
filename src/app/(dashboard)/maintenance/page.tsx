@@ -59,32 +59,32 @@ export default function MaintenancePage() {
     })
 
     const { data: requests, isLoading } = useQuery({
-        queryKey: ['maintenance', companyId],
+        queryKey: ['maintenance', companyId.companyId],
         queryFn: async () => {
-            if (!companyId) return []
+            if (!companyId.companyId) return []
             const { data, error } = await supabase
                 .from('maintenance_requests')
                 .select('*, properties(address, unit_number), profiles:submitted_by(full_name, email), assigned:assigned_to(full_name)')
-                .eq('company_id', companyId)
+                .eq('company_id', companyId.companyId)
                 .order('created_at', { ascending: false })
             if (error) throw error
             return data || []
         },
-        enabled: !!companyId,
+        enabled: !!companyId.companyId,
     })
 
     const { data: properties } = useQuery({
-        queryKey: ['properties-select', companyId],
+        queryKey: ['properties-select', companyId.companyId],
         queryFn: async () => {
-            if (!companyId) return []
+            if (!companyId.companyId) return []
             const { data } = await supabase
                 .from('properties')
                 .select('id, address, unit_number')
-                .eq('company_id', companyId)
+                .eq('company_id', companyId.companyId)
                 .order('address')
             return data || []
         },
-        enabled: !!companyId,
+        enabled: !!companyId.companyId,
     })
 
     const createRequest = useMutation({
@@ -93,7 +93,7 @@ export default function MaintenancePage() {
                 .from('maintenance_requests')
                 .insert({
                     ...data,
-                    company_id: companyId,
+                    company_id: companyId.companyId,
                     submitted_by: user?.id,
                 })
             if (error) throw error

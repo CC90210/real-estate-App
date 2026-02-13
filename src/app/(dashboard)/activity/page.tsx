@@ -15,7 +15,8 @@ import {
     Settings,
     Search,
     Filter,
-    Loader2
+    Loader2,
+    BookOpen
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import {
@@ -46,28 +47,28 @@ export default function ActivityPage() {
     })
 
     const getIcon = (type: string) => {
-        switch (type.toLowerCase()) {
-            case 'property': return <Home className="h-4 w-4" />
-            case 'application': return <User className="h-4 w-4" />
-            case 'document': return <FileText className="h-4 w-4" />
-            case 'invoice': return <DollarSign className="h-4 w-4" />
-            case 'maintenance': return <Wrench className="h-4 w-4" />
-            case 'team': return <Users className="h-4 w-4" />
-            case 'settings': return <Settings className="h-4 w-4" />
-            default: return <Activity className="h-4 w-4" />
-        }
+        const t = type.toLowerCase()
+        if (t.includes('property')) return <Home className="h-4 w-4" />
+        if (t.includes('application')) return <User className="h-4 w-4" />
+        if (t.includes('document')) return <FileText className="h-4 w-4" />
+        if (t.includes('invoice')) return <DollarSign className="h-4 w-4" />
+        if (t.includes('lease')) return <BookOpen className="h-4 w-4" />
+        if (t.includes('maintenance')) return <Wrench className="h-4 w-4" />
+        if (t.includes('team') || t.includes('profile')) return <Users className="h-4 w-4" />
+        if (t.includes('settings')) return <Settings className="h-4 w-4" />
+        return <Activity className="h-4 w-4" />
     }
 
     const getIconColor = (type: string) => {
-        switch (type.toLowerCase()) {
-            case 'property': return 'bg-blue-50 text-blue-600'
-            case 'application': return 'bg-purple-50 text-purple-600'
-            case 'document': return 'bg-indigo-50 text-indigo-600'
-            case 'invoice': return 'bg-emerald-50 text-emerald-600'
-            case 'maintenance': return 'bg-rose-50 text-rose-600'
-            case 'team': return 'bg-pink-50 text-pink-600'
-            default: return 'bg-slate-50 text-slate-600'
-        }
+        const t = type.toLowerCase()
+        if (t.includes('property')) return 'bg-blue-50 text-blue-600'
+        if (t.includes('application')) return 'bg-purple-50 text-purple-600'
+        if (t.includes('document')) return 'bg-slate-50 text-slate-600'
+        if (t.includes('invoice')) return 'bg-emerald-50 text-emerald-600'
+        if (t.includes('lease')) return 'bg-blue-50 text-blue-600'
+        if (t.includes('maintenance')) return 'bg-rose-50 text-rose-600'
+        if (t.includes('team') || t.includes('profile')) return 'bg-pink-50 text-pink-600'
+        return 'bg-slate-50 text-slate-600'
     }
 
     const formatAction = (action: string) => {
@@ -114,11 +115,12 @@ export default function ActivityPage() {
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-slate-100 font-bold">
                             <SelectItem value="all">All Activity</SelectItem>
-                            <SelectItem value="property">Properties</SelectItem>
-                            <SelectItem value="application">Applications</SelectItem>
-                            <SelectItem value="invoice">Invoices</SelectItem>
-                            <SelectItem value="maintenance">Maintenance</SelectItem>
-                            <SelectItem value="profile">Profile/Team</SelectItem>
+                            <SelectItem value="properties">Properties</SelectItem>
+                            <SelectItem value="applications">Applications</SelectItem>
+                            <SelectItem value="invoices">Invoices</SelectItem>
+                            <SelectItem value="maintenance_requests">Maintenance</SelectItem>
+                            <SelectItem value="leases">Leases</SelectItem>
+                            <SelectItem value="profiles">Profile/Team</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
