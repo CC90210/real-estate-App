@@ -27,6 +27,8 @@ function JoinPageContent() {
     const token = searchParams.get('token');
     const supabase = createClient();
 
+    const [currentUser, setCurrentUser] = useState<any>(null);
+    const [isMatchingEmail, setIsMatchingEmail] = useState(false);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [details, setDetails] = useState<InvitationDetails | null>(null);
@@ -37,24 +39,59 @@ function JoinPageContent() {
     });
 
     useEffect(() => {
+        const checkUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            setCurrentUser(user);
+        };
+        checkUser();
+    }, []);
+
+    useEffect(() => {
         const validateToken = async () => {
             if (!token) {
                 setLoading(false);
                 return;
             }
 
+            // Using the unified RPC name 'get_invitation_by_token'
             const { data, error } = await supabase.rpc('get_invitation_by_token', { token_input: token });
 
             if (data && data.length > 0) {
-                setDetails(data[0]);
+                const inviteDetails = data[0];
+                setDetails(inviteDetails);
+
+                // If logged in, check if email matches
+                if (currentUser && currentUser.email?.toLowerCase() === inviteDetails.email.toLowerCase()) {
+                    setIsMatchingEmail(true);
+                }
             } else {
                 console.error("Token validation failed:", error);
             }
             setLoading(false);
         };
 
-        validateToken();
-    }, [token]);
+        if (!loading || currentUser !== undefined) {
+            validateToken();
+        }
+    }, [token, currentUser]);
+
+    const handleAcceptWithExistingAccount = async () => {
+        if (!token) return;
+        setSubmitting(true);
+        try {
+            const { data, error } = await supabase.rpc('accept_invitation_manually', { token_input: token });
+            if (error) throw error;
+            if (data) {
+                toast.success("Successfully joined the organization!");
+                router.push('/dashboard');
+            } else {
+                throw new Error("Failed to accept invitation. It may have expired.");
+            }
+        } catch (error: any) {
+            toast.error(error.message || "Failed to join");
+            setSubmitting(false);
+        }
+    };
 
     const handleJoin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -79,9 +116,6 @@ function JoinPageContent() {
                 options: {
                     data: {
                         full_name: formData.fullName,
-                        job_title: details.role, // Default job title
-                        // Note: The database trigger 'handle_new_user' will see the invitation
-                        // and assign the correct company_id and role irrespective of metadata here.
                     }
                 }
             });
@@ -89,11 +123,9 @@ function JoinPageContent() {
             if (error) throw error;
 
             toast.success("Account created! Redirecting...");
-
-            // Allow session to establish
             setTimeout(() => {
                 router.push('/dashboard');
-            }, 1000);
+            }, 1500);
 
         } catch (error: any) {
             toast.error(error.message || "Failed to join company");
@@ -176,77 +208,117 @@ function JoinPageContent() {
                         <p className="text-slate-500 mt-2 font-medium">Create your account to join the workspace.</p>
                     </div>
 
-                    <form onSubmit={handleJoin} className="space-y-6">
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="email">Email Address (Locked)</Label>
-                                <Input
-                                    id="email"
-                                    value={details.email}
-                                    disabled
-                                    className="bg-slate-50 text-slate-500 border-slate-200 font-bold"
-                                />
+                    {currentUser && !isMatchingEmail ? (
+                        <div className="space-y-6 text-center">
+                            <div className="p-6 bg-amber-50 rounded-2xl border border-amber-100">
+                                <p className="text-amber-800 font-bold">
+                                    You are currently logged in as <span className="text-slate-900">{currentUser.email}</span>.
+                                </p>
+                                <p className="text-sm text-amber-700 mt-2">
+                                    This invitation was sent to <span className="font-black underline">{details.email}</span>.
+                                    Please sign out and use the invited email to join.
+                                </p>
                             </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="fullName">Full Legal Name</Label>
-                                <div className="relative">
-                                    <User className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                            <Button
+                                onClick={() => supabase.auth.signOut().then(() => window.location.reload())}
+                                variant="outline"
+                                className="w-full h-12 border-slate-200 text-slate-900 font-bold rounded-xl"
+                            >
+                                Sign Out to Switch Accounts
+                            </Button>
+                        </div>
+                    ) : isMatchingEmail ? (
+                        <div className="space-y-8 text-center">
+                            <div className="p-8 bg-indigo-50 rounded-[2rem] border-2 border-indigo-100 shadow-inner">
+                                <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-indigo-100 flex items-center justify-center mx-auto mb-4">
+                                    <ShieldCheck className="w-8 h-8 text-indigo-600" />
+                                </div>
+                                <h3 className="text-xl font-black text-slate-900">Ready to Join?</h3>
+                                <p className="text-slate-500 font-medium mt-2">
+                                    You are logged in as {currentUser?.email}.
+                                    Click below to instantly connect to {details.company_name}.
+                                </p>
+                            </div>
+                            <Button
+                                onClick={handleAcceptWithExistingAccount}
+                                disabled={submitting}
+                                className="w-full h-16 bg-indigo-600 hover:bg-indigo-700 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs shadow-xl shadow-indigo-100"
+                            >
+                                {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Accept & Sync Account"}
+                            </Button>
+                        </div>
+                    ) : (
+                        <form onSubmit={handleJoin} className="space-y-6">
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Email Address (Locked)</Label>
                                     <Input
-                                        id="fullName"
-                                        placeholder="e.g. Jane Doe"
-                                        className="pl-10 h-12"
+                                        id="email"
+                                        value={details.email}
+                                        disabled
+                                        className="bg-slate-50 text-slate-500 border-slate-200 font-bold h-12 rounded-xl"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="fullName" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Full Legal Name</Label>
+                                    <div className="relative">
+                                        <User className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
+                                        <Input
+                                            id="fullName"
+                                            placeholder="John Smith"
+                                            className="pl-10 h-12 rounded-xl border-slate-200"
+                                            required
+                                            value={formData.fullName}
+                                            onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="password" title="At least 8 characters" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Create Password</Label>
+                                    <Input
+                                        id="password"
+                                        type="password"
+                                        className="h-12 rounded-xl border-slate-200"
                                         required
-                                        value={formData.fullName}
-                                        onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                                        autoFocus
+                                        value={formData.password}
+                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="confirmPassword" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Confirm Password</Label>
+                                    <Input
+                                        id="confirmPassword"
+                                        type="password"
+                                        className="h-12 rounded-xl border-slate-200"
+                                        required
+                                        value={formData.confirmPassword}
+                                        onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                                     />
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="password">Create Password</Label>
-                                <Input
-                                    id="password"
-                                    type="password"
-                                    className="h-12"
-                                    required
-                                    value={formData.password}
-                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                />
-                            </div>
+                            <Button
+                                type="submit"
+                                className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black uppercase tracking-widest text-xs shadow-2xl transition-all active:scale-[0.98]"
+                                disabled={submitting}
+                            >
+                                {submitting ? (
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                ) : (
+                                    <>
+                                        Complete Onboarding <ArrowRight className="w-5 h-5 ml-2" />
+                                    </>
+                                )}
+                            </Button>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                                <Input
-                                    id="confirmPassword"
-                                    type="password"
-                                    className="h-12"
-                                    required
-                                    value={formData.confirmPassword}
-                                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                                />
-                            </div>
-                        </div>
-
-                        <Button
-                            type="submit"
-                            className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all"
-                            disabled={submitting}
-                        >
-                            {submitting ? (
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                            ) : (
-                                <>
-                                    Complete Setup <ArrowRight className="w-5 h-5 ml-2" />
-                                </>
-                            )}
-                        </Button>
-
-                        <p className="text-center text-xs text-slate-400 font-medium">
-                            By joining, you agree to our Terms of Service and Privacy Policy.
-                        </p>
-                    </form>
+                            <p className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                                Secure Platform • SSL Encrypted
+                            </p>
+                        </form>
+                    )}
                 </div>
             </div>
         </div>

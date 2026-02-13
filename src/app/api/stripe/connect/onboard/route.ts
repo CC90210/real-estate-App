@@ -57,8 +57,8 @@ export async function POST(req: Request) {
         // 4. Create Account Link for onboarding
         const accountLink = await stripe.accountLinks.create({
             account: stripeAccountId,
-            refresh_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/payouts?refresh=true`,
-            return_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/payouts?success=true`,
+            refresh_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings?tab=payouts&refresh=true`,
+            return_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings?tab=payouts&success=true`,
             type: 'account_onboarding',
         })
 

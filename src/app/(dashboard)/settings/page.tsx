@@ -859,6 +859,7 @@ export default function SettingsPage() {
                     )}
 
                     {activeTab === 'team' && <TeamManagementCard />}
+                    {activeTab === 'payouts' && <PayoutsSettingsCard />}
                 </div>
             </div>
         </div>

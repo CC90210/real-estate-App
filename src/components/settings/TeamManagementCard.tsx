@@ -12,6 +12,7 @@ import { Users, Plus, Mail, Trash2, Shield, User, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { useAccentColor } from '@/lib/hooks/useAccentColor';
+import { useCompanyId } from '@/lib/hooks/useCompanyId';
 import { cn } from '@/lib/utils';
 
 interface TeamMember {
@@ -34,7 +35,8 @@ interface Invitation {
 }
 
 export function TeamManagementCard() {
-    const { company, profile } = useAuth();
+    const { profile } = useAuth();
+    const { companyId } = useCompanyId();
     const supabase = createClient();
     const [members, setMembers] = useState<TeamMember[]>([]);
     const [invites, setInvites] = useState<Invitation[]>([]);
@@ -43,21 +45,21 @@ export function TeamManagementCard() {
     const { colors } = useAccentColor();
 
     const fetchTeamData = async () => {
-        if (!company?.id) return;
+        if (!companyId) return;
         setIsLoading(true);
 
         // Fetch Profiles
         const { data: profileData } = await supabase
             .from('profiles')
             .select('*')
-            .eq('company_id', company.id)
+            .eq('company_id', companyId)
             .order('created_at', { ascending: true });
 
         // Fetch Invitations
         const { data: inviteData } = await supabase
             .from('team_invitations')
             .select('*')
-            .eq('company_id', company.id)
+            .eq('company_id', companyId)
             .eq('status', 'pending')
             .order('created_at', { ascending: false });
 
@@ -68,7 +70,7 @@ export function TeamManagementCard() {
 
     useEffect(() => {
         fetchTeamData();
-    }, [company?.id]);
+    }, [companyId]);
 
     const revokeInvite = async (id: string) => {
         const { error } = await supabase.from('team_invitations').update({ status: 'revoked' }).eq('id', id);
