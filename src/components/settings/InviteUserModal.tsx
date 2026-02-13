@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { Loader2, Link as LinkIcon, Copy, Check, Send } from 'lucide-react';
 import { useAccentColor } from '@/lib/hooks/useAccentColor';
+import { useCompanyId } from '@/lib/hooks/useCompanyId';
 import { cn } from '@/lib/utils';
 
 interface InviteUserModalProps {
@@ -25,13 +26,14 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
     const [isLoading, setIsLoading] = useState(false);
     const [inviteLink, setInviteLink] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
-    const { company, profile } = useAuth();
+    const { profile } = useAuth();
+    const { companyId } = useCompanyId();
     const supabase = createClient();
     const { colors } = useAccentColor();
 
     const handleCreateInvite = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!company?.id) return;
+        if (!companyId) return;
 
         setIsLoading(true);
         try {
@@ -47,7 +49,7 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
                 .insert({
                     email,
                     role,
-                    company_id: company.id,
+                    company_id: companyId,
                     token,
                     expires_at: expiresAt.toISOString(),
                     status: 'pending',

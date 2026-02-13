@@ -45,20 +45,22 @@ export default function PlatformAdminPage() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <div className="flex items-center gap-3 mb-1">
-                        <div className="p-2 bg-slate-900 rounded-lg">
+                        <div className="p-2 bg-slate-900 rounded-lg shadow-xl shadow-slate-900/20">
                             <ShieldAlert className="w-5 h-5 text-white" />
                         </div>
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Platform Intelligence</h1>
+                        <h1 className="text-4xl font-black text-slate-900 tracking-tight">Intelligence Console</h1>
                     </div>
-                    <p className="text-slate-500 font-medium">Control center for the PropFlow network.</p>
+                    <p className="text-slate-500 font-bold text-lg">Central nervous system for the PropFlow network.</p>
                 </div>
-                <div className="flex gap-3">
-                    <Button variant="outline" className="font-bold">
-                        <Settings className="w-4 h-4 mr-2" /> Global Settings
-                    </Button>
-                    <Button className="bg-slate-900 hover:bg-slate-800 font-bold">
-                        <Activity className="w-4 h-4 mr-2" /> Node Status
-                    </Button>
+                <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
+                    <div className="flex -space-x-2">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400">
+                                {i}
+                            </div>
+                        ))}
+                    </div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{stats.totalUsers} NODES ACTIVE</p>
                 </div>
             </div>
 
@@ -197,10 +199,23 @@ export default function PlatformAdminPage() {
                             })}
                         </div>
 
-                        <div className="mt-12 p-6 bg-slate-900 rounded-3xl text-white">
-                            <h4 className="font-black text-lg mb-2">Platform Health</h4>
-                            <p className="text-slate-400 text-sm font-medium mb-6">All systems operational across 4 regions. API latency averaging 42ms.</p>
-                            <div className="flex gap-4">
+                        <div className="mt-12 p-10 bg-slate-900 rounded-[3rem] text-white shadow-2xl relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-10 opacity-10 group-hover:rotate-12 transition-transform duration-1000">
+                                <ShieldAlert className="w-32 h-32" />
+                            </div>
+                            <h4 className="font-black text-2xl mb-2 relative z-10">System Console</h4>
+                            <p className="text-slate-400 text-sm font-bold mb-8 relative z-10">All systems operational across 4 regions. API latency averaging 42ms.</p>
+
+                            <div className="grid grid-cols-2 gap-4 mb-8 relative z-10">
+                                <Button variant="outline" className="bg-white/5 border-white/10 hover:bg-white/10 text-white font-black uppercase tracking-widest text-[10px] h-12 rounded-xl">
+                                    <Settings className="w-4 h-4 mr-2" /> Global Settings
+                                </Button>
+                                <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest text-[10px] h-12 rounded-xl shadow-lg shadow-indigo-500/20">
+                                    <Activity className="w-4 h-4 mr-2" /> Node Status
+                                </Button>
+                            </div>
+
+                            <div className="flex gap-4 relative z-10">
                                 <div className="flex-1 p-4 bg-white/5 rounded-2xl border border-white/10">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Queue Size</p>
                                     <p className="text-xl font-black">0 Items</p>
