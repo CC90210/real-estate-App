@@ -66,7 +66,15 @@ export function PayoutsSettingsCard() {
             }
         } catch (error: any) {
             console.error('Stripe Connect error:', error)
-            toast.error(error.message || "An unexpected error occurred")
+
+            if (error.message.includes('responsibilities of managing losses')) {
+                toast.error("Stripe Platform Configuration Required", {
+                    description: "Please check your email or log into Stripe -> Settings -> Connect -> Platform Profile to accept responsibility for managing losses.",
+                    duration: 10000
+                })
+            } else {
+                toast.error(error.message || "An unexpected error occurred")
+            }
             setIsConnecting(false)
         }
     }
