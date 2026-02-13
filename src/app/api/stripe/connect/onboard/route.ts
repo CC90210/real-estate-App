@@ -80,3 +80,44 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: err.message }, { status: 500 })
     }
 }
+export async function GET(req: Request) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('id', user.id)
+        .single()
+
+    if (!profile?.company_id) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    const { data: connect } = await supabase
+        .from('stripe_connect_accounts')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .maybeSingle()
+
+    if (!connect?.stripe_account_id) return NextResponse.json({ error: 'No account' }, { status: 404 })
+
+    try {
+        const account = await stripe.accounts.retrieve(connect.stripe_account_id)
+
+        const updateData = {
+            details_submitted: account.details_submitted,
+            payouts_enabled: account.payouts_enabled,
+            charges_enabled: account.charges_enabled,
+            updated_at: new Date().toISOString()
+        }
+
+        await supabase
+            .from('stripe_connect_accounts')
+            .update(updateData)
+            .eq('company_id', profile.company_id)
+
+        return NextResponse.json({ success: true, status: updateData })
+    } catch (err: any) {
+        return NextResponse.json({ error: err.message }, { status: 500 })
+    }
+}

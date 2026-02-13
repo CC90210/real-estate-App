@@ -132,12 +132,28 @@ export function PayoutsSettingsCard() {
                                         </p>
                                     </div>
                                 </div>
-                                <Badge className={cn(
-                                    "px-6 py-2 rounded-full font-black text-[11px] tracking-widest border-0 shadow-lg",
-                                    isComplete ? "bg-emerald-500 text-white" : "bg-amber-500 text-white"
-                                )}>
-                                    {isComplete ? "FULLY VERIFIED" : "ATTENTION REQUIRED"}
-                                </Badge>
+                                <div className="flex flex-col gap-2">
+                                    <Badge className={cn(
+                                        "px-6 py-2 rounded-full font-black text-[11px] tracking-widest border-0 shadow-lg",
+                                        isComplete ? "bg-emerald-500 text-white" : "bg-amber-500 text-white"
+                                    )}>
+                                        {isComplete ? "FULLY VERIFIED" : "ATTENTION REQUIRED"}
+                                    </Badge>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 h-6"
+                                        onClick={async () => {
+                                            const res = await fetch('/api/stripe/connect/onboard');
+                                            if (res.ok) {
+                                                refetch();
+                                                toast.success("Status Synchronized");
+                                            }
+                                        }}
+                                    >
+                                        Refresh Status
+                                    </Button>
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

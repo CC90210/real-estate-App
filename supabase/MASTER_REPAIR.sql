@@ -1,14 +1,14 @@
--- FIX_INVITES_AND_STRIPE_V4 (HARD RESET)
--- This script handles the "cannot change return type" error by dropping existing functions first.
+-- MASTER_TEAM_AND_PAYOUTS_REPAIR.sql
+-- Run this in your Supabase SQL Editor to grant yourself full control.
 
--- 1. DROP EXISTING FUNCTIONS TO RESET SIGNATURES
+-- 1. DROP FUNCTIONS FIRST (Avoids "cannot change return type" error)
 DROP FUNCTION IF EXISTS public.get_invitation_by_token(text);
 DROP FUNCTION IF EXISTS public.ensure_user_profile_admin(uuid, text, text, text, text);
 
--- 2. HARDENED RLS FOR TEAM INVITATIONS (Total Admin Control)
+-- 2. HARDENED TEAM INVITATIONS (Granting you total authority)
 ALTER TABLE public.team_invitations ENABLE ROW LEVEL SECURITY;
 
--- Allow Super Admins and Company Admins to do EVERYTHING (SELECT, INSERT, UPDATE, DELETE)
+-- Policy: Authenticated Admins/Super Admins can do ANYTHING to their company's invitations
 DROP POLICY IF EXISTS "Admins have full control over invitations" ON public.team_invitations;
 CREATE POLICY "Admins have full control over invitations"
 ON public.team_invitations 
@@ -29,7 +29,7 @@ WITH CHECK (
     )
 );
 
--- 3. ROBUST INVITATION LOOKUP (Public/Anon access via token)
+-- 3. ROBUST INVITATION LOOKUP (Used by the /join page)
 CREATE OR REPLACE FUNCTION public.get_invitation_by_token(token_input text)
 RETURNS TABLE (
     id uuid,
@@ -64,19 +64,18 @@ BEGIN
 END;
 $$;
 
--- 4. UNIFIED PROFILE INITIALIZATION (Admin Level)
--- This function is called by the Signup API and ensures invitations are respected.
+-- 4. SMART USER INITIALIZATION (Called by Signup API)
 CREATE OR REPLACE FUNCTION public.ensure_user_profile_admin(u_id uuid, u_email text, f_name text, c_name text, j_title text DEFAULT NULL)
 RETURNS jsonb AS $$
 DECLARE
     new_company_id uuid;
-    existing_profile_id uuid;
+    existing_profile record;
     invite_record record;
 BEGIN
-    -- 1. Check for existing profile
-    SELECT id INTO existing_profile_id FROM public.profiles WHERE id = u_id;
+    -- 1. Get existing profile if any
+    SELECT * INTO existing_profile FROM public.profiles WHERE id = u_id;
     
-    -- 2. Check for pending invitation
+    -- 2. Find pending invitation
     SELECT * INTO invite_record
     FROM public.team_invitations
     WHERE email = u_email
@@ -84,8 +83,8 @@ BEGIN
     ORDER BY created_at DESC
     LIMIT 1;
 
-    IF existing_profile_id IS NOT NULL THEN
-        -- Profile exists: Sync if needed
+    -- Case A: Profile already exists
+    IF existing_profile.id IS NOT NULL THEN
         IF invite_record.id IS NOT NULL THEN
             UPDATE public.profiles 
             SET company_id = invite_record.company_id,
@@ -96,18 +95,18 @@ BEGIN
             
             UPDATE public.team_invitations SET status = 'accepted', accepted_at = now(), accepted_by = u_id WHERE id = invite_record.id;
         END IF;
-        RETURN jsonb_build_object('status', 'success', 'message', 'Profile sync complete');
+        RETURN jsonb_build_object('status', 'success', 'message', 'Profile exists and synced');
     END IF;
 
-    -- 3. Create New Profile
+    -- Case B: Direct Signup or Invited Signup
     IF invite_record.id IS NOT NULL THEN
-        -- JOIN EXISTING COMPANY
+        -- Link to Invited Company
         INSERT INTO public.profiles (id, email, full_name, role, company_id, job_title)
         VALUES (u_id, u_email, COALESCE(f_name, 'New Member'), invite_record.role, invite_record.company_id, j_title);
         
         UPDATE public.team_invitations SET status = 'accepted', accepted_at = now(), accepted_by = u_id WHERE id = invite_record.id;
     ELSE
-        -- CREATE NEW COMPANY (Standard Signup)
+        -- Create New Company
         INSERT INTO public.companies (name, email, trial_ends_at)
         VALUES (COALESCE(c_name, 'My Company'), u_email, now() + interval '14 days')
         RETURNING id INTO new_company_id;
@@ -116,16 +115,16 @@ BEGIN
         VALUES (u_id, u_email, COALESCE(f_name, 'Admin'), j_title, 'admin', new_company_id);
     END IF;
 
-    RETURN jsonb_build_object('status', 'success', 'message', 'Profile created successfully');
+    RETURN jsonb_build_object('status', 'success', 'message', 'Initialization complete');
 EXCEPTION WHEN OTHERS THEN
     RETURN jsonb_build_object('status', 'error', 'message', SQLERRM);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- 5. ENSURE PERMISSIONS
-GRANT ALL ON TABLE public.team_invitations TO service_role;
-GRANT ALL ON TABLE public.team_invitations TO postgres;
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.team_invitations TO authenticated;
-GRANT ALL ON TABLE public.profiles TO authenticated, service_role;
+-- 5. PERMISSION FIXES
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.team_invitations TO postgres, service_role, authenticated;
+GRANT ALL ON TABLE public.profiles TO postgres, service_role, authenticated;
+GRANT ALL ON TABLE public.companies TO postgres, service_role, authenticated;
 
-SELECT 'TEAM INVITATIONS RLS, RPC & PERMISSIONS FULLY REPAIRED' as status;
+SELECT 'STABILITY REPAIR APPLIED' as status;

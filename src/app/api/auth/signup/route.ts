@@ -84,7 +84,6 @@ export async function POST(request: Request) {
         }
 
         // 3. CRITICAL: Initialize Profile & Company via RPC (Admin Level)
-        // This ensures the database is ready for the session
         const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc('ensure_user_profile_admin', {
             u_id: user.id,
             u_email: email,
@@ -95,6 +94,11 @@ export async function POST(request: Request) {
 
         if (rpcError) {
             console.error("RPC Initialization Error:", rpcError);
+            throw new Error(`Profile initialization failed: ${rpcError.message}`);
+        }
+
+        if (rpcData?.status === 'error') {
+            throw new Error(rpcData.message || "Failed to initialize profile");
         }
 
         return NextResponse.json({
