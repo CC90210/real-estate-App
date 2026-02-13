@@ -6,11 +6,11 @@ import { StatsService, DashboardStats, ActivityItem } from '@/lib/services/stats
 import { useAuth } from './useAuth'
 
 export function useStats() {
-    const { company, user, role } = useAuth()
+    const { company, user, role, profile } = useAuth()
     const supabase = createClient()
     const statsService = new StatsService(supabase)
 
-    const companyId = company?.id
+    const companyId = company?.id || profile?.company_id
     const userId = user?.id
     const isLandlord = role === 'landlord'
 
