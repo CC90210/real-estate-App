@@ -120,7 +120,8 @@ function JoinPageContent() {
                 details.email.toLowerCase(),
                 formData.password,
                 formData.fullName,
-                details.role as UserRole
+                details.role as UserRole,
+                details.company_name
             );
 
             if (signUpError) throw signUpError;
