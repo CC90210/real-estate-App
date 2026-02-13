@@ -7,12 +7,17 @@
 -- 1. FIX RLS RECURSION (Critical for profile loading)
 -- The old get_user_company_id() was recursive on the profiles table.
 ALTER TABLE public.profiles DISABLE ROW LEVEL SECURITY;
+
+-- Drop all variants of the old policies
 DROP POLICY IF EXISTS "profiles_isolation" ON public.profiles;
 DROP POLICY IF EXISTS "Users can view all profiles in company" ON public.profiles;
 DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Allow self inserts" ON public.profiles;
 DROP POLICY IF EXISTS "Allow self selects" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_self_access" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_team_access" ON public.profiles;
 
+-- Create the refined, non-recursive policies
 CREATE POLICY "profiles_self_access" ON public.profiles 
     FOR ALL TO authenticated 
     USING (id = auth.uid())
@@ -28,6 +33,7 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 -- 2. EXPAND SIDEBAR ACCESS (Already done in JS, but ensuring DB RLS handles it)
 -- Ensure 'agent' role can see all company data
 DROP POLICY IF EXISTS "properties_isolation" ON public.properties;
+DROP POLICY IF EXISTS "properties_team_access" ON public.properties;
 CREATE POLICY "properties_team_access" ON public.properties
     FOR ALL TO authenticated
     USING (company_id IN (SELECT company_id FROM public.profiles WHERE id = auth.uid()));
@@ -47,6 +53,7 @@ BEGIN
     LOOP
         EXECUTE format('DROP POLICY IF EXISTS "Company access %I" ON public.%I', t, t);
         EXECUTE format('DROP POLICY IF EXISTS "%I_isolation" ON public.%I', t, t);
+        EXECUTE format('DROP POLICY IF EXISTS "team_access_%I" ON public.%I', t, t);
         EXECUTE format('CREATE POLICY "team_access_%I" ON public.%I FOR ALL TO authenticated USING (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.company_id = %I.company_id))', t, t, t);
     END LOOP;
 END $$;
