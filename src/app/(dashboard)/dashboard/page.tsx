@@ -3,7 +3,6 @@
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useQuickFind } from '@/lib/contexts/QuickFindContext'
 import AdminDashboard from '@/components/dashboard/AdminDashboard'
-import AgentDashboard from '@/components/dashboard/AgentDashboard'
 import LandlordDashboard from '@/components/dashboard/LandlordDashboard'
 import { Loader2 } from 'lucide-react'
 
@@ -24,12 +23,9 @@ export default function DashboardPage() {
     return (
         <>
             {/* Render the appropriate dashboard based on role */}
-            {role === 'landlord' && <LandlordDashboard onQuickFind={handleQuickFind} />}
-            {role === 'agent' && <AgentDashboard onQuickFind={handleQuickFind} />}
-            {role === 'admin' && <AdminDashboard onQuickFind={handleQuickFind} />}
-
-            {/* Fallback for unknown roles (treat as admin or show error) */}
-            {!['landlord', 'agent', 'admin'].includes(role || '') && (
+            {role === 'landlord' ? (
+                <LandlordDashboard onQuickFind={handleQuickFind} />
+            ) : (
                 <AdminDashboard onQuickFind={handleQuickFind} />
             )}
         </>

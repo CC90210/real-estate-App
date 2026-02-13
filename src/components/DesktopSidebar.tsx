@@ -46,8 +46,8 @@ const navItems = [
     { id: 'showings', name: 'Showings', href: '/showings', icon: Calendar, roles: ['admin', 'agent'] },
     { id: 'invoices', name: 'Invoices', href: '/invoices', icon: Receipt, roles: ['admin', 'agent'] },
     { id: 'documents', name: 'Documents', href: '/documents', icon: FileText, roles: ['admin', 'agent'] },
-    { id: 'analytics', name: 'Analytics', href: '/analytics', icon: BarChart3, roles: ['admin'] },
-    { id: 'activity', name: 'Activity', href: '/activity', icon: Activity, roles: ['admin'] },
+    { id: 'analytics', name: 'Analytics', href: '/analytics', icon: BarChart3, roles: ['admin', 'agent'] },
+    { id: 'activity', name: 'Activity', href: '/activity', icon: Activity, roles: ['admin', 'agent'] },
     { id: 'automations', name: 'Automations', href: '/automations', icon: Zap, roles: ['admin', 'agent'] },
     { id: 'settings', name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'agent'] },
 ];

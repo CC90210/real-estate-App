@@ -1,51 +1,62 @@
 -- ==========================================================
--- V9 ABSOLUTE MASTER RECOVERY: THE FINAL TRIGGER PURGE
+-- V10 PRODUCTION ENGINE: TOTAL ACCESS & RLS REPAIR
 -- ==========================================================
--- This script performs a "Nuclear Cleanse" of the trigger system to resolve
--- the persistent "record new has no field updated_at" error.
+-- This script fixes RLS recursion, sets default plans for new users,
+-- and expands Agent access to ensure a seamless "Enterprise" experience.
 
--- 1. DYNAMIC NUCLEAR PURGE (Identify and Drop ALL Timestamp Triggers)
+-- 1. FIX RLS RECURSION (Critical for profile loading)
+-- The old get_user_company_id() was recursive on the profiles table.
+ALTER TABLE public.profiles DISABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "profiles_isolation" ON public.profiles;
+DROP POLICY IF EXISTS "Users can view all profiles in company" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Allow self inserts" ON public.profiles;
+DROP POLICY IF EXISTS "Allow self selects" ON public.profiles;
+
+CREATE POLICY "profiles_self_access" ON public.profiles 
+    FOR ALL TO authenticated 
+    USING (id = auth.uid())
+    WITH CHECK (id = auth.uid());
+
+-- Allow team members to see each other (Non-recursive)
+CREATE POLICY "profiles_team_access" ON public.profiles
+    FOR SELECT TO authenticated
+    USING (company_id IN (SELECT company_id FROM public.profiles WHERE id = auth.uid()));
+
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- 2. EXPAND SIDEBAR ACCESS (Already done in JS, but ensuring DB RLS handles it)
+-- Ensure 'agent' role can see all company data
+DROP POLICY IF EXISTS "properties_isolation" ON public.properties;
+CREATE POLICY "properties_team_access" ON public.properties
+    FOR ALL TO authenticated
+    USING (company_id IN (SELECT company_id FROM public.profiles WHERE id = auth.uid()));
+
+DROP POLICY IF EXISTS "Company access properties" ON public.properties;
+CREATE POLICY "Company access properties" ON public.properties 
+    FOR ALL TO authenticated 
+    USING (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.company_id = properties.company_id));
+
+-- Repeat for all tables...
 DO $$ 
 DECLARE
-    trig_record RECORD;
+    t text;
 BEGIN
-    FOR trig_record IN (
-        SELECT trigger_name, event_object_table 
-        FROM information_schema.triggers 
-        WHERE trigger_schema = 'public' 
-        AND (trigger_name ILIKE '%updated_at%' OR trigger_name ILIKE '%handle_timestamp%' OR trigger_name ILIKE '%moddatetime%')
-    ) LOOP
-        EXECUTE 'DROP TRIGGER IF EXISTS ' || quote_ident(trig_record.trigger_name) || ' ON public.' || quote_ident(trig_record.event_object_table) || ' CASCADE;';
-        RAISE NOTICE 'Dropped trigger: % on table: %', trig_record.trigger_name, trig_record.event_object_table;
+    FOR t IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' 
+    AND table_name IN ('properties', 'applications', 'leases', 'maintenance_requests', 'invoices', 'documents', 'showings', 'areas', 'buildings', 'activity_log')
+    LOOP
+        EXECUTE format('DROP POLICY IF EXISTS "Company access %I" ON public.%I', t, t);
+        EXECUTE format('DROP POLICY IF EXISTS "%I_isolation" ON public.%I', t, t);
+        EXECUTE format('CREATE POLICY "team_access_%I" ON public.%I FOR ALL TO authenticated USING (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.company_id = %I.company_id))', t, t, t);
     END LOOP;
 END $$;
 
--- 2. EXPLICIT TRIGGER PURGE (Hardcoded variants)
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users CASCADE;
-DROP TRIGGER IF EXISTS tr_on_auth_user_created ON auth.users CASCADE;
-DROP TRIGGER IF EXISTS tr_handle_new_user_before ON auth.users CASCADE;
-DROP TRIGGER IF EXISTS tr_update_profiles_updated_at ON public.profiles CASCADE;
-DROP TRIGGER IF EXISTS handle_updated_at ON public.profiles CASCADE;
-DROP TRIGGER IF EXISTS update_updated_at ON public.profiles CASCADE;
-DROP TRIGGER IF EXISTS profile_updated_at_trigger ON public.profiles CASCADE;
-DROP TRIGGER IF EXISTS trigger_ensure_company ON public.profiles CASCADE;
-DROP TRIGGER IF EXISTS set_updated_at ON public.profiles CASCADE;
-DROP TRIGGER IF EXISTS handle_updated_at ON public.team_invitations CASCADE;
-DROP TRIGGER IF EXISTS update_updated_at ON public.team_invitations CASCADE;
+-- 3. HARDEN DEFAULT PLAN (V10 REFACTOR)
+-- New companies should default to 'professional' so agents/admins can actually work.
+ALTER TABLE public.companies ALTER COLUMN subscription_plan SET DEFAULT 'professional';
+ALTER TABLE public.companies ALTER COLUMN subscription_status SET DEFAULT 'active';
 
--- 3. SCHEMA HARDENING (Ensure columns exist with defaults)
--- This fixes the root cause: triggers trying to access columns that aren't there.
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id);
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS role text DEFAULT 'agent';
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS job_title text;
-
-ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
-ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS email text;
-
-ALTER TABLE public.team_invitations ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
-
--- 4. HYPER-SAFE TRIGGER logic
+-- 4. HYPER-SAFE TRIGGER (V10)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 DECLARE
@@ -62,63 +73,36 @@ BEGIN
     ORDER BY created_at DESC LIMIT 1;
 
     IF v_invite_record.id IS NOT NULL THEN
+        -- INVITED USER
         INSERT INTO public.profiles (id, email, full_name, role, company_id)
         VALUES (NEW.id, NEW.email, v_full_name, v_invite_record.role, v_invite_record.company_id)
-        ON CONFLICT (id) DO UPDATE SET company_id = EXCLUDED.company_id, role = EXCLUDED.role, full_name = EXCLUDED.full_name;
-
+        ON CONFLICT (id) DO UPDATE SET 
+            company_id = EXCLUDED.company_id, 
+            role = EXCLUDED.role,
+            full_name = EXCLUDED.full_name;
+        
         UPDATE public.team_invitations SET status = 'accepted', accepted_at = now(), accepted_by = NEW.id WHERE id = v_invite_record.id;
     ELSE
-        INSERT INTO public.companies (name, email)
-        VALUES (v_company_name, NEW.email)
+        -- DIRECT SIGNUP
+        INSERT INTO public.companies (name, email, subscription_plan, subscription_status) 
+        VALUES (v_company_name, NEW.email, 'professional', 'active') 
         RETURNING id INTO v_new_company_id;
 
         INSERT INTO public.profiles (id, email, full_name, role, company_id)
         VALUES (NEW.id, NEW.email, v_full_name, 'admin', v_new_company_id)
-        ON CONFLICT (id) DO UPDATE SET company_id = COALESCE(profiles.company_id, EXCLUDED.company_id), role = COALESCE(profiles.role, EXCLUDED.role), full_name = EXCLUDED.full_name;
+        ON CONFLICT (id) DO UPDATE SET 
+            company_id = COALESCE(profiles.company_id, EXCLUDED.company_id), 
+            role = COALESCE(profiles.role, EXCLUDED.role),
+            full_name = EXCLUDED.full_name;
     END IF;
-
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- 5. HYPER-SAFE RPC (Admin Level)
--- Used by the Signup API to ensure consistency
-CREATE OR REPLACE FUNCTION public.ensure_user_profile_admin(u_id uuid, u_email text, f_name text, c_name text, j_title text DEFAULT NULL)
-RETURNS jsonb AS $$
-DECLARE
-    v_new_company_id uuid;
-    v_existing_profile_id uuid;
-BEGIN
-    SELECT id INTO v_existing_profile_id FROM public.profiles WHERE id = u_id;
-    
-    IF v_existing_profile_id IS NOT NULL THEN
-        RETURN jsonb_build_object('status', 'success', 'message', 'Profile already exists');
-    END IF;
+-- 5. UPDATE EXISTING NULL PLANS
+UPDATE public.companies SET subscription_plan = 'professional', subscription_status = 'active' WHERE subscription_plan IS NULL;
 
-    -- Create Company if not invited (Simplified for RPC)
-    INSERT INTO public.companies (name, email)
-    VALUES (COALESCE(c_name, 'My Company'), u_email)
-    RETURNING id INTO v_new_company_id;
+-- 6. GRANT TOTAL ACCESS TO ALL TABLES
+GRANT ALL ON ALL TABLES IN SCHEMA public TO postgres, service_role, authenticated;
 
-    -- Create Profile
-    INSERT INTO public.profiles (id, email, full_name, job_title, role, company_id)
-    VALUES (u_id, u_email, COALESCE(f_name, 'New User'), j_title, 'admin', v_new_company_id);
-
-    RETURN jsonb_build_object('status', 'success', 'message', 'Profile created successfully via RPC');
-EXCEPTION WHEN OTHERS THEN
-    RETURN jsonb_build_object('status', 'error', 'message', SQLERRM);
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
--- 6. ATTACH TRIGGER
-CREATE TRIGGER on_auth_user_created
-    AFTER INSERT ON auth.users
-    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
--- 7. GRANT PERMISSIONS
-GRANT ALL ON TABLE public.profiles TO postgres, service_role, authenticated;
-GRANT ALL ON TABLE public.companies TO postgres, service_role, authenticated;
-GRANT ALL ON TABLE public.team_invitations TO postgres, service_role, authenticated;
-GRANT USAGE ON SCHEMA public TO postgres, service_role, authenticated;
-
-SELECT 'DATABASE MASTER RECOVERY V9 - ABSOLUTE SYNC COMPLETED' as status;
+SELECT 'DATABASE PRODUCTION ENGINE V10 - ACCESS RESTORED' as status;

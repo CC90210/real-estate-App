@@ -104,7 +104,7 @@ export function canViewLockbox(role: string): boolean {
 }
 
 export function canViewScreeningResults(role: string): boolean {
-  return role === 'admin' || role === 'landlord';
+  return role === 'admin' || role === 'agent' || role === 'landlord';
 }
 
 // Copy to clipboard
