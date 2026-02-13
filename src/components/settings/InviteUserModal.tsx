@@ -64,7 +64,7 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
             }
 
             // 4. Generate Link
-            const link = `${window.location.origin}/join?token=${token}`;
+            const link = `${window.location.origin}/join?token=${token}&email=${encodeURIComponent(email)}`;
             setInviteLink(link);
             toast.success("Invitation generated successfully");
             onSuccess(); // Refresh list behind modal

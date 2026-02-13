@@ -22,7 +22,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // 2. DEFINE PUBLIC ACCESS MAP
-    const publicRoutes = ['/', '/login', '/signup', '/forgot-password', '/reset-password', '/pricing', '/features', '/solutions', '/terms', '/privacy']
+    const publicRoutes = ['/', '/login', '/signup', '/forgot-password', '/reset-password', '/pricing', '/features', '/solutions', '/terms', '/privacy', '/join']
     const isPublicRoute = publicRoutes.includes(pathname) ||
         pathname.startsWith('/join/') ||
         pathname.startsWith('/auth/') ||

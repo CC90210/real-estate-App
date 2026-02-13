@@ -31,27 +31,38 @@ export async function POST(req: Request) {
 
         // 3. Create Connect Account if none exists
         if (!stripeAccountId) {
-            const account = await stripe.accounts.create({
-                type: 'express',
-                country: 'US',
-                email: (profile.companies as any)?.email || user.email,
-                capabilities: {
-                    card_payments: { requested: true },
-                    transfers: { requested: true },
-                },
-                business_profile: {
-                    name: (profile.companies as any)?.name,
-                    url: process.env.NEXT_PUBLIC_APP_URL,
-                },
-            })
+            try {
+                const account = await stripe.accounts.create({
+                    type: 'express',
+                    country: 'US',
+                    email: (profile.companies as any)?.email || user.email,
+                    capabilities: {
+                        card_payments: { requested: true },
+                        transfers: { requested: true },
+                    },
+                    business_profile: {
+                        name: (profile.companies as any)?.name,
+                        url: process.env.NEXT_PUBLIC_APP_URL,
+                    },
+                    // Add tos_acceptance if possible, or leave it for the onboarding flow
+                })
 
-            stripeAccountId = account.id
+                stripeAccountId = account.id
 
-            // Store in DB
-            await supabase.from('stripe_connect_accounts').insert({
-                company_id: profile.company_id,
-                stripe_account_id: stripeAccountId,
-            })
+                // Store in DB
+                await supabase.from('stripe_connect_accounts').insert({
+                    company_id: profile.company_id,
+                    stripe_account_id: stripeAccountId,
+                })
+            } catch (err: any) {
+                // HANDLE SPECIFIC PLATFORM ERROR
+                if (err.message.includes('responsibilities of managing losses')) {
+                    return NextResponse.json({
+                        error: 'Stripe Platform Profile Incomplete: Please log in to your Stripe Dashboard and complete the "Connect Platform Profile" settings to accept responsibility for managing losses.'
+                    }, { status: 400 })
+                }
+                throw err
+            }
         }
 
         // 4. Create Account Link for onboarding

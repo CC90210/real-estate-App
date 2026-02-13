@@ -91,7 +91,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
                 // Auto-onboarding redirect for logged-in users with no profile
                 const path = window.location.pathname;
-                const isNavigatingAuth = path.startsWith('/login') || path.startsWith('/signup') || path.startsWith('/auth');
+                const isNavigatingAuth = path.startsWith('/login') || path.startsWith('/signup') || path.startsWith('/auth') || path.startsWith('/join');
 
                 if (!profileData && !path.startsWith('/onboarding') && !isNavigatingAuth) {
                     window.location.href = '/onboarding';

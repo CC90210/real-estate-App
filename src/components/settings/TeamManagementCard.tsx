@@ -82,8 +82,8 @@ export function TeamManagementCard() {
         }
     };
 
-    const copyInviteLink = (token: string) => {
-        const link = `${window.location.origin}/join?token=${token}`;
+    const copyInviteLink = (token: string, email: string) => {
+        const link = `${window.location.origin}/join?token=${token}&email=${encodeURIComponent(email)}`;
         navigator.clipboard.writeText(link);
         toast.success("Invite link copied");
     };
@@ -164,7 +164,7 @@ export function TeamManagementCard() {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2 ml-13 sm:ml-0 shrink-0">
-                                            <Button size="sm" variant="ghost" className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => copyInviteLink(invite.token)}>
+                                            <Button size="sm" variant="ghost" className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => copyInviteLink(invite.token, invite.email)}>
                                                 Copy Link
                                             </Button>
                                             <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-full" onClick={() => revokeInvite(invite.id)}>

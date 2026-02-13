@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Loader2, ArrowRight, ShieldCheck, Building2, User } from 'lucide-react';
 import Image from 'next/image';
@@ -19,12 +20,14 @@ interface InvitationDetails {
     company_name: string;
     company_logo_url: string;
     status: string;
+    expires_at?: string;
 }
 
 function JoinPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const token = searchParams.get('token');
+    const emailParam = searchParams.get('email'); // Optional fallback for UI display
     const supabase = createClient();
 
     const [currentUser, setCurrentUser] = useState<any>(null);
@@ -167,45 +170,54 @@ function JoinPageContent() {
 
                 <div className="relative z-10 flex-1 flex flex-col justify-between">
                     <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 bg-indigo-500 rounded-lg flex items-center justify-center">
-                            <span className="font-bold text-white">P</span>
+                        <div className="h-10 w-10 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                            <Building2 className="h-6 w-6 text-white" />
                         </div>
-                        <span className="font-bold text-lg tracking-wide">PropFlow OS</span>
+                        <span className="font-black text-xl tracking-tight uppercase">PropFlow OS</span>
                     </div>
 
-                    <div className="space-y-6 max-w-lg">
-                        <h1 className="text-5xl font-black leading-tight">
-                            Join <span className="text-indigo-400">{details.company_name}</span> on PropFlow.
+                    <div className="space-y-8 max-w-lg">
+                        <Badge className="bg-white/10 text-white border-white/20 px-4 py-1.5 rounded-full backdrop-blur-md font-black uppercase text-[10px] tracking-widest">
+                            Official Invitation
+                        </Badge>
+                        <h1 className="text-6xl font-black leading-[0.9] tracking-tighter">
+                            Grow with <br />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-blue-200">{details.company_name}</span>
                         </h1>
-                        <p className="text-slate-300 text-lg font-medium leading-relaxed">
-                            You've been invited to collaborate as an <span className="text-white font-bold uppercase tracking-wider">{details.role}</span>.
-                            Accept this invitation to access the workspace and start managing properties.
+                        <p className="text-slate-300 text-lg font-medium leading-relaxed max-w-md">
+                            Collaborate as an <span className="text-white font-black underline decoration-indigo-500 underline-offset-4">{details.role}</span> within a world-class real estate infrastructure.
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-4 text-xs font-bold text-slate-500 uppercase tracking-widest">
-                        <span>Secure Invitation</span>
-                        <span>•</span>
-                        <span>Valid for 7 Days</span>
+                    <div className="flex items-center gap-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">
+                        <span>Secure P2P Invitation</span>
+                        <div className="w-1 h-1 bg-slate-700 rounded-full" />
+                        <span>Valid: {new Date(details?.expires_at || Date.now() + 604800000).toLocaleDateString()}</span>
                     </div>
                 </div>
             </div>
 
             {/* Form Side */}
-            <div className="flex items-center justify-center p-6 lg:p-12 bg-white">
-                <div className="w-full max-w-md space-y-8">
-                    <div className="text-center lg:text-left">
+            <div className="flex items-center justify-center p-6 lg:p-12 bg-white relative">
+                <div className="absolute top-0 right-0 p-8">
+                    <Link href="/login" className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-colors">
+                        Existing Member? Sign In
+                    </Link>
+                </div>
+
+                <div className="w-full max-w-md space-y-10">
+                    <div className="text-center lg:text-left space-y-4">
                         {details.company_logo_url ? (
-                            <div className="h-16 w-16 mb-6 mx-auto lg:mx-0 relative overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm flex items-center justify-center">
-                                <img src={details.company_logo_url} alt={details.company_name} className="object-contain p-2" />
+                            <div className="h-20 w-20 mb-8 mx-auto lg:mx-0 relative overflow-hidden rounded-[2rem] border-2 border-slate-50 bg-white shadow-2xl flex items-center justify-center p-4">
+                                <img src={details.company_logo_url} alt={details.company_name} className="object-contain" />
                             </div>
                         ) : (
-                            <div className="h-16 w-16 mb-6 mx-auto lg:mx-0 bg-indigo-50 rounded-2xl flex items-center justify-center">
-                                <Building2 className="w-8 h-8 text-indigo-600" />
+                            <div className="h-20 w-20 mb-8 mx-auto lg:mx-0 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-[2rem] flex items-center justify-center shadow-xl border border-white">
+                                <Building2 className="w-10 h-10 text-indigo-600" />
                             </div>
                         )}
-                        <h2 className="text-3xl font-black text-slate-900">Set up your profile</h2>
-                        <p className="text-slate-500 mt-2 font-medium">Create your account to join the workspace.</p>
+                        <h2 className="text-4xl font-black text-slate-900 tracking-tight">Claim your seat.</h2>
+                        <p className="text-slate-500 font-bold">You've been added to the {details.company_name} roster.</p>
                     </div>
 
                     {currentUser && !isMatchingEmail ? (
