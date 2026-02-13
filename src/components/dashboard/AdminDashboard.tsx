@@ -359,9 +359,12 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                                                 <span className="font-bold text-slate-900">{activity.user?.full_name || 'System'}</span>
                                                 <span className="text-slate-500"> {formatAction(activity.action)} </span>
                                                 <span className="font-semibold" style={{ color: colors.primary }}>
-                                                    {activity.details?.title || activity.entity_type}
+                                                    {activity.details?.title || activity.details?.description || activity.entity_type}
                                                 </span>
                                             </p>
+                                            {activity.details?.description && activity.details?.title && (
+                                                <p className="text-xs text-slate-400 leading-tight">{activity.details.description}</p>
+                                            )}
                                             <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
                                                 {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
                                             </p>

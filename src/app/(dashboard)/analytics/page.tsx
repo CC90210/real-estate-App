@@ -132,21 +132,13 @@ export default function AnalyticsPage() {
         queryFn: async () => {
             if (!companyId.companyId) return null
 
-            const [properties, applications, leases, maintenance, invoices, showings] = await Promise.all([
-                supabase.from('properties').select('status, rent, created_at').eq('company_id', companyId.companyId),
+            const [properties, applications] = await Promise.all([
+                supabase.from('properties').select('status, created_at').eq('company_id', companyId.companyId),
                 supabase.from('applications').select('status, created_at').eq('company_id', companyId.companyId),
-                supabase.from('leases').select('status, rent_amount, end_date, created_at').eq('company_id', companyId.companyId),
-                supabase.from('maintenance_requests').select('status, priority, category, created_at').eq('company_id', companyId.companyId),
-                supabase.from('invoices').select('status, total, created_at').eq('company_id', companyId.companyId),
-                supabase.from('showings').select('status, created_at').eq('company_id', companyId.companyId),
             ])
 
             const props = properties.data || []
             const apps = applications.data || []
-            const leasesData = leases.data || []
-            const maint = maintenance.data || []
-            const inv = invoices.data || []
-            const shows = showings.data || []
 
             // Property status breakdown
             const propByStatus = {
@@ -158,15 +150,19 @@ export default function AnalyticsPage() {
 
             // App pipeline
             const appPipeline = {
-                new: apps.filter(a => a.status === 'new').length,
+                new: apps.filter(a => a.status === 'new' || a.status === 'submitted').length,
                 screening: apps.filter(a => a.status === 'screening').length,
                 approved: apps.filter(a => a.status === 'approved').length,
-                denied: apps.filter(a => a.status === 'denied').length,
+                denied: apps.filter(a => prevStatus(a.status)).length, // Simplified catch-all
             }
 
             return {
                 propByStatus,
                 appPipeline,
+            }
+
+            function prevStatus(s: string) {
+                return s === 'denied' || s === 'rejected' || s === 'cancelled';
             }
         },
         enabled: !!companyId.companyId,

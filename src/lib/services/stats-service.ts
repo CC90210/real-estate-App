@@ -84,7 +84,7 @@ export class StatsService {
                 id,
                 action,
                 entity_type,
-                metadata,
+                details,
                 created_at,
                 user:profiles(full_name, avatar_url, email)
             `)
@@ -100,7 +100,6 @@ export class StatsService {
 
         return (data || []).map(item => ({
             ...item,
-            details: item.metadata,
             user: Array.isArray(item.user) ? item.user[0] : item.user
         })) as any[];
     }
