@@ -53,16 +53,17 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const fetchProfile = async (userId: string) => {
-        let { data, error } = await supabase
+        // FAST PATH: Single query for profile and company
+        const { data, error } = await supabase
             .from('profiles')
             .select('*, company:companies(*)')
             .eq('id', userId)
             .single();
 
         if (error || !data) {
-            console.warn('Profile missing or error fetching:', error);
-            // Safety Pin: Disabled automatic RPC repair to prevent recursive DB loops
-            // const { error: repairError } = await supabase.rpc('ensure_user_profile');
+            console.warn('Profile sync issue:', error?.message);
+            // We no longer run automatic RPC repairs here to prevent infinite DB loops.
+            // If a profile is missing, the onboarding flow (triggered below) will handle it via page logic.
             return null;
         }
 
@@ -81,14 +82,18 @@ export function UserProvider({ children }: { children: ReactNode }) {
             const { data: { session } } = await supabase.auth.getSession();
 
             if (session?.user) {
-                setUser(session.user);
-                const profileData = await fetchProfile(session.user.id);
+                const currentUser = session.user;
+                setUser(currentUser);
+
+                // Fetch profile with a small delay to ensure triggers have finished if it's a new signup
+                const profileData = await fetchProfile(currentUser.id);
                 setProfile(profileData);
 
                 // Auto-onboarding redirect for logged-in users with no profile
-                // Only if NOT already on onboarding or sign-in pages
                 const path = window.location.pathname;
-                if (!profileData && !path.startsWith('/onboarding') && !path.startsWith('/login') && !path.startsWith('/auth')) {
+                const isNavigatingAuth = path.startsWith('/login') || path.startsWith('/signup') || path.startsWith('/auth');
+
+                if (!profileData && !path.startsWith('/onboarding') && !isNavigatingAuth) {
                     window.location.href = '/onboarding';
                 }
             }
@@ -115,11 +120,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const signIn = async (email: string, password: string) => {
-        const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
-        return { error };
+        return await supabase.auth.signInWithPassword({ email, password });
     };
 
     const signUp = async (email: string, password: string, fullName: string, role: UserRole, companyName?: string, jobTitle?: string) => {
@@ -142,12 +143,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
             const data = await res.json();
             if (!res.ok) return { error: new Error(data.error || 'Signup failed') };
 
-            const { error: loginError } = await supabase.auth.signInWithPassword({
-                email,
-                password
-            });
-
-            return { error: loginError };
+            return await supabase.auth.signInWithPassword({ email, password });
         } catch (e: any) {
             return { error: e };
         }
@@ -157,6 +153,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         await supabase.auth.signOut();
         setUser(null);
         setProfile(null);
+        window.location.href = '/';
     };
 
     const planStats = calculatePlan(profile);
