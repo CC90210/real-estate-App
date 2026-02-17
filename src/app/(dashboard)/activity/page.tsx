@@ -1,8 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { createClient } from '@/lib/supabase/client'
 import { formatDistanceToNow } from 'date-fns'
 import {
     Activity,
@@ -16,7 +14,9 @@ import {
     Search,
     Filter,
     Loader2,
-    BookOpen
+    BookOpen,
+    AlertCircle,
+    RefreshCw
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import {
@@ -26,26 +26,16 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { StatsService } from '@/lib/services/stats-service'
-import { useAuth } from '@/lib/hooks/useAuth'
+import { useActivity } from '@/hooks/use-activity'
 
 export default function ActivityPage() {
-    const supabase = createClient()
-    const { company, profile } = useAuth()
-    const companyId = company?.id || profile?.company_id
     const [search, setSearch] = useState('')
     const [filter, setFilter] = useState<string>('all')
-    const statsService = new StatsService(supabase)
 
-    const { data: activities, isLoading } = useQuery({
-        queryKey: ['activity-feed', companyId, filter],
-        queryFn: async () => {
-            if (!companyId) return []
-            return statsService.getRecentActivity(companyId, 100, filter)
-        },
-        enabled: !!companyId,
-    })
+    // Uses the SAME shared hook as the dashboard — ensures data consistency
+    const { data: activities, isLoading, isError, error, refetch } = useActivity(100, filter)
 
     const getIcon = (type: string) => {
         const t = type.toLowerCase()
@@ -78,6 +68,7 @@ export default function ActivityPage() {
 
     const filteredActivities = activities?.filter(a => {
         const searchText = search.toLowerCase()
+        if (!searchText) return true
         const actionMatch = a.action.toLowerCase().includes(searchText)
         const entityMatch = a.entity_type.toLowerCase().includes(searchText)
         const userMatch = a.user?.full_name?.toLowerCase().includes(searchText)
@@ -127,7 +118,21 @@ export default function ActivityPage() {
                 </div>
             </div>
 
-            {isLoading ? (
+            {isError ? (
+                <div className="flex flex-col items-center justify-center p-20 bg-white border border-dashed border-red-200 rounded-[3rem] text-center">
+                    <div className="h-20 w-20 bg-red-50 rounded-full flex items-center justify-center mb-6">
+                        <AlertCircle className="h-8 w-8 text-red-400" />
+                    </div>
+                    <h3 className="text-xl font-black text-slate-900 mb-2">Failed to load activity</h3>
+                    <p className="text-slate-500 font-medium max-w-xs mb-6">
+                        {(error as Error)?.message || 'An error occurred while fetching activity data.'}
+                    </p>
+                    <Button onClick={() => refetch()} variant="outline" className="gap-2">
+                        <RefreshCw className="h-4 w-4" />
+                        Try Again
+                    </Button>
+                </div>
+            ) : isLoading ? (
                 <div className="space-y-4">
                     {[...Array(6)].map((_, i) => (
                         <div key={i} className="h-24 bg-slate-50 border border-slate-100 rounded-3xl animate-pulse" />
@@ -175,8 +180,8 @@ export default function ActivityPage() {
 
                                 <div className="flex items-center gap-2 mt-4">
                                     <div className="h-5 w-5 bg-slate-100 rounded-full flex items-center justify-center overflow-hidden">
-                                        {activity.user?.avatar_url ? (
-                                            <img src={activity.user.avatar_url} alt="" className="h-full w-full object-cover" />
+                                        {(activity.user as any)?.avatar_url ? (
+                                            <img src={(activity.user as any).avatar_url} alt="" className="h-full w-full object-cover" />
                                         ) : (
                                             <Users className="h-3 w-3 text-slate-400" />
                                         )}

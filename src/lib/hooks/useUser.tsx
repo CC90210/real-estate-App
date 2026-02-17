@@ -53,21 +53,35 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const fetchProfile = async (userId: string) => {
-        // FAST PATH: Single query for profile and company
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('*, company:companies(*)')
-            .eq('id', userId)
-            .single();
+        try {
+            // FAST PATH: Single query for profile and company
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*, company:companies(*)')
+                .eq('id', userId)
+                .single();
 
-        if (error || !data) {
-            console.warn('Profile sync issue:', error?.message);
-            // We no longer run automatic RPC repairs here to prevent infinite DB loops.
-            // If a profile is missing, the onboarding flow (triggered below) will handle it via page logic.
+            if (error) {
+                // Detect RLS recursion error — this is the critical error we're fixing
+                if (error.message?.includes('recursion') || error.message?.includes('infinite')) {
+                    console.error('[CRITICAL] RLS recursion detected on profiles table. Run the emergency SQL fix in Supabase SQL Editor.');
+                    console.error('See: supabase_emergency_rls_fix.sql');
+                }
+                console.warn('Profile sync issue:', error.message);
+                return null;
+            }
+
+            if (!data) {
+                console.warn('Profile not found for user:', userId);
+                return null;
+            }
+
+            return data;
+        } catch (err) {
+            // Catch any unexpected errors to prevent app crash
+            console.error('Profile fetch failed unexpectedly:', err);
             return null;
         }
-
-        return data;
     };
 
     const refreshProfile = async () => {

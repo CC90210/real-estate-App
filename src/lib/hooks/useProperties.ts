@@ -241,9 +241,10 @@ export function useCreateProperty() {
 
 export function useLandlords() {
     const supabase = createClient();
+    const { companyId } = useCompanyId();
 
     return useQuery({
-        queryKey: ['landlords'],
+        queryKey: ['landlords', companyId],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('landlords')
@@ -251,13 +252,12 @@ export function useLandlords() {
                 .order('name');
 
             if (error) {
-                const { data: profiles } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('role', 'landlord');
-                return profiles || [];
+                console.error('Failed to fetch landlords:', error.message);
+                return [];
             }
             return data;
         },
+        enabled: !!companyId,
     });
 }
+
