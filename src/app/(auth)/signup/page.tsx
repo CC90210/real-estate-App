@@ -74,7 +74,7 @@ export default function SignupPage() {
                 duration: 4000
             });
 
-            router.push('/onboarding');
+            router.push('/dashboard');
         } catch (error: any) {
             console.error('Signup error:', error)
             toast.error('Signup Failed', {

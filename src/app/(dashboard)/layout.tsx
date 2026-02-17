@@ -23,14 +23,10 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     const { open, setOpen } = useQuickFind()
     const { profile, company, role, isLoading } = useAuth()
 
-    // Protected Route Logic (Fallback to middleware)
+    // Role-based route guard (tenant goes to tenant dashboard)
     useEffect(() => {
-        if (!isLoading) {
-            if (!profile) {
-                router.push('/onboarding')
-            } else if ((role as string) === 'tenant') {
-                router.push('/tenant/dashboard')
-            }
+        if (!isLoading && profile && (role as string) === 'tenant') {
+            router.push('/tenant/dashboard')
         }
     }, [profile, role, isLoading, router])
 
