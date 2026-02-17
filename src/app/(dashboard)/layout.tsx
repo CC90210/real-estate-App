@@ -21,7 +21,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 function DashboardContent({ children }: { children: React.ReactNode }) {
     const router = useRouter()
     const { open, setOpen } = useQuickFind()
-    const { profile, company, role, isLoading } = useAuth()
+    const { profile, company, role, isLoading, isAuthenticated } = useAuth()
 
     // Role-based route guard (tenant goes to tenant dashboard)
     useEffect(() => {
@@ -30,7 +30,27 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         }
     }, [profile, role, isLoading, router])
 
-    if (isLoading) return null
+    // Redirect to login if not authenticated after loading completes
+    useEffect(() => {
+        if (!isLoading && !isAuthenticated) {
+            window.location.href = '/login'
+        }
+    }, [isLoading, isAuthenticated])
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-[#fcfdfe]">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
+                    <p className="text-sm text-gray-500">Loading your dashboard...</p>
+                </div>
+            </div>
+        )
+    }
+
+    if (!isAuthenticated) {
+        return null
+    }
 
     return (
         <div className="min-h-screen bg-[#fcfdfe]">

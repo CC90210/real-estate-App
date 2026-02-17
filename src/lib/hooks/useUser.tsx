@@ -78,11 +78,18 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     const fetchProfile = useCallback(async (userId: string) => {
         try {
+            // Add a timeout so profile fetch never hangs forever
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 8000);
+
             const { data, error } = await supabase
                 .from('profiles')
                 .select('*, company:companies(*)')
                 .eq('id', userId)
-                .single();
+                .single()
+                .abortSignal(controller.signal);
+
+            clearTimeout(timeout);
 
             if (error) {
                 if (error.message?.includes('recursion') || error.message?.includes('infinite') || error.message?.includes('policy')) {
@@ -105,7 +112,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
             }
 
             return data;
-        } catch (err) {
+        } catch (err: any) {
+            // Handle abort (timeout)
+            if (err?.name === 'AbortError') {
+                console.warn('Profile fetch timed out for user:', userId);
+                return null;
+            }
             console.error('Profile fetch failed unexpectedly:', err);
             return null;
         }
@@ -120,6 +132,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         let mounted = true;
+        let initialSessionHandled = false;
+
+        // Safety timeout: ALWAYS stop loading after 10 seconds no matter what
+        const safetyTimeout = setTimeout(() => {
+            if (mounted && isLoading) {
+                console.warn('[Auth] Safety timeout: forcing isLoading=false after 10s');
+                setIsLoading(false);
+            }
+        }, 10000);
 
         const initAuth = async () => {
             try {
@@ -132,8 +153,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 }
             } catch (err) {
                 console.error('Auth initialization failed:', err);
+            } finally {
+                if (mounted) {
+                    setIsLoading(false);
+                    initialSessionHandled = true;
+                }
             }
-            if (mounted) setIsLoading(false);
         };
 
         initAuth();
@@ -141,10 +166,17 @@ export function UserProvider({ children }: { children: ReactNode }) {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
                 if (!mounted) return;
+
+                // Skip the INITIAL_SESSION event — initAuth already handles it
+                if (event === 'INITIAL_SESSION') return;
+
                 if (session?.user) {
                     setUser(session.user);
-                    const profileData = await fetchProfile(session.user.id);
-                    if (mounted) setProfile(profileData);
+                    // Only re-fetch profile on actual auth changes, not initial load
+                    if (initialSessionHandled) {
+                        const profileData = await fetchProfile(session.user.id);
+                        if (mounted) setProfile(profileData);
+                    }
                 } else {
                     setUser(null);
                     setProfile(null);
@@ -155,6 +187,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
         return () => {
             mounted = false;
+            clearTimeout(safetyTimeout);
             subscription.unsubscribe();
         };
     }, [supabase, fetchProfile]);

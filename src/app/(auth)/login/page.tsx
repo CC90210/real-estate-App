@@ -29,13 +29,21 @@ function LoginForm() {
     // Client-side redirect if already authenticated
     useEffect(() => {
         if (!authLoading && isAuthenticated) {
-            router.push(redirectTo)
+            window.location.href = redirectTo
         }
-    }, [isAuthenticated, authLoading, router, redirectTo])
+    }, [isAuthenticated, authLoading, redirectTo])
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
         setIsLoading(true)
+
+        // Safety timeout: never let the button spin forever
+        const safetyTimeout = setTimeout(() => {
+            setIsLoading(false)
+            toast.error('Sign-in is taking too long', {
+                description: 'Please check your connection and try again.'
+            })
+        }, 15000)
 
         try {
             // Sign in with Supabase Auth
@@ -46,18 +54,19 @@ function LoginForm() {
 
             if (error) throw error
 
-            // SUCCESS — go straight to dashboard. No profile check.
-            // The dashboard itself will handle any profile issues gracefully.
+            clearTimeout(safetyTimeout)
+
+            // SUCCESS — navigate using window.location for a clean full reload
+            // This ensures the middleware picks up the new auth cookies properly
             toast.success('Welcome back!')
-            router.push(redirectTo)
-            router.refresh()
+            window.location.replace(redirectTo)
 
         } catch (error: any) {
+            clearTimeout(safetyTimeout)
             console.error('Login error:', error)
             toast.error('Login failed', {
                 description: error.message || 'Please check your credentials'
             })
-        } finally {
             setIsLoading(false)
         }
     }
