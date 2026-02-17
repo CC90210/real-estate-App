@@ -47,8 +47,8 @@ export async function POST(req: Request) {
     }
 
     // Validate and transform rows
-    const properties = []
-    const validationErrors = []
+    const properties: Record<string, any>[] = []
+    const validationErrors: { row: number; error: string }[] = []
 
     for (let i = 0; i < rows.length; i++) {
         const row = rows[i] as any

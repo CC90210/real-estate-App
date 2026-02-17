@@ -51,7 +51,7 @@ export async function generateInvoicePDF({ companyId, invoiceId }: GenerateInvoi
         }
 
         // 3. Map items WITHOUT division (DB stores values as displayed in UI or as integers, based on web-ui code)
-        let pdfItems = []
+        let pdfItems: { description: string; reference: string; quantity: number; rate: number; amount: number }[] = []
 
         if (tableItems && tableItems.length > 0) {
             pdfItems = tableItems.map(item => ({

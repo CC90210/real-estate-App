@@ -2,13 +2,12 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 /**
- * PROPFLOW EDGE INFRASTRUCTURE (V8 - TOTAL RECOVERY & HARDENED)
- * This middleware is the "Gold Standard" for production stability.
- * It ensures public routes are lightning fast and protected routes are secure.
- * 504 Gateway Timeouts and CSP 'Failed to Fetch' errors are permanently resolved.
+ * PROPFLOW EDGE INFRASTRUCTURE (V9 - PROXY MIGRATION)
+ * Migrated from deprecated middleware.ts to proxy.ts for Next.js 16.
+ * Ensures public routes are lightning fast and protected routes are secure.
  */
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl
 
     // 1. FAST PATH: Static Assets & Internal Next.js requests
@@ -28,8 +27,7 @@ export async function middleware(request: NextRequest) {
         pathname.startsWith('/auth/') ||
         pathname.startsWith('/blog')
 
-    // 3. PERFORMANCE OPTIMIZATION: Bypassing session checks for ALL public and auth routes
-    // This allows the /login and /signup pages to load instantly and handle their own logic.
+    // 3. PERFORMANCE OPTIMIZATION: Bypass session checks for public routes
     if (isPublicRoute) {
         return applySecurityHeaders(NextResponse.next())
     }
@@ -78,7 +76,6 @@ export async function middleware(request: NextRequest) {
 
 /**
  * Apply Production-Grade Security Headers
- * Inclusive CSP ensures Supabase, Vercel, and Fonts work perfectly.
  */
 function applySecurityHeaders(response: NextResponse) {
     const headers = response.headers
@@ -89,7 +86,6 @@ function applySecurityHeaders(response: NextResponse) {
     headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
     headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload')
 
-    // HARDENED CONTENT SECURITY POLICY
     const csp = [
         "default-src 'self' https://*.supabase.co;",
         "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://va.vercel-scripts.com https://*.supabase.co;",
