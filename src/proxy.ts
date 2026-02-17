@@ -2,43 +2,33 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 /**
- * PROPFLOW EDGE INFRASTRUCTURE (V9 - PROXY MIGRATION)
- * Migrated from deprecated middleware.ts to proxy.ts for Next.js 16.
- * Ensures public routes are lightning fast and protected routes are secure.
+ * PROPFLOW EDGE INFRASTRUCTURE (V10 - AUTH & SECURITY SYNC)
+ * Migrated to proxy.ts as required by production build environment.
+ * Handles:
+ * 1. Supabase Session Refresh (Server-side)
+ * 2. Protected Route Guarding
+ * 3. Enterprise Security Headers & CSP
  */
 
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl
-
-    // 1. FAST PATH: Static Assets & Internal Next.js requests
-    if (
-        pathname.includes('.') ||
-        pathname.startsWith('/_next') ||
-        pathname.startsWith('/api') ||
-        pathname === '/favicon.ico'
-    ) {
-        return NextResponse.next()
-    }
-
-    // 2. DEFINE PUBLIC ACCESS MAP
-    const publicRoutes = ['/', '/login', '/signup', '/forgot-password', '/reset-password', '/pricing', '/features', '/solutions', '/terms', '/privacy', '/join']
-    const isPublicRoute = publicRoutes.includes(pathname) ||
-        pathname.startsWith('/join/') ||
-        pathname.startsWith('/auth/') ||
-        pathname.startsWith('/blog')
-
-    // 3. PERFORMANCE OPTIMIZATION: Bypass session checks for public routes
-    if (isPublicRoute) {
-        return applySecurityHeaders(NextResponse.next())
-    }
-
-    // 4. SUPABASE AUTH HANDLER (ONLY for protected routes e.g. /dashboard)
     let response = NextResponse.next({
         request: {
             headers: request.headers,
         },
     })
 
+    // 1. FAST PATH: Static Assets & Internal Next.js requests
+    if (
+        pathname.includes('.') ||
+        pathname.startsWith('/_next') ||
+        pathname.startsWith('/api/auth') ||
+        pathname === '/favicon.ico'
+    ) {
+        return applySecurityHeaders(NextResponse.next())
+    }
+
+    // 2. SUPABASE AUTH HANDLER
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -61,14 +51,24 @@ export async function proxy(request: NextRequest) {
         }
     )
 
-    // Run session check ONLY for protected dashboard routes
-    const { data: { session } } = await supabase.auth.getSession()
+    // REFRESH SESSION: Vital for SSR consistency
+    const { data: { user } } = await supabase.auth.getUser()
 
-    // 5. PROTECTED ROUTE REDIRECTION
-    if (!session) {
+    // 3. DEFINE PROTECTION MAP
+    const protectedPaths = ['/dashboard', '/properties', '/tenants', '/maintenance', '/settings', '/applications', '/leases', '/financials', '/reports', '/documents']
+    const isProtectedRoute = protectedPaths.some(path => pathname.startsWith(path))
+
+    // 4. ROUTE GUARDING
+    if (isProtectedRoute && !user) {
         const redirectUrl = new URL('/login', request.url)
         redirectUrl.searchParams.set('redirect', pathname)
-        return NextResponse.redirect(redirectUrl)
+        return applySecurityHeaders(NextResponse.redirect(redirectUrl))
+    }
+
+    // Redirect logged-in users away from auth pages
+    const isAuthPage = pathname === '/login' || pathname === '/signup'
+    if (isAuthPage && user) {
+        return applySecurityHeaders(NextResponse.redirect(new URL('/dashboard', request.url)))
     }
 
     return applySecurityHeaders(response)
@@ -105,6 +105,12 @@ function applySecurityHeaders(response: NextResponse) {
 
 export const config = {
     matcher: [
-        '/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp|css|js|woff2?|ico|csv|txt)$).*)',
+        /*
+         * Match all request paths except for the ones starting with:
+         * - _next/static (static files)
+         * - _next/image (image optimization files)
+         * - favicon.ico (favicon file)
+         */
+        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
     ],
 }
