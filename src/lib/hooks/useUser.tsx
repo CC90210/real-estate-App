@@ -62,10 +62,20 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 .single();
 
             if (error) {
-                // Detect RLS recursion error — this is the critical error we're fixing
-                if (error.message?.includes('recursion') || error.message?.includes('infinite')) {
+                // Detect RLS recursion error — return a minimal fallback profile
+                // to prevent redirect loops to /onboarding which would also fail
+                if (error.message?.includes('recursion') || error.message?.includes('infinite') || error.message?.includes('policy')) {
                     console.error('[CRITICAL] RLS recursion detected on profiles table. Run the emergency SQL fix in Supabase SQL Editor.');
                     console.error('See: supabase_emergency_rls_fix.sql');
+                    // Return a minimal "stub" profile so the app doesn't redirect to onboarding
+                    // The dashboard will show limited data but won't be stuck in a loop
+                    return {
+                        id: userId,
+                        email: null,
+                        company_id: 'pending',
+                        role: 'admin',
+                        _rlsError: true, // Internal flag
+                    } as any;
                 }
                 console.warn('Profile sync issue:', error.message);
                 return null;

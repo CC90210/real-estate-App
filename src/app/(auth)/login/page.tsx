@@ -46,21 +46,33 @@ function LoginForm() {
 
             if (error) throw error
 
-            // Check if profile exists
-            const { data: profile, error: profileError } = await supabase
-                .from('profiles')
-                .select('id, company_id')
-                .eq('id', data.user.id)
-                .single()
+            // Check if profile exists — but DON'T let a DB error block login
+            let hasProfile = false
+            try {
+                const { data: profile, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('id, company_id')
+                    .eq('id', data.user.id)
+                    .single()
 
-            if (profileError || !profile) {
-                // No profile - go to onboarding
-                router.push('/onboarding')
-                return
+                if (!profileError && profile?.company_id) {
+                    hasProfile = true
+                } else if (profileError && (
+                    profileError.message.includes('recursion') ||
+                    profileError.message.includes('permission') ||
+                    profileError.message.includes('RLS')
+                )) {
+                    // RLS/DB error — don't treat as "no profile", just go to dashboard
+                    console.warn('Profile check hit RLS error, proceeding to dashboard:', profileError.message)
+                    hasProfile = true
+                }
+            } catch (profileCheckErr) {
+                // If profile check crashes, still proceed to dashboard
+                console.warn('Profile check failed, proceeding to dashboard:', profileCheckErr)
+                hasProfile = true
             }
 
-            if (!profile.company_id) {
-                // No company - go to onboarding
+            if (!hasProfile) {
                 router.push('/onboarding')
                 return
             }

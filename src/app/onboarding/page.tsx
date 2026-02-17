@@ -51,6 +51,18 @@ export default function OnboardingPage() {
                     .maybeSingle()
 
                 if (profileError && !profileError.message.includes('aborted')) {
+                    // If it's an RLS/recursion error, DON'T show error page — just go to dashboard
+                    // The dashboard has its own error handling and will work once RLS is fixed
+                    if (
+                        profileError.message.includes('recursion') ||
+                        profileError.message.includes('permission') ||
+                        profileError.message.includes('RLS') ||
+                        profileError.message.includes('policy')
+                    ) {
+                        console.warn('Onboarding: RLS error hit, redirecting to dashboard:', profileError.message)
+                        router.push('/dashboard')
+                        return
+                    }
                     throw profileError
                 }
 
