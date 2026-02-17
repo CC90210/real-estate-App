@@ -41,39 +41,90 @@ export class StatsService {
     }
 
     async getDashboardStats(companyId: string, userId?: string, isLandlord?: boolean): Promise<DashboardStats & { recentActivity: ActivityItem[] }> {
-        // High-performance single database call
+        // Try the optimized RPC first
         const { data, error } = await this.supabase.rpc('get_enhanced_dashboard_stats', {
             p_company_id: companyId,
             p_user_id: userId,
             p_is_landlord: isLandlord
         });
 
-        if (error || !data) {
-            console.error('Core stats fetch failed, falling back to manual counts...', error);
+        if (!error && data && typeof data === 'object' && data.totalProperties !== undefined) {
             return {
-                totalProperties: 0,
-                availableProperties: 0,
-                rentedProperties: 0,
-                totalApplications: 0,
-                pendingApplications: 0,
-                totalMonthlyRevenue: 0,
-                monthlyRevenue: 0,
-                propertyTrend: null,
-                applicationTrend: null,
-                teamMembers: 1,
-                totalAreas: 0,
-                totalBuildings: 0,
-                openMaintenance: 0,
-                upcomingShowings: 0,
-                recentActivity: []
+                ...data,
+                recentActivity: data.recent_activity || [],
+                propertyTrend: this.calcTrend(data.currentWeekProps || 0, data.lastWeekProps || 0),
+                applicationTrend: this.calcTrend(data.currentWeekApps || 0, data.lastWeekApps || 0)
             };
         }
 
+        // FALLBACK: RPC missing or failed — query tables directly
+        console.warn('Dashboard RPC unavailable, using manual counts. Error:', error?.message);
+
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+        const [
+            propertiesRes,
+            availableRes,
+            rentedRes,
+            applicationsRes,
+            pendingAppsRes,
+            invoicesRes,
+            teamRes,
+            areasRes,
+            buildingsRes,
+            maintenanceRes,
+            showingsRes,
+            activityRes
+        ] = await Promise.all([
+            this.supabase.from('properties').select('id', { count: 'exact', head: true }).eq('company_id', companyId),
+            this.supabase.from('properties').select('id', { count: 'exact', head: true }).eq('company_id', companyId).eq('status', 'available'),
+            this.supabase.from('properties').select('id', { count: 'exact', head: true }).eq('company_id', companyId).eq('status', 'rented'),
+            this.supabase.from('applications').select('id', { count: 'exact', head: true }).eq('company_id', companyId),
+            this.supabase.from('applications').select('id', { count: 'exact', head: true }).eq('company_id', companyId).eq('status', 'pending'),
+            // Fetch paid invoices - use total field (not amount) and check both paid_at and updated_at
+            this.supabase.from('invoices').select('total, paid_at, updated_at, created_at').eq('company_id', companyId).eq('status', 'paid'),
+            this.supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('company_id', companyId),
+            Promise.resolve(this.supabase.from('areas').select('id', { count: 'exact', head: true }).eq('company_id', companyId)).catch(() => ({ count: 0, data: null, error: null })),
+            Promise.resolve(this.supabase.from('buildings').select('id', { count: 'exact', head: true }).eq('company_id', companyId)).catch(() => ({ count: 0, data: null, error: null })),
+            Promise.resolve(this.supabase.from('maintenance_requests').select('id', { count: 'exact', head: true }).eq('company_id', companyId).in('status', ['open', 'in_progress'])).catch(() => ({ count: 0, data: null, error: null })),
+            Promise.resolve(this.supabase.from('showings').select('id', { count: 'exact', head: true }).eq('company_id', companyId).gte('showing_date', now.toISOString())).catch(() => ({ count: 0, data: null, error: null })),
+            Promise.resolve(this.supabase.from('activity_log').select('id, action, entity_type, details, created_at, user:profiles(full_name, avatar_url, email)').eq('company_id', companyId).order('created_at', { ascending: false }).limit(10)).catch(() => ({ data: [], error: null })),
+        ]);
+
+        // Calculate monthly revenue from paid invoices — match invoices page logic
+        let totalMonthlyRevenue = 0;
+        if (invoicesRes.data && Array.isArray(invoicesRes.data)) {
+            totalMonthlyRevenue = invoicesRes.data
+                .filter((inv: any) => {
+                    // Use paid_at if available, otherwise fall back to updated_at or created_at
+                    const paidDate = new Date(inv.paid_at || inv.updated_at || inv.created_at);
+                    return paidDate >= new Date(monthStart);
+                })
+                .reduce((sum: number, inv: any) => sum + (Number(inv.total) || 0), 0);
+        }
+
+        const recentActivity = ((activityRes as any).data || []).map((item: any) => ({
+            ...item,
+            user: Array.isArray(item.user) ? item.user[0] : item.user
+        }));
+
         return {
-            ...data,
-            recentActivity: data.recent_activity || [],
-            propertyTrend: this.calcTrend(data.currentWeekProps || 0, data.lastWeekProps || 0),
-            applicationTrend: this.calcTrend(data.currentWeekApps || 0, data.lastWeekApps || 0)
+            totalProperties: propertiesRes.count || 0,
+            availableProperties: availableRes.count || 0,
+            rentedProperties: rentedRes.count || 0,
+            totalApplications: applicationsRes.count || 0,
+            pendingApplications: pendingAppsRes.count || 0,
+            totalMonthlyRevenue,
+            monthlyRevenue: totalMonthlyRevenue,
+            propertyTrend: null,
+            applicationTrend: null,
+            teamMembers: teamRes.count || 0,
+            totalAreas: (areasRes as any).count || 0,
+            totalBuildings: (buildingsRes as any).count || 0,
+            openMaintenance: (maintenanceRes as any).count || 0,
+            upcomingShowings: (showingsRes as any).count || 0,
+            recentActivity
         };
     }
 

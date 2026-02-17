@@ -21,6 +21,7 @@ export function useProperties(buildingId?: string) {
                 `)
                 .order('created_at', { ascending: false });
 
+            // Filter by company if available, otherwise RLS handles isolation
             if (companyId) {
                 query = query.eq('company_id', companyId);
             }
@@ -30,11 +31,15 @@ export function useProperties(buildingId?: string) {
             }
 
             const { data, error } = await query;
-            if (error) throw error;
+            if (error) {
+                console.error('Properties fetch error:', error.message);
+                throw error;
+            }
             return data;
         },
         staleTime: 60000,
-        enabled: !!companyId,
+        // Always enabled — RLS handles data isolation even without company_id
+        enabled: true,
     });
 }
 

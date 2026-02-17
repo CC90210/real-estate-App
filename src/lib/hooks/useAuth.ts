@@ -24,10 +24,16 @@ export function useAuth() {
         signOut
     } = useUser();
 
+    // Normalize company data: Supabase join can return array or object
+    const rawCompany = profile?.company;
+    const company = rawCompany
+        ? (Array.isArray(rawCompany) ? rawCompany[0] : rawCompany)
+        : null;
+
     return {
         user,
         profile,
-        company: profile?.company || null,
+        company,
         role,
         isSuperAdmin,
         isPartner,

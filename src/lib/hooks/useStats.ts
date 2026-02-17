@@ -16,7 +16,13 @@ export function useStats() {
 
     const statsQuery = useQuery({
         queryKey: ['dashboard-stats', companyId, userId, role],
-        queryFn: () => statsService.getDashboardStats(companyId!, userId, isLandlord),
+        queryFn: () => {
+            if (!companyId) {
+                console.warn('[useStats] No companyId found — dashboard stats cannot load. Check profile.company_id');
+                return Promise.resolve(null);
+            }
+            return statsService.getDashboardStats(companyId!, userId, isLandlord);
+        },
         enabled: !!companyId,
         staleTime: 1000 * 60 * 2, // 2 minutes
     })
