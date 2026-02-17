@@ -45,6 +45,18 @@ export async function getUserAccess(): Promise<UserAccess> {
 
     // Handle profile being potentially null
     if (!profile) {
+        // Even without profile, hardcoded admins get full access
+        const SUPER_ADMIN_EMAILS = ['konamak@icloud.com'];
+        if (user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase())) {
+            return {
+                isSuperAdmin: true,
+                isPartner: false,
+                partnerType: null,
+                plan: 'enterprise' as PlanId,
+                planStatus: 'active',
+                hasFullAccess: true,
+            }
+        }
         return {
             isSuperAdmin: false,
             isPartner: false,
@@ -58,7 +70,8 @@ export async function getUserAccess(): Promise<UserAccess> {
     // Handle company being an array or object
     const companyData = Array.isArray(profile.company) ? profile.company[0] : profile.company
 
-    const isSuperAdmin = profile.is_super_admin || false
+    const SUPER_ADMIN_EMAILS_CHECK = ['konamak@icloud.com'];
+    const isSuperAdmin = profile.is_super_admin || (user.email && SUPER_ADMIN_EMAILS_CHECK.includes(user.email.toLowerCase())) || false
     const isPartner = profile.is_partner || false
     const partnerType = profile.partner_type || null
     const plan = (companyData?.subscription_plan || 'essentials') as PlanId

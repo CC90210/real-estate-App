@@ -31,10 +31,22 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const [profile, setProfile] = useState<(Profile & { company?: any }) | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    const calculatePlan = useCallback((profileData: any) => {
-        if (!profileData) return { plan: 'essentials' as PlanId, planName: 'Essentials', features: PLANS.essentials.features, hasFullAccess: false };
+    // Hardcoded super admin emails — these ALWAYS get full access
+    // regardless of database state, plan, or subscription status
+    const SUPER_ADMIN_EMAILS = ['konamak@icloud.com'];
 
-        const isSuperAdmin = !!profileData.is_super_admin;
+    const calculatePlan = useCallback((profileData: any, userEmail?: string) => {
+        // Safety net: hardcoded super admin bypass
+        const isHardcodedAdmin = userEmail && SUPER_ADMIN_EMAILS.includes(userEmail.toLowerCase());
+
+        if (!profileData) {
+            if (isHardcodedAdmin) {
+                return { plan: 'enterprise' as PlanId, planName: '🔑 Super Admin', features: PLANS.enterprise.features, hasFullAccess: true };
+            }
+            return { plan: 'essentials' as PlanId, planName: 'Essentials', features: PLANS.essentials.features, hasFullAccess: false };
+        }
+
+        const isSuperAdmin = !!profileData.is_super_admin || isHardcodedAdmin;
         const isPartner = !!profileData.is_partner;
         const company = profileData.company;
         const isLifetime = company?.is_lifetime_access === true;
@@ -46,7 +58,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
         return {
             plan: planId,
-            planName: isLifetime ? 'Enterprise (Lifetime)' : planConfig.name,
+            planName: isSuperAdmin ? '🔑 Super Admin' : isLifetime ? 'Enterprise (Lifetime)' : planConfig.name,
             features: planConfig.features as Record<string, boolean>,
             hasFullAccess
         };
@@ -172,7 +184,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
         window.location.href = '/';
     };
 
-    const planStats = calculatePlan(profile);
+    const planStats = calculatePlan(profile, user?.email);
+
+    // Check hardcoded admin list too
+    const isHardcodedAdmin = user?.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase());
 
     return (
         <UserContext.Provider value={{
@@ -181,7 +196,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
             isLoading,
             isAuthenticated: !!user,
             role: profile?.role || null,
-            isSuperAdmin: !!profile?.is_super_admin,
+            isSuperAdmin: !!profile?.is_super_admin || !!isHardcodedAdmin,
             isPartner: !!profile?.is_partner,
             hasFullAccess: planStats.hasFullAccess,
             plan: planStats.plan,

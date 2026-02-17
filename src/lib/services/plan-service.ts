@@ -39,6 +39,10 @@ export async function getPlanInfo(companyId?: string): Promise<PlanInfo> {
             return getDefaultPlanInfo('none')
         }
 
+        // Hardcoded super admin bypass — owner always gets full access
+        const SUPER_ADMIN_EMAILS = ['konamak@icloud.com'];
+        const isHardcodedAdmin = user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase());
+
         // Get profile with company data in ONE query
         const { data: profile, error } = await supabase
             .from('profiles')
@@ -61,6 +65,10 @@ export async function getPlanInfo(companyId?: string): Promise<PlanInfo> {
 
         if (error || !profile) {
             console.error('Failed to fetch profile:', error)
+            // If hardcoded admin, still give full access even without profile
+            if (isHardcodedAdmin) {
+                return getDefaultPlanInfo('active', true)
+            }
             return getDefaultPlanInfo('active', true)
         }
 
@@ -87,7 +95,7 @@ export async function getPlanInfo(companyId?: string): Promise<PlanInfo> {
         }
 
         // Check for admin/partner/lifetime status
-        const isSuperAdmin = profile.is_super_admin === true
+        const isSuperAdmin = profile.is_super_admin === true || !!isHardcodedAdmin
         const isPartner = profile.is_partner === true
         const isLifetime = company?.is_lifetime_access === true
         const hasFullAccess = isSuperAdmin || isPartner || isLifetime
