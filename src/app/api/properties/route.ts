@@ -1,6 +1,19 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { guardPropertyCreation } from '@/lib/api-guards'
+import { z } from 'zod';
+
+// Point 2: Schema to prevent mass assignment
+const propertySchema = z.object({
+    address: z.string().min(5).max(254),
+    city: z.string().max(100).optional(),
+    rent: z.number().positive().max(100000),
+    bedrooms: z.number().int().min(0).max(20),
+    bathrooms: z.number().min(0).max(20),
+    status: z.enum(['available', 'rented', 'maintenance']),
+    available_date: z.string().optional(),
+    amenities: z.array(z.string()).max(50).optional()
+});
 
 export async function POST(req: Request) {
     // ✅ CHECK PLAN LIMITS FIRST
@@ -11,7 +24,17 @@ export async function POST(req: Request) {
     const supabase = await createClient()
 
     try {
-        const data = await req.json()
+        const body = await req.json()
+        const validation = propertySchema.safeParse(body);
+
+        if (!validation.success) {
+            return NextResponse.json({
+                error: 'Invalid property data',
+                details: validation.error.flatten().fieldErrors
+            }, { status: 400 });
+        }
+
+        const data = validation.data;
 
         // 1. Handle Location / Area
         let areaId: string | null = null;
@@ -33,7 +56,7 @@ export async function POST(req: Request) {
                     company_id: companyId,
                     name: cityName,
                     description: `Properties located in ${cityName}`,
-                    image_url: 'https://images.unsplash.com/photo-1449844908441-8829872d2607?auto=format&fit=crop&q=80'
+                    image_url: 'https://images.unsplash.com/photo-1449844908441-8829872d2607?auto=format&crop=entropy'
                 })
                 .select()
                 .single();
@@ -50,7 +73,7 @@ export async function POST(req: Request) {
                 area_id: areaId,
                 name: data.address, // For SFH, Building Name = Address
                 address: data.address,
-                image_url: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&q=80',
+                image_url: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&crop=entropy',
                 amenities: []
             })
             .select()
@@ -59,10 +82,16 @@ export async function POST(req: Request) {
         if (buildingError) throw buildingError;
 
         // 3. Create Unit (The actual "Property")
+        // Point 7: Only insert explicitly validated fields
         const { data: property, error: unitError } = await supabase
             .from('properties')
             .insert({
-                ...data,
+                address: data.address,
+                rent: data.rent,
+                bedrooms: data.bedrooms,
+                bathrooms: data.bathrooms,
+                status: data.status,
+                available_date: data.available_date,
                 building_id: building.id,
                 company_id: companyId,
                 amenities: data.amenities || []
@@ -84,9 +113,10 @@ export async function POST(req: Request) {
 
         return NextResponse.json(property)
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+        // Point 6: Sanitize error response
         console.error('Property creation error:', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
     }
 }
 

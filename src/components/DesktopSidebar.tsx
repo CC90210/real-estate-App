@@ -35,21 +35,23 @@ import { useAccentColor } from '@/lib/hooks/useAccentColor';
 import { PLANS, FeatureKey } from '@/lib/plans';
 import { Logo } from '@/components/brand/Logo';
 
+import { useRole } from '@/hooks/use-role';
+
 const navItems = [
     { id: 'dashboard', name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'agent', 'landlord'] },
     { id: 'areas', name: 'Areas', href: '/areas', icon: MapPin, roles: ['admin', 'agent'] },
-    { id: 'properties', name: 'Properties', href: '/properties', icon: Home, roles: ['admin', 'agent'] },
-    { id: 'applications', name: 'Applications', href: '/applications', icon: ClipboardList, roles: ['admin', 'agent'] },
-    { id: 'approvals', name: 'Approvals', href: '/approvals', icon: CheckCircle, roles: ['admin'] },
-    { id: 'leases', name: 'Leases', href: '/leases', icon: BookOpen, roles: ['admin', 'agent'] },
-    { id: 'maintenance', name: 'Maintenance', href: '/maintenance', icon: Wrench, roles: ['admin', 'agent'] },
-    { id: 'showings', name: 'Showings', href: '/showings', icon: Calendar, roles: ['admin', 'agent'] },
-    { id: 'invoices', name: 'Invoices', href: '/invoices', icon: Receipt, roles: ['admin', 'agent'] },
-    { id: 'documents', name: 'Documents', href: '/documents', icon: FileText, roles: ['admin', 'agent'] },
+    { id: 'properties', name: 'Properties', href: '/properties', icon: Home, roles: ['admin', 'agent', 'landlord'] },
+    { id: 'applications', name: 'Applications', href: '/applications', icon: ClipboardList, roles: ['admin', 'agent', 'landlord'] },
+    { id: 'approvals', name: 'Approvals', href: '/approvals', icon: CheckCircle, roles: ['admin', 'agent'] },
+    { id: 'leases', name: 'Leases', href: '/leases', icon: BookOpen, roles: ['admin', 'agent', 'landlord'] },
+    { id: 'maintenance', name: 'Maintenance', href: '/maintenance', icon: Wrench, roles: ['admin', 'agent', 'landlord'] },
+    { id: 'showings', name: 'Showings', href: '/showings', icon: Calendar, roles: ['admin', 'agent', 'landlord'] },
+    { id: 'invoices', name: 'Invoices', href: '/invoices', icon: Receipt, roles: ['admin', 'agent', 'landlord'] },
+    { id: 'documents', name: 'Documents', href: '/documents', icon: FileText, roles: ['admin', 'agent', 'landlord'] },
     { id: 'analytics', name: 'Analytics', href: '/analytics', icon: BarChart3, roles: ['admin', 'agent'] },
-    { id: 'activity', name: 'Activity', href: '/activity', icon: Activity, roles: ['admin', 'agent'] },
-    { id: 'automations', name: 'Automations', href: '/automations', icon: Zap, roles: ['admin', 'agent'] },
-    { id: 'settings', name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'agent'] },
+    { id: 'activity', name: 'Activity', href: '/activity', icon: Activity, roles: ['admin'] },
+    { id: 'automations', name: 'Automations', href: '/automations', icon: Zap, roles: ['admin'] },
+    { id: 'settings', name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'agent', 'landlord'] },
 ];
 
 interface DesktopSidebarProps {
@@ -61,7 +63,8 @@ export function DesktopSidebar({ className, onQuickFindOpen }: DesktopSidebarPro
     const pathname = usePathname();
     const router = useRouter();
     const supabase = createClient();
-    const { role, isSuperAdmin, plan, planName, hasFullAccess, isPartner } = useUser();
+    const { plan, planName, hasFullAccess, isPartner } = useUser();
+    const { role: userRole, isSuperAdmin } = useRole();
     const { colors } = useAccentColor();
 
     const handleSignOut = async () => {
@@ -69,15 +72,15 @@ export function DesktopSidebar({ className, onQuickFindOpen }: DesktopSidebarPro
         router.push('/login');
     };
 
-    const userRole = role || 'agent';
     const planConfig = PLANS[plan] || PLANS.essentials;
 
     // Full access users see everything from enterprise nav, otherwise check plan
     const allowedNav = hasFullAccess ? PLANS.enterprise.nav : planConfig.nav;
 
-    const filteredNavItems = navItems.filter(item =>
-        item.roles.includes(userRole)
-    );
+    const filteredNavItems = navItems.filter(item => {
+        if (isSuperAdmin) return true;
+        return item.roles.includes(userRole as string);
+    });
 
     return (
         <aside className={cn("hidden lg:flex flex-col h-full w-64 bg-[#fcfdfe] border-r border-slate-200/60 shadow-[1px_0_10px_rgba(0,0,0,0.02)] fixed left-0 top-0 bottom-0 z-30", className)}>
@@ -151,13 +154,20 @@ export function DesktopSidebar({ className, onQuickFindOpen }: DesktopSidebarPro
                 <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 mb-4">
                     <div className="flex flex-col mb-1">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                            {hasFullAccess ? 'Access Level' : 'Active Plan'}
+                            {isSuperAdmin ? 'Platform Role' : 'Access Level'}
                         </span>
-                        <span className={cn("text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg bg-white border border-slate-200 inline-block", colors.text)}>
-                            {isSuperAdmin ? '🔑 Super Admin' :
-                                isPartner ? '🤝 Partner' :
-                                    planName}
-                        </span>
+                        <div className="flex flex-col gap-1.5">
+                            <span className={cn("text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg bg-white border border-slate-200 inline-block text-center", colors.text)}>
+                                {isSuperAdmin ? '🔑 Super Admin' :
+                                    isPartner ? '🤝 Partner' :
+                                        planName}
+                            </span>
+                            {!isSuperAdmin && (
+                                <span className="text-[9px] font-bold text-slate-400 text-center uppercase tracking-wider">
+                                    Role: {userRole === 'admin' ? '👑 Admin' : userRole === 'agent' ? '👤 Agent' : '🏠 Landlord'}
+                                </span>
+                            )}
+                        </div>
                     </div>
                     {!hasFullAccess && (
                         <Link href="/pricing" className="text-[10px] font-bold text-blue-600 hover:underline mt-2 inline-block">Upgrade membership →</Link>

@@ -15,6 +15,7 @@ export interface DashboardStats {
     totalBuildings: number;
     openMaintenance: number;
     upcomingShowings: number;
+    totalMonthlyRent: number;
 }
 
 export interface ActivityItem {
@@ -75,7 +76,8 @@ export class StatsService {
             buildingsRes,
             maintenanceRes,
             showingsRes,
-            activityRes
+            activityRes,
+            leasesRes
         ] = await Promise.all([
             this.supabase.from('properties').select('id', { count: 'exact', head: true }).eq('company_id', companyId),
             this.supabase.from('properties').select('id', { count: 'exact', head: true }).eq('company_id', companyId).eq('status', 'available'),
@@ -90,6 +92,7 @@ export class StatsService {
             Promise.resolve(this.supabase.from('maintenance_requests').select('id', { count: 'exact', head: true }).eq('company_id', companyId).in('status', ['open', 'in_progress'])).catch(() => ({ count: 0, data: null, error: null })),
             Promise.resolve(this.supabase.from('showings').select('id', { count: 'exact', head: true }).eq('company_id', companyId).gte('showing_date', now.toISOString())).catch(() => ({ count: 0, data: null, error: null })),
             Promise.resolve(this.supabase.from('activity_log').select('id, action, entity_type, details, created_at, user:profiles(full_name, avatar_url, email)').eq('company_id', companyId).order('created_at', { ascending: false }).limit(10)).catch(() => ({ data: [], error: null })),
+            Promise.resolve(this.supabase.from('leases').select('rent_amount').eq('company_id', companyId).eq('status', 'active')).catch(() => ({ data: [], error: null })),
         ]);
 
         // Calculate monthly revenue from paid invoices — match invoices page logic
@@ -103,6 +106,8 @@ export class StatsService {
                 })
                 .reduce((sum: number, inv: any) => sum + (Number(inv.total) || 0), 0);
         }
+
+        const totalMonthlyRent = (leasesRes as any).data?.reduce((sum: number, l: any) => sum + (l.rent_amount || 0), 0) || 0;
 
         const recentActivity = ((activityRes as any).data || []).map((item: any) => ({
             ...item,
@@ -124,6 +129,7 @@ export class StatsService {
             totalBuildings: (buildingsRes as any).count || 0,
             openMaintenance: (maintenanceRes as any).count || 0,
             upcomingShowings: (showingsRes as any).count || 0,
+            totalMonthlyRent,
             recentActivity
         };
     }

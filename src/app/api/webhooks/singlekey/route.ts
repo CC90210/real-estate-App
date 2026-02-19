@@ -1,20 +1,37 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
+
+// Point 2: Define strict validation schema
+const singleKeySchema = z.object({
+    application_id: z.string().uuid(),
+    report_url: z.string().url(),
+    score: z.number().int().min(300).max(900).optional(),
+    status: z.string().max(50).optional()
+});
 
 export async function POST(request: Request) {
     try {
+        // Point 9: Validate secret token (Strictly required for production)
+        const secret = request.headers.get('x-singlekey-secret');
+        if (!secret || secret !== process.env.SINGLEKEY_WEBHOOK_SECRET) {
+            console.error('Unauthorized SingleKey Webhook attempt');
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const body = await request.json();
 
-        // 1. Log incoming webhook for audit
-        console.log('SingleKey Webhook Received:', body);
-
-        // 2. Validate essential fields
-        const { application_id, report_url, score, status } = body;
-
-        if (!application_id) {
-            return NextResponse.json({ error: 'Missing application_id' }, { status: 400 });
+        // Point 2: Validate Input
+        const validation = singleKeySchema.safeParse(body);
+        if (!validation.success) {
+            return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
         }
+
+        const { application_id, report_url, score, status } = validation.data;
+
+        // 1. Log incoming webhook for audit
+        console.log('SingleKey Webhook Received for Application:', application_id);
 
         const supabase = await createClient();
 
@@ -36,23 +53,21 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
         }
 
-        // 4. TRIGGER NOTIFICATION (Crucial: Notify Landlord, NOT Agent)
+        // 4. TRIGGER NOTIFICATION (Notify Landlord)
         const landlordId = application.property?.owner_id;
         if (landlordId) {
-            // Mocking a notification insertion
             await supabase.from('activity_log').insert({
                 user_id: landlordId,
                 action: 'SCREEN_READY',
                 description: `New screening report ready for ${application.applicant_name} at ${application.property?.address}`
             });
-
-            console.log(`Notification queued for Landlord: ${landlordId}`);
         }
 
-        return NextResponse.json({ success: true, message: 'Webhook processed successfully' });
+        return NextResponse.json({ success: true });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+        // Point 6: Generic Error
         console.error('Webhook Endpoint Failure:', error);
-        return NextResponse.json({ error: error.message || 'Internal processing error' }, { status: 500 });
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

@@ -123,8 +123,8 @@ export default function LeasesPage() {
     const activeLeases = leases?.filter((l: any) => l.status === 'active').length || 0
     const expiringLeases = leases?.filter((l: any) => l.status === 'expiring').length || 0
     const totalMonthlyRent = leases
-        ?.filter((l: any) => ['active', 'expiring'].includes(l.status))
-        .reduce((sum: number, l: any) => sum + (l.rent_amount || 0), 0) || 0
+        ?.filter((l: any) => l.status === 'active')
+        .reduce((sum: number, l: any) => sum + (l.rent_amount || 0), 0) || 0;
 
     if (isLoading) {
         return (

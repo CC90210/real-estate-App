@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useAccentColor } from '@/lib/hooks/useAccentColor'
 import { useStats } from '@/lib/hooks/useStats'
+import { useActivity } from '@/hooks/use-activity'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -15,7 +16,6 @@ import {
     Plus,
     FileText,
     Sparkles,
-    LayoutDashboard,
     Activity,
     ArrowUpRight,
     Search,
@@ -24,7 +24,8 @@ import {
     Zap,
     Star,
     Building,
-    Wallet
+    Wallet,
+    DollarSign
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatDistanceToNow, format } from 'date-fns'
@@ -45,10 +46,11 @@ interface AdminDashboardProps {
 }
 
 export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
-    const { user, profile, company } = useAuth()
+    const { profile, company } = useAuth()
     const supabase = createClient()
     const { colors } = useAccentColor()
-    const { stats, isLoading: statsLoading, recentActivity } = useStats()
+    const { stats, isLoading: statsLoading } = useStats()
+    const { data: recentActivity, isLoading: activityLoading } = useActivity(10)
 
     // Fetch recent applications
     const { data: recentApplications } = useQuery({
@@ -141,9 +143,9 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
             </div>
 
             {/* Metrics Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '200ms' }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '200ms' }}>
                 <StatCard
-                    title="Total Properties"
+                    title="Properties"
                     value={stats?.totalProperties || 0}
                     subtitle={`${stats?.availableProperties || 0} available`}
                     icon={Building}
@@ -154,22 +156,30 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                 <StatCard
                     title="Applications"
                     value={stats?.totalApplications || 0}
-                    subtitle={`${stats?.pendingApplications || 0} pending review`}
+                    subtitle={`${stats?.pendingApplications || 0} pending`}
                     icon={ClipboardList}
                     gradient="from-indigo-500 to-indigo-600"
                     trend={stats?.applicationTrend}
                     href="/applications"
                 />
                 <StatCard
-                    title="Collected Revenue"
+                    title="Projected Rent"
+                    value={`$${(stats?.totalMonthlyRent || 0).toLocaleString()}`}
+                    subtitle="Active lease value"
+                    icon={DollarSign}
+                    gradient="from-violet-500 to-violet-600"
+                    href="/leases"
+                />
+                <StatCard
+                    title="Collected"
                     value={`$${(stats?.totalMonthlyRevenue || 0).toLocaleString()}`}
-                    subtitle="Invoices paid this month"
+                    subtitle="Paid this month"
                     icon={Wallet}
                     gradient="from-emerald-500 to-emerald-600"
                     href="/invoices"
                 />
                 <StatCard
-                    title="Team Members"
+                    title="Team"
                     value={stats?.teamMembers || 0}
                     subtitle="Active users"
                     icon={Users}
@@ -215,7 +225,7 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                 </div>
             </div>
 
-            {/* Getting Started Section - Show continuously until core structure (Areas, Buildings, Properties) is set up */}
+            {/* Getting Started Section */}
             {(!(stats?.totalProperties && stats?.totalAreas && stats?.totalBuildings)) && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '400ms' }}>
                     <div className="flex items-center gap-4">
@@ -284,7 +294,7 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                     <CardContent className="p-6 pt-0">
                         {recentApplications && recentApplications.length > 0 ? (
                             <div className="space-y-3">
-                                {recentApplications.map((app: any, idx: number) => (
+                                {recentApplications.map((app: any) => (
                                     <Link key={app.id} href={`/applications/${app.id}`}>
                                         <div className="group flex items-center justify-between p-4 rounded-2xl bg-slate-50/50 border border-transparent hover:border-indigo-200 hover:bg-white transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/5">
                                             <div className="flex items-center gap-4">

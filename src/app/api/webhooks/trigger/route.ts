@@ -81,10 +81,11 @@ export async function POST(request: Request) {
             message: 'Automation Triggered Successfully via Central Dispatch'
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+        // Point 6: Generic Error in production-like responses
         console.error('Automation Trigger API Error:', error);
         return NextResponse.json(
-            { error: 'Internal Server Error', message: error.message },
+            { error: 'Something went wrong. Please try again.' },
             { status: 500 }
         );
     }

@@ -9,6 +9,7 @@ import { PropertyAutomations } from '@/components/automations/PropertyAutomation
 import { GenerateAdButton } from '@/components/properties/GenerateAdButton';
 import { EditPropertyModal } from '@/components/properties/EditPropertyModal';
 import { DeletePropertyButton } from '@/components/properties/DeletePropertyButton';
+import { LandlordAssignment } from '@/components/properties/LandlordAssignment';
 // We need client component for interactivity (modal trigger)
 
 export const dynamic = 'force-dynamic';
@@ -28,6 +29,14 @@ export default async function PropertyDetailsPage({ params }: { params: { id: st
         `)
         .eq('id', id)
         .single();
+
+    // Get current user and role
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: userProfile } = user ? await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single() : { data: null };
 
     if (!property) return <div className="p-8">Property not found</div>;
 
@@ -138,6 +147,11 @@ export default async function PropertyDetailsPage({ params }: { params: { id: st
                     </div>
 
 
+
+                    {/* Landlord Assignment - Only for Admins/Agents */}
+                    {(userProfile?.role === 'admin' || userProfile?.role === 'agent') && (
+                        <LandlordAssignment propertyId={property.id} />
+                    )}
 
                     <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl shadow-lg p-6 text-white">
                         <div className="flex items-center gap-2 mb-4">
