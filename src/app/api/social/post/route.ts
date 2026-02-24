@@ -66,12 +66,13 @@ export async function POST(req: Request) {
 
         const result = await (late as any).posts.createPost(postPayload)
         const latePost = result?.post
+        const latePostId = latePost?.id || latePost?._id || null
 
         // Save to our database
         const { data: savedPost } = await supabase.from('social_posts').insert({
             company_id: profile?.company_id,
             created_by: user.id,
-            late_post_id: latePost?._id || null,
+            late_post_id: latePostId,
             content: fullContent,
             media_urls: mediaUrls || [],
             hashtags: hashtags || [],
