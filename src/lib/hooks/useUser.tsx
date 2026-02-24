@@ -147,9 +147,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 const { data: { session } } = await supabase.auth.getSession();
 
                 if (session?.user && mounted) {
+                    // Set user immediately so the app knows we are authenticated
                     setUser(session.user);
+
+                    // Then fetch profile
                     const profileData = await fetchProfile(session.user.id);
-                    if (mounted) setProfile(profileData);
+                    if (mounted) {
+                        setProfile(profileData);
+                    }
                 }
             } catch (err) {
                 console.error('Auth initialization failed:', err);
@@ -161,6 +166,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
             }
         };
 
+        // Call initAuth immediately
         initAuth();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
