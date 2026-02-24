@@ -29,7 +29,26 @@ export async function updateSession(request: NextRequest) {
     )
 
     // refresh the session
-    await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    const { pathname } = request.nextUrl
+
+    // DEFINE PROTECTION MAP
+    const protectedPaths = ['/dashboard', '/properties', '/tenants', '/maintenance', '/settings', '/applications', '/leases', '/financials', '/reports', '/documents']
+    const isProtectedRoute = protectedPaths.some(path => pathname.startsWith(path))
+
+    // ROUTE GUARDING
+    if (isProtectedRoute && !user) {
+        const redirectUrl = new URL('/login', request.url)
+        redirectUrl.searchParams.set('redirect', pathname)
+        return NextResponse.redirect(redirectUrl)
+    }
+
+    // Redirect logged-in users away from auth pages
+    const isAuthPage = pathname === '/login' || pathname === '/signup'
+    if (isAuthPage && user) {
+        return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
 
     return supabaseResponse
 }
