@@ -70,11 +70,13 @@ export async function POST(req: Request) {
         if (!lateProfileId) {
             try {
                 const result = await late.profiles.createProfile({
-                    name: company.name || 'PropFlow Agency',
-                    description: `Social media profile for ${company.name}`,
+                    body: {
+                        name: company.name || 'PropFlow Agency',
+                        description: `Social media profile for ${company.name}`,
+                    }
                 })
 
-                lateProfileId = result?.profile?._id || result?.profile?.id
+                lateProfileId = result?.data?.profile?._id || result?.data?.profile?.id || result?.profile?._id || result?.profile?.id
 
                 if (lateProfileId) {
                     // Save the Late profile ID
@@ -104,19 +106,23 @@ export async function POST(req: Request) {
             const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://propflow.pro'}/api/social/callback?platform=${platform}`
 
             const result = await late.connect.getConnectUrl({
-                platform,
-                profileId: lateProfileId,
-                redirectUrl,
+                query: {
+                    platform,
+                    profileId: lateProfileId,
+                    redirectUrl,
+                }
             })
 
-            if (!result?.authUrl) {
+            const finalAuthUrl = result?.data?.url || result?.url || result?.authUrl;
+
+            if (!finalAuthUrl) {
                 return NextResponse.json(
                     { error: 'Could not get authorization URL. The platform may be temporarily unavailable.' },
                     { status: 502 }
                 )
             }
 
-            return NextResponse.json({ authUrl: result.authUrl })
+            return NextResponse.json({ authUrl: finalAuthUrl })
         } catch (connectError: any) {
             console.error('Late connect error:', connectError?.message || connectError)
             return NextResponse.json(

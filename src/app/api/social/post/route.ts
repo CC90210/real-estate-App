@@ -64,8 +64,8 @@ export async function POST(req: Request) {
             postPayload.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
         }
 
-        const result = await (late as any).posts.createPost(postPayload)
-        const latePost = result?.post
+        const result = await (late as any).posts.createPost({ body: postPayload })
+        const latePost = result?.data?.post || result?.post
         const latePostId = latePost?.id || latePost?._id || null
 
         // Save to our database
