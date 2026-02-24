@@ -213,7 +213,8 @@ export default function SolutionsPage() {
                                 <div className="font-black text-lg sm:text-2xl tracking-tighter">STRIPE</div>
                                 <div className="font-black text-lg sm:text-2xl tracking-tighter">SUPABASE</div>
                                 <div className="font-black text-lg sm:text-2xl tracking-tighter">VERCEL</div>
-                                <div className="font-black text-lg sm:text-2xl tracking-tighter">DOCUSIGN</div>
+                                <div className="font-black text-lg sm:text-2xl tracking-tighter">LATE</div>
+                                <div className="font-black text-lg sm:text-2xl tracking-tighter">NATIVE SMART DOCS</div>
                             </div>
                         </div>
                     </div>
