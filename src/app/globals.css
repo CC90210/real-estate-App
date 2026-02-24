@@ -232,11 +232,12 @@ h4,
 body {
   background-color: hsl(var(--background));
   color: #0f172a;
-  /* Force Slate-900 */
+  /* Force Slate-900 on body */
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
+/* Default heading color (light backgrounds) */
 h1,
 h2,
 h3,
@@ -244,7 +245,68 @@ h4,
 h5,
 h6 {
   color: #0f172a;
-  /* Force Slate-900 */
+  /* Force Slate-900 by default */
+}
+
+/* ============================================
+   GLOBAL TEXT CONTRAST SAFETY RULES
+   Dark backgrounds MUST have light text.
+   ============================================ */
+
+/* Override heading color inside dark backgrounds */
+.bg-gray-900 h1,
+.bg-gray-900 h2,
+.bg-gray-900 h3,
+.bg-gray-900 h4,
+.bg-gray-800 h1,
+.bg-gray-800 h2,
+.bg-gray-800 h3,
+.bg-gray-800 h4,
+.bg-slate-900 h1,
+.bg-slate-900 h2,
+.bg-slate-900 h3,
+.bg-slate-900 h4,
+.bg-slate-800 h1,
+.bg-slate-800 h2,
+.bg-slate-800 h3,
+.bg-slate-800 h4,
+.bg-black h1,
+.bg-black h2,
+.bg-black h3,
+.bg-black h4,
+.bg-blue-900 h1,
+.bg-blue-900 h2,
+.bg-blue-900 h3,
+.bg-blue-900 h4,
+.bg-indigo-900 h1,
+.bg-indigo-900 h2,
+.bg-indigo-900 h3,
+.bg-indigo-900 h4 {
+  color: white;
+}
+
+/* Paragraph text inside dark backgrounds */
+.bg-gray-900 p,
+.bg-gray-800 p,
+.bg-slate-900 p,
+.bg-slate-800 p,
+.bg-black p,
+.bg-blue-900 p,
+.bg-indigo-900 p {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Default text color inside dark backgrounds */
+.bg-gray-900,
+.bg-gray-800,
+.bg-slate-900,
+.bg-slate-800,
+.bg-black,
+.bg-blue-900,
+.bg-blue-800,
+.bg-indigo-900,
+.bg-indigo-800 {
+  color: white;
 }
 
 /* Card Styles */

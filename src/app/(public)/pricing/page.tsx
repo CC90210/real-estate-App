@@ -4,89 +4,51 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Check, Loader2, Building2, Sparkles, Zap, Shield, FileText, CheckCircle2 } from 'lucide-react'
+import { PLANS, PlanId } from '@/lib/stripe/plans'
 import { PublicNavbar } from '@/components/layout/PublicNavbar'
 import { PublicFooter } from '@/components/layout/PublicFooter'
 import { cn } from '@/lib/utils'
 import { FuturisticBuilding } from '@/components/brand/FuturisticBuilding'
 
-const NEW_PLANS = [
-    {
-        id: 'agent_pro',
-        name: 'Agent Pro',
-        tagline: 'Core tools for solo agents & landlords starting their journey.',
-        price: 149,
-        popular: false,
-        stripeLink: '#stripe-price-id-agent-pro',
-        icon: Building2,
-        features: {
-            crm: ['Up to 25 Properties', '1 Team Member', 'Application Management'],
-            finance: ['Basic Reporting', 'Digital Rent Collection', 'Expense Tracking'],
-            social: ['Basic Social Connector', '1 Connected Platform']
-        }
-    },
-    {
-        id: 'agency_growth',
-        name: 'Agency Growth',
-        tagline: 'Streamlined compliance & paperwork for growing portfolios.',
-        price: 289,
-        popular: true,
-        stripeLink: '#stripe-price-id-agency-growth',
-        icon: FileText,
-        features: {
-            crm: ['Up to 100 Properties', '5 Team Members', 'Automated Lease Drafting'],
-            finance: ['Advanced Analytics', 'Automated Invoicing', 'Custom Fee Structures'],
-            social: ['Multi-account Scheduling', 'Up to 5 Connected Platforms']
-        }
-    },
-    {
-        id: 'brokerage_command',
-        name: 'Brokerage Command',
-        tagline: 'Full operational command for large organizations.',
-        price: 499,
-        popular: false,
-        stripeLink: '#stripe-price-id-brokerage-command',
-        icon: Shield,
-        features: {
-            crm: ['Unlimited Properties', 'Unlimited Team Members', 'Dedicated Account Manager'],
-            finance: ['Full General Ledger', 'Priority Capital Access', 'Brokerage Commission Splits'],
-            social: ['Unlimited Platforms', 'White-labeled Social Suite']
-        }
-    }
-]
+const PLAN_ICONS: Record<PlanId, typeof Building2> = {
+    agent_pro: Building2,
+    agency_growth: FileText,
+    brokerage_command: Shield,
+}
 
 export default function PricingPage() {
     const [loading, setLoading] = useState<string | null>(null)
+    const [error, setError] = useState<string | null>(null)
 
-    const handleCheckout = async (planId: string, stripePriceId: string) => {
+    const handleCheckout = async (planId: PlanId) => {
         setLoading(planId)
+        setError(null)
 
         try {
             const res = await fetch('/api/stripe/checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ plan: stripePriceId }), // Pass the actual Stripe Price ID
+                body: JSON.stringify({ plan: planId }),
             })
 
             const data = await res.json()
 
             if (data.error) {
                 if (res.status === 401) {
-                    // Not logged in -> push to join page
-                    window.location.href = `/join?plan=${stripePriceId}`;
-                    return;
+                    window.location.href = `/join?plan=${planId}`
+                    return
                 }
-                throw new Error(data.error);
+                throw new Error(data.error)
             }
 
             if (data.url) {
-                window.location.href = data.url; // Redirect to Stripe Checkout session
+                window.location.href = data.url
             } else {
-                throw new Error("Missing checkout URL from Stripe.");
+                throw new Error('Missing checkout URL from Stripe.')
             }
-
-        } catch (error: any) {
-            console.error('Checkout error:', error)
-            alert(error.message || 'Checkout failed to initialize.')
+        } catch (err: any) {
+            console.error('Checkout error:', err)
+            setError(err.message || 'Checkout failed to initialize.')
         } finally {
             setLoading(null)
         }
@@ -117,7 +79,7 @@ export default function PricingPage() {
                 <div className="max-w-7xl mx-auto px-4 text-center mb-20">
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-50 border border-indigo-100/50 text-indigo-600 text-[10px] font-black uppercase tracking-[0.2em] mb-8 shadow-sm">
                         <Sparkles className="h-3 w-3" />
-                        <span>Premium Features</span>
+                        <span>Premium Plans</span>
                     </div>
                     <h1 className="text-5xl sm:text-7xl font-black tracking-tighter text-slate-900 mb-8 leading-[0.9]">
                         Invest in your <br className="hidden sm:block" />
@@ -134,16 +96,32 @@ export default function PricingPage() {
                     </div>
                 </div>
 
+                {/* Error Toast */}
+                {error && (
+                    <div className="max-w-md mx-auto mb-8 px-4">
+                        <div className="bg-red-50 border border-red-200 text-red-800 px-6 py-4 rounded-2xl text-sm font-medium flex items-center gap-3">
+                            <span>⚠️</span>
+                            <span>{error}</span>
+                            <button onClick={() => setError(null)} className="ml-auto text-red-500 hover:text-red-700 font-bold">✕</button>
+                        </div>
+                    </div>
+                )}
+
                 {/* Pricing Grid */}
                 <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-3 gap-8 mb-32">
-                    {NEW_PLANS.map((plan) => (
-                        <PricingCard
-                            key={plan.id}
-                            plan={plan}
-                            loading={loading}
-                            onCheckout={handleCheckout}
-                        />
-                    ))}
+                    {(Object.keys(PLANS) as PlanId[]).map((planId) => {
+                        const plan = PLANS[planId]
+                        return (
+                            <PricingCard
+                                key={planId}
+                                plan={plan}
+                                planId={planId}
+                                icon={PLAN_ICONS[planId]}
+                                loading={loading}
+                                onCheckout={handleCheckout}
+                            />
+                        )
+                    })}
                 </div>
 
                 {/* Automation Add-on */}
@@ -161,11 +139,11 @@ export default function PricingPage() {
                                     Automation Suite
                                 </h2>
                                 <p className="text-xl text-slate-300 font-medium leading-relaxed max-w-lg">
-                                    Put your business on autopilot. Available for Professional and Enterprise plans.
+                                    Put your business on autopilot. Available for Agency Growth and Brokerage Command plans.
                                 </p>
                             </div>
                             <Link href="/login?redirect=/settings/automations">
-                                <Button className="h-16 px-12 bg-white text-slate-900 hover:bg-slate-200 rounded-2xl font-black uppercase tracking-widest transition-all hover:scale-105 shadow-xl">
+                                <Button className="h-16 px-12 bg-white text-slate-900 hover:bg-slate-100 rounded-2xl font-black uppercase tracking-widest transition-all hover:scale-105 shadow-xl">
                                     Learn More
                                 </Button>
                             </Link>
@@ -179,11 +157,22 @@ export default function PricingPage() {
     )
 }
 
-function PricingCard({ plan, loading, onCheckout }: { plan: typeof NEW_PLANS[0], loading: string | null, onCheckout: (id: string, link: string) => void }) {
+function PricingCard({
+    plan,
+    planId,
+    icon: Icon,
+    loading,
+    onCheckout,
+}: {
+    plan: typeof PLANS[PlanId]
+    planId: PlanId
+    icon: typeof Building2
+    loading: string | null
+    onCheckout: (planId: PlanId) => void
+}) {
     const isPopular = plan.popular
-    const Icon = plan.icon
 
-    const FeatureSection = ({ title, features }: { title: string, features: string[] }) => (
+    const FeatureSection = ({ title, features }: { title: string; features: string[] }) => (
         <div className="mb-6 last:mb-0">
             <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">{title}</h4>
             <div className="space-y-3">
@@ -200,10 +189,14 @@ function PricingCard({ plan, loading, onCheckout }: { plan: typeof NEW_PLANS[0],
     )
 
     return (
-        <div className={cn(
-            "relative p-8 rounded-[2.5rem] border bg-white flex flex-col transition-all duration-300 group hover:-translate-y-2",
-            isPopular ? "border-blue-200 shadow-2xl shadow-blue-100 ring-4 ring-blue-50" : "border-slate-100 shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-slate-300/50"
-        )}>
+        <div
+            className={cn(
+                'relative p-8 rounded-[2.5rem] border bg-white flex flex-col transition-all duration-300 group hover:-translate-y-2',
+                isPopular
+                    ? 'border-blue-200 shadow-2xl shadow-blue-100 ring-4 ring-blue-50 scale-[1.03] lg:scale-[1.05]'
+                    : 'border-slate-100 shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-slate-300/50'
+            )}
+        >
             {isPopular && (
                 <div className="absolute -top-5 left-1/2 -translate-x-1/2 px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg">
                     Most Popular
@@ -211,10 +204,14 @@ function PricingCard({ plan, loading, onCheckout }: { plan: typeof NEW_PLANS[0],
             )}
 
             <div className="mb-8 mt-2">
-                <div className={cn(
-                    "w-14 h-14 rounded-2xl flex items-center justify-center mb-6 shadow-sm",
-                    isPopular ? "bg-blue-600 text-white" : "bg-slate-50 text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-all"
-                )}>
+                <div
+                    className={cn(
+                        'w-14 h-14 rounded-2xl flex items-center justify-center mb-6 shadow-sm',
+                        isPopular
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-50 text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-all'
+                    )}
+                >
                     <Icon className="w-7 h-7" />
                 </div>
                 <h3 className="text-2xl font-black text-slate-900 mb-2">{plan.name}</h3>
@@ -223,9 +220,12 @@ function PricingCard({ plan, loading, onCheckout }: { plan: typeof NEW_PLANS[0],
 
             <div className="mb-8 pb-8 border-b border-slate-100">
                 <div className="flex items-baseline gap-1">
-                    <span className="text-5xl font-black text-slate-900 tracking-tight">${plan.price}</span>
+                    <span className="text-5xl font-black text-slate-900 tracking-tight">{plan.displayPrice}</span>
                     <span className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">/month</span>
                 </div>
+                <p className="text-xs text-slate-400 font-bold mt-2 uppercase tracking-wide">
+                    14-day free trial included
+                </p>
             </div>
 
             <div className="flex-1 space-y-2 mb-8">
@@ -235,14 +235,16 @@ function PricingCard({ plan, loading, onCheckout }: { plan: typeof NEW_PLANS[0],
             </div>
 
             <Button
-                onClick={() => onCheckout(plan.id, plan.stripeLink)}
+                onClick={() => onCheckout(planId)}
                 disabled={loading !== null}
                 className={cn(
-                    "w-full h-14 rounded-xl font-black uppercase tracking-widest transition-all mt-auto border-0",
-                    isPopular ? "bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-200" : "bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-200"
+                    'w-full h-14 rounded-xl font-black uppercase tracking-widest transition-all mt-auto border-0',
+                    isPopular
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-200'
+                        : 'bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-200'
                 )}
             >
-                {loading === plan.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Get Started'}
+                {loading === planId ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Get Started'}
             </Button>
         </div>
     )

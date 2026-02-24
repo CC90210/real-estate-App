@@ -22,6 +22,7 @@ import {
     BookOpen,
     BarChart3,
     Activity,
+    Share2,
     ShieldAlert,
     Lock,
 } from 'lucide-react';
@@ -50,6 +51,7 @@ const navItems = [
     { id: 'documents', name: 'Documents', href: '/documents', icon: FileText, roles: ['admin', 'agent', 'landlord'] },
     { id: 'analytics', name: 'Analytics', href: '/analytics', icon: BarChart3, roles: ['admin', 'agent'] },
     { id: 'activity', name: 'Activity', href: '/activity', icon: Activity, roles: ['admin'] },
+    { id: 'social', name: 'Social Media', href: '/social', icon: Share2, roles: ['admin', 'agent'] },
     { id: 'automations', name: 'Automations', href: '/automations', icon: Zap, roles: ['admin'] },
     { id: 'settings', name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'agent', 'landlord'] },
 ];

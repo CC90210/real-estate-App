@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { PLANS, PlanId, getLimit, hasFeature } from '@/lib/stripe/plans'
+import { PLANS, PlanId, Plan } from '@/lib/stripe/plans'
 
 const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,6 +19,20 @@ export interface LimitCheckResult {
     upgradeRequired?: PlanId
 }
 
+// Map old plan IDs to new ones for backward compatibility
+function normalizePlanId(planId: string | null | undefined): PlanId | null {
+    if (!planId) return null
+    const map: Record<string, PlanId> = {
+        essentials: 'agent_pro',
+        professional: 'agency_growth',
+        enterprise: 'brokerage_command',
+        agent_pro: 'agent_pro',
+        agency_growth: 'agency_growth',
+        brokerage_command: 'brokerage_command',
+    }
+    return map[planId] || null
+}
+
 // Get company's current status (including lifetime bypass)
 export async function getCompanySubscriptionInfo(companyId: string) {
     const { data } = await supabaseAdmin
@@ -33,7 +47,7 @@ export async function getCompanySubscriptionInfo(companyId: string) {
 export async function getCompanyPlan(companyId: string): Promise<PlanId | null> {
     const data = await getCompanySubscriptionInfo(companyId)
 
-    if (data?.is_lifetime_access) return 'enterprise'
+    if (data?.is_lifetime_access) return 'brokerage_command'
 
     // Check if subscription is active
     if (!data?.subscription_plan ||
@@ -41,7 +55,7 @@ export async function getCompanyPlan(companyId: string): Promise<PlanId | null> 
         return null
     }
 
-    return data.subscription_plan as PlanId
+    return normalizePlanId(data.subscription_plan)
 }
 
 // Get company's current usage
@@ -66,7 +80,9 @@ export async function getCompanyUsage(companyId: string): Promise<UsageStats> {
 // Check if company can add more properties
 export async function canAddProperty(companyId: string): Promise<LimitCheckResult> {
     const info = await getCompanySubscriptionInfo(companyId)
-    const plan = info?.is_lifetime_access ? 'enterprise' : (info?.subscription_plan as PlanId | null)
+    const plan = info?.is_lifetime_access
+        ? 'brokerage_command' as PlanId
+        : normalizePlanId(info?.subscription_plan)
 
     if (!plan && !info?.is_lifetime_access) {
         return {
@@ -77,13 +93,13 @@ export async function canAddProperty(companyId: string): Promise<LimitCheckResul
         }
     }
 
-    const currentPlan = plan || 'essentials'
+    const currentPlan = plan || 'agent_pro' as PlanId
+    const planConfig = PLANS[currentPlan]
     const usage = await getCompanyUsage(companyId)
-    const limit = info?.is_lifetime_access ? Infinity : getLimit(currentPlan, 'properties')
+    const limit = info?.is_lifetime_access ? Infinity : (planConfig?.limits.properties ?? 0)
 
-    if (usage.properties >= limit) {
-        // Find the next plan that would allow more
-        const upgradeRequired = currentPlan === 'essentials' ? ('professional' as const) : ('enterprise' as const)
+    if (limit !== -1 && usage.properties >= limit) {
+        const upgradeRequired: PlanId = currentPlan === 'agent_pro' ? 'agency_growth' : 'brokerage_command'
 
         return {
             allowed: false,
@@ -97,14 +113,16 @@ export async function canAddProperty(companyId: string): Promise<LimitCheckResul
     return {
         allowed: true,
         currentUsage: usage.properties,
-        limit,
+        limit: limit === -1 ? Infinity : limit,
     }
 }
 
 // Check if company can add more team members
 export async function canAddTeamMember(companyId: string): Promise<LimitCheckResult> {
     const info = await getCompanySubscriptionInfo(companyId)
-    const plan = info?.is_lifetime_access ? 'enterprise' : (info?.subscription_plan as PlanId | null)
+    const plan = info?.is_lifetime_access
+        ? 'brokerage_command' as PlanId
+        : normalizePlanId(info?.subscription_plan)
 
     if (!plan && !info?.is_lifetime_access) {
         return {
@@ -115,12 +133,13 @@ export async function canAddTeamMember(companyId: string): Promise<LimitCheckRes
         }
     }
 
-    const currentPlan = plan || 'essentials'
+    const currentPlan = plan || 'agent_pro' as PlanId
+    const planConfig = PLANS[currentPlan]
     const usage = await getCompanyUsage(companyId)
-    const limit = info?.is_lifetime_access ? Infinity : getLimit(currentPlan, 'teamMembers')
+    const limit = info?.is_lifetime_access ? Infinity : (planConfig?.limits.teamMembers ?? 0)
 
-    if (usage.teamMembers >= limit) {
-        const upgradeRequired = currentPlan === 'essentials' ? ('professional' as const) : ('enterprise' as const)
+    if (limit !== -1 && usage.teamMembers >= limit) {
+        const upgradeRequired: PlanId = currentPlan === 'agent_pro' ? 'agency_growth' : 'brokerage_command'
 
         return {
             allowed: false,
@@ -134,14 +153,14 @@ export async function canAddTeamMember(companyId: string): Promise<LimitCheckRes
     return {
         allowed: true,
         currentUsage: usage.teamMembers,
-        limit,
+        limit: limit === -1 ? Infinity : limit,
     }
 }
 
 // Check if company has access to a specific feature
 export async function canAccessFeature(
     companyId: string,
-    feature: keyof typeof PLANS.essentials.limits
+    feature: string
 ): Promise<{ allowed: boolean; reason?: string; upgradeRequired?: PlanId }> {
     const info = await getCompanySubscriptionInfo(companyId)
 
@@ -156,20 +175,20 @@ export async function canAccessFeature(
     const plan = await getCompanyPlan(companyId)
 
     if (!plan) {
-        // Fallback for partners/testers who might not have a plan set yet but aren't lifetime
         return {
             allowed: false,
             reason: 'No active subscription.',
         }
     }
 
-    const allowed = hasFeature(plan, feature)
+    const planConfig = PLANS[plan]
+    const allowed = !!(planConfig?.limits as any)?.[feature]
 
     if (!allowed) {
         // Find which plan has this feature
-        let upgradeRequired: PlanId = 'professional'
-        if (!PLANS.professional.limits[feature]) {
-            upgradeRequired = 'enterprise'
+        let upgradeRequired: PlanId = 'agency_growth'
+        if (!(PLANS.agency_growth.limits as any)[feature]) {
+            upgradeRequired = 'brokerage_command'
         }
 
         const featureNames: Record<string, string> = {
@@ -179,6 +198,7 @@ export async function canAccessFeature(
             automations: 'Automations',
             paymentProcessing: 'Payment Processing',
             customIntegrations: 'Custom Integrations',
+            socialPlatforms: 'Social Media',
         }
 
         return {

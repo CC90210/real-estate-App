@@ -6,6 +6,7 @@ import { UserProvider } from '@/lib/hooks/useUser';
 import { useState, useEffect, ReactNode } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import { cleanupStorage, cleanupIndexedDB } from '@/lib/storage-cleanup';
 
 export function Providers({ children }: { children: ReactNode }) {
     const [queryClient] = useState(
@@ -13,9 +14,8 @@ export function Providers({ children }: { children: ReactNode }) {
             new QueryClient({
                 defaultOptions: {
                     queries: {
-                        staleTime: 30 * 1000, // 30 seconds
-                        gcTime: 5 * 60 * 1000, // 5 minutes  
-                        refetchOnWindowFocus: false,
+                        staleTime: 5 * 60 * 1000,         // 5 minutes — data is "fresh" for 5 min
+                        gcTime: 10 * 60 * 1000,            // 10 minutes — garbage collect after 10 min
                         retry: (failureCount, error) => {
                             // Don't retry on RLS recursion errors
                             if (error instanceof Error && error.message.includes('recursion')) {
@@ -25,12 +25,27 @@ export function Providers({ children }: { children: ReactNode }) {
                             if (error instanceof Error && error.message.includes('permission denied')) {
                                 return false;
                             }
-                            return failureCount < 1;
+                            return failureCount < 2;
                         },
+                        retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
+                        refetchOnWindowFocus: false,        // STOP refetching every time user switches tabs
+                        refetchOnReconnect: true,
+                        refetchOnMount: false,              // Don't refetch if data exists and is fresh
+                        networkMode: 'offlineFirst' as const,
+                    },
+                    mutations: {
+                        retry: 1,
+                        networkMode: 'offlineFirst' as const,
                     },
                 },
             })
     );
+
+    // Cleanup bloated storage on app mount
+    useEffect(() => {
+        cleanupStorage();
+        cleanupIndexedDB();
+    }, []);
 
     return (
         <QueryClientProvider client={queryClient}>
@@ -69,3 +84,4 @@ function AuthListener({ children }: { children: ReactNode }) {
 
     return children;
 }
+

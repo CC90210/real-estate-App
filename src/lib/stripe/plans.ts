@@ -1,18 +1,57 @@
-export const PLANS = {
-    essentials: {
-        id: 'essentials',
-        name: 'Essentials',
+export type PlanId = 'agent_pro' | 'agency_growth' | 'brokerage_command'
+
+export interface Plan {
+    id: PlanId
+    name: string
+    tagline: string
+    price: number          // Monthly in cents
+    displayPrice: string   // For UI display
+    popular?: boolean
+    features: {
+        crm: string[]
+        finance: string[]
+        social: string[]
+    }
+    limits: {
+        properties: number   // -1 = unlimited
+        teamMembers: number  // -1 = unlimited
+        socialPlatforms: number // -1 = unlimited
+        showings: boolean
+        invoices: boolean
+        analytics: boolean
+        automations: boolean
+        paymentProcessing: boolean
+        customIntegrations: boolean
+    }
+}
+
+export const PLANS: Record<PlanId, Plan> = {
+    agent_pro: {
+        id: 'agent_pro',
+        name: 'Agent Pro',
         tagline: 'Core tools for solo agents & landlords starting their journey.',
-
-        // Pricing (in cents)
-        firstMonthPrice: 900,      // $9 first month
-        regularPrice: 2900,        // $29/month after
-
-        // Limits
+        price: 14900,   // $149/month
+        displayPrice: '$149',
+        features: {
+            crm: [
+                'Up to 25 Properties',
+                '1 Team Member',
+                'Application Management',
+            ],
+            finance: [
+                'Basic Reporting',
+                'Digital Rent Collection',
+                'Expense Tracking',
+            ],
+            social: [
+                'Basic Social Connector',
+                '1 Connected Platform',
+            ],
+        },
         limits: {
             properties: 25,
             teamMembers: 1,
-            // Feature access
+            socialPlatforms: 1,
             showings: false,
             invoices: false,
             analytics: false,
@@ -20,59 +59,68 @@ export const PLANS = {
             paymentProcessing: false,
             customIntegrations: false,
         },
-
-        // Display features
-        features: [
-            'Up to 25 Properties',
-            '1 Team Member',
-            'Application Management',
-            'Document Generation',
-            'Basic Reporting',
-            'Email Support',
-        ],
     },
-
-    professional: {
-        id: 'professional',
-        name: 'Professional',
+    agency_growth: {
+        id: 'agency_growth',
+        name: 'Agency Growth',
         tagline: 'Streamlined compliance & paperwork for growing portfolios.',
+        price: 28900,   // $289/month
+        displayPrice: '$289',
         popular: true,
-
-        firstMonthPrice: 1900,     // $19 first month
-        regularPrice: 4900,        // $49/month after
-
+        features: {
+            crm: [
+                'Up to 100 Properties',
+                '5 Team Members',
+                'Automated Lease Drafting',
+            ],
+            finance: [
+                'Advanced Analytics',
+                'Automated Invoicing',
+                'Custom Fee Structures',
+            ],
+            social: [
+                'Multi-account Scheduling',
+                'Up to 5 Connected Platforms',
+            ],
+        },
         limits: {
             properties: 100,
             teamMembers: 5,
+            socialPlatforms: 5,
             showings: true,
             invoices: true,
             analytics: true,
-            automations: true,        // Can purchase add-on
-            paymentProcessing: true,  // Can enable Stripe Connect
+            automations: true,
+            paymentProcessing: true,
             customIntegrations: false,
         },
-
-        features: [
-            'Up to 100 Properties',
-            '5 Team Members',
-            'Everything in Essentials',
-            'Showings Calendar',
-            'Invoice Generation',
-            'Advanced Analytics',
-        ],
     },
-
-    enterprise: {
-        id: 'enterprise',
-        name: 'Enterprise',
+    brokerage_command: {
+        id: 'brokerage_command',
+        name: 'Brokerage Command',
         tagline: 'Full operational command for large organizations.',
-
-        firstMonthPrice: 3900,     // $39 first month
-        regularPrice: 7900,        // $79/month after
-
+        price: 49900,   // $499/month
+        displayPrice: '$499',
+        features: {
+            crm: [
+                'Unlimited Properties',
+                'Unlimited Team Members',
+                'Dedicated Account Manager',
+            ],
+            finance: [
+                'Full General Ledger',
+                'Priority Capital Access',
+                'Brokerage Commission Splits',
+            ],
+            social: [
+                'Unlimited Platforms',
+                'White-labeled Social Suite',
+            ],
+        },
         limits: {
-            properties: Infinity,
-            teamMembers: Infinity,
+            properties: -1,
+            teamMembers: -1,
+            socialPlatforms: -1,
             showings: true,
             invoices: true,
             analytics: true,
@@ -80,35 +128,39 @@ export const PLANS = {
             paymentProcessing: true,
             customIntegrations: true,
         },
-
-        features: [
-            'Unlimited Properties',
-            'Unlimited Team Members',
-            'Everything in Professional',
-            'Custom Integrations',
-            'Dedicated Account Manager',
-            'Priority Support & SLA',
-        ],
     },
-} as const
-
-export type PlanId = keyof typeof PLANS
-export type Plan = typeof PLANS[PlanId]
+}
 
 // Helper to get plan by ID
-export function getPlan(planId: string): Plan | null {
-    return PLANS[planId as PlanId] || null
+export function getPlan(planId: string): Plan | undefined {
+    return PLANS[planId as PlanId]
 }
 
 // Helper to check if feature is available
-export function hasFeature(planId: string, feature: keyof Plan['limits']): boolean {
+export function canAccess(planId: string, feature: string): boolean {
+    const plan = getPlan(planId)
+    if (!plan) return false
+    const allFeatures = [...plan.features.crm, ...plan.features.finance, ...plan.features.social]
+    return allFeatures.some(f => f.toLowerCase().includes(feature.toLowerCase()))
+}
+
+// Helper to check if within a numeric limit
+export function isWithinLimit(planId: string, limitKey: 'properties' | 'teamMembers' | 'socialPlatforms', current: number): boolean {
+    const plan = getPlan(planId)
+    if (!plan) return false
+    const limit = plan.limits[limitKey]
+    return limit === -1 || current < limit
+}
+
+// Helper to check if a boolean feature is available
+export function hasFeature(planId: string, feature: keyof Omit<Plan['limits'], 'properties' | 'teamMembers' | 'socialPlatforms'>): boolean {
     const plan = getPlan(planId)
     if (!plan) return false
     return !!plan.limits[feature]
 }
 
-// Helper to get limit value
-export function getLimit(planId: string, limit: 'properties' | 'teamMembers'): number {
+// Helper to get numeric limit value
+export function getLimit(planId: string, limit: 'properties' | 'teamMembers' | 'socialPlatforms'): number {
     const plan = getPlan(planId)
     if (!plan) return 0
     return plan.limits[limit]

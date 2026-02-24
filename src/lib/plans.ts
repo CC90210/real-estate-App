@@ -1,9 +1,10 @@
 export const PLANS = {
+    // LEGACY ALIASES — these map to the new plan IDs so old DB values still work
     essentials: {
-        id: 'essentials',
-        name: 'Essentials',
-        firstMonthPrice: 900,
-        monthlyPrice: 2900,
+        id: 'agent_pro',
+        name: 'Agent Pro',
+        firstMonthPrice: 14900,
+        monthlyPrice: 14900,
         limits: {
             properties: 25,
             teamMembers: 1,
@@ -24,6 +25,7 @@ export const PLANS = {
             analytics: false,
             activity: false,
             automations: false,
+            social: true,
             tenantPortal: false,
             paymentProcessing: false,
             customIntegrations: false,
@@ -34,14 +36,15 @@ export const PLANS = {
             'properties',
             'applications',
             'documents',
+            'social',
             'settings',
         ],
     },
     professional: {
-        id: 'professional',
-        name: 'Professional',
-        firstMonthPrice: 1900,
-        monthlyPrice: 4900,
+        id: 'agency_growth',
+        name: 'Agency Growth',
+        firstMonthPrice: 28900,
+        monthlyPrice: 28900,
         limits: {
             properties: 100,
             teamMembers: 5,
@@ -62,6 +65,7 @@ export const PLANS = {
             analytics: true,
             activity: true,
             automations: true,
+            social: true,
             tenantPortal: true,
             paymentProcessing: true,
             customIntegrations: false,
@@ -80,15 +84,16 @@ export const PLANS = {
             'documents',
             'analytics',
             'activity',
+            'social',
             'automations',
             'settings',
         ],
     },
     enterprise: {
-        id: 'enterprise',
-        name: 'Enterprise',
-        firstMonthPrice: 3900,
-        monthlyPrice: 7900,
+        id: 'brokerage_command',
+        name: 'Brokerage Command',
+        firstMonthPrice: 49900,
+        monthlyPrice: 49900,
         limits: {
             properties: Infinity,
             teamMembers: Infinity,
@@ -109,6 +114,7 @@ export const PLANS = {
             analytics: true,
             activity: true,
             automations: true,
+            social: true,
             tenantPortal: true,
             paymentProcessing: true,
             customIntegrations: true,
@@ -127,11 +133,22 @@ export const PLANS = {
             'documents',
             'analytics',
             'activity',
+            'social',
             'automations',
             'settings',
         ],
     },
+
+    // NEW PLAN IDS — these are what Stripe checkout now uses
+    agent_pro: {} as any,       // Will be filled below
+    agency_growth: {} as any,
+    brokerage_command: {} as any,
 } as const;
+
+// Create aliases so new plan IDs resolve to the same config
+(PLANS as any).agent_pro = PLANS.essentials;
+(PLANS as any).agency_growth = PLANS.professional;
+(PLANS as any).brokerage_command = PLANS.enterprise;
 
 export type PlanId = keyof typeof PLANS;
 export type FeatureKey = keyof typeof PLANS.essentials.features;

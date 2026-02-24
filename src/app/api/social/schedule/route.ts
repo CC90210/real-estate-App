@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import Late from '@getlatedev/node';
 
 export async function POST(request: Request) {
     try {
-        const late = new Late({
-            apiKey: process.env.LATE_API_KEY || 'sk_dummy_key_for_build_step'
-        });
+        const Late = (await import('@getlatedev/node')).default;
+        const apiKey = process.env.LATE_API_KEY;
+        if (!apiKey) return NextResponse.json({ error: 'Social media integration not configured' }, { status: 503 });
+        const late = new Late({ apiKey });
 
         const supabase = await createClient();
 

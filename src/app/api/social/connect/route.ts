@@ -1,75 +1,82 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import Late from '@getlatedev/node';
+import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
     try {
-        // Initialize Late client dynamically to avoid build-time errors on Vercel
-        // when LATE_API_KEY is not present in the environment variables during build.
-        const late = new Late({
-            apiKey: process.env.LATE_API_KEY || 'sk_dummy_key_for_build_step'
-        });
+        const supabase = await createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-        const supabase = await createClient();
+        const { platform } = await req.json()
 
-        // Ensure user is authenticated
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        // Validate platform
+        const validPlatforms = [
+            'twitter', 'instagram', 'facebook', 'linkedin', 'tiktok',
+            'youtube', 'pinterest', 'reddit', 'bluesky', 'threads',
+            'googlebusiness', 'telegram', 'snapchat'
+        ]
+        if (!validPlatforms.includes(platform)) {
+            return NextResponse.json({ error: 'Invalid platform' }, { status: 400 })
         }
 
-        const { platform } = await request.json();
+        // Check plan limits
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('company_id, companies(subscription_plan)')
+            .eq('id', user.id)
+            .single()
 
-        if (!platform) {
-            return NextResponse.json({ error: 'Platform parameter is required' }, { status: 400 });
+        const company = profile?.companies as any
+        const plan = company?.subscription_plan || 'agent_pro'
+
+        // Count existing connected accounts
+        const { count } = await supabase
+            .from('social_accounts')
+            .select('*', { count: 'exact', head: true })
+            .eq('company_id', profile?.company_id)
+            .eq('status', 'active')
+
+        const planLimits: Record<string, number> = {
+            agent_pro: 1,
+            agency_growth: 5,
+            brokerage_command: 999,
         }
 
-        // 1. Check if the agent already has a Late profile in Supabase
-        const { data: profileData, error: profileError } = await supabase
-            .from('agent_social_profiles')
+        const limit = planLimits[plan] || 1
+        if ((count || 0) >= limit) {
+            return NextResponse.json(
+                { error: `Your ${plan} plan supports up to ${limit} connected platform(s). Upgrade to connect more.` },
+                { status: 403 }
+            )
+        }
+
+        // Get the company's Late profile ID
+        const { data: companyData } = await supabase
+            .from('companies')
             .select('late_profile_id')
-            .eq('user_id', user.id)
-            .maybeSingle();
+            .eq('id', profile?.company_id)
+            .single()
 
-        if (profileError) {
-            console.error('Supabase fetch error:', profileError);
+        if (!companyData?.late_profile_id) {
+            return NextResponse.json({ error: 'Social profile not set up. Please try again.' }, { status: 400 })
         }
 
-        let lateProfileId;
+        // Dynamically import Late
+        const Late = (await import('@getlatedev/node')).default
+        const apiKey = process.env.LATE_API_KEY
+        if (!apiKey) return NextResponse.json({ error: 'Social media integration not configured' }, { status: 503 })
+        const late = new Late({ apiKey })
 
-        // 2. If they don't have one, create it on the fly
-        if (!profileData) {
-            console.log("Creating new Late Profile for Agent:", user.id);
-            const { profile } = await late.profiles.createProfile({
-                name: `PropFlow Agent: ${user.id}`,
-                description: 'Real Estate Social Accounts'
-            });
-            lateProfileId = profile._id;
+        // Get OAuth URL from Late
+        const result = await (late as any).connect.getConnectUrl({
+            platform,
+            profileId: companyData.late_profile_id,
+            redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/social/callback?platform=${platform}`,
+        })
 
-            // Save it to Supabase
-            const { error: insertError } = await supabase.from('agent_social_profiles').insert({
-                user_id: user.id,
-                late_profile_id: lateProfileId
-            });
-
-            if (insertError) {
-                console.error('Failed to insert agent profile:', insertError);
-                return NextResponse.json({ error: 'Failed to securely link profile in database.' }, { status: 500 });
-            }
-        } else {
-            lateProfileId = profileData.late_profile_id;
-        }
-
-        // 3. Get the OAuth link from Late for the specific platform
-        const { authUrl } = await late.connect.getConnectUrl({
-            platform: platform,
-            profileId: lateProfileId
-        });
-
-        return NextResponse.json({ authUrl });
-
-    } catch (error) {
-        console.error('Social Connect API Error:', error);
-        return NextResponse.json({ error: 'Failed to generate secure connection URL' }, { status: 500 });
+        return NextResponse.json({ authUrl: result?.authUrl })
+    } catch (error: any) {
+        console.error('Social connect error:', error)
+        return NextResponse.json({ error: error.message }, { status: 500 })
     }
 }
