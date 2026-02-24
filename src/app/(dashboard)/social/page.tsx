@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { useSearchParams } from 'next/navigation'
 
-// ─── All 13 Late-supported platforms ─────────────────────────────
+// ─── Supported social platforms ──────────────────────────────────
 const PLATFORM_OPTIONS = [
     { id: 'instagram', name: 'Instagram', icon: Instagram, color: 'bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400' },
     { id: 'youtube', name: 'YouTube', icon: Youtube, color: 'bg-red-600' },
@@ -136,7 +136,7 @@ export default function SocialPage() {
             }
 
             if (data.authUrl) {
-                // Redirect to Late's OAuth page
+                // Redirect to OAuth authorization page
                 window.location.href = data.authUrl
             } else {
                 setError('No authorization URL returned. Please try again.')
@@ -245,8 +245,7 @@ export default function SocialPage() {
             <div>
                 <h1 className="text-2xl font-black text-slate-900 tracking-tight">Social Media Suite</h1>
                 <p className="text-sm text-slate-500 font-medium mt-1">
-                    Connect your social accounts, schedule posts, and grow your brand — all powered by&nbsp;
-                    <a href="https://getlate.dev" target="_blank" rel="noopener" className="text-blue-600 hover:underline font-bold">Late</a>.
+                    Connect your social accounts, schedule posts, and grow your brand across every platform.
                 </p>
             </div>
 
