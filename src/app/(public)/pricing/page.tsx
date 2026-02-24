@@ -57,12 +57,39 @@ const NEW_PLANS = [
 export default function PricingPage() {
     const [loading, setLoading] = useState<string | null>(null)
 
-    const handleCheckout = (planId: string, stripeLink: string) => {
+    const handleCheckout = async (planId: string, stripePriceId: string) => {
         setLoading(planId)
-        // Redirect directly to the placeholder stripe link
-        setTimeout(() => {
-            window.location.href = stripeLink
-        }, 500)
+
+        try {
+            const res = await fetch('/api/stripe/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ plan: stripePriceId }), // Pass the actual Stripe Price ID
+            })
+
+            const data = await res.json()
+
+            if (data.error) {
+                if (res.status === 401) {
+                    // Not logged in -> push to join page
+                    window.location.href = `/join?plan=${stripePriceId}`;
+                    return;
+                }
+                throw new Error(data.error);
+            }
+
+            if (data.url) {
+                window.location.href = data.url; // Redirect to Stripe Checkout session
+            } else {
+                throw new Error("Missing checkout URL from Stripe.");
+            }
+
+        } catch (error: any) {
+            console.error('Checkout error:', error)
+            alert(error.message || 'Checkout failed to initialize.')
+        } finally {
+            setLoading(null)
+        }
     }
 
     return (
