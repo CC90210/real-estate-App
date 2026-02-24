@@ -15,10 +15,12 @@ const { Late } = require('@getlatedev/node');
 
         if (profiles) {
             for (const p of profiles) {
-                if (p.name === 'propflow_test' || p.name === 'PropFlow Agency') {
-                    console.log('Deleting test profile:', p.name, p._id);
+                console.log('Deleting profile:', p.name, p._id);
+                try {
                     await late.profiles.deleteProfile({ path: { id: p._id } });
                     console.log('Deleted!');
+                } catch (err) {
+                    console.log('Failed to delete:', err.message);
                 }
             }
         }

@@ -87,16 +87,35 @@ export async function POST(req: Request) {
                 }
             } catch (profileError: any) {
                 console.error('Late profile creation failed:', profileError?.message || profileError)
-                return NextResponse.json(
-                    { error: `Failed to create social profile: ${profileError?.message || 'Unknown error'}. Check LATE_API_KEY.` },
-                    { status: 502 }
-                )
+
+                // Fallback: If we hit a plan limit, try to just use their first existing profile
+                try {
+                    const listResult = await late.profiles.listProfiles()
+                    const profiles = listResult?.data?.profiles || listResult?.profiles || []
+
+                    if (profiles.length > 0) {
+                        lateProfileId = profiles[0]._id || profiles[0].id
+                        if (lateProfileId) {
+                            await supabase
+                                .from('companies')
+                                .update({ late_profile_id: lateProfileId })
+                                .eq('id', company.id)
+                        }
+                    } else {
+                        throw new Error(profileError?.message || 'Profile limit reached but no profiles found.')
+                    }
+                } catch (fallbackError: any) {
+                    return NextResponse.json(
+                        { error: `Failed to create social profile: ${profileError?.message || 'Unknown error'}` },
+                        { status: 502 }
+                    )
+                }
             }
         }
 
         if (!lateProfileId) {
             return NextResponse.json(
-                { error: 'Could not create your social profile. Please verify your LATE_API_KEY is valid.' },
+                { error: 'Could not create or find a social profile to connect.' },
                 { status: 500 }
             )
         }
