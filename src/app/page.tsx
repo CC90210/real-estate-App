@@ -61,26 +61,30 @@ export default function HomePage() {
         </div>
 
         {/* Hero Section */}
-        <section className="relative px-4 pt-20 pb-32 lg:pt-32 lg:pb-48 overflow-hidden">
+        <section className="relative px-4 pt-20 pb-32 lg:pt-32 lg:pb-48 overflow-hidden bg-slate-900 text-white rounded-[3rem] mx-4 mt-8 shadow-2xl">
+          {/* Luxury Building Background Overlay */}
+          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2075&auto=format&fit=crop')] bg-cover bg-center opacity-30 mix-blend-overlay"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-900/80 via-indigo-950/80 to-slate-900/95"></div>
+
           <div className="max-w-7xl mx-auto relative z-10">
             <div className="max-w-4xl mx-auto text-center">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100/50 text-blue-600 text-xs font-bold mb-8 animate-pulse-soft">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-blue-300 text-xs font-bold mb-8 animate-pulse-soft backdrop-blur-md shadow-xl">
                 <Sparkles className="h-3 w-3" />
                 <span>Bespoke Real Estate Infrastructure</span>
               </div>
 
-              <h1 className="text-5xl sm:text-6xl lg:text-8xl font-black tracking-tight mb-8 leading-[1.1]">
-                Scale your agency with <span className="text-gradient block sm:inline">expert systems.</span>
+              <h1 className="text-5xl sm:text-6xl lg:text-8xl font-black tracking-tight mb-8 leading-[1.1] drop-shadow-2xl">
+                Scale your agency with <span className="bg-gradient-to-r from-blue-400 to-indigo-300 text-transparent bg-clip-text block sm:inline">expert systems.</span>
               </h1>
 
-              <p className="text-lg sm:text-2xl text-slate-500 mb-12 max-w-2xl mx-auto leading-relaxed font-medium">
+              <p className="text-lg sm:text-2xl text-slate-300 mb-12 max-w-2xl mx-auto leading-relaxed font-medium drop-shadow-md">
                 PropFlow provides elite property management architecture built by experts for experts.
                 Custom deployments. Private automations. Military-grade scale.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                 <Link href="/signup" className="w-full sm:w-auto">
-                  <Button size="lg" className="w-full sm:w-auto px-8 py-8 text-lg font-bold bg-blue-600 hover:bg-blue-700 shadow-2xl shadow-blue-200 rounded-2xl group">
+                  <Button size="lg" className="w-full sm:w-auto px-8 py-8 text-lg font-bold bg-blue-600 hover:bg-blue-500 shadow-2xl shadow-blue-500/20 text-white rounded-2xl group border border-blue-400/30 transition-all duration-300 hover:-translate-y-1">
                     Get Started Free
                     <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                   </Button>
@@ -88,14 +92,14 @@ export default function HomePage() {
                 <div className="flex items-center gap-2 ml-4">
                   <div className="flex -space-x-2">
                     {[1, 2, 3, 4].map(i => (
-                      <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-slate-200" />
+                      <div key={i} className="w-8 h-8 rounded-full border-2 border-slate-800 bg-slate-600 shadow-md" />
                     ))}
                   </div>
                   <div className="text-left">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 drop-shadow-sm">
                       {[1, 2, 3, 4, 5].map(i => <Star key={i} className="h-3 w-3 fill-amber-400 text-amber-400" />)}
                     </div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Expert-Built Ecosystem</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Expert-Built Ecosystem</p>
                   </div>
                 </div>
               </div>
