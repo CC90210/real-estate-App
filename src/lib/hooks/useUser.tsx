@@ -78,13 +78,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     const fetchProfile = useCallback(async (userId: string) => {
         try {
-            // Add a timeout so profile fetch never hangs forever
+            // Reduced timeout: 5s instead of 8s to avoid racing with the 10s safety timeout
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 8000);
+            const timeout = setTimeout(() => controller.abort(), 5000);
 
             const { data, error } = await supabase
                 .from('profiles')
-                .select('*, company:companies(*)')
+                .select('id, full_name, email, role, company_id, avatar_url, is_super_admin, is_partner, job_title, company:companies(id, name, subscription_plan, subscription_status, is_lifetime_access, late_profile_id)')
                 .eq('id', userId)
                 .single()
                 .abortSignal(controller.signal);

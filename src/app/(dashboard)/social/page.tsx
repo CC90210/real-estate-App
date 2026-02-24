@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -8,7 +8,7 @@ import {
     Share2, Plus, Send, Clock, CheckCircle2,
     Instagram, Linkedin, Facebook, Hash, Sparkles, Loader2,
     Trash2, Youtube, Globe, MessageCircle, Camera, MapPin,
-    AtSign, Radio, Bookmark,
+    AtSign, Radio, Bookmark, Upload, X, Image as ImageIcon, Film,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -51,10 +51,17 @@ interface SocialPost {
     created_at: string
 }
 
+interface MediaFile {
+    file: File
+    preview: string
+    type: 'image' | 'video'
+}
+
 export default function SocialPage() {
     const { profile } = useUser()
     const supabase = createClient()
     const searchParams = useSearchParams()
+    const fileInputRef = useRef<HTMLInputElement>(null)
 
     const [activeTab, setActiveTab] = useState<'accounts' | 'post' | 'history'>('accounts')
     const [accounts, setAccounts] = useState<SocialAccount[]>([])
@@ -64,6 +71,7 @@ export default function SocialPage() {
     // Post form state
     const [postContent, setPostContent] = useState('')
     const [selectedAccounts, setSelectedAccounts] = useState<string[]>([])
+    const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
     const [hashtagTopic, setHashtagTopic] = useState('')
     const [generatedHashtags, setGeneratedHashtags] = useState<string[]>([])
     const [selectedHashtags, setSelectedHashtags] = useState<string[]>([])
@@ -78,7 +86,6 @@ export default function SocialPage() {
         const callbackError = searchParams.get('error')
         if (connected) {
             toast.success(`${connected} connected successfully!`)
-            // Clean URL
             window.history.replaceState({}, '', '/social')
         }
         if (callbackError) {
@@ -136,7 +143,6 @@ export default function SocialPage() {
             }
 
             if (data.authUrl) {
-                // Redirect to OAuth authorization page
                 window.location.href = data.authUrl
             } else {
                 setError('No authorization URL returned. Please try again.')
@@ -163,6 +169,46 @@ export default function SocialPage() {
         }
     }
 
+    // ─── Media Upload ──────────────────────────────────────────────
+    function handleMediaUpload(e: React.ChangeEvent<HTMLInputElement>) {
+        const files = e.target.files
+        if (!files) return
+
+        const newMedia: MediaFile[] = []
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i]
+            const isVideo = file.type.startsWith('video/')
+            const isImage = file.type.startsWith('image/')
+            if (!isVideo && !isImage) continue
+
+            // 50MB max per file
+            if (file.size > 50 * 1024 * 1024) {
+                toast.error(`${file.name} is too large (max 50MB)`)
+                continue
+            }
+
+            newMedia.push({
+                file,
+                preview: URL.createObjectURL(file),
+                type: isVideo ? 'video' : 'image',
+            })
+        }
+
+        setMediaFiles(prev => [...prev, ...newMedia].slice(0, 10)) // Max 10 files
+        // Reset input so same file can be re-selected
+        if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+
+    function removeMedia(index: number) {
+        setMediaFiles(prev => {
+            const updated = [...prev]
+            URL.revokeObjectURL(updated[index].preview)
+            updated.splice(index, 1)
+            return updated
+        })
+    }
+
+    // ─── Hashtag Generation ────────────────────────────────────────
     async function generateHashtags() {
         if (!hashtagTopic.trim()) return
         setGeneratingTags(true)
@@ -181,6 +227,16 @@ export default function SocialPage() {
         }
     }
 
+    // ─── Select All / Deselect All Accounts ───────────────────────
+    function toggleSelectAll() {
+        if (selectedAccounts.length === activeAccounts.length) {
+            setSelectedAccounts([])
+        } else {
+            setSelectedAccounts(activeAccounts.map(a => a.id))
+        }
+    }
+
+    // ─── Publish / Draft ───────────────────────────────────────────
     async function handlePublish(publishNow: boolean) {
         if (!postContent.trim()) {
             toast.error('Post content is required')
@@ -192,6 +248,26 @@ export default function SocialPage() {
         }
         setPublishing(true)
         try {
+            // Upload media to Supabase Storage first
+            const uploadedUrls: string[] = []
+            for (const media of mediaFiles) {
+                const ext = media.file.name.split('.').pop()
+                const path = `social/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from('media')
+                    .upload(path, media.file)
+
+                if (uploadError) {
+                    console.error('Upload error:', uploadError)
+                    continue
+                }
+
+                const { data: urlData } = supabase.storage.from('media').getPublicUrl(path)
+                if (urlData?.publicUrl) {
+                    uploadedUrls.push(urlData.publicUrl)
+                }
+            }
+
             const res = await fetch('/api/social/post', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -199,6 +275,7 @@ export default function SocialPage() {
                     content: postContent,
                     hashtags: selectedHashtags,
                     platformAccountIds: selectedAccounts,
+                    mediaUrls: uploadedUrls,
                     publishNow,
                 }),
             })
@@ -215,6 +292,7 @@ export default function SocialPage() {
             setSelectedHashtags([])
             setGeneratedHashtags([])
             setHashtagTopic('')
+            setMediaFiles([])
             fetchData()
             setActiveTab('history')
         } catch {
@@ -226,14 +304,15 @@ export default function SocialPage() {
 
     const activeAccounts = accounts.filter(a => a.status === 'active')
     const charCount = postContent.length
+    const allSelected = selectedAccounts.length === activeAccounts.length && activeAccounts.length > 0
 
     if (loading) {
         return (
             <div className="p-6 animate-pulse space-y-4">
                 <div className="h-8 bg-gray-200 rounded w-1/3" />
                 <div className="h-4 bg-gray-200 rounded w-2/3" />
-                <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4 mt-6">
-                    {Array.from({ length: 10 }).map((_, i) => <div key={i} className="h-28 bg-gray-200 rounded-xl" />)}
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mt-6">
+                    {Array.from({ length: 13 }).map((_, i) => <div key={i} className="h-24 bg-gray-200 rounded-xl" />)}
                 </div>
             </div>
         )
@@ -313,7 +392,7 @@ export default function SocialPage() {
                         </div>
                     )}
 
-                    {/* Connect new platform grid — ALL 13 platforms */}
+                    {/* Connect new platform */}
                     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
                         <h3 className="font-bold text-slate-900 mb-2 flex items-center gap-2">
                             <Plus className="w-5 h-5" /> Connect a Platform
@@ -377,6 +456,61 @@ export default function SocialPage() {
                                     <span className="text-[10px] text-orange-500 font-medium">
                                         Note: Twitter/X limits to 280 chars
                                     </span>
+                                )}
+                            </div>
+
+                            {/* ─── Media Upload Section ─── */}
+                            <div className="border-t border-slate-100 pt-4 mt-4">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <Upload className="w-4 h-4 text-blue-500" />
+                                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Media</span>
+                                    <span className="text-[10px] text-slate-400 ml-1">({mediaFiles.length}/10)</span>
+                                </div>
+
+                                {/* Upload button */}
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*,video/*"
+                                    multiple
+                                    className="hidden"
+                                    onChange={handleMediaUpload}
+                                />
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="w-full py-4 border-2 border-dashed border-slate-200 rounded-xl text-sm text-slate-400 font-medium hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50/50 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Upload className="w-4 h-4" />
+                                    Click to upload images or videos
+                                </button>
+
+                                {/* Preview thumbnails */}
+                                {mediaFiles.length > 0 && (
+                                    <div className="flex gap-2 mt-3 flex-wrap">
+                                        {mediaFiles.map((media, i) => (
+                                            <div key={i} className="relative group w-20 h-20 rounded-lg overflow-hidden border border-slate-200">
+                                                {media.type === 'image' ? (
+                                                    <img src={media.preview} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full bg-slate-800 flex items-center justify-center">
+                                                        <Film className="w-6 h-6 text-white" />
+                                                    </div>
+                                                )}
+                                                <button
+                                                    onClick={() => removeMedia(i)}
+                                                    className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                                <div className="absolute bottom-0.5 left-0.5">
+                                                    {media.type === 'image'
+                                                        ? <ImageIcon className="w-3 h-3 text-white drop-shadow" />
+                                                        : <Film className="w-3 h-3 text-white drop-shadow" />
+                                                    }
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
 
@@ -457,10 +591,20 @@ export default function SocialPage() {
                         </div>
                     </div>
 
-                    {/* Platform Selector Sidebar */}
+                    {/* ─── Platform Selector Sidebar ─── */}
                     <div className="space-y-4">
                         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Post To</h3>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Post To</h3>
+                                {activeAccounts.length > 0 && (
+                                    <button
+                                        onClick={toggleSelectAll}
+                                        className="text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-widest"
+                                    >
+                                        {allSelected ? 'Deselect All' : 'Select All'}
+                                    </button>
+                                )}
+                            </div>
                             {activeAccounts.length > 0 ? (
                                 <div className="space-y-2">
                                     {activeAccounts.map(account => {
@@ -504,7 +648,7 @@ export default function SocialPage() {
                             )}
                         </div>
 
-                        {/* Quick Character Limits Reference */}
+                        {/* Character Limits */}
                         <div className="bg-slate-50 rounded-2xl border border-slate-100 p-5">
                             <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Character Limits</h3>
                             <div className="space-y-2 text-xs text-slate-500">

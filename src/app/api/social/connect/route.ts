@@ -19,17 +19,26 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: `Invalid platform: ${platform}` }, { status: 400 })
         }
 
+        // Need LATE_API_KEY
+        const apiKey = process.env.LATE_API_KEY
+        if (!apiKey) {
+            return NextResponse.json(
+                { error: 'Social media integration is not configured. Please add LATE_API_KEY to your environment variables.' },
+                { status: 503 }
+            )
+        }
+
         // Get user's profile and company
         const { data: profile } = await supabase
             .from('profiles')
-            .select('company_id, companies(id, subscription_plan, late_profile_id)')
+            .select('company_id, companies(id, name, subscription_plan, late_profile_id)')
             .eq('id', user.id)
             .single()
 
         const company = Array.isArray(profile?.companies) ? profile.companies[0] : profile?.companies
 
         if (!company) {
-            return NextResponse.json({ error: 'No company found' }, { status: 400 })
+            return NextResponse.json({ error: 'No company found. Please complete your profile setup first.' }, { status: 400 })
         }
 
         // Check plan limits
@@ -41,14 +50,9 @@ export async function POST(req: Request) {
             .eq('status', 'active')
 
         const planLimits: Record<string, number> = {
-            agent_pro: 2,
-            agency_growth: 8,
-            brokerage_command: 999,
-            essentials: 2,
-            professional: 8,
-            enterprise: 999,
+            agent_pro: 2, agency_growth: 8, brokerage_command: 999,
+            essentials: 2, professional: 8, enterprise: 999,
         }
-
         const limit = planLimits[plan] || 2
         if ((count || 0) >= limit) {
             return NextResponse.json(
@@ -57,65 +61,73 @@ export async function POST(req: Request) {
             )
         }
 
-        // Ensure we have a Late profile ID — create one if missing
+        // ─── Ensure we have a Late profile (create inline, no internal HTTP call) ───
+        const Late = (await import('@getlatedev/node')).default
+        const late = new Late({ apiKey })
+
         let lateProfileId = company.late_profile_id
 
         if (!lateProfileId) {
-            // Auto-create the Late profile
-            const profileRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/social/profile`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Cookie': req.headers.get('cookie') || '',
-                },
-            })
-            const profileData = await profileRes.json()
+            try {
+                const result = await late.profiles.createProfile({
+                    name: company.name || 'PropFlow Agency',
+                    description: `Social media profile for ${company.name}`,
+                })
 
-            if (profileData.error) {
-                return NextResponse.json({ error: profileData.error }, { status: profileRes.status })
+                lateProfileId = result?.profile?._id || result?.profile?.id
+
+                if (lateProfileId) {
+                    // Save the Late profile ID
+                    await supabase
+                        .from('companies')
+                        .update({ late_profile_id: lateProfileId })
+                        .eq('id', company.id)
+                }
+            } catch (profileError: any) {
+                console.error('Late profile creation failed:', profileError?.message || profileError)
+                return NextResponse.json(
+                    { error: `Failed to create social profile: ${profileError?.message || 'Unknown error'}. Check LATE_API_KEY.` },
+                    { status: 502 }
+                )
             }
-
-            lateProfileId = profileData.profileId
         }
 
         if (!lateProfileId) {
             return NextResponse.json(
-                { error: 'Could not set up your social profile. Please ensure LATE_API_KEY is configured.' },
+                { error: 'Could not create your social profile. Please verify your LATE_API_KEY is valid.' },
                 { status: 500 }
             )
         }
 
-        // Need LATE_API_KEY
-        const apiKey = process.env.LATE_API_KEY
-        if (!apiKey) {
+        // ─── Get OAuth URL from Late ───
+        try {
+            const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://propflow.pro'}/api/social/callback?platform=${platform}`
+
+            const result = await late.connect.getConnectUrl({
+                platform,
+                profileId: lateProfileId,
+                redirectUrl,
+            })
+
+            if (!result?.authUrl) {
+                return NextResponse.json(
+                    { error: 'Could not get authorization URL. The platform may be temporarily unavailable.' },
+                    { status: 502 }
+                )
+            }
+
+            return NextResponse.json({ authUrl: result.authUrl })
+        } catch (connectError: any) {
+            console.error('Late connect error:', connectError?.message || connectError)
             return NextResponse.json(
-                { error: 'Social media integration is not configured. Please add LATE_API_KEY to your environment.' },
-                { status: 503 }
-            )
-        }
-
-        // Get OAuth URL from Late
-        const Late = (await import('@getlatedev/node')).default
-        const late = new Late({ apiKey })
-
-        const result = await late.connect.getConnectUrl({
-            platform,
-            profileId: lateProfileId,
-            redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/social/callback?platform=${platform}`,
-        })
-
-        if (!result?.authUrl) {
-            return NextResponse.json(
-                { error: 'Failed to get OAuth URL from Late. The platform may be temporarily unavailable.' },
+                { error: `Connection failed: ${connectError?.message || 'Could not reach the platform'}` },
                 { status: 502 }
             )
         }
-
-        return NextResponse.json({ authUrl: result.authUrl })
     } catch (error: any) {
         console.error('Social connect error:', error)
         return NextResponse.json(
-            { error: error?.message || 'Failed to initiate connection. Please try again.' },
+            { error: error?.message || 'Failed to connect. Please try again.' },
             { status: 500 }
         )
     }
