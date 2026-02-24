@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import Late from '@getlatedev/node';
 
-const late = new Late();
-
 export async function POST(request: Request) {
     try {
+        const late = new Late({
+            apiKey: process.env.LATE_API_KEY || 'sk_dummy_key_for_build_step'
+        });
+
         const supabase = await createClient();
 
         // Ensure user is authenticated

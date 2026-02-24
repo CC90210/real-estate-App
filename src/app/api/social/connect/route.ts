@@ -2,12 +2,14 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import Late from '@getlatedev/node';
 
-// Initialize Late client
-// It automatically picks up LATE_API_KEY from process.env
-const late = new Late();
-
 export async function POST(request: Request) {
     try {
+        // Initialize Late client dynamically to avoid build-time errors on Vercel
+        // when LATE_API_KEY is not present in the environment variables during build.
+        const late = new Late({
+            apiKey: process.env.LATE_API_KEY || 'sk_dummy_key_for_build_step'
+        });
+
         const supabase = await createClient();
 
         // Ensure user is authenticated
