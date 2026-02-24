@@ -9,27 +9,31 @@ export async function POST(req: Request) {
 
         const { platform } = await req.json()
 
-        // Validate platform
+        // All 13 Late-supported platforms
         const validPlatforms = [
             'twitter', 'instagram', 'facebook', 'linkedin', 'tiktok',
             'youtube', 'pinterest', 'reddit', 'bluesky', 'threads',
             'googlebusiness', 'telegram', 'snapchat'
         ]
         if (!validPlatforms.includes(platform)) {
-            return NextResponse.json({ error: 'Invalid platform' }, { status: 400 })
+            return NextResponse.json({ error: `Invalid platform: ${platform}` }, { status: 400 })
         }
 
-        // Check plan limits
+        // Get user's profile and company
         const { data: profile } = await supabase
             .from('profiles')
-            .select('company_id, companies(subscription_plan)')
+            .select('company_id, companies(id, subscription_plan, late_profile_id)')
             .eq('id', user.id)
             .single()
 
-        const company = profile?.companies as any
-        const plan = company?.subscription_plan || 'agent_pro'
+        const company = Array.isArray(profile?.companies) ? profile.companies[0] : profile?.companies
 
-        // Count existing connected accounts
+        if (!company) {
+            return NextResponse.json({ error: 'No company found' }, { status: 400 })
+        }
+
+        // Check plan limits
+        const plan = company.subscription_plan || 'agent_pro'
         const { count } = await supabase
             .from('social_accounts')
             .select('*', { count: 'exact', head: true })
@@ -37,46 +41,82 @@ export async function POST(req: Request) {
             .eq('status', 'active')
 
         const planLimits: Record<string, number> = {
-            agent_pro: 1,
-            agency_growth: 5,
+            agent_pro: 2,
+            agency_growth: 8,
             brokerage_command: 999,
+            essentials: 2,
+            professional: 8,
+            enterprise: 999,
         }
 
-        const limit = planLimits[plan] || 1
+        const limit = planLimits[plan] || 2
         if ((count || 0) >= limit) {
             return NextResponse.json(
-                { error: `Your ${plan} plan supports up to ${limit} connected platform(s). Upgrade to connect more.` },
+                { error: `Your plan supports up to ${limit} connected platform(s). Upgrade for more.` },
                 { status: 403 }
             )
         }
 
-        // Get the company's Late profile ID
-        const { data: companyData } = await supabase
-            .from('companies')
-            .select('late_profile_id')
-            .eq('id', profile?.company_id)
-            .single()
+        // Ensure we have a Late profile ID — create one if missing
+        let lateProfileId = company.late_profile_id
 
-        if (!companyData?.late_profile_id) {
-            return NextResponse.json({ error: 'Social profile not set up. Please try again.' }, { status: 400 })
+        if (!lateProfileId) {
+            // Auto-create the Late profile
+            const profileRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/social/profile`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Cookie': req.headers.get('cookie') || '',
+                },
+            })
+            const profileData = await profileRes.json()
+
+            if (profileData.error) {
+                return NextResponse.json({ error: profileData.error }, { status: profileRes.status })
+            }
+
+            lateProfileId = profileData.profileId
         }
 
-        // Dynamically import Late
-        const Late = (await import('@getlatedev/node')).default
+        if (!lateProfileId) {
+            return NextResponse.json(
+                { error: 'Could not set up your social profile. Please ensure LATE_API_KEY is configured.' },
+                { status: 500 }
+            )
+        }
+
+        // Need LATE_API_KEY
         const apiKey = process.env.LATE_API_KEY
-        if (!apiKey) return NextResponse.json({ error: 'Social media integration not configured' }, { status: 503 })
-        const late = new Late({ apiKey })
+        if (!apiKey) {
+            return NextResponse.json(
+                { error: 'Social media integration is not configured. Please add LATE_API_KEY to your environment.' },
+                { status: 503 }
+            )
+        }
 
         // Get OAuth URL from Late
-        const result = await (late as any).connect.getConnectUrl({
+        const Late = (await import('@getlatedev/node')).default
+        const late = new Late({ apiKey })
+
+        const result = await late.connect.getConnectUrl({
             platform,
-            profileId: companyData.late_profile_id,
-            redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/social/callback?platform=${platform}`,
+            profileId: lateProfileId,
+            redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/social/callback?platform=${platform}`,
         })
 
-        return NextResponse.json({ authUrl: result?.authUrl })
+        if (!result?.authUrl) {
+            return NextResponse.json(
+                { error: 'Failed to get OAuth URL from Late. The platform may be temporarily unavailable.' },
+                { status: 502 }
+            )
+        }
+
+        return NextResponse.json({ authUrl: result.authUrl })
     } catch (error: any) {
         console.error('Social connect error:', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json(
+            { error: error?.message || 'Failed to initiate connection. Please try again.' },
+            { status: 500 }
+        )
     }
 }

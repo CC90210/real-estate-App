@@ -73,9 +73,10 @@ function AuthListener({ children }: { children: ReactNode }) {
                 if (event === 'SIGNED_OUT') {
                     router.push('/login');
                 }
-                if (event === 'TOKEN_REFRESHED') {
-                    router.refresh();
-                }
+                // TOKEN_REFRESHED no longer triggers router.refresh()
+                // The Supabase client handles token updates internally.
+                // router.refresh() was causing a full page re-render on every token refresh (~hourly),
+                // which compounded with other queries to make the app feel sluggish.
             }
         );
 
