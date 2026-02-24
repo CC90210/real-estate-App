@@ -113,27 +113,27 @@ export function TeamManagementCard() {
                         <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Active Members ({members.length})</h3>
                         <div className="space-y-3">
                             {members.map(member => (
-                                <div key={member.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50 border border-slate-100 rounded-2xl group hover:border-blue-100 transition-all">
-                                    <div className="flex items-center gap-3 md:gap-4 min-w-0">
-                                        <Avatar className="h-10 w-10 md:h-12 md:w-12 border-2 border-white shadow-sm shrink-0">
+                                <div key={member.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-4 bg-slate-50 border border-slate-100 rounded-2xl group hover:border-blue-100 transition-all text-center sm:text-left">
+                                    <div className="flex flex-col sm:flex-row items-center gap-3 md:gap-4 min-w-0">
+                                        <Avatar className="h-12 w-12 md:h-12 md:w-12 border-2 border-white shadow-sm shrink-0">
                                             <AvatarImage src={member.avatar_url} />
                                             <AvatarFallback className="bg-slate-200 text-slate-600 font-bold">
                                                 {member.full_name?.charAt(0)}
                                             </AvatarFallback>
                                         </Avatar>
-                                        <div className="min-w-0">
-                                            <p className="font-bold text-slate-900 truncate">{member.full_name} {profile?.id === member.id && <span className="text-slate-400 text-xs font-normal">(You)</span>}</p>
-                                            <p className="text-xs text-slate-500 font-medium truncate">{member.email}</p>
+                                        <div className="min-w-0 flex flex-col items-center sm:items-start text-center sm:text-left">
+                                            <p className="font-bold text-slate-900 truncate w-full">{member.full_name} {profile?.id === member.id && <span className="text-slate-400 text-xs font-normal">(You)</span>}</p>
+                                            <p className="text-xs text-slate-500 font-medium truncate w-full">{member.email}</p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-3 ml-13 sm:ml-0">
+                                    <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
                                         <Badge variant="outline" className={cn("bg-white font-bold uppercase text-[10px] tracking-widest shrink-0",
                                             member.role === 'admin' ? "border-purple-200 text-purple-600" : "border-slate-200 text-slate-500"
                                         )}>
                                             {member.role === 'admin' ? <Shield className="w-3 h-3 mr-1" /> : <User className="w-3 h-3 mr-1" />}
                                             {member.role}
                                         </Badge>
-                                        <p className="text-[10px] font-medium text-slate-400 whitespace-nowrap">
+                                        <p className="text-[10px] font-medium text-slate-400 whitespace-nowrap mt-1 sm:mt-0">
                                             Joined {formatDistanceToNow(new Date(member.created_at))} ago
                                         </p>
                                     </div>
@@ -148,14 +148,14 @@ export function TeamManagementCard() {
                             <h3 className="text-xs font-black uppercase tracking-[0.2em] text-amber-500">Pending Invitations ({invites.length})</h3>
                             <div className="space-y-3">
                                 {invites.map(invite => (
-                                    <div key={invite.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-amber-50/30 border border-amber-100/50 rounded-2xl">
-                                        <div className="flex items-center gap-3 md:gap-4 min-w-0">
-                                            <div className="h-10 w-10 bg-amber-100 rounded-full flex items-center justify-center shrink-0">
-                                                <Mail className="w-5 h-5 text-amber-600" />
+                                    <div key={invite.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-4 bg-amber-50/30 border border-amber-100/50 rounded-2xl text-center sm:text-left">
+                                        <div className="flex flex-col sm:flex-row items-center gap-3 md:gap-4 min-w-0">
+                                            <div className="h-12 w-12 bg-amber-100 rounded-full flex items-center justify-center shrink-0">
+                                                <Mail className="w-6 h-6 text-amber-600" />
                                             </div>
-                                            <div className="min-w-0">
-                                                <p className="font-bold text-slate-900 truncate">{invite.email}</p>
-                                                <div className="flex items-center gap-2 text-xs text-slate-500">
+                                            <div className="min-w-0 flex flex-col items-center sm:items-start text-center sm:text-left">
+                                                <p className="font-bold text-slate-900 truncate w-full">{invite.email}</p>
+                                                <div className="flex items-center gap-2 text-xs text-slate-500 mt-1 sm:mt-0">
                                                     <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-white border border-amber-100 text-slate-500">
                                                         {invite.role}
                                                     </Badge>
@@ -163,7 +163,7 @@ export function TeamManagementCard() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-2 ml-13 sm:ml-0 shrink-0">
+                                        <div className="flex items-center justify-center gap-2 mt-2 sm:mt-0 shrink-0">
                                             <Button size="sm" variant="ghost" className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => copyInviteLink(invite.token, invite.email)}>
                                                 Copy Link
                                             </Button>

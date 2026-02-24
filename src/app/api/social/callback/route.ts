@@ -41,15 +41,20 @@ export async function GET(req: Request) {
 
                 if (accounts?.length) {
                     for (const account of accounts) {
-                        // Check if this account is already saved
-                        const { data: existing } = await supabase
+                        // Check if this LATE account is already claimed by ANY company in our DB
+                        const { data: existingAnywhere } = await supabase
                             .from('social_accounts')
-                            .select('id')
+                            .select('id, company_id')
                             .eq('late_account_id', account._id)
-                            .eq('company_id', profile?.company_id)
-                            .maybeSingle()
 
-                        if (!existing) {
+                        const isClaimedByOther = existingAnywhere && existingAnywhere.some(e => e.company_id !== profile?.company_id)
+                        const isClaimedByMe = existingAnywhere && existingAnywhere.some(e => e.company_id === profile?.company_id)
+
+                        // If it belongs to someone else, skip it so we don't bleed accounts between users
+                        if (isClaimedByOther) continue
+
+                        // If it's completely new, or not claimed by me yet, insert it
+                        if (!isClaimedByMe) {
                             await supabase.from('social_accounts').insert({
                                 company_id: profile?.company_id,
                                 late_account_id: account._id,

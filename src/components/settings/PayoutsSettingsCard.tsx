@@ -92,16 +92,16 @@ export function PayoutsSettingsCard() {
     return (
         <Card className="border-none shadow-2xl bg-white rounded-[2.5rem] overflow-hidden animate-in fade-in slide-in-from-right-4 duration-1000">
             <CardHeader className="p-10 pb-6 border-b border-slate-50">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <CardTitle className="text-3xl font-black text-slate-900 flex items-center gap-3">
-                            <Banknote className="w-8 h-8 text-emerald-600" /> Payouts & Transfers
+                <div className="flex flex-col sm:flex-row justify-between items-center sm:items-start gap-4 text-center sm:text-left">
+                    <div className="flex flex-col items-center sm:items-start">
+                        <CardTitle className="text-2xl sm:text-3xl font-black text-slate-900 flex items-center justify-center sm:justify-start gap-3 w-full">
+                            <Banknote className="w-8 h-8 text-emerald-600 shrink-0" /> Payouts & Transfers
                         </CardTitle>
-                        <CardDescription className="text-slate-400 font-bold text-lg mt-2">
+                        <CardDescription className="text-slate-400 font-bold text-sm sm:text-lg mt-2">
                             Initialize your automated revenue stream through Stripe Express.
                         </CardDescription>
                     </div>
-                    <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 font-black px-4 py-2 rounded-xl border">
+                    <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 font-black px-4 py-2 rounded-xl border whitespace-nowrap">
                         7% Platform Fee
                     </Badge>
                 </div>
@@ -229,16 +229,16 @@ export function PayoutsSettingsCard() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center py-10">
-                        <div className="space-y-10">
-                            <div className="space-y-2">
-                                <Badge className="bg-blue-50 text-blue-600 border-blue-100 font-black mb-4 px-3 py-1">Step-by-Step Setup</Badge>
+                        <div className="space-y-10 flex flex-col items-center sm:items-start text-center sm:text-left">
+                            <div className="space-y-2 flex flex-col items-center sm:items-start">
+                                <Badge className="bg-blue-50 text-blue-600 border-blue-100 font-black mb-4 px-3 py-1 w-fit">Step-by-Step Setup</Badge>
                                 <h3 className="text-4xl font-black text-slate-900 tracking-tighter">Automate Your Revenue.</h3>
-                                <p className="text-slate-500 font-bold leading-relaxed text-lg">
+                                <p className="text-slate-500 font-bold leading-relaxed text-lg max-w-sm sm:max-w-none">
                                     Connect your business to our white-label payment infrastructure in less than 2 minutes.
                                 </p>
                             </div>
 
-                            <div className="space-y-8">
+                            <div className="space-y-8 flex flex-col items-center sm:items-start text-center sm:text-left">
                                 <SetupStep
                                     number="01"
                                     title="Connect Stripe Express"
@@ -256,14 +256,16 @@ export function PayoutsSettingsCard() {
                                 />
                             </div>
 
-                            <Button
-                                onClick={handleConnect}
-                                disabled={isConnecting}
-                                className="h-20 px-12 bg-slate-900 hover:bg-slate-800 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] text-[13px] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.3)] w-full sm:w-auto"
-                            >
-                                {isConnecting ? <Loader2 className="w-6 h-6 animate-spin mr-3" /> : <CreditCard className="w-6 h-6 mr-3" />}
-                                Initialize Stripe Connection
-                            </Button>
+                            <div className="flex justify-center sm:justify-start">
+                                <Button
+                                    onClick={handleConnect}
+                                    disabled={isConnecting}
+                                    className="h-20 px-8 sm:px-12 bg-slate-900 hover:bg-slate-800 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] text-[11px] sm:text-[13px] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.3)] w-full sm:w-auto"
+                                >
+                                    {isConnecting ? <Loader2 className="w-6 h-6 animate-spin mr-3" /> : <CreditCard className="w-6 h-6 mr-3" />}
+                                    Initialize Connection
+                                </Button>
+                            </div>
                         </div>
 
                         <div className="relative">
@@ -310,7 +312,7 @@ export function PayoutsSettingsCard() {
 
 function SetupStep({ number, title, description }: { number: string, title: string, description: string }) {
     return (
-        <div className="flex gap-6 items-start group">
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-center sm:items-start group text-center sm:text-left">
             <span className="text-3xl font-black text-slate-200 group-hover:text-indigo-600 transition-colors duration-500 mt-[-4px]">{number}</span>
             <div className="space-y-1">
                 <h4 className="text-lg font-black text-slate-900">{title}</h4>

@@ -34,7 +34,8 @@ import {
     Wrench,
     BookOpen,
     BarChart3,
-    Activity
+    Activity,
+    Share2
 } from 'lucide-react'
 
 const navigationItems = [
@@ -52,6 +53,7 @@ const navigationItems = [
     { name: 'Analytics', href: '/analytics', icon: BarChart3 },
     { name: 'Activity', href: '/activity', icon: Activity },
     { name: 'Automations', href: '/automations', icon: Zap },
+    { name: 'Social', href: '/social', icon: Share2 },
     { name: 'Settings', href: '/settings', icon: Settings },
 ]
 

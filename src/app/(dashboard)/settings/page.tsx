@@ -467,15 +467,15 @@ export default function SettingsPage() {
                                 <CardDescription className="text-slate-400 font-medium leading-relaxed text-sm">Your personal information shown on documents and invoices.</CardDescription>
                             </CardHeader>
                             <CardContent className="p-5 md:p-10 space-y-6 md:space-y-10">
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-8">
-                                    <div className="w-16 h-16 md:w-24 md:h-24 rounded-2xl md:rounded-[2rem] bg-slate-900 flex items-center justify-center text-white text-2xl md:text-3xl font-black border-4 md:border-8 border-slate-50 shadow-2xl ring-1 ring-slate-100 shrink-0">
+                                <div className="flex flex-col sm:flex-row items-center sm:items-center gap-4 sm:gap-8 text-center sm:text-left">
+                                    <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl md:rounded-[2rem] bg-slate-900 flex items-center justify-center text-white text-3xl font-black border-4 md:border-8 border-slate-50 shadow-2xl ring-1 ring-slate-100 shrink-0">
                                         {profile?.full_name?.charAt(0) || 'A'}
                                     </div>
-                                    <div className="space-y-1.5 min-w-0">
+                                    <div className="space-y-2 min-w-0 flex flex-col items-center sm:items-start">
                                         <Badge className="bg-blue-600 hover:bg-blue-600 text-white font-black uppercase text-[10px] tracking-widest px-3 md:px-4 py-1 md:py-1.5 rounded-full">
                                             Authenticated {profile?.role || 'Agent'}
                                         </Badge>
-                                        <p className="text-base md:text-lg font-black text-slate-900 tracking-tight truncate">{profile?.email}</p>
+                                        <p className="text-xl md:text-2xl font-black text-slate-900 tracking-tight truncate w-full">{profile?.email}</p>
                                         <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Platform Join Date: {new Date(profile?.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</p>
                                     </div>
                                 </div>
