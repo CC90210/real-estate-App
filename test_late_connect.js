@@ -9,22 +9,23 @@ const { Late } = require('@getlatedev/node');
 
         const late = new Late({ apiKey: key });
 
-        const res = await late.profiles.createProfile({
-            body: { name: 'PropFlow Agency' }
-        });
-        const profileId = res.data.profile._id;
+        const list = await late.profiles.listProfiles();
+        const profiles = list.data?.profiles || list.profiles;
+        if (!profiles || profiles.length === 0) return;
+        const profileId = profiles[0]._id || profiles[0].id;
 
-        console.log('Testing connect URL with query wrapping...');
-        try {
-            const urlData1 = await late.connect.getConnectUrl({
-                query: { platform: 'instagram', profileId, redirectUrl: 'https://propflow.pro/social' }
-            });
-            console.log('Using query:', urlData1.data || urlData1);
-        } catch (e1) {
-            console.log('Query failed:', e1.message);
-        }
+        const result = await late.connect.getConnectUrl({
+            path: {
+                platform: 'instagram'
+            },
+            query: {
+                profileId: profileId,
+                redirectUrl: 'https://propflow.pro/social',
+            }
+        });
+        console.log('Success!', result.data || result);
 
     } catch (e) {
-        console.error('Fatal:', e);
+        console.error('Fatal:', e.message, e.response?.data || e);
     }
 })();

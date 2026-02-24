@@ -125,14 +125,16 @@ export async function POST(req: Request) {
             const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://propflow.pro'}/api/social/callback?platform=${platform}`
 
             const result = await late.connect.getConnectUrl({
-                query: {
+                path: {
                     platform,
+                },
+                query: {
                     profileId: lateProfileId,
                     redirectUrl,
                 }
             })
 
-            const finalAuthUrl = result?.data?.url || result?.url || result?.authUrl;
+            const finalAuthUrl = result?.data?.url || result?.url || result?.authUrl || result?.data?.authUrl;
 
             if (!finalAuthUrl) {
                 return NextResponse.json(
