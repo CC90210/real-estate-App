@@ -152,8 +152,8 @@ export default function SocialPage() {
             } else {
                 setError('No authorization URL returned. Please try again.')
             }
-        } catch (err: any) {
-            const msg = err.message || 'Failed to connect platform'
+        } catch (err: unknown) {
+            const msg = (err as Error).message || 'Failed to connect platform'
             setError(msg)
             toast.error(msg)
         } finally {

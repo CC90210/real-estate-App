@@ -125,7 +125,7 @@ export async function POST(request: Request) {
         console.log('Company for document:', company);
 
         // Initialize document data with company branding
-        let documentData: any = {
+        const documentData: any = {
             type,
             generatedAt: new Date().toISOString(),
             company: {

@@ -63,7 +63,7 @@ export default function ActivityPage() {
 
             // Fetch users manually to avoid Join/RLS issues
             const userIds = [...new Set(data.filter(a => a.user_id).map(a => a.user_id))]
-            let userMap: Record<string, any> = {}
+            let userMap: Record<string, { id: string; full_name: string | null; avatar_url: string | null }> = {}
             if (userIds.length > 0) {
                 const { data: profs } = await supabase.from('profiles').select('id, full_name, avatar_url').in('id', userIds)
                 if (profs) {

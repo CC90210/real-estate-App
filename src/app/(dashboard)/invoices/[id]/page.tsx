@@ -228,7 +228,7 @@ export default function InvoiceViewPage() {
         setIsUpdating(true)
         setIsDispatching(false) // Close dialog
         try {
-            let fileUrl = "";
+            const fileUrl = "";
 
             if (!skipPdf) {
                 toast.message('Generating Document', { description: 'Syncing with High-Fidelity Print Engine...' })

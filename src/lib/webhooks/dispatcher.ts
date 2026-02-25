@@ -38,7 +38,7 @@ export async function dispatchWebhook(
             .single()
 
         const PRODUCTION_FALLBACK_URL = 'https://n8n.srv993801.hstgr.cloud/webhook/ad6dd389-7003-4276-9f6c-5eec3836020d';
-        let webhookUrl = settings?.webhook_url || PRODUCTION_FALLBACK_URL;
+        const webhookUrl = settings?.webhook_url || PRODUCTION_FALLBACK_URL;
 
         if (!webhookUrl) return;
 
@@ -179,7 +179,7 @@ export async function dispatchDocumentWebhook(
             .single()
 
         const PRODUCTION_FALLBACK_URL = 'https://n8n.srv993801.hstgr.cloud/webhook/ad6dd389-7003-4276-9f6c-5eec3836020d';
-        let webhookUrl = settings?.webhook_url || PRODUCTION_FALLBACK_URL;
+        const webhookUrl = settings?.webhook_url || PRODUCTION_FALLBACK_URL;
 
         if (!webhookUrl) {
             return { success: false, error: 'No webhook URL configured' }

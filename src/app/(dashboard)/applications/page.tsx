@@ -108,8 +108,8 @@ export default function ApplicationsPage() {
             toast.success('Application updated successfully')
             queryClient.invalidateQueries({ queryKey: ['applications'] })
         },
-        onError: (err: any) => {
-            toast.error('Failed to update application', { description: err.message })
+        onError: (err: unknown) => {
+            toast.error('Failed to update application', { description: (err as Error).message })
         }
     })
 
