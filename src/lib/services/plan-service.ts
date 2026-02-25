@@ -115,7 +115,7 @@ export async function getPlanInfo(companyId?: string): Promise<PlanInfo> {
                 isLifetime,
                 limits: { properties: Infinity, teamMembers: Infinity },
                 usage: { properties: propertyCount, teamMembers: teamCount },
-                features: PLANS.enterprise.features as Record<string, boolean>,
+                features: PLANS.enterprise.features as unknown as Record<string, boolean>,
                 canAddProperty: true,
                 canAddTeamMember: true,
             }
@@ -147,7 +147,7 @@ export async function getPlanInfo(companyId?: string): Promise<PlanInfo> {
                 properties: propertyCount,
                 teamMembers: teamCount,
             },
-            features: planConfig.features as Record<string, boolean>,
+            features: planConfig.features as unknown as Record<string, boolean>,
             canAddProperty: propertyLimit === Infinity || propertyCount < propertyLimit,
             canAddTeamMember: teamLimit === Infinity || teamCount < teamLimit,
         }
@@ -171,7 +171,7 @@ function getDefaultPlanInfo(status: string, giveAccess = false): PlanInfo {
             isLifetime: false,
             limits: { properties: Infinity, teamMembers: Infinity },
             usage: { properties: 0, teamMembers: 1 },
-            features: PLANS.enterprise.features as Record<string, boolean>,
+            features: PLANS.enterprise.features as unknown as Record<string, boolean>,
             canAddProperty: true,
             canAddTeamMember: true,
         }
@@ -188,7 +188,7 @@ function getDefaultPlanInfo(status: string, giveAccess = false): PlanInfo {
         isLifetime: false,
         limits: { properties: 25, teamMembers: 1 },
         usage: { properties: 0, teamMembers: 1 },
-        features: PLANS.essentials.features as Record<string, boolean>,
+        features: PLANS.essentials.features as unknown as Record<string, boolean>,
         canAddProperty: true,
         canAddTeamMember: true,
     }

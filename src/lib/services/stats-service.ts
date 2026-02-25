@@ -14,6 +14,7 @@ export interface DashboardStats {
     totalAreas: number;
     totalBuildings: number;
     openMaintenance: number;
+    upcomingShowings: number;
     totalMonthlyRent: number;
     totalLifetimeRevenue: number;
 }
