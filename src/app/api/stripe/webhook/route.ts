@@ -140,6 +140,7 @@ async function handleSubscriptionCheckout(session: Stripe.Checkout.Session) {
 
 // Handle subscription updates
 async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
+    const planId = subscription.metadata?.plan
     const { data: company } = await supabaseAdmin
         .from('companies')
         .select('id')
@@ -147,12 +148,17 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
         .single()
 
     if (company) {
+        const updateData: any = {
+            subscription_status: subscription.status,
+            subscription_current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+            updated_at: new Date().toISOString(),
+        }
+        if (planId) {
+            updateData.subscription_plan = planId
+        }
         await supabaseAdmin
             .from('companies')
-            .update({
-                subscription_status: subscription.status,
-                subscription_current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
-            })
+            .update(updateData)
             .eq('id', company.id)
     }
 }
@@ -170,7 +176,8 @@ async function handleSubscriptionCancelled(subscription: Stripe.Subscription) {
             .from('companies')
             .update({
                 subscription_status: 'cancelled',
-                subscription_plan: null,
+                // Explicitly NOT clearing subscription_plan so we know what they had
+                updated_at: new Date().toISOString(),
             })
             .eq('id', company.id)
     }

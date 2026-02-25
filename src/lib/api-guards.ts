@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import {
-    canAddProperty,
-    canAddTeamMember,
-    canAccessFeature
-} from '@/lib/plan-limits'
+import { checkPlanLimit } from '@/lib/plans/gate'
+import { canAccessFeature } from '@/lib/plan-limits'
 
 // Guard for property creation
 export async function guardPropertyCreation() {
@@ -25,14 +22,14 @@ export async function guardPropertyCreation() {
         return { error: NextResponse.json({ error: 'No company found' }, { status: 400 }) }
     }
 
-    const check = await canAddProperty(profile.company_id)
+    const check = await checkPlanLimit(profile.company_id, 'properties')
 
     if (!check.allowed) {
         return {
             error: NextResponse.json({
-                error: check.reason,
+                error: check.message,
                 code: 'LIMIT_REACHED',
-                currentUsage: check.currentUsage,
+                currentUsage: check.currentCount,
                 limit: check.limit,
                 upgradeRequired: check.upgradeRequired,
             }, { status: 403 })
@@ -61,14 +58,14 @@ export async function guardTeamInvitation() {
         return { error: NextResponse.json({ error: 'Only admins can invite team members' }, { status: 403 }) }
     }
 
-    const check = await canAddTeamMember(profile.company_id)
+    const check = await checkPlanLimit(profile.company_id, 'teamMembers')
 
     if (!check.allowed) {
         return {
             error: NextResponse.json({
-                error: check.reason,
+                error: check.message,
                 code: 'LIMIT_REACHED',
-                currentUsage: check.currentUsage,
+                currentUsage: check.currentCount,
                 limit: check.limit,
                 upgradeRequired: check.upgradeRequired,
             }, { status: 403 })
