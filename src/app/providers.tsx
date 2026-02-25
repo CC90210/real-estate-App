@@ -14,7 +14,7 @@ export function Providers({ children }: { children: ReactNode }) {
             new QueryClient({
                 defaultOptions: {
                     queries: {
-                        staleTime: 5 * 60 * 1000,         // 5 minutes — data is "fresh" for 5 min
+                        staleTime: 30 * 1000,             // 30 seconds
                         gcTime: 10 * 60 * 1000,            // 10 minutes — garbage collect after 10 min
                         retry: (failureCount, error) => {
                             // Don't retry on RLS recursion errors
@@ -28,7 +28,7 @@ export function Providers({ children }: { children: ReactNode }) {
                             return failureCount < 2;
                         },
                         retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
-                        refetchOnWindowFocus: false,        // STOP refetching every time user switches tabs
+                        refetchOnWindowFocus: true,         // Refetch when user switches tabs to ensure fresh data
                         refetchOnReconnect: true,
                         refetchOnMount: false,              // Don't refetch if data exists and is fresh
                         networkMode: 'offlineFirst' as const,
@@ -71,7 +71,7 @@ function AuthListener({ children }: { children: ReactNode }) {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             (event: string) => {
                 if (event === 'SIGNED_OUT') {
-                    router.push('/login');
+                    window.location.href = '/login';
                 }
                 // TOKEN_REFRESHED no longer triggers router.refresh()
                 // The Supabase client handles token updates internally.

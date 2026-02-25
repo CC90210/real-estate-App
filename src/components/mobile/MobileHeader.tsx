@@ -71,7 +71,7 @@ export function MobileHeader({ onQuickFindOpen, companyName, userName }: MobileH
 
     const handleLogout = async () => {
         await supabase.auth.signOut()
-        router.push('/login')
+        window.location.href = '/login'
     }
 
     const handleNavigation = (href: string) => {

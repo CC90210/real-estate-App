@@ -441,21 +441,25 @@ export default function SettingsPage() {
                         label="Branding & UI"
                         description="Company & documents"
                     />
-                    <NavBtn
-                        active={activeTab === 'team'}
-                        onClick={() => setActiveTab('team')}
-                        icon={Users}
-                        label="Team Management"
-                        description="Access & Permissions"
-                    />
-                    <NavBtn
-                        active={activeTab === 'payouts'}
-                        onClick={() => setActiveTab('payouts')}
-                        icon={Banknote}
-                        label="Payouts"
-                        description="Stripe Connect"
-                        last={true as boolean}
-                    />
+                    {profile?.role !== 'landlord' && (
+                        <NavBtn
+                            active={activeTab === 'team'}
+                            onClick={() => setActiveTab('team')}
+                            icon={Users}
+                            label="Team Management"
+                            description="Access & Permissions"
+                        />
+                    )}
+                    {profile?.role !== 'landlord' && (
+                        <NavBtn
+                            active={activeTab === 'payouts'}
+                            onClick={() => setActiveTab('payouts')}
+                            icon={Banknote}
+                            label="Payouts"
+                            description="Stripe Connect"
+                            last={true as boolean}
+                        />
+                    )}
                 </div>
 
                 {/* Main Content Area */}
@@ -858,8 +862,8 @@ export default function SettingsPage() {
                         </Card>
                     )}
 
-                    {activeTab === 'team' && <TeamManagementCard />}
-                    {activeTab === 'payouts' && <PayoutsSettingsCard />}
+                    {activeTab === 'team' && profile?.role !== 'landlord' && <TeamManagementCard />}
+                    {activeTab === 'payouts' && profile?.role !== 'landlord' && <PayoutsSettingsCard />}
                 </div>
             </div>
         </div>

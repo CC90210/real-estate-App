@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { useCompanyId } from './useCompanyId';
+import { useUser } from './useUser';
 
 export interface Showing {
     id: string;
@@ -39,9 +40,10 @@ export function useShowings(options?: {
 }) {
     const supabase = createClient();
     const { companyId } = useCompanyId();
+    const { profile } = useUser();
 
     return useQuery({
-        queryKey: ['showings', companyId, options],
+        queryKey: ['showings', companyId, options, profile?.role],
         queryFn: async () => {
             let query = supabase
                 .from('showings')
@@ -77,6 +79,32 @@ export function useShowings(options?: {
                 query = query.lte('scheduled_date', options.toDate);
             }
 
+            if (profile?.role === 'landlord' && profile?.email) {
+                // Find properties owned by this landlord
+                const { data: landlordRecords } = await supabase
+                    .from('landlords')
+                    .select('id')
+                    .eq('email', profile.email);
+
+                const landlordIds = landlordRecords?.map(l => l.id) || [];
+
+                if (landlordIds.length > 0) {
+                    const { data: properties } = await supabase
+                        .from('properties')
+                        .select('id')
+                        .in('landlord_id', landlordIds);
+
+                    const propertyIds = properties?.map(p => p.id) || [];
+                    if (propertyIds.length > 0) {
+                        query = query.in('property_id', propertyIds);
+                    } else {
+                        query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+                    }
+                } else {
+                    query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+                }
+            }
+
             const { data, error } = await query;
             if (error) throw error;
             return data as Showing[];
@@ -94,9 +122,10 @@ export function useShowingsCount(options?: {
 }) {
     const supabase = createClient();
     const { companyId } = useCompanyId();
+    const { profile } = useUser();
 
     return useQuery({
-        queryKey: ['showings_count', companyId, options],
+        queryKey: ['showings_count', companyId, options, profile?.role],
         queryFn: async () => {
             let query = supabase
                 .from('showings')
@@ -120,6 +149,31 @@ export function useShowingsCount(options?: {
 
             if (options?.toDate) {
                 query = query.lte('scheduled_date', options.toDate);
+            }
+
+            if (profile?.role === 'landlord' && profile?.email) {
+                const { data: landlordRecords } = await supabase
+                    .from('landlords')
+                    .select('id')
+                    .eq('email', profile.email);
+
+                const landlordIds = landlordRecords?.map(l => l.id) || [];
+
+                if (landlordIds.length > 0) {
+                    const { data: properties } = await supabase
+                        .from('properties')
+                        .select('id')
+                        .in('landlord_id', landlordIds);
+
+                    const propertyIds = properties?.map(p => p.id) || [];
+                    if (propertyIds.length > 0) {
+                        query = query.in('property_id', propertyIds);
+                    } else {
+                        query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+                    }
+                } else {
+                    query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+                }
             }
 
             const { count, error } = await query;

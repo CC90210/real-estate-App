@@ -4,13 +4,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { useCompanyId } from './useCompanyId';
+import { useUser } from './useUser';
 
 export function useProperties(buildingId?: string) {
     const supabase = createClient();
     const { companyId } = useCompanyId();
+    const { profile } = useUser();
 
     return useQuery({
-        queryKey: ['properties', { buildingId, companyId }],
+        queryKey: ['properties', { buildingId, companyId, userRole: profile?.role }],
         queryFn: async () => {
             let query = supabase
                 .from('properties')
@@ -28,6 +30,23 @@ export function useProperties(buildingId?: string) {
 
             if (buildingId) {
                 query = query.eq('building_id', buildingId);
+            }
+
+            if (profile?.role === 'landlord' && profile?.email) {
+                // Landlords only see their explicitly assigned properties
+                const { data: landlordRecords } = await supabase
+                    .from('landlords')
+                    .select('id')
+                    .eq('email', profile.email);
+
+                const landlordIds = landlordRecords?.map(l => l.id) || [];
+
+                if (landlordIds.length > 0) {
+                    query = query.in('landlord_id', landlordIds);
+                } else {
+                    // No landlord profile matched = no properties
+                    query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+                }
             }
 
             const { data, error } = await query;
