@@ -116,6 +116,7 @@ CREATE INDEX IF NOT EXISTS idx_platform_invitations_created_by ON platform_invit
 -- RLS
 ALTER TABLE platform_invitations ENABLE ROW LEVEL SECURITY;
 -- Only super_admin can manage platform invitations
+DROP POLICY IF EXISTS "super_admin_manage_platform_invitations" ON platform_invitations;
 CREATE POLICY "super_admin_manage_platform_invitations" ON platform_invitations FOR ALL TO authenticated USING (
     EXISTS (
         SELECT 1
@@ -125,6 +126,7 @@ CREATE POLICY "super_admin_manage_platform_invitations" ON platform_invitations 
     )
 );
 -- Anyone can read by token (for the signup flow)
+DROP POLICY IF EXISTS "read_platform_invitation_by_token" ON platform_invitations;
 CREATE POLICY "read_platform_invitation_by_token" ON platform_invitations FOR
 SELECT TO anon,
     authenticated USING (true);
