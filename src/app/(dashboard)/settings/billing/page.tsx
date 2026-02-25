@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle, Shield, Zap, CreditCard, Building2, Users, FileText } from 'lucide-react'
-import { TIERS, SubscriptionTier } from '@/lib/capabilities'
+import { resolveCompanyPlan } from '@/lib/plans/resolve'
 import { cn } from '@/lib/utils'
 import { useAccentColor } from '@/lib/hooks/useAccentColor'
 import Link from 'next/link'
@@ -18,9 +18,8 @@ export default function BillingPage() {
         return <div className="p-10">Loading subscription details...</div>
     }
 
-    const currentTier = (company?.subscription_tier || 'tier_1') as SubscriptionTier
-    const tierConfig = TIERS[currentTier]
-    const automationEnabled = company?.automation_enabled
+    const { effectivePlan, subscriptionStatus, isEnterprise } = resolveCompanyPlan(company || {})
+    const automationEnabled = effectivePlan.limits.automations
 
     return (
         <div className="p-6 lg:p-10 space-y-8 animate-in fade-in duration-500">
@@ -31,38 +30,38 @@ export default function BillingPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Current Plan Card */}
-                <Card className={cn("border-l-4 overflow-hidden", tierConfig.color.replace('text', 'border'))}>
+                <Card className={cn("border-l-4 overflow-hidden", isEnterprise ? "border-indigo-500" : "border-slate-300")}>
                     <CardHeader className="pb-4">
                         <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
                                 <Shield className="w-4 h-4" />
                                 <span>Current Plan</span>
                             </div>
-                            <Badge variant={currentTier === 'enterprise' ? 'default' : 'secondary'} className="uppercase tracking-widest font-bold">
-                                Active
+                            <Badge variant={isEnterprise ? 'default' : 'secondary'} className="uppercase tracking-widest font-bold">
+                                {subscriptionStatus === 'active' ? 'Active' : 'No Active Subscription'}
                             </Badge>
                         </div>
                         <CardTitle className="text-4xl font-black text-slate-900">
-                            {tierConfig.label}
+                            {effectivePlan.name}
                         </CardTitle>
                         <CardDescription className="text-lg font-medium text-slate-500 mt-2">
-                            {tierConfig.description}
+                            {effectivePlan.tagline}
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="flex items-baseline gap-1">
-                            <span className="text-3xl font-bold text-slate-900">{tierConfig.price}</span>
-                            {tierConfig.price !== 'Custom' && <span className="text-slate-400 font-medium">/month</span>}
+                            <span className="text-3xl font-bold text-slate-900">{effectivePlan.displayPrice}</span>
+                            {effectivePlan.displayPrice !== 'Custom' && effectivePlan.displayPrice !== '$0' && <span className="text-slate-400 font-medium">/month</span>}
                         </div>
 
                         <div className="space-y-3 pt-6 border-t border-slate-100">
                             <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Included Features</p>
-                            {tierConfig.features.slice(0, 6).map((f: string) => (
+                            {[...effectivePlan.features.crm, ...effectivePlan.features.finance].slice(0, 6).map((f: string) => (
                                 <div key={f} className="flex items-center gap-3">
                                     <div className="h-5 w-5 rounded-full bg-emerald-100 flex items-center justify-center">
                                         <CheckCircle className="w-3 h-3 text-emerald-600" />
                                     </div>
-                                    <span className="text-sm font-bold text-slate-600 capitalize">{f.replace('_', ' ')}</span>
+                                    <span className="text-sm font-bold text-slate-600 capitalize">{f.replace(/_/g, ' ')}</span>
                                 </div>
                             ))}
                         </div>

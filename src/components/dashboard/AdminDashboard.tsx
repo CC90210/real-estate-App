@@ -3,6 +3,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/useAuth'
+import { StatsService } from '@/lib/services/stats-service'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { useAccentColor } from '@/lib/hooks/useAccentColor'
 import { useActivity } from '@/hooks/use-activity'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -48,69 +50,17 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
     const { profile, company } = useAuth()
     const supabase = createClient()
     const { colors } = useAccentColor()
-    // Step 2: Get stats using simple COUNT queries
     const { data: stats, isLoading: statsLoading } = useQuery({
-        queryKey: ['dashboard-stats-direct', company?.id],
+        queryKey: ['dashboard-stats', company?.id, profile?.id],
         queryFn: async () => {
             if (!company?.id) return null
-            const companyId = company.id
-
-            // Fetch counts directly
-            const [
-                propertiesResult,
-                availableResult,
-                applicationsResult,
-                pendingAppsResult,
-                teamResult,
-                areasResult,
-                buildingsResult,
-                leasesResult
-            ] = await Promise.all([
-                supabase.from('properties').select('id', { count: 'exact', head: true }).eq('company_id', companyId),
-                supabase.from('properties').select('id', { count: 'exact', head: true }).eq('company_id', companyId).eq('status', 'available'),
-                supabase.from('applications').select('id', { count: 'exact', head: true }).eq('company_id', companyId),
-                supabase.from('applications').select('id', { count: 'exact', head: true }).eq('company_id', companyId).eq('status', 'pending'),
-                supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('company_id', companyId),
-                supabase.from('areas').select('id', { count: 'exact', head: true }).eq('company_id', companyId),
-                supabase.from('buildings').select('id', { count: 'exact', head: true }).eq('company_id', companyId),
-                supabase.from('leases').select('rent_amount').eq('company_id', companyId).eq('status', 'active')
-            ])
-
-            // For revenue, fetch actual invoice totals using verified columns
-            const now = new Date()
-            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-            const { data: paidInvoices } = await supabase
-                .from('invoices')
-                .select('total, updated_at, created_at')
-                .eq('company_id', companyId)
-                .eq('status', 'paid')
-
-            let totalMonthlyRevenue = 0
-            if (paidInvoices) {
-                totalMonthlyRevenue = paidInvoices
-                    .filter((inv: any) => new Date(inv.updated_at || inv.created_at) >= new Date(startOfMonth))
-                    .reduce((sum, inv) => sum + (Number(inv.total) || 0), 0)
-            }
-
-            const leases = leasesResult.data || []
-            const totalMonthlyRent = leases.reduce((sum, l) => sum + (Number(l.rent_amount) || 0), 0)
-
-            return {
-                totalProperties: propertiesResult.count || 0,
-                availableProperties: availableResult.count || 0,
-                totalApplications: applicationsResult.count || 0,
-                pendingApplications: pendingAppsResult.count || 0,
-                teamMembers: teamResult.count || 0,
-                totalAreas: areasResult.count || 0,
-                totalBuildings: buildingsResult.count || 0,
-                totalMonthlyRent,
-                totalMonthlyRevenue,
-                propertyTrend: null,
-                applicationTrend: null
-            }
+            const svc = new StatsService(supabase)
+            return await svc.getDashboardStats(company.id, profile?.id, false)
         },
         enabled: !!company?.id,
-        staleTime: 30000,
+        staleTime: 30_000,
+        retry: 2,
+        refetchOnWindowFocus: false,
     })
     const { data: recentActivity, isLoading: activityLoading } = useActivity(10)
 
@@ -205,50 +155,52 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
             </div>
 
             {/* Metrics Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '200ms' }}>
-                <StatCard
-                    title="Properties"
-                    value={stats?.totalProperties || 0}
-                    subtitle={`${stats?.availableProperties || 0} available`}
-                    icon={Building}
-                    gradient="from-blue-500 to-blue-600"
-                    trend={stats?.propertyTrend}
-                    href="/properties"
-                />
-                <StatCard
-                    title="Applications"
-                    value={stats?.totalApplications || 0}
-                    subtitle={`${stats?.pendingApplications || 0} pending`}
-                    icon={ClipboardList}
-                    gradient="from-indigo-500 to-indigo-600"
-                    trend={stats?.applicationTrend}
-                    href="/applications"
-                />
-                <StatCard
-                    title="Projected Rent"
-                    value={`$${(stats?.totalMonthlyRent || 0).toLocaleString()}`}
-                    subtitle="Active lease value"
-                    icon={DollarSign}
-                    gradient="from-violet-500 to-violet-600"
-                    href="/leases"
-                />
-                <StatCard
-                    title="Collected"
-                    value={`$${(stats?.totalMonthlyRevenue || 0).toLocaleString()}`}
-                    subtitle="Paid this month"
-                    icon={Wallet}
-                    gradient="from-emerald-500 to-emerald-600"
-                    href="/invoices"
-                />
-                <StatCard
-                    title="Team"
-                    value={stats?.teamMembers || 0}
-                    subtitle="Active users"
-                    icon={Users}
-                    gradient={colors.gradient}
-                    href="/settings"
-                />
-            </div>
+            <ErrorBoundary>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '200ms' }}>
+                    <StatCard
+                        title="Properties"
+                        value={stats?.totalProperties || 0}
+                        subtitle={`${stats?.availableProperties || 0} available`}
+                        icon={Building}
+                        gradient="from-blue-500 to-blue-600"
+                        trend={stats?.propertyTrend}
+                        href="/properties"
+                    />
+                    <StatCard
+                        title="Applications"
+                        value={stats?.totalApplications || 0}
+                        subtitle={`${stats?.pendingApplications || 0} pending`}
+                        icon={ClipboardList}
+                        gradient="from-indigo-500 to-indigo-600"
+                        trend={stats?.applicationTrend}
+                        href="/applications"
+                    />
+                    <StatCard
+                        title="Projected Rent"
+                        value={`$${(stats?.totalMonthlyRent || 0).toLocaleString()}`}
+                        subtitle="Active lease value"
+                        icon={DollarSign}
+                        gradient="from-violet-500 to-violet-600"
+                        href="/leases"
+                    />
+                    <StatCard
+                        title="Collected"
+                        value={`$${(stats?.totalMonthlyRevenue || 0).toLocaleString()}`}
+                        subtitle="Paid this month"
+                        icon={Wallet}
+                        gradient="from-emerald-500 to-emerald-600"
+                        href="/invoices"
+                    />
+                    <StatCard
+                        title="Team"
+                        value={stats?.teamMembers || 0}
+                        subtitle="Active users"
+                        icon={Users}
+                        gradient={colors.gradient}
+                        href="/settings"
+                    />
+                </div>
+            </ErrorBoundary>
 
             {/* Quick Actions */}
             <div className="animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '300ms' }}>
@@ -336,125 +288,127 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
             )}
 
             {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '500ms' }}>
-                {/* Recent Applications */}
-                <Card className="lg:col-span-3 rounded-[2rem] border-slate-100/50 bg-white/70 backdrop-blur-xl shadow-xl shadow-slate-200/30 overflow-hidden">
-                    <CardHeader className="p-6 pb-4 flex flex-row items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br", colors.gradient, colors.shadow)}>
-                                <ClipboardList className="h-5 w-5 text-white" />
+            <ErrorBoundary>
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '500ms' }}>
+                    {/* Recent Applications */}
+                    <Card className="lg:col-span-3 rounded-[2rem] border-slate-100/50 bg-white/70 backdrop-blur-xl shadow-xl shadow-slate-200/30 overflow-hidden">
+                        <CardHeader className="p-6 pb-4 flex flex-row items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br", colors.gradient, colors.shadow)}>
+                                    <ClipboardList className="h-5 w-5 text-white" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-lg font-black text-slate-900">Recent Applications</CardTitle>
+                                    <p className="text-sm text-slate-500">Latest tenant applications</p>
+                                </div>
                             </div>
-                            <div>
-                                <CardTitle className="text-lg font-black text-slate-900">Recent Applications</CardTitle>
-                                <p className="text-sm text-slate-500">Latest tenant applications</p>
-                            </div>
-                        </div>
-                        <Button variant="ghost" size="sm" asChild className={cn("font-bold rounded-xl", colors.text, `hover:${colors.bgLight}`)}>
-                            <Link href="/applications">View All <ArrowUpRight className="h-4 w-4 ml-1" /></Link>
-                        </Button>
-                    </CardHeader>
-                    <CardContent className="p-6 pt-0">
-                        {recentApplications && recentApplications.length > 0 ? (
-                            <div className="space-y-3">
-                                {recentApplications.map((app: any) => (
-                                    <Link key={app.id} href={`/applications/${app.id}`}>
-                                        <div className="group flex items-center justify-between p-4 rounded-2xl bg-slate-50/50 border border-transparent hover:border-indigo-200 hover:bg-white transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/5">
-                                            <div className="flex items-center gap-4">
-                                                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center font-bold text-slate-500 group-hover:from-indigo-100 group-hover:to-indigo-200 group-hover:text-indigo-600 transition-all">
-                                                    {app.applicant_name?.[0] || '?'}
+                            <Button variant="ghost" size="sm" asChild className={cn("font-bold rounded-xl", colors.text, `hover:${colors.bgLight}`)}>
+                                <Link href="/applications">View All <ArrowUpRight className="h-4 w-4 ml-1" /></Link>
+                            </Button>
+                        </CardHeader>
+                        <CardContent className="p-6 pt-0">
+                            {recentApplications && recentApplications.length > 0 ? (
+                                <div className="space-y-3">
+                                    {recentApplications.map((app: any) => (
+                                        <Link key={app.id} href={`/applications/${app.id}`}>
+                                            <div className="group flex items-center justify-between p-4 rounded-2xl bg-slate-50/50 border border-transparent hover:border-indigo-200 hover:bg-white transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/5">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center font-bold text-slate-500 group-hover:from-indigo-100 group-hover:to-indigo-200 group-hover:text-indigo-600 transition-all">
+                                                        {app.applicant_name?.[0] || '?'}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-slate-900 leading-none mb-1 group-hover:text-indigo-600 transition-colors">{app.applicant_name}</p>
+                                                        <p className="text-xs text-slate-400 flex items-center gap-1">
+                                                            <MapPin className="h-3 w-3" />
+                                                            Unit {(app.property as any)?.unit_number || 'N/A'} • ${(app.property as any)?.rent?.toLocaleString() || '0'}/mo
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="font-bold text-slate-900 leading-none mb-1 group-hover:text-indigo-600 transition-colors">{app.applicant_name}</p>
-                                                    <p className="text-xs text-slate-400 flex items-center gap-1">
-                                                        <MapPin className="h-3 w-3" />
-                                                        Unit {(app.property as any)?.unit_number || 'N/A'} • ${(app.property as any)?.rent?.toLocaleString() || '0'}/mo
+                                                <div className="text-right">
+                                                    <StatusBadge status={app.status} />
+                                                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mt-2">
+                                                        {formatDistanceToNow(new Date(app.created_at), { addSuffix: true })}
                                                     </p>
                                                 </div>
                                             </div>
-                                            <div className="text-right">
-                                                <StatusBadge status={app.status} />
-                                                <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mt-2">
-                                                    {formatDistanceToNow(new Date(app.created_at), { addSuffix: true })}
+                                        </Link>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
+                                    <div className="h-20 w-20 bg-gradient-to-br from-slate-100 to-slate-200 rounded-[1.5rem] flex items-center justify-center">
+                                        <ClipboardList className="h-8 w-8 text-slate-300" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="font-bold text-slate-900">No applications yet</p>
+                                        <p className="text-sm text-slate-500 max-w-[250px] leading-relaxed">Applications will appear here when tenants apply for your properties.</p>
+                                    </div>
+                                    <Button asChild size="sm" className="mt-2 rounded-xl">
+                                        <Link href="/applications/new">
+                                            <Plus className="h-4 w-4 mr-1" /> Add Application
+                                        </Link>
+                                    </Button>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Activity Feed */}
+                    <Card className="lg:col-span-2 rounded-[2rem] border-slate-100/50 bg-white/70 backdrop-blur-xl shadow-xl shadow-slate-200/30 overflow-hidden flex flex-col">
+                        <CardHeader className="p-6 pb-4">
+                            <div className="flex items-center gap-3">
+                                <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br", colors.gradient, colors.shadow)}>
+                                    <Activity className="h-5 w-5 text-white" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-lg font-black text-slate-900">Activity Log</CardTitle>
+                                    <p className="text-sm text-slate-500">Recent team activity</p>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-6 pt-0 flex-1 overflow-y-auto max-h-[400px]">
+                            {recentActivity && recentActivity.length > 0 ? (
+                                <div className="relative space-y-6">
+                                    <div className="absolute left-[1.1rem] top-3 bottom-3 w-0.5 bg-gradient-to-b from-violet-200 via-slate-200 to-transparent rounded-full" />
+                                    {recentActivity.map((activity: any) => (
+                                        <div key={activity.id} className="relative pl-10 group">
+                                            <div className="absolute left-0 top-0 h-9 w-9 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center z-10 transition-all group-hover:scale-110 group-hover:shadow-md" style={{ borderColor: colors.primary }}>
+                                                {activity.user?.avatar_url ? (
+                                                    <img src={activity.user.avatar_url} className="h-7 w-7 rounded-lg object-cover" />
+                                                ) : (
+                                                    <span className="text-xs font-black" style={{ color: colors.primary }}>{activity.user?.full_name?.[0] || '?'}</span>
+                                                )}
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-sm leading-snug">
+                                                    <span className="font-bold text-slate-900">{activity.user?.full_name || 'System'}</span>
+                                                    <span className="text-slate-500"> {formatAction(activity.action)} </span>
+                                                    <span className="font-semibold" style={{ color: colors.primary }}>
+                                                        {activity.details?.title || activity.details?.description || activity.entity_type}
+                                                    </span>
+                                                </p>
+                                                {activity.details?.description && activity.details?.title && (
+                                                    <p className="text-xs text-slate-400 leading-tight">{activity.details.description}</p>
+                                                )}
+                                                <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
+                                                    {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
                                                 </p>
                                             </div>
                                         </div>
-                                    </Link>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
-                                <div className="h-20 w-20 bg-gradient-to-br from-slate-100 to-slate-200 rounded-[1.5rem] flex items-center justify-center">
-                                    <ClipboardList className="h-8 w-8 text-slate-300" />
+                                    ))}
                                 </div>
-                                <div className="space-y-1">
-                                    <p className="font-bold text-slate-900">No applications yet</p>
-                                    <p className="text-sm text-slate-500 max-w-[250px] leading-relaxed">Applications will appear here when tenants apply for your properties.</p>
-                                </div>
-                                <Button asChild size="sm" className="mt-2 rounded-xl">
-                                    <Link href="/applications/new">
-                                        <Plus className="h-4 w-4 mr-1" /> Add Application
-                                    </Link>
-                                </Button>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                {/* Activity Feed */}
-                <Card className="lg:col-span-2 rounded-[2rem] border-slate-100/50 bg-white/70 backdrop-blur-xl shadow-xl shadow-slate-200/30 overflow-hidden flex flex-col">
-                    <CardHeader className="p-6 pb-4">
-                        <div className="flex items-center gap-3">
-                            <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br", colors.gradient, colors.shadow)}>
-                                <Activity className="h-5 w-5 text-white" />
-                            </div>
-                            <div>
-                                <CardTitle className="text-lg font-black text-slate-900">Activity Log</CardTitle>
-                                <p className="text-sm text-slate-500">Recent team activity</p>
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="p-6 pt-0 flex-1 overflow-y-auto max-h-[400px]">
-                        {recentActivity && recentActivity.length > 0 ? (
-                            <div className="relative space-y-6">
-                                <div className="absolute left-[1.1rem] top-3 bottom-3 w-0.5 bg-gradient-to-b from-violet-200 via-slate-200 to-transparent rounded-full" />
-                                {recentActivity.map((activity: any) => (
-                                    <div key={activity.id} className="relative pl-10 group">
-                                        <div className="absolute left-0 top-0 h-9 w-9 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center z-10 transition-all group-hover:scale-110 group-hover:shadow-md" style={{ borderColor: colors.primary }}>
-                                            {activity.user?.avatar_url ? (
-                                                <img src={activity.user.avatar_url} className="h-7 w-7 rounded-lg object-cover" />
-                                            ) : (
-                                                <span className="text-xs font-black" style={{ color: colors.primary }}>{activity.user?.full_name?.[0] || '?'}</span>
-                                            )}
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-sm leading-snug">
-                                                <span className="font-bold text-slate-900">{activity.user?.full_name || 'System'}</span>
-                                                <span className="text-slate-500"> {formatAction(activity.action)} </span>
-                                                <span className="font-semibold" style={{ color: colors.primary }}>
-                                                    {activity.details?.title || activity.details?.description || activity.entity_type}
-                                                </span>
-                                            </p>
-                                            {activity.details?.description && activity.details?.title && (
-                                                <p className="text-xs text-slate-400 leading-tight">{activity.details.description}</p>
-                                            )}
-                                            <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
-                                                {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
-                                            </p>
-                                        </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-full py-16 text-center space-y-4">
+                                    <div className="h-16 w-16 bg-gradient-to-br from-violet-100 to-violet-200 rounded-2xl flex items-center justify-center animate-pulse">
+                                        <Activity className="h-6 w-6 text-violet-400" />
                                     </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center h-full py-16 text-center space-y-4">
-                                <div className="h-16 w-16 bg-gradient-to-br from-violet-100 to-violet-200 rounded-2xl flex items-center justify-center animate-pulse">
-                                    <Activity className="h-6 w-6 text-violet-400" />
+                                    <p className="text-sm font-medium text-slate-400">Waiting for activity...</p>
                                 </div>
-                                <p className="text-sm font-medium text-slate-400">Waiting for activity...</p>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            </ErrorBoundary>
         </div>
     )
 }

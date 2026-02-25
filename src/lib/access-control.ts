@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
-import { PLANS, PlanId, FeatureKey } from '@/lib/plans'
+import { resolveCompanyPlan } from '@/lib/plans/resolve'
+import { getPlan, PlanId, Plan } from '@/lib/stripe/plans'
 
 export interface UserAccess {
     isSuperAdmin: boolean
@@ -37,16 +38,20 @@ export async function getUserAccess(): Promise<UserAccess> {
             partner_type,
             company:companies(
                 subscription_plan,
-                subscription_status
+                subscription_status,
+                plan_override
             )
         `)
         .eq('id', user.id)
         .single()
 
+    const SUPER_ADMIN_EMAILS = process.env.SUPER_ADMIN_EMAILS
+        ? process.env.SUPER_ADMIN_EMAILS.split(',').map(e => e.trim().toLowerCase())
+        : [];
+
     // Handle profile being potentially null
     if (!profile) {
         // Even without profile, hardcoded admins get full access
-        const SUPER_ADMIN_EMAILS = ['konamak@icloud.com'];
         if (user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase())) {
             return {
                 isSuperAdmin: true,
@@ -70,12 +75,16 @@ export async function getUserAccess(): Promise<UserAccess> {
     // Handle company being an array or object
     const companyData = Array.isArray(profile.company) ? profile.company[0] : profile.company
 
-    const SUPER_ADMIN_EMAILS_CHECK = ['konamak@icloud.com'];
-    const isSuperAdmin = profile.is_super_admin || (user.email && SUPER_ADMIN_EMAILS_CHECK.includes(user.email.toLowerCase())) || false
+    const isSuperAdmin = profile.is_super_admin || (user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase())) || false
     const isPartner = profile.is_partner || false
     const partnerType = profile.partner_type || null
-    const plan = (companyData?.subscription_plan || 'essentials') as PlanId
-    const planStatus = companyData?.subscription_status || 'active'
+
+    // Resolve effective plan
+    const { effectivePlan, subscriptionStatus } = resolveCompanyPlan(companyData || {})
+
+    const plan = effectivePlan.id as PlanId
+    const planStatus = subscriptionStatus
+
 
     // Super admins and partners get FULL ACCESS
     const hasFullAccess = isSuperAdmin || isPartner
@@ -93,7 +102,7 @@ export async function getUserAccess(): Promise<UserAccess> {
 /**
  * Check if user can access a specific feature
  */
-export async function canAccessFeature(feature: FeatureKey): Promise<boolean> {
+export async function canAccessFeature(feature: keyof Plan['limits']): Promise<boolean> {
     const access = await getUserAccess()
 
     // Super admins and partners bypass all restrictions
@@ -106,8 +115,8 @@ export async function canAccessFeature(feature: FeatureKey): Promise<boolean> {
         return false
     }
 
-    const planConfig = PLANS[access.plan]
-    return planConfig?.features?.[feature] ?? false
+    const planConfig = getPlan(access.plan)
+    return planConfig?.limits?.[feature] ? true : false
 }
 
 /**
@@ -146,7 +155,7 @@ export async function checkPlanLimits(companyId: string): Promise<{
     }
 
     // Get plan limits
-    const plan = access.plan ? PLANS[access.plan] : null
+    const plan = access.plan ? getPlan(access.plan) : null
     const propertyLimit = plan?.limits.properties ?? 0
     const teamLimit = plan?.limits.teamMembers ?? 0
 

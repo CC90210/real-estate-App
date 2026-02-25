@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/useAuth'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { useStats } from '@/lib/hooks/useStats'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -199,147 +200,151 @@ export default function LandlordDashboard({ onQuickFind }: LandlordDashboardProp
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '200ms' }}>
-                <StatCard
-                    title="Collected Revenue"
-                    value={`$${(stats?.totalMonthlyRevenue || 0).toLocaleString()}`}
-                    subtitle="Invoices paid this month"
-                    icon={Wallet}
-                    gradient="from-emerald-500 to-emerald-600"
-                    href="/invoices"
-                />
-                <StatCard
-                    title="My Properties"
-                    value={stats?.totalProperties || 0}
-                    subtitle={`${stats?.availableProperties || 0} available`}
-                    icon={Home}
-                    gradient={colors.gradient}
-                    href="/properties"
-                />
-                <StatCard
-                    title="Pending Review"
-                    value={stats?.pendingApplications || 0}
-                    subtitle="Applications awaiting approval"
-                    icon={ClipboardList}
-                    gradient="from-amber-500 to-amber-600"
-                    href="/landlord/applications"
-                    urgent={(stats?.pendingApplications || 0) > 0}
-                />
-                <StatCard
-                    title="Upcoming"
-                    value={stats?.upcomingShowings || 0}
-                    subtitle="Scheduled visits"
-                    icon={Calendar}
-                    gradient="from-violet-500 to-violet-600"
-                    href="/showings"
-                />
-            </div>
+            <ErrorBoundary>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '200ms' }}>
+                    <StatCard
+                        title="Collected Revenue"
+                        value={`$${(stats?.totalMonthlyRevenue || 0).toLocaleString()}`}
+                        subtitle="Invoices paid this month"
+                        icon={Wallet}
+                        gradient="from-emerald-500 to-emerald-600"
+                        href="/invoices"
+                    />
+                    <StatCard
+                        title="My Properties"
+                        value={stats?.totalProperties || 0}
+                        subtitle={`${stats?.availableProperties || 0} available`}
+                        icon={Home}
+                        gradient={colors.gradient}
+                        href="/properties"
+                    />
+                    <StatCard
+                        title="Pending Review"
+                        value={stats?.pendingApplications || 0}
+                        subtitle="Applications awaiting approval"
+                        icon={ClipboardList}
+                        gradient="from-amber-500 to-amber-600"
+                        href="/landlord/applications"
+                        urgent={(stats?.pendingApplications || 0) > 0}
+                    />
+                    <StatCard
+                        title="Upcoming"
+                        value={stats?.upcomingShowings || 0}
+                        subtitle="Scheduled visits"
+                        icon={Calendar}
+                        gradient="from-violet-500 to-violet-600"
+                        href="/showings"
+                    />
+                </div>
+            </ErrorBoundary>
 
             {/* Two Column Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '300ms' }}>
-                {/* Recent Applications */}
-                <Card className="rounded-[2rem] border-slate-100/50 bg-white/70 backdrop-blur-xl shadow-xl shadow-slate-200/30">
-                    <CardHeader className="p-6 pb-4 flex flex-row items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-200">
-                                <ClipboardList className="h-5 w-5 text-white" />
+            <ErrorBoundary>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '300ms' }}>
+                    {/* Recent Applications */}
+                    <Card className="rounded-[2rem] border-slate-100/50 bg-white/70 backdrop-blur-xl shadow-xl shadow-slate-200/30">
+                        <CardHeader className="p-6 pb-4 flex flex-row items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-200">
+                                    <ClipboardList className="h-5 w-5 text-white" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-lg font-black text-slate-900">Pending Applications</CardTitle>
+                                    <p className="text-sm text-slate-500">Require your decision</p>
+                                </div>
                             </div>
-                            <div>
-                                <CardTitle className="text-lg font-black text-slate-900">Pending Applications</CardTitle>
-                                <p className="text-sm text-slate-500">Require your decision</p>
-                            </div>
-                        </div>
-                        <Link href="/landlord/applications" className="text-sm font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
-                            View All <ArrowRight className="h-4 w-4" />
-                        </Link>
-                    </CardHeader>
-                    <CardContent className="p-6 pt-0">
-                        {(!recentApplications || recentApplications.length === 0) ? (
-                            <div className="text-center py-12">
-                                <CheckCircle className="h-12 w-12 text-emerald-300 mx-auto mb-4" />
-                                <p className="font-bold text-slate-700">All caught up!</p>
-                                <p className="text-sm text-slate-400">No pending applications</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {recentApplications?.map((app: any) => {
-                                    const property = Array.isArray(app.property) ? app.property[0] : app.property
-                                    return (
-                                        <Link key={app.id} href={`/landlord/applications`}>
-                                            <div className={cn("group p-4 rounded-2xl bg-slate-50/50 hover:bg-white hover:shadow-lg transition-all duration-200 cursor-pointer border border-transparent", colors.borderHover)}>
-                                                <div className="flex items-start justify-between">
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-2">
-                                                            <p className="font-bold text-slate-900 truncate">{app.applicant_name}</p>
-                                                            <StatusBadge status={app.status} />
+                            <Link href="/landlord/applications" className="text-sm font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
+                                View All <ArrowRight className="h-4 w-4" />
+                            </Link>
+                        </CardHeader>
+                        <CardContent className="p-6 pt-0">
+                            {(!recentApplications || recentApplications.length === 0) ? (
+                                <div className="text-center py-12">
+                                    <CheckCircle className="h-12 w-12 text-emerald-300 mx-auto mb-4" />
+                                    <p className="font-bold text-slate-700">All caught up!</p>
+                                    <p className="text-sm text-slate-400">No pending applications</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {recentApplications?.map((app: any) => {
+                                        const property = Array.isArray(app.property) ? app.property[0] : app.property
+                                        return (
+                                            <Link key={app.id} href={`/landlord/applications`}>
+                                                <div className={cn("group p-4 rounded-2xl bg-slate-50/50 hover:bg-white hover:shadow-lg transition-all duration-200 cursor-pointer border border-transparent", colors.borderHover)}>
+                                                    <div className="flex items-start justify-between">
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="font-bold text-slate-900 truncate">{app.applicant_name}</p>
+                                                                <StatusBadge status={app.status} />
+                                                            </div>
+                                                            <p className="text-sm text-slate-500 truncate mt-1">
+                                                                <MapPin className="h-3 w-3 inline mr-1" />
+                                                                {property?.address || 'Property'} {property?.unit_number ? `#${property.unit_number}` : ''}
+                                                            </p>
+                                                            <p className="text-xs text-slate-400 mt-1">
+                                                                {formatDistanceToNow(new Date(app.created_at), { addSuffix: true })}
+                                                            </p>
                                                         </div>
-                                                        <p className="text-sm text-slate-500 truncate mt-1">
-                                                            <MapPin className="h-3 w-3 inline mr-1" />
-                                                            {property?.address || 'Property'} {property?.unit_number ? `#${property.unit_number}` : ''}
-                                                        </p>
-                                                        <p className="text-xs text-slate-400 mt-1">
-                                                            {formatDistanceToNow(new Date(app.created_at), { addSuffix: true })}
-                                                        </p>
-                                                    </div>
-                                                    <div className="flex flex-col items-end gap-2">
-                                                        <span className={cn("text-lg font-black", colors.text)}>${property?.rent?.toLocaleString()}/mo</span>
-                                                        <ArrowRight className={cn("h-4 w-4 text-slate-300 group-hover:translate-x-1 transition-all", `group-hover:${colors.text}`)} />
+                                                        <div className="flex flex-col items-end gap-2">
+                                                            <span className={cn("text-lg font-black", colors.text)}>${property?.rent?.toLocaleString()}/mo</span>
+                                                            <ArrowRight className={cn("h-4 w-4 text-slate-300 group-hover:translate-x-1 transition-all", `group-hover:${colors.text}`)} />
+                                                        </div>
                                                     </div>
                                                 </div>
+                                            </Link>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* My Properties */}
+                    <Card className="rounded-[2rem] border-slate-100/50 bg-white/70 backdrop-blur-xl shadow-xl shadow-slate-200/30">
+                        <CardHeader className="p-6 pb-4 flex flex-row items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-200">
+                                    <Home className="h-5 w-5 text-white" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-lg font-black text-slate-900">My Properties</CardTitle>
+                                    <p className="text-sm text-slate-500">Your portfolio</p>
+                                </div>
+                            </div>
+                            <Link href="/properties" className={cn("text-sm font-bold flex items-center gap-1", colors.text, `hover:${colors.textHover}`)}>
+                                View All <ArrowRight className="h-4 w-4" />
+                            </Link>
+                        </CardHeader>
+                        <CardContent className="p-6 pt-0">
+                            {(!properties || properties.length === 0) ? (
+                                <div className="text-center py-12">
+                                    <Home className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+                                    <p className="font-bold text-slate-700">No properties yet</p>
+                                    <p className="text-sm text-slate-400">Properties you own will appear here</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {properties?.map((property: any) => (
+                                        <Link key={property.id} href={`/properties/${property.id}`}>
+                                            <div className="group p-4 rounded-2xl bg-slate-50/50 hover:bg-white hover:shadow-lg transition-all duration-200 cursor-pointer border border-transparent hover:border-emerald-200">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <PropertyStatusBadge status={property.status} />
+                                                    <span className={cn("text-lg font-black", colors.text)}>${property.rent?.toLocaleString()}</span>
+                                                </div>
+                                                <p className="font-bold text-slate-900 text-sm truncate">{property.address}</p>
+                                                <p className="text-xs text-slate-400 mt-1">
+                                                    {property.unit_number ? `Unit ${property.unit_number} • ` : ''}
+                                                    {property.bedrooms} bed • {property.bathrooms} bath
+                                                </p>
                                             </div>
                                         </Link>
-                                    )
-                                })}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                {/* My Properties */}
-                <Card className="rounded-[2rem] border-slate-100/50 bg-white/70 backdrop-blur-xl shadow-xl shadow-slate-200/30">
-                    <CardHeader className="p-6 pb-4 flex flex-row items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-200">
-                                <Home className="h-5 w-5 text-white" />
-                            </div>
-                            <div>
-                                <CardTitle className="text-lg font-black text-slate-900">My Properties</CardTitle>
-                                <p className="text-sm text-slate-500">Your portfolio</p>
-                            </div>
-                        </div>
-                        <Link href="/properties" className={cn("text-sm font-bold flex items-center gap-1", colors.text, `hover:${colors.textHover}`)}>
-                            View All <ArrowRight className="h-4 w-4" />
-                        </Link>
-                    </CardHeader>
-                    <CardContent className="p-6 pt-0">
-                        {(!properties || properties.length === 0) ? (
-                            <div className="text-center py-12">
-                                <Home className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-                                <p className="font-bold text-slate-700">No properties yet</p>
-                                <p className="text-sm text-slate-400">Properties you own will appear here</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {properties?.map((property: any) => (
-                                    <Link key={property.id} href={`/properties/${property.id}`}>
-                                        <div className="group p-4 rounded-2xl bg-slate-50/50 hover:bg-white hover:shadow-lg transition-all duration-200 cursor-pointer border border-transparent hover:border-emerald-200">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <PropertyStatusBadge status={property.status} />
-                                                <span className={cn("text-lg font-black", colors.text)}>${property.rent?.toLocaleString()}</span>
-                                            </div>
-                                            <p className="font-bold text-slate-900 text-sm truncate">{property.address}</p>
-                                            <p className="text-xs text-slate-400 mt-1">
-                                                {property.unit_number ? `Unit ${property.unit_number} • ` : ''}
-                                                {property.bedrooms} bed • {property.bathrooms} bath
-                                            </p>
-                                        </div>
-                                    </Link>
-                                ))}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
+                                    ))}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            </ErrorBoundary>
 
             {/* Quick Actions */}
             <div className="animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '400ms' }}>

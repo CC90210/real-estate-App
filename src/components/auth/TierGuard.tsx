@@ -1,7 +1,8 @@
 'use client';
 
 import { useAuth } from '@/lib/hooks/useAuth';
-import { hasAccess } from '@/lib/capabilities';
+import { resolveCompanyPlan } from '@/lib/plans/resolve';
+import { FEATURE_TO_LIMIT } from '@/lib/stripe/plans';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -34,12 +35,12 @@ export function TierGuard({ children, feature, fallback }: TierGuardProps) {
         return <>{children}</>;
     }
 
-    // Default to 'tier_1' if company tier is missing/undefined
-    const currentTier = company?.subscription_tier || 'tier_1';
-    const automationEnabled = company?.automation_enabled || false;
+    // Resolve effective plan
+    const { effectivePlan } = resolveCompanyPlan(company || {});
 
     // Check Access
-    const allowed = hasAccess(currentTier, feature, automationEnabled);
+    const limitKey = FEATURE_TO_LIMIT[feature];
+    const allowed = limitKey ? !!effectivePlan.limits[limitKey] : false;
 
     if (allowed) {
         return <>{children}</>;
@@ -65,8 +66,8 @@ export function TierGuard({ children, feature, fallback }: TierGuardProps) {
 
                 <CardContent className="text-center space-y-8 pb-10 px-8 relative z-10">
                     <p className="text-slate-500 font-medium leading-relaxed">
-                        Access to <span className="font-bold text-slate-900 capitalize">{feature.replace('_', ' ')}</span> is restricted on your current plan.
-                        Unlock this powerful tool by upgrading to higher tier.
+                        Access to <span className="font-bold text-slate-900 capitalize">{feature.replace('_', ' ')}</span> is restricted on the {effectivePlan.name} plan.
+                        Unlock this powerful tool by upgrading to a higher tier.
                     </p>
 
                     <div className="space-y-3">

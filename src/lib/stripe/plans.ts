@@ -6,6 +6,7 @@ export interface Plan {
     tagline: string
     price: number          // Monthly in cents
     displayPrice: string   // For UI display
+    stripePriceId: string | null // TODO: Create Stripe products/prices and add IDs here
     popular?: boolean
     features: {
         crm: string[]
@@ -32,6 +33,7 @@ export const PLANS: Record<PlanId, Plan> = {
         tagline: 'Core tools for solo agents & landlords starting their journey.',
         price: 14900,   // $149/month
         displayPrice: '$149',
+        stripePriceId: 'price_placeholder_agent_pro',
         features: {
             crm: [
                 'Up to 25 Properties',
@@ -66,6 +68,7 @@ export const PLANS: Record<PlanId, Plan> = {
         tagline: 'Streamlined compliance & paperwork for growing portfolios.',
         price: 28900,   // $289/month
         displayPrice: '$289',
+        stripePriceId: 'price_placeholder_agency_growth',
         popular: true,
         features: {
             crm: [
@@ -101,6 +104,7 @@ export const PLANS: Record<PlanId, Plan> = {
         tagline: 'Full operational command for large organizations.',
         price: 49900,   // $499/month
         displayPrice: '$499',
+        stripePriceId: 'price_placeholder_brokerage_command',
         features: {
             crm: [
                 'Unlimited Properties',
@@ -165,3 +169,13 @@ export function getLimit(planId: string, limit: 'properties' | 'teamMembers' | '
     if (!plan) return 0
     return plan.limits[limit]
 }
+
+// Maps feature names used in TierGuard to plan limit keys
+export const FEATURE_TO_LIMIT: Record<string, keyof Plan['limits']> = {
+    'invoices': 'invoices',
+    'showings': 'showings',
+    'analytics': 'analytics',
+    'automations': 'automations',
+    'documents': 'invoices', // documents available at same tier as invoices
+    'approvals': 'invoices', // approvals available at same tier as invoices
+};

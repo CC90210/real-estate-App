@@ -10,9 +10,16 @@ export async function POST(req: Request) {
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
         const { newPlan } = await req.json() as { newPlan: PlanId }
+        const planConfig = PLANS[newPlan]
 
-        if (!PLANS[newPlan]) {
+        if (!planConfig) {
             return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
+        }
+
+        if (!planConfig.stripePriceId || planConfig.stripePriceId.includes('placeholder')) {
+            return NextResponse.json({
+                error: 'Stripe products not configured. Please add real price IDs to plans.ts'
+            }, { status: 501 })
         }
 
         // Get the company's current subscription
@@ -42,9 +49,9 @@ export async function POST(req: Request) {
                     id: currentItem.id,
                     price_data: {
                         currency: 'usd',
-                        unit_amount: PLANS[newPlan].price,
+                        unit_amount: planConfig.price,
                         recurring: { interval: 'month' },
-                        product: 'prod_placeholder', // Dummy product since we must pass something
+                        product: 'prod_placeholder', // Should probably use real product linking too
                     } as any,
                 }],
                 proration_behavior: 'create_prorations',
@@ -98,15 +105,7 @@ export async function POST(req: Request) {
             customer: customerId,
             payment_method_types: ['card'],
             line_items: [{
-                price_data: {
-                    currency: 'usd',
-                    product_data: {
-                        name: `PropFlow ${PLANS[newPlan].name}`,
-                        description: PLANS[newPlan].tagline,
-                    },
-                    unit_amount: PLANS[newPlan].price,
-                    recurring: { interval: 'month' },
-                },
+                price: planConfig.stripePriceId,
                 quantity: 1,
             }],
             mode: 'subscription',

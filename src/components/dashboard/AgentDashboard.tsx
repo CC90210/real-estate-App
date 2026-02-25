@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/useAuth'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { useStats } from '@/lib/hooks/useStats'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -146,43 +147,45 @@ export default function AgentDashboard({ onQuickFind }: AgentDashboardProps) {
             </div>
 
             {/* Metrics Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '200ms' }}>
-                <StatCard
-                    title="Active Listings"
-                    value={stats?.availableProperties || 0}
-                    subtitle="Available for rent"
-                    icon={Home}
-                    gradient="from-blue-500 to-blue-600"
-                    trend={stats?.propertyTrend}
-                    href="/properties"
-                />
-                <StatCard
-                    title="Upcoming Showings"
-                    value={stats?.upcomingShowings || 0}
-                    subtitle="Scheduled visits"
-                    icon={CalendarIcon}
-                    gradient="from-violet-500 to-violet-600"
-                    href="/showings"
-                    urgent={(stats?.upcomingShowings || 0) > 0}
-                />
-                <StatCard
-                    title="New Leads"
-                    value={stats?.pendingApplications || 0}
-                    subtitle="Applications to screen"
-                    icon={Users}
-                    gradient="from-indigo-500 to-indigo-600"
-                    href="/applications"
-                    urgent={(stats?.pendingApplications || 0) > 0}
-                />
-                <StatCard
-                    title="Portfolio Size"
-                    value={stats?.totalProperties || 0}
-                    subtitle="Total managed units"
-                    icon={Building2}
-                    gradient="from-slate-500 to-slate-600"
-                    href="/properties"
-                />
-            </div>
+            <ErrorBoundary>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '200ms' }}>
+                    <StatCard
+                        title="Active Listings"
+                        value={stats?.availableProperties || 0}
+                        subtitle="Available for rent"
+                        icon={Home}
+                        gradient="from-blue-500 to-blue-600"
+                        trend={stats?.propertyTrend}
+                        href="/properties"
+                    />
+                    <StatCard
+                        title="Upcoming Showings"
+                        value={stats?.upcomingShowings || 0}
+                        subtitle="Scheduled visits"
+                        icon={CalendarIcon}
+                        gradient="from-violet-500 to-violet-600"
+                        href="/showings"
+                        urgent={(stats?.upcomingShowings || 0) > 0}
+                    />
+                    <StatCard
+                        title="New Leads"
+                        value={stats?.pendingApplications || 0}
+                        subtitle="Applications to screen"
+                        icon={Users}
+                        gradient="from-indigo-500 to-indigo-600"
+                        href="/applications"
+                        urgent={(stats?.pendingApplications || 0) > 0}
+                    />
+                    <StatCard
+                        title="Portfolio Size"
+                        value={stats?.totalProperties || 0}
+                        subtitle="Total managed units"
+                        icon={Building2}
+                        gradient="from-slate-500 to-slate-600"
+                        href="/properties"
+                    />
+                </div>
+            </ErrorBoundary>
 
             {/* Quick Actions */}
             <div className="animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '300ms' }}>
@@ -226,115 +229,117 @@ export default function AgentDashboard({ onQuickFind }: AgentDashboardProps) {
             </div>
 
             {/* Main Content Grid - Agent Focused */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '500ms' }}>
-                {/* Upcoming Showings (Priority for Agents) */}
-                <Card className="lg:col-span-3 rounded-[2rem] border-slate-100/50 bg-white/70 backdrop-blur-xl shadow-xl shadow-slate-200/30 overflow-hidden">
-                    <CardHeader className="p-6 pb-4 flex flex-row items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-lg shadow-violet-200">
-                                <CalendarIcon className="h-5 w-5 text-white" />
-                            </div>
-                            <div>
-                                <CardTitle className="text-lg font-black text-slate-900">Upcoming Showings</CardTitle>
-                                <p className="text-sm text-slate-500">Your schedule for the next few days</p>
-                            </div>
-                        </div>
-                        <Button variant="ghost" size="sm" asChild className="font-bold text-violet-600 hover:bg-violet-50 rounded-xl">
-                            <Link href="/showings">View Calendar <ArrowUpRight className="h-4 w-4 ml-1" /></Link>
-                        </Button>
-                    </CardHeader>
-                    <CardContent className="p-6 pt-0">
-                        {upcomingShowings && upcomingShowings.length > 0 ? (
-                            <div className="space-y-3">
-                                {upcomingShowings.map((showing: any) => (
-                                    <div key={showing.id} className="group flex items-center justify-between p-4 rounded-2xl bg-slate-50/50 border border-transparent hover:border-violet-200 hover:bg-white transition-all duration-300 hover:shadow-lg hover:shadow-violet-500/5">
-                                        <div className="flex items-center gap-4">
-                                            <div className="h-14 w-14 rounded-xl bg-white border-2 border-slate-100 flex flex-col items-center justify-center text-center shadow-sm">
-                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{format(new Date(showing.scheduled_date), 'MMM')}</span>
-                                                <span className="text-lg font-black text-slate-900 leading-none">{format(new Date(showing.scheduled_date), 'd')}</span>
-                                            </div>
-                                            <div>
-                                                <p className="font-bold text-slate-900 mb-1">{format(new Date(showing.scheduled_date), 'h:mm a')} • {showing.visitor_name}</p>
-                                                <p className="text-xs text-slate-500 flex items-center gap-1">
-                                                    <MapPin className="h-3 w-3" />
-                                                    {(showing.property as any)?.address} {(showing.property as any)?.unit_number ? `#${(showing.property as any)?.unit_number}` : ''}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <span className={cn(
-                                                "text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full",
-                                                showing.status === 'confirmed' ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
-                                            )}>
-                                                {showing.status}
-                                            </span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
-                                <div className="h-20 w-20 bg-gradient-to-br from-slate-100 to-slate-200 rounded-[1.5rem] flex items-center justify-center">
-                                    <CalendarIcon className="h-8 w-8 text-slate-300" />
+            <ErrorBoundary>
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '500ms' }}>
+                    {/* Upcoming Showings (Priority for Agents) */}
+                    <Card className="lg:col-span-3 rounded-[2rem] border-slate-100/50 bg-white/70 backdrop-blur-xl shadow-xl shadow-slate-200/30 overflow-hidden">
+                        <CardHeader className="p-6 pb-4 flex flex-row items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-lg shadow-violet-200">
+                                    <CalendarIcon className="h-5 w-5 text-white" />
                                 </div>
-                                <div className="space-y-1">
-                                    <p className="font-bold text-slate-900">No upcoming showings</p>
-                                    <p className="text-sm text-slate-500 max-w-[250px] leading-relaxed">Schedule visits to properties to see them here.</p>
+                                <div>
+                                    <CardTitle className="text-lg font-black text-slate-900">Upcoming Showings</CardTitle>
+                                    <p className="text-sm text-slate-500">Your schedule for the next few days</p>
                                 </div>
-                                <Button asChild size="sm" className="mt-2 rounded-xl">
-                                    <Link href="/showings">
-                                        <Plus className="h-4 w-4 mr-1" /> Schedule Showing
-                                    </Link>
-                                </Button>
                             </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                {/* Recent Leads/Applications */}
-                <Card className="lg:col-span-2 rounded-[2rem] border-slate-100/50 bg-white/70 backdrop-blur-xl shadow-xl shadow-slate-200/30 overflow-hidden">
-                    <CardHeader className="p-6 pb-4 flex flex-row items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200">
-                                <Users className="h-5 w-5 text-white" />
-                            </div>
-                            <div>
-                                <CardTitle className="text-lg font-black text-slate-900">Recent Leads</CardTitle>
-                                <p className="text-sm text-slate-500">New applicants</p>
-                            </div>
-                        </div>
-                        <Link href="/applications" className="text-xs font-bold text-indigo-600 hover:text-indigo-700">View All</Link>
-                    </CardHeader>
-                    <CardContent className="p-6 pt-0">
-                        {recentApplications && recentApplications.length > 0 ? (
-                            <div className="space-y-3">
-                                {recentApplications.map((app: any) => (
-                                    <Link key={app.id} href={`/applications/${app.id}`}>
-                                        <div className="group flex items-center justify-between p-3 rounded-xl hover:bg-white hover:shadow-md transition-all cursor-pointer">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-xs font-black text-slate-500 group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors">
-                                                    {app.applicant_name?.[0] || '?'}
+                            <Button variant="ghost" size="sm" asChild className="font-bold text-violet-600 hover:bg-violet-50 rounded-xl">
+                                <Link href="/showings">View Calendar <ArrowUpRight className="h-4 w-4 ml-1" /></Link>
+                            </Button>
+                        </CardHeader>
+                        <CardContent className="p-6 pt-0">
+                            {upcomingShowings && upcomingShowings.length > 0 ? (
+                                <div className="space-y-3">
+                                    {upcomingShowings.map((showing: any) => (
+                                        <div key={showing.id} className="group flex items-center justify-between p-4 rounded-2xl bg-slate-50/50 border border-transparent hover:border-violet-200 hover:bg-white transition-all duration-300 hover:shadow-lg hover:shadow-violet-500/5">
+                                            <div className="flex items-center gap-4">
+                                                <div className="h-14 w-14 rounded-xl bg-white border-2 border-slate-100 flex flex-col items-center justify-center text-center shadow-sm">
+                                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{format(new Date(showing.scheduled_date), 'MMM')}</span>
+                                                    <span className="text-lg font-black text-slate-900 leading-none">{format(new Date(showing.scheduled_date), 'd')}</span>
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-bold text-slate-900 truncate">{app.applicant_name}</p>
-                                                    <p className="text-[10px] text-slate-500 truncate">
-                                                        Applied {formatDistanceToNow(new Date(app.created_at), { addSuffix: true })}
+                                                    <p className="font-bold text-slate-900 mb-1">{format(new Date(showing.scheduled_date), 'h:mm a')} • {showing.visitor_name}</p>
+                                                    <p className="text-xs text-slate-500 flex items-center gap-1">
+                                                        <MapPin className="h-3 w-3" />
+                                                        {(showing.property as any)?.address} {(showing.property as any)?.unit_number ? `#${(showing.property as any)?.unit_number}` : ''}
                                                     </p>
                                                 </div>
                                             </div>
-                                            <StatusBadge status={app.status} />
+                                            <div className="text-right">
+                                                <span className={cn(
+                                                    "text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full",
+                                                    showing.status === 'confirmed' ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                                                )}>
+                                                    {showing.status}
+                                                </span>
+                                            </div>
                                         </div>
-                                    </Link>
-                                ))}
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
+                                    <div className="h-20 w-20 bg-gradient-to-br from-slate-100 to-slate-200 rounded-[1.5rem] flex items-center justify-center">
+                                        <CalendarIcon className="h-8 w-8 text-slate-300" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="font-bold text-slate-900">No upcoming showings</p>
+                                        <p className="text-sm text-slate-500 max-w-[250px] leading-relaxed">Schedule visits to properties to see them here.</p>
+                                    </div>
+                                    <Button asChild size="sm" className="mt-2 rounded-xl">
+                                        <Link href="/showings">
+                                            <Plus className="h-4 w-4 mr-1" /> Schedule Showing
+                                        </Link>
+                                    </Button>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Recent Leads/Applications */}
+                    <Card className="lg:col-span-2 rounded-[2rem] border-slate-100/50 bg-white/70 backdrop-blur-xl shadow-xl shadow-slate-200/30 overflow-hidden">
+                        <CardHeader className="p-6 pb-4 flex flex-row items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200">
+                                    <Users className="h-5 w-5 text-white" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-lg font-black text-slate-900">Recent Leads</CardTitle>
+                                    <p className="text-sm text-slate-500">New applicants</p>
+                                </div>
                             </div>
-                        ) : (
-                            <div className="text-center py-10">
-                                <p className="text-sm text-slate-400 font-medium">No active leads</p>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
+                            <Link href="/applications" className="text-xs font-bold text-indigo-600 hover:text-indigo-700">View All</Link>
+                        </CardHeader>
+                        <CardContent className="p-6 pt-0">
+                            {recentApplications && recentApplications.length > 0 ? (
+                                <div className="space-y-3">
+                                    {recentApplications.map((app: any) => (
+                                        <Link key={app.id} href={`/applications/${app.id}`}>
+                                            <div className="group flex items-center justify-between p-3 rounded-xl hover:bg-white hover:shadow-md transition-all cursor-pointer">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-xs font-black text-slate-500 group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors">
+                                                        {app.applicant_name?.[0] || '?'}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-bold text-slate-900 truncate">{app.applicant_name}</p>
+                                                        <p className="text-[10px] text-slate-500 truncate">
+                                                            Applied {formatDistanceToNow(new Date(app.created_at), { addSuffix: true })}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <StatusBadge status={app.status} />
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-10">
+                                    <p className="text-sm text-slate-400 font-medium">No active leads</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            </ErrorBoundary>
         </div>
     )
 }

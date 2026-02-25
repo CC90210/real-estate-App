@@ -6,6 +6,7 @@ export const ENTERPRISE_PLAN: Plan = {
     tagline: 'Custom enterprise deployment with unlimited access.',
     price: 0,
     displayPrice: 'Custom',
+    stripePriceId: null,
     features: {
         crm: ['Unlimited Properties', 'Unlimited Team Members', 'Dedicated Account Manager', 'Custom Integrations'],
         finance: ['Full General Ledger', 'Priority Capital Access', 'Brokerage Commission Splits', 'Custom Reports'],
@@ -35,9 +36,10 @@ export function resolveCompanyPlan(company: {
     plan_override?: string | null
     subscription_plan?: string | null
     subscription_status?: string | null
+    is_lifetime_access?: boolean | null
 }): CompanyPlanInfo {
-    // 1. Check for enterprise override
-    if (company.plan_override === 'enterprise') {
+    // 1. Check for enterprise override or lifetime access
+    if (company.plan_override === 'enterprise' || company.is_lifetime_access) {
         return {
             effectivePlan: ENTERPRISE_PLAN,
             planSource: 'override',
@@ -74,6 +76,7 @@ export function resolveCompanyPlan(company: {
             tagline: 'Subscribe to unlock PropFlow features.',
             price: 0,
             displayPrice: '$0',
+            stripePriceId: null,
             features: { crm: [], finance: [], social: [] },
             limits: {
                 properties: 0,
