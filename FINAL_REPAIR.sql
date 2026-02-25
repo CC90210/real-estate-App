@@ -75,8 +75,7 @@ FROM invoices
 WHERE company_id = p_company_id
     AND status = 'paid'
     AND (
-        paid_at >= v_month_start
-        OR updated_at >= v_month_start
+        updated_at >= v_month_start
         OR created_at >= v_month_start
     );
 -- Assemble and return the validated JSON document
@@ -141,7 +140,6 @@ CREATE INDEX IF NOT EXISTS idx_applications_cmp_sts ON applications(company_id, 
 CREATE INDEX IF NOT EXISTS idx_invoices_cmp_sts_dates ON invoices(
     company_id,
     status,
-    paid_at,
     updated_at,
     created_at
 );
