@@ -34,14 +34,30 @@ export async function updateSession(request: NextRequest) {
     const { pathname } = request.nextUrl
 
     // DEFINE PROTECTION MAP
-    const protectedPaths = ['/dashboard', '/properties', '/tenants', '/maintenance', '/settings', '/applications', '/leases', '/financials', '/reports', '/documents']
+    const protectedPaths = [
+        '/dashboard', '/properties', '/applications', '/invoices',
+        '/documents', '/analytics', '/social', '/settings',
+        '/areas', '/approvals', '/leases', '/maintenance',
+        '/showings', '/automations', '/activity'
+    ]
     const isProtectedRoute = protectedPaths.some(path => pathname.startsWith(path))
 
     // ROUTE GUARDING
     if (isProtectedRoute && !user) {
-        const redirectUrl = new URL('/login', request.url)
-        redirectUrl.searchParams.set('redirect', pathname)
-        return NextResponse.redirect(redirectUrl)
+        // Only redirect if there are NO session cookies at all.
+        // If cookies exist but getUser() failed, it's a transient refresh issue —
+        // let the client-side SDK handle the refresh instead of destroying the session.
+        const hasSessionCookie = request.cookies.getAll().some(
+            c => c.name.startsWith('sb-') && c.name.includes('auth-token')
+        );
+
+        if (!hasSessionCookie) {
+            // Genuinely no session — redirect to login
+            const redirectUrl = new URL('/login', request.url)
+            redirectUrl.searchParams.set('redirect', pathname)
+            return NextResponse.redirect(redirectUrl)
+        }
+        // Session cookie exists but getUser failed → transient error → let request through
     }
 
     // Redirect logged-in users away from auth pages

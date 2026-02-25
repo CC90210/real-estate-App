@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { User, Shield, Bell, Palette, Save, Loader2, Sparkles, CheckCircle2, Lock, Eye, EyeOff, Upload, Image as ImageIcon, X, Users, Banknote } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAccentColor } from '@/lib/hooks/useAccentColor';
+import { useAuth } from '@/lib/hooks/useAuth';
 import { TeamManagementCard } from '@/components/settings/TeamManagementCard';
 import { PayoutsSettingsCard } from '@/components/settings/PayoutsSettingsCard';
 
@@ -386,6 +387,32 @@ export default function SettingsPage() {
     // Get accent color config
     const getAccentColor = (name: string) => accentColors.find(c => c.name === name) || accentColors[0];
     const activeAccent = getAccentColor(branding.accent);
+
+    const { isLoading: authLoading, company } = useAuth();
+    const resolvedCompanyId = company?.id;
+
+    if (authLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
+                <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loading settings...</p>
+            </div>
+        );
+    }
+
+    if (!resolvedCompanyId) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
+                <p className="text-slate-500 font-medium">Unable to load workspace data.</p>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                >
+                    Refresh Page
+                </button>
+            </div>
+        );
+    }
 
     if (isLoading) {
         return (

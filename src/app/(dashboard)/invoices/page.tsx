@@ -7,20 +7,24 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Plus, FileText, DollarSign, Clock, CheckCircle, Receipt, ArrowRight, TrendingUp, AlertCircle } from 'lucide-react'
+import { Plus, FileText, DollarSign, Clock, CheckCircle, Receipt, ArrowRight, TrendingUp, AlertCircle, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useAccentColor } from '@/lib/hooks/useAccentColor'
 import { cn } from '@/lib/utils'
 import { FeatureGate } from '@/components/FeatureGate'
 import { getCurrencySymbol } from '@/lib/currencies'
+import { useAuth } from '@/lib/hooks/useAuth'
 
 export default function InvoicesPage() {
     const supabase = createClient()
     const { colors } = useAccentColor()
+    const { isLoading: authLoading, company } = useAuth();
+    const companyId = company?.id;
 
     const { data: invoices, isLoading, error } = useQuery({
-        queryKey: ['invoices'],
+        queryKey: ['invoices', companyId],
         queryFn: async () => {
+            if (!companyId) return []
             const { data, error } = await supabase
                 .from('invoices')
                 .select(`
@@ -28,19 +32,22 @@ export default function InvoicesPage() {
                     property:properties(address),
                     company:companies(name)
                 `)
+                .eq('company_id', companyId)
                 .order('created_at', { ascending: false })
 
             if (error) {
                 const { data: rawData, error: rawError } = await supabase
                     .from('invoices')
                     .select(`*, property:properties(address)`)
+                    .eq('company_id', companyId)
                     .order('created_at', { ascending: false })
 
                 if (rawError) throw rawError;
                 return rawData || [];
             }
             return data || []
-        }
+        },
+        enabled: !!companyId
     })
 
     const statusConfig = {
@@ -49,6 +56,28 @@ export default function InvoicesPage() {
         paid: { label: 'Settled & Paid', color: 'bg-emerald-50 text-emerald-800 border-emerald-100 font-bold' },
         overdue: { label: 'Past Due', color: 'bg-rose-50 text-rose-700 border-rose-100' },
         cancelled: { label: 'Cancelled', color: 'bg-slate-50 text-slate-400 border-slate-100' }
+    }
+
+    if (authLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[500px]">
+                <Loader2 className={cn("w-10 h-10 animate-spin", colors.text)} />
+            </div>
+        )
+    }
+
+    if (!companyId) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
+                <p className="text-slate-500 font-medium">Unable to load workspace data.</p>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                >
+                    Refresh Page
+                </button>
+            </div>
+        );
     }
 
     if (isLoading) {

@@ -33,7 +33,7 @@ export function TierGuard({ children, feature, fallback }: TierGuardProps) {
     const { effectivePlan } = resolveCompanyPlan(company || {});
 
     // Check Access logic from Mission TASK 2
-    const featureLimitValue = (effectivePlan.limits as any)[feature];
+    const featureLimitValue = (effectivePlan.limits as any)[feature] ?? (effectivePlan.features as any)[feature];
     const allowed = hasFullAccess ||
         featureLimitValue === true ||
         featureLimitValue === -1 ||

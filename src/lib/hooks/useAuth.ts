@@ -1,5 +1,7 @@
 'use client';
 
+import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import { useUser } from './useUser';
 
 /**
@@ -24,16 +26,33 @@ export function useAuth() {
         signOut
     } = useUser();
 
-    // Normalize company data: Supabase join can return array or object
+    const [fallbackCompany, setFallbackCompany] = useState<any>(null);
+
     const rawCompany = profile?.company;
     const company = rawCompany
         ? (Array.isArray(rawCompany) ? rawCompany[0] : rawCompany)
         : null;
 
+    useEffect(() => {
+        if (profile?.company_id && !company && !fallbackCompany) {
+            const supabase = createClient();
+            supabase
+                .from('companies')
+                .select('*')
+                .eq('id', profile.company_id)
+                .single()
+                .then(({ data }) => {
+                    if (data) setFallbackCompany(data);
+                });
+        }
+    }, [profile?.company_id, company, fallbackCompany]);
+
+    const resolvedCompany = company || fallbackCompany;
+
     return {
         user,
         profile,
-        company,
+        company: resolvedCompany,
         role,
         isSuperAdmin,
         isPartner,

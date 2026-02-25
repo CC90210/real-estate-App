@@ -35,12 +35,14 @@ import {
     Building2,
     MapPin,
     Check,
-    Plus
+    Plus,
+    Loader2
 } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { useAccentColor } from '@/lib/hooks/useAccentColor'
 import { TierGuard } from '@/components/auth/TierGuard'
+import { useAuth } from '@/lib/hooks/useAuth'
 
 const documentTypes = [
     {
@@ -107,30 +109,39 @@ function DocumentsContent() {
         setCustomFields({})
     }, [selectedType, selectedProperty, selectedApplication])
 
+    const { isLoading: authLoading, company } = useAuth();
+    const companyId = company?.id;
+
     // Fetch properties for dropdown
     const { data: properties, error: propError } = useQuery({
-        queryKey: ['properties-simple'],
+        queryKey: ['properties-simple', companyId],
         queryFn: async () => {
+            if (!companyId) return []
             const { data, error } = await supabase
                 .from('properties')
                 .select('id, address, unit_number')
+                .eq('company_id', companyId)
                 .order('address')
             if (error) throw error
             return data || []
-        }
+        },
+        enabled: !!companyId
     })
 
     // Fetch applications for dropdown
     const { data: applications, error: appError } = useQuery({
-        queryKey: ['applications-simple'],
+        queryKey: ['applications-simple', companyId],
         queryFn: async () => {
+            if (!companyId) return []
             const { data, error } = await supabase
                 .from('applications')
                 .select('id, applicant_name, applicant_email, applicant_phone, property_id, property:properties(address, rent)')
+                .eq('company_id', companyId)
                 .order('created_at', { ascending: false })
             if (error) throw error
             return data || []
-        }
+        },
+        enabled: !!companyId
     })
 
     // Auto-fill fields from selected application
@@ -156,16 +167,19 @@ function DocumentsContent() {
 
     // Fetch document history
     const { data: documents, isLoading: docsLoading, error: docsError, refetch } = useQuery({
-        queryKey: ['documents'],
+        queryKey: ['documents', companyId],
         queryFn: async () => {
+            if (!companyId) return []
             const { data, error } = await supabase
                 .from('documents')
                 .select('*')
+                .eq('company_id', companyId)
                 .order('created_at', { ascending: false })
                 .limit(20)
             if (error) throw error
             return data || []
-        }
+        },
+        enabled: !!companyId
     })
 
     const handleGenerate = async () => {
@@ -221,6 +235,28 @@ function DocumentsContent() {
     const needsProperty = selectedType && ['showing_sheet', 'property_summary', 'lease_proposal'].includes(selectedType)
     const needsApplication = selectedType === 'application_summary'
     const selectedTypeData = documentTypes.find(t => t.id === selectedType)
+
+    if (authLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[500px]">
+                <Loader2 className={cn("w-10 h-10 animate-spin", colors.text)} />
+            </div>
+        )
+    }
+
+    if (!companyId) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
+                <p className="text-slate-500 font-medium">Unable to load workspace data.</p>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                >
+                    Refresh Page
+                </button>
+            </div>
+        );
+    }
 
     // Error State
     if (docsError || propError || appError) {

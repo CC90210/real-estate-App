@@ -3,16 +3,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
-import { useCompanyId } from './useCompanyId';
-import { useUser } from './useUser';
+import { useAuth } from './useAuth';
 
 export function useProperties(buildingId?: string) {
     const supabase = createClient();
-    const { companyId } = useCompanyId();
-    const { profile } = useUser();
+    const { company, profile } = useAuth();
+    const resolvedCompanyId = company?.id;
 
     return useQuery({
-        queryKey: ['properties', { buildingId, companyId, userRole: profile?.role }],
+        queryKey: ['properties', { buildingId, companyId: resolvedCompanyId, userRole: profile?.role }],
         queryFn: async () => {
             let query = supabase
                 .from('properties')
@@ -24,8 +23,8 @@ export function useProperties(buildingId?: string) {
                 .order('created_at', { ascending: false });
 
             // Filter by company if available, otherwise RLS handles isolation
-            if (companyId) {
-                query = query.eq('company_id', companyId);
+            if (resolvedCompanyId) {
+                query = query.eq('company_id', resolvedCompanyId);
             }
 
             if (buildingId) {
@@ -64,7 +63,8 @@ export function useProperties(buildingId?: string) {
 
 export function useProperty(propertyId: string) {
     const supabase = createClient();
-    const { companyId } = useCompanyId();
+    const { company } = useAuth();
+    const resolvedCompanyId = company?.id;
 
     return useQuery({
         queryKey: ['properties', 'detail', propertyId],
@@ -103,7 +103,8 @@ async function logActivity(supabase: any, { companyId, action, entityType, entit
 export function useDeleteProperty() {
     const queryClient = useQueryClient();
     const supabase = createClient();
-    const { companyId } = useCompanyId();
+    const { company } = useAuth();
+    const resolvedCompanyId = company?.id;
 
     return useMutation({
         mutationFn: async (propertyId: string) => {
@@ -111,7 +112,7 @@ export function useDeleteProperty() {
             if (error) throw error;
 
             await logActivity(supabase, {
-                companyId,
+                companyId: resolvedCompanyId,
                 action: 'deleted',
                 entityType: 'property',
                 entityId: propertyId,
@@ -148,7 +149,8 @@ export function useDeleteProperty() {
 export function useUpdateProperty() {
     const queryClient = useQueryClient();
     const supabase = createClient();
-    const { companyId } = useCompanyId();
+    const { company } = useAuth();
+    const resolvedCompanyId = company?.id;
 
     return useMutation({
         mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
@@ -162,7 +164,7 @@ export function useUpdateProperty() {
             if (error) throw error;
 
             await logActivity(supabase, {
-                companyId,
+                companyId: resolvedCompanyId,
                 action: 'updated',
                 entityType: 'property',
                 entityId: id,
@@ -205,7 +207,8 @@ export function useUpdateProperty() {
 export function useCreateProperty() {
     const queryClient = useQueryClient();
     const supabase = createClient();
-    const { companyId } = useCompanyId();
+    const { company } = useAuth();
+    const resolvedCompanyId = company?.id;
 
     return useMutation({
         mutationFn: async (newProperty: any) => {
@@ -213,7 +216,7 @@ export function useCreateProperty() {
                 .from('properties')
                 .insert({
                     ...newProperty,
-                    company_id: companyId,
+                    company_id: resolvedCompanyId,
                     status: newProperty.status || 'available'
                 })
                 .select(`
@@ -226,7 +229,7 @@ export function useCreateProperty() {
             if (error) throw error;
 
             await logActivity(supabase, {
-                companyId,
+                companyId: resolvedCompanyId,
                 action: 'created',
                 entityType: 'property',
                 entityId: data.id,
@@ -265,10 +268,11 @@ export function useCreateProperty() {
 
 export function useLandlords() {
     const supabase = createClient();
-    const { companyId } = useCompanyId();
+    const { company } = useAuth();
+    const resolvedCompanyId = company?.id;
 
     return useQuery({
-        queryKey: ['landlords', companyId],
+        queryKey: ['landlords', resolvedCompanyId],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('landlords')
@@ -281,7 +285,7 @@ export function useLandlords() {
             }
             return data;
         },
-        enabled: !!companyId,
+        enabled: !!resolvedCompanyId,
     });
 }
 

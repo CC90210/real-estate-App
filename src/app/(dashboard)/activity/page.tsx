@@ -37,18 +37,19 @@ export default function ActivityPage() {
     const [filter, setFilter] = useState<string>('all')
 
     const supabase = createClient()
-    const { profile } = useAuth()
+    const { isLoading: authLoading, company, profile } = useAuth();
+    const resolvedCompanyId = company?.id || profile?.company_id;
 
     // Direct query as requested to guarantee data load
     const { data: activities, isLoading, isError, error, refetch } = useQuery({
-        queryKey: ['activity-page-direct', profile?.company_id, filter],
+        queryKey: ['activity-page-direct', resolvedCompanyId, filter],
         queryFn: async () => {
-            if (!profile?.company_id) return []
+            if (!resolvedCompanyId) return []
 
             let q = supabase
                 .from('activity_log')
                 .select('id, action, entity_type, details, description, created_at, user_id')
-                .eq('company_id', profile.company_id)
+                .eq('company_id', resolvedCompanyId)
                 .order('created_at', { ascending: false })
                 .limit(100)
 
@@ -75,7 +76,7 @@ export default function ActivityPage() {
                 user: userMap[a.user_id] || { full_name: 'Unknown', avatar_url: null }
             }))
         },
-        enabled: !!profile?.company_id,
+        enabled: !!resolvedCompanyId,
         staleTime: 30000
     })
 
@@ -117,6 +118,28 @@ export default function ActivityPage() {
         const metadataMatch = JSON.stringify(a.details || {}).toLowerCase().includes(searchText)
         return actionMatch || entityMatch || userMatch || metadataMatch
     })
+
+    if (authLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
+                <Loader2 className="w-10 h-10 animate-spin text-rose-600" />
+            </div>
+        );
+    }
+
+    if (!resolvedCompanyId) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
+                <p className="text-slate-500 font-medium">Unable to load workspace data.</p>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                >
+                    Refresh Page
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="p-6 lg:p-10 max-w-5xl mx-auto min-h-screen animate-in fade-in duration-500">

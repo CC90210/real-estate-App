@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
+import { useAuth } from '@/lib/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import {
@@ -136,8 +137,13 @@ export default function SocialPage() {
             const data = await res.json()
 
             if (data.error) {
-                setError(data.error)
-                toast.error(data.error)
+                if (data.error.includes('LATE_API_KEY')) {
+                    setError('The API key for this platform is missing or invalid. Please check your settings.')
+                    toast.error('The API key for this platform is missing or invalid. Please check your settings.')
+                } else {
+                    setError(data.error)
+                    toast.error(data.error)
+                }
                 return
             }
 
@@ -305,6 +311,31 @@ export default function SocialPage() {
     const charCount = postContent.length
     const allSelected = selectedAccounts.length === activeAccounts.length && activeAccounts.length > 0
 
+    const { isLoading: authLoading, company } = useAuth();
+    const companyId = company?.id;
+
+    if (authLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[500px]">
+                <Loader2 className={cn("w-10 h-10 animate-spin", 'text-slate-500')} />
+            </div>
+        )
+    }
+
+    if (!companyId) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
+                <p className="text-slate-500 font-medium">Unable to load workspace data.</p>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                >
+                    Refresh Page
+                </button>
+            </div>
+        );
+    }
+
     if (loading) {
         return (
             <div className="p-6 animate-pulse space-y-4">
@@ -330,8 +361,8 @@ export default function SocialPage() {
             {/* Error Banner */}
             {error && (
                 <div className="bg-red-50 border border-red-200 text-red-800 px-5 py-3 rounded-xl text-sm font-medium flex items-center gap-3">
-                    <span>⚠️ {error}</span>
-                    <button onClick={() => setError(null)} className="ml-auto text-red-500 hover:text-red-700 font-bold text-lg">✕</button>
+                    <span className="flex-1">⚠️ {error}</span>
+                    <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700 font-bold text-lg p-1">✕</button>
                 </div>
             )}
 
@@ -344,10 +375,18 @@ export default function SocialPage() {
                 ].map(tab => (
                     <button
                         key={tab.key}
-                        onClick={() => setActiveTab(tab.key)}
+                        onClick={() => {
+                            // Don't let users leave accounts tab if they have no connection, except post history
+                            if (activeAccounts.length === 0 && tab.key === 'post') {
+                                toast.error('Please connect at least one platform first.')
+                                return
+                            }
+                            setActiveTab(tab.key)
+                        }}
                         className={cn(
                             'px-4 py-2 rounded-lg text-sm font-bold transition-all',
-                            activeTab === tab.key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                            activeTab === tab.key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700',
+                            activeAccounts.length === 0 && tab.key === 'post' && 'opacity-50 cursor-not-allowed'
                         )}
                     >
                         {tab.label}

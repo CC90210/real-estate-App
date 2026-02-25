@@ -9,6 +9,7 @@ import { AreasList } from '@/components/areas/AreasList';
 import { useAccentColor } from '@/lib/hooks/useAccentColor';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/lib/hooks/useAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,9 +17,13 @@ export default function AreasPage() {
     const supabase = createClient();
     const { colors } = useAccentColor();
 
+    const { isLoading: authLoading, company } = useAuth();
+    const resolvedCompanyId = company?.id;
+
     const { data: areas, isLoading } = useQuery({
-        queryKey: ['areas'],
+        queryKey: ['areas', resolvedCompanyId],
         queryFn: async () => {
+            if (!resolvedCompanyId) return []
             const { data, error } = await supabase
                 .from('areas')
                 .select(`
@@ -28,12 +33,37 @@ export default function AreasPage() {
                         properties (id, status)
                     )
                 `)
+                .eq('company_id', resolvedCompanyId)
                 .order('name');
 
             if (error) throw error;
             return data || [];
-        }
+        },
+        enabled: !!resolvedCompanyId
     });
+
+    if (authLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
+                <Loader2 className={cn("w-10 h-10 animate-spin", colors.text)} />
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loading tactical regions...</p>
+            </div>
+        );
+    }
+
+    if (!resolvedCompanyId) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
+                <p className="text-slate-500 font-medium">Unable to load workspace data.</p>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                >
+                    Refresh Page
+                </button>
+            </div>
+        );
+    }
 
     if (isLoading) {
         return (

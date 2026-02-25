@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import { useCompanyId } from '@/lib/hooks/useCompanyId'
 import { useAccentColor } from '@/lib/hooks/useAccentColor'
 import { cn } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
@@ -45,9 +44,9 @@ const categories = [
 
 export default function MaintenancePage() {
     const supabase = createClient()
-    const companyId = useCompanyId()
     const { colors } = useAccentColor()
-    const { user } = useAuth()
+    const { user, isLoading: authLoading, company } = useAuth()
+    const resolvedCompanyId = company?.id;
     const queryClient = useQueryClient()
     const [search, setSearch] = useState('')
     const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -59,50 +58,52 @@ export default function MaintenancePage() {
     })
 
     const { data: requests, isLoading } = useQuery({
-        queryKey: ['maintenance', companyId.companyId],
+        queryKey: ['maintenance', resolvedCompanyId],
         queryFn: async () => {
-            if (!companyId.companyId) return []
+            if (!resolvedCompanyId) return []
             const { data, error } = await supabase
                 .from('maintenance_requests')
                 .select('*, properties(address, unit_number), profiles:submitted_by(full_name, email), assigned:assigned_to(full_name)')
-                .eq('company_id', companyId.companyId)
+                .eq('company_id', resolvedCompanyId)
                 .order('created_at', { ascending: false })
             if (error) throw error
             return data || []
         },
-        enabled: !!companyId.companyId,
+        enabled: !!resolvedCompanyId,
+        retry: 3,
+        staleTime: 60 * 1000
     })
 
     const { data: properties } = useQuery({
-        queryKey: ['properties-select', companyId.companyId],
+        queryKey: ['properties-select', resolvedCompanyId],
         queryFn: async () => {
-            if (!companyId.companyId) return []
+            if (!resolvedCompanyId) return []
             const { data } = await supabase
                 .from('properties')
                 .select('id, address, unit_number')
-                .eq('company_id', companyId.companyId)
+                .eq('company_id', resolvedCompanyId)
                 .order('address')
             return data || []
         },
-        enabled: !!companyId.companyId,
+        enabled: !!resolvedCompanyId,
     })
 
     const createRequest = useMutation({
         mutationFn: async (data: any) => {
-            if (!companyId.companyId) {
+            if (!resolvedCompanyId) {
                 throw new Error('Not authenticated properly. Please refresh.')
             }
             const { error } = await supabase
                 .from('maintenance_requests')
                 .insert({
                     ...data,
-                    company_id: companyId.companyId,
+                    company_id: resolvedCompanyId,
                     submitted_by: user?.id,
                 })
             if (error) throw error
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['maintenance', companyId.companyId] })
+            queryClient.invalidateQueries({ queryKey: ['maintenance', resolvedCompanyId] })
             toast.success('Maintenance request submitted')
             setDialogOpen(false)
             setForm({ property_id: '', title: '', description: '', category: 'general', priority: 'medium' })
@@ -121,7 +122,7 @@ export default function MaintenancePage() {
             if (error) throw error
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['maintenance', companyId.companyId] })
+            queryClient.invalidateQueries({ queryKey: ['maintenance', resolvedCompanyId] })
             toast.success('Status updated')
             setDetailOpen(null)
         },
@@ -141,7 +142,29 @@ export default function MaintenancePage() {
 
     // Instant-On: No full-page blocking loader. 
     // We show the layout and a subtle "Syncing" status if needed.
-    const isSyncing = isLoading || companyId.isLoading;
+    const isSyncing = isLoading;
+
+    if (authLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[500px]">
+                <Loader2 className={cn("w-10 h-10 animate-spin", colors.text)} />
+            </div>
+        )
+    }
+
+    if (!resolvedCompanyId) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
+                <p className="text-slate-500 font-medium">Unable to load workspace data.</p>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                >
+                    Refresh Page
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="p-6 lg:p-10 space-y-8 animate-in fade-in duration-500">

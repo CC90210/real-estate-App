@@ -23,6 +23,8 @@ import { MobileSection } from '@/components/mobile/MobileSection';
 import { MobileListItem } from '@/components/mobile/MobileListItem';
 import { LimitGuard } from '@/components/LimitGuard';
 import { usePlanLimits } from '@/hooks/use-plan-limits';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { Loader2 } from 'lucide-react';
 
 export default function PropertiesPage() {
     const isMobile = useMobile();
@@ -77,6 +79,31 @@ export default function PropertiesPage() {
             </Badge>
         );
     };
+
+    const { isLoading: authLoading, company } = useAuth();
+    const companyId = company?.id;
+
+    if (authLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[500px]">
+                <Loader2 className={cn("w-10 h-10 animate-spin", colors.text)} />
+            </div>
+        )
+    }
+
+    if (!companyId) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
+                <p className="text-slate-500 font-medium">Unable to load workspace data.</p>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                >
+                    Refresh Page
+                </button>
+            </div>
+        );
+    }
 
     if (isLoading) {
         return (

@@ -1,16 +1,16 @@
 import { useMemo } from 'react';
-import { useUser } from '@/lib/hooks/useUser';
+import { useAuth } from '@/lib/hooks/useAuth';
 
 export function useCompanyId() {
-    const { profile, isLoading, isAuthenticated } = useUser();
+    const { company, profile, isLoading, isAuthenticated } = useAuth();
 
     return useMemo(() => {
-        const companyId = profile?.company_id || null;
+        const companyId = company?.id || profile?.company_id || null;
         return {
             companyId,
-            isLoading: isLoading,
+            isLoading,
             error: null,
             hasCompany: !!companyId && isAuthenticated
         };
-    }, [profile?.company_id, isLoading, isAuthenticated]);
+    }, [company?.id, profile?.company_id, isLoading, isAuthenticated]);
 }

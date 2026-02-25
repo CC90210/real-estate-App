@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import { useCompanyId } from '@/lib/hooks/useCompanyId'
 import { useAccentColor } from '@/lib/hooks/useAccentColor'
 import { cn } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
@@ -21,6 +20,7 @@ import {
 import { toast } from 'sonner'
 import { format, differenceInDays, parseISO } from 'date-fns'
 import { Badge } from '@/components/ui/badge'
+import { useAuth } from '@/lib/hooks/useAuth'
 
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
     draft: { label: 'Draft', color: 'bg-slate-100 text-slate-600', icon: FileText },
@@ -33,7 +33,6 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
 
 export default function LeasesPage() {
     const supabase = createClient()
-    const companyId = useCompanyId()
     const { colors } = useAccentColor()
     const queryClient = useQueryClient()
     const [search, setSearch] = useState('')
@@ -48,45 +47,48 @@ export default function LeasesPage() {
         auto_renew: false, notes: '',
     })
 
+    const { isLoading: authLoading, company } = useAuth();
+    const resolvedCompanyId = company?.id;
+
     const { data: leases, isLoading } = useQuery({
-        queryKey: ['leases', companyId.companyId],
+        queryKey: ['leases', resolvedCompanyId],
         queryFn: async () => {
-            if (!companyId.companyId) return []
+            if (!resolvedCompanyId) return []
             const { data, error } = await supabase
                 .from('leases')
                 .select('*, properties(address, unit_number)')
-                .eq('company_id', companyId.companyId)
+                .eq('company_id', resolvedCompanyId)
                 .order('created_at', { ascending: false })
             if (error) throw error
             return data || []
         },
-        enabled: !!companyId.companyId,
+        enabled: !!resolvedCompanyId,
     })
 
     const { data: properties } = useQuery({
-        queryKey: ['properties-select', companyId.companyId],
+        queryKey: ['properties-select', resolvedCompanyId],
         queryFn: async () => {
-            if (!companyId.companyId) return []
+            if (!resolvedCompanyId) return []
             const { data } = await supabase
                 .from('properties')
                 .select('id, address, unit_number')
-                .eq('company_id', companyId.companyId)
+                .eq('company_id', resolvedCompanyId)
                 .order('address')
             return data || []
         },
-        enabled: !!companyId.companyId,
+        enabled: !!resolvedCompanyId,
     })
 
     const createLease = useMutation({
         mutationFn: async (leaseData: any) => {
-            if (!companyId.companyId) {
+            if (!resolvedCompanyId) {
                 throw new Error('Not authenticated properly. Please refresh.')
             }
             const { data, error } = await supabase
                 .from('leases')
                 .insert({
                     ...leaseData,
-                    company_id: companyId.companyId,
+                    company_id: resolvedCompanyId,
                     rent_amount: parseFloat(leaseData.rent_amount),
                     deposit_amount: parseFloat(leaseData.deposit_amount || '0'),
                     payment_day: parseInt(leaseData.payment_day),
@@ -98,7 +100,7 @@ export default function LeasesPage() {
             return data
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['leases', companyId.companyId] })
+            queryClient.invalidateQueries({ queryKey: ['leases', resolvedCompanyId] })
             toast.success('Lease created successfully')
             setDialogOpen(false)
             setForm({
@@ -125,6 +127,28 @@ export default function LeasesPage() {
     const totalMonthlyRent = leases
         ?.filter((l: any) => l.status === 'active')
         .reduce((sum: number, l: any) => sum + (l.rent_amount || 0), 0) || 0;
+
+    if (authLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[500px]">
+                <Loader2 className={cn("w-10 h-10 animate-spin", colors.text)} />
+            </div>
+        )
+    }
+
+    if (!resolvedCompanyId) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
+                <p className="text-slate-500 font-medium">Unable to load workspace data.</p>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                >
+                    Refresh Page
+                </button>
+            </div>
+        );
+    }
 
     if (isLoading) {
         return (

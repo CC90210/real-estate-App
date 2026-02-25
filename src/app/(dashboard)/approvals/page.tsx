@@ -5,7 +5,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { logActivity } from '@/lib/services/activity-logger'
 import { useRouter } from 'next/navigation'
-import { useCompanyId } from '@/lib/hooks/useCompanyId'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -27,7 +26,8 @@ import {
     MessageSquare,
     Save,
     StickyNote,
-    FileText
+    FileText,
+    Loader2
 } from 'lucide-react'
 import {
     Dialog,
@@ -41,12 +41,12 @@ import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAccentColor } from '@/lib/hooks/useAccentColor'
+import { useAuth } from '@/lib/hooks/useAuth'
 
 export default function ApprovalsPage() {
     const router = useRouter()
     const supabase = createClient()
     const queryClient = useQueryClient()
-    const { companyId, isLoading: isCompanyLoading } = useCompanyId()
     const { colors } = useAccentColor()
     const [denyDialog, setDenyDialog] = useState<{ open: boolean; applicationId: string | null }>({
         open: false,
@@ -54,11 +54,14 @@ export default function ApprovalsPage() {
     })
     const [denyReason, setDenyReason] = useState('')
 
+    const { isLoading: authLoading, company } = useAuth();
+    const resolvedCompanyId = company?.id;
+
     // Fetch applications
     const { data: applications, isLoading, error } = useQuery({
-        queryKey: ['pending-applications', companyId],
+        queryKey: ['pending-applications', resolvedCompanyId],
         queryFn: async () => {
-            if (!companyId) return []
+            if (!resolvedCompanyId) return []
 
             const { data, error } = await supabase
                 .from('applications')
@@ -73,13 +76,13 @@ export default function ApprovalsPage() {
                         bathrooms
                     )
                 `)
-                .eq('company_id', companyId)
+                .eq('company_id', resolvedCompanyId)
                 .order('created_at', { ascending: false })
 
             if (error) throw error
             return data || []
         },
-        enabled: !!companyId,
+        enabled: !!resolvedCompanyId,
     })
 
     // Approve mutation
@@ -95,14 +98,14 @@ export default function ApprovalsPage() {
                     reviewed_by: user?.id
                 })
                 .eq('id', applicationId)
-                .eq('company_id', companyId)
+                .eq('company_id', resolvedCompanyId)
 
             if (error) throw error
 
             // Log activity
-            if (companyId) {
+            if (resolvedCompanyId) {
                 await logActivity(supabase, {
-                    companyId: companyId,
+                    companyId: resolvedCompanyId,
                     userId: user?.id || '',
                     action: 'approved',
                     entityType: 'application',
@@ -113,7 +116,7 @@ export default function ApprovalsPage() {
         },
         onSuccess: () => {
             toast.success('Clearance granted successfully')
-            queryClient.invalidateQueries({ queryKey: ['pending-applications'] })
+            queryClient.invalidateQueries({ queryKey: ['pending-applications', resolvedCompanyId] })
             queryClient.invalidateQueries({ queryKey: ['applications'] })
         },
         onError: (err: any) => {
@@ -135,14 +138,14 @@ export default function ApprovalsPage() {
                     reviewed_by: user?.id
                 })
                 .eq('id', applicationId)
-                .eq('company_id', companyId)
+                .eq('company_id', resolvedCompanyId)
 
             if (error) throw error
 
             // Log activity
-            if (companyId) {
+            if (resolvedCompanyId) {
                 await logActivity(supabase, {
-                    companyId: companyId,
+                    companyId: resolvedCompanyId,
                     userId: user?.id || '',
                     action: 'denied',
                     entityType: 'application',
@@ -154,7 +157,7 @@ export default function ApprovalsPage() {
         },
         onSuccess: () => {
             toast.success('Protocol rejected')
-            queryClient.invalidateQueries({ queryKey: ['pending-applications'] })
+            queryClient.invalidateQueries({ queryKey: ['pending-applications', resolvedCompanyId] })
             queryClient.invalidateQueries({ queryKey: ['applications'] })
             setDenyDialog({ open: false, applicationId: null })
             setDenyReason('')
@@ -174,20 +177,42 @@ export default function ApprovalsPage() {
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', id)
-                .eq('company_id', companyId)
+                .eq('company_id', resolvedCompanyId)
 
             if (error) throw error
         },
         onSuccess: () => {
             toast.success('Case documentation updated')
-            queryClient.invalidateQueries({ queryKey: ['pending-applications'] })
+            queryClient.invalidateQueries({ queryKey: ['pending-applications', resolvedCompanyId] })
         },
         onError: (err: any) => {
             toast.error('Failed to update documentation', { description: err.message })
         }
     })
 
-    if (isLoading || isCompanyLoading) {
+    if (authLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[500px]">
+                <Loader2 className={cn("w-10 h-10 animate-spin", colors.text)} />
+            </div>
+        )
+    }
+
+    if (!resolvedCompanyId) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
+                <p className="text-slate-500 font-medium">Unable to load workspace data.</p>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                >
+                    Refresh Page
+                </button>
+            </div>
+        );
+    }
+
+    if (isLoading) {
         return (
             <div className="p-10 space-y-10">
                 <Skeleton className="h-10 w-48 rounded-xl" />

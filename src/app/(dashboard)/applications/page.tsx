@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import { useCompanyId } from '@/lib/hooks/useCompanyId'
 import { useDeleteApplication } from '@/lib/hooks/useApplications'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
@@ -36,7 +35,8 @@ import {
     ClipboardList,
     Shield,
     Trash2,
-    Edit
+    Edit,
+    Loader2
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import Link from 'next/link'
@@ -44,11 +44,13 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useAccentColor } from '@/lib/hooks/useAccentColor'
 import { EditApplicationModal } from '@/components/applications/EditApplicationModal'
+import { useAuth } from '@/lib/hooks/useAuth'
 
 export default function ApplicationsPage() {
     const supabase = createClient()
     const queryClient = useQueryClient()
-    const { companyId, isLoading: isCompanyLoading } = useCompanyId()
+    const { isLoading: authLoading, company } = useAuth();
+    const resolvedCompanyId = company?.id;
     const { colors } = useAccentColor()
     const { mutate: deleteApplication } = useDeleteApplication()
     const [searchTerm, setSearchTerm] = useState('')
@@ -56,9 +58,9 @@ export default function ApplicationsPage() {
 
     // Fetch applications with security filter
     const { data: applications, isLoading, error, refetch } = useQuery({
-        queryKey: ['applications', statusFilter, companyId],
+        queryKey: ['applications', statusFilter, resolvedCompanyId],
         queryFn: async () => {
-            if (!companyId) return []
+            if (!resolvedCompanyId) return []
 
             let query = supabase
                 .from('applications')
@@ -66,7 +68,7 @@ export default function ApplicationsPage() {
                     *,
                     property:properties(id, address, unit_number, rent)
                 `)
-                .eq('company_id', companyId)
+                .eq('company_id', resolvedCompanyId)
                 .order('created_at', { ascending: false })
 
             if (statusFilter && statusFilter !== 'all') {
@@ -77,7 +79,7 @@ export default function ApplicationsPage() {
             if (error) throw error
             return data || []
         },
-        enabled: !!companyId,
+        enabled: !!resolvedCompanyId,
         retry: 3,
         staleTime: 60 * 1000,
     })
@@ -94,7 +96,7 @@ export default function ApplicationsPage() {
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', id)
-                .eq('company_id', companyId) // Security
+                .eq('company_id', resolvedCompanyId) // Security
                 .select()
                 .single()
 
@@ -125,7 +127,29 @@ export default function ApplicationsPage() {
         return applicantName.includes(search) || applicantEmail.includes(search) || address.includes(search)
     })
 
-    if (isLoading || isCompanyLoading) {
+    if (authLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[500px]">
+                <Loader2 className={cn("w-10 h-10 animate-spin", colors.text)} />
+            </div>
+        )
+    }
+
+    if (!resolvedCompanyId) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
+                <p className="text-slate-500 font-medium">Unable to load workspace data.</p>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                >
+                    Refresh Page
+                </button>
+            </div>
+        );
+    }
+
+    if (isLoading) {
         return (
             <div className="p-10 space-y-10">
                 <div className="flex justify-between items-center">

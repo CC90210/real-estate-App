@@ -33,6 +33,8 @@ import { useCompanyId } from '@/lib/hooks/useCompanyId'
 import { useAccentColor } from '@/lib/hooks/useAccentColor'
 import { cn } from '@/lib/utils'
 import { FeatureGate } from '@/components/FeatureGate'
+import { Loader2 } from 'lucide-react'
+import { useAuth } from '@/lib/hooks/useAuth'
 
 export default function ShowingsPage() {
     const supabase = createClient()
@@ -162,6 +164,31 @@ export default function ShowingsPage() {
                 <div className="truncate font-semibold">{eventInfo.event.title}</div>
             </div>
         )
+    }
+
+    const { isLoading: authLoading, company } = useAuth();
+    const resolvedCompanyId = company?.id;
+
+    if (authLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
+                <Loader2 className={cn("w-10 h-10 animate-spin", colors.text)} />
+            </div>
+        );
+    }
+
+    if (!resolvedCompanyId) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
+                <p className="text-slate-500 font-medium">Unable to load workspace data.</p>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                >
+                    Refresh Page
+                </button>
+            </div>
+        );
     }
 
     return (
