@@ -58,8 +58,10 @@ SET search_path = public;
 -- 2. Drop all policies on the core tables to start fresh
 DO $$
 DECLARE pol RECORD;
-BEGIN FOR pol IN
-SELECT policyname
+BEGIN -- FIXED: Added tablename to the SELECT clause
+FOR pol IN
+SELECT policyname,
+    tablename
 FROM pg_policies
 WHERE tablename IN (
         'profiles',
