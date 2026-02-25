@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
         const { data: profile } = await supabase
             .from('profiles')
-            .select('company_id, is_super_admin, is_partner')
+            .select('company_id, is_super_admin, is_partner, role')
             .eq('id', user.id)
             .single()
 
@@ -26,8 +26,10 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'No company found' }, { status: 404 })
         }
 
+        const isSuperAdmin = profile.is_super_admin || profile.role === 'super_admin';
+
         // For Super Admins/Partners, we just activate it immediately for free
-        if (profile.is_super_admin || profile.is_partner) {
+        if (isSuperAdmin || profile.is_partner) {
             const { error: upsertError } = await supabase
                 .from('automation_configs')
                 .upsert({
@@ -44,12 +46,10 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: true, message: 'Automation activated via Admin/Partner bypass.' })
         }
 
-        // TODO: Integrate Stripe Checkout for regular users
-        // For now, return a placeholder error or redirect
+        // Return a mock checkout URL for testing purposes
         return NextResponse.json({
-            error: 'Checkout integration pending. Contact support to activate.',
-            // checkoutUrl: '...' 
-        }, { status: 501 })
+            checkoutUrl: `/settings/billing?upgrade=${type}`
+        })
 
     } catch (error: any) {
         console.error('Automation purchase error:', error)
