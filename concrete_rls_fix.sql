@@ -149,6 +149,7 @@ UPDATE profiles
 SET role = 'admin'
 WHERE role IS NULL;
 -- Enable Supabase RPC for dashboard stats to work smoothly
+DROP FUNCTION IF EXISTS get_enhanced_dashboard_stats(uuid, uuid, boolean);
 CREATE OR REPLACE FUNCTION get_enhanced_dashboard_stats(
         p_company_id uuid,
         p_user_id uuid DEFAULT NULL,
