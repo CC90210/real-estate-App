@@ -112,7 +112,7 @@ export function DesktopSidebar({ className, onQuickFindOpen }: DesktopSidebarPro
                 <div className="px-3 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Management</div>
                 {filteredNavItems.map((item) => {
                     const isAllowed = allowedNav.includes(item.id as any) || item.id === 'settings';
-                    const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
+                    const isActive = pathname === item.href || (item.href !== '/dashboard' && (pathname?.startsWith(item.href) || false));
 
                     if (!isAllowed) {
                         return (
