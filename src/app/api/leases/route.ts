@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { logActivity } from '@/lib/services/activity-logger'
 import { createNotification } from '@/lib/notifications'
 
 export async function POST(req: Request) {
@@ -50,12 +51,12 @@ export async function POST(req: Request) {
         }
 
         // Log activity
-        await supabase.from('activity_log').insert({
-            user_id: user.id,
-            company_id: profile.company_id,
+        await logActivity(supabase, {
+            companyId: profile.company_id,
+            userId: user.id,
             action: 'lease_created',
-            entity_type: 'lease',
-            entity_id: lease.id,
+            entityType: 'lease',
+            entityId: lease.id,
             description: `Created lease for ${tenant_name} at ${lease.properties?.address || 'property'}`,
         })
 

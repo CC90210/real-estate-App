@@ -71,7 +71,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         return {
             plan: planId,
             planName: isSuperAdmin ? '🔑 Super Admin' : isLifetime ? 'Enterprise (Lifetime)' : planConfig.name,
-            features: planConfig.features as Record<string, boolean>,
+            features: planConfig.features as unknown as Record<string, boolean>,
             hasFullAccess
         };
     }, []);
@@ -84,21 +84,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
             const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
-                .select('id, full_name, email, role, company_id, avatar_url, is_super_admin, is_partner, job_title')
+                .select(`
+                    id, full_name, email, role, company_id, avatar_url, is_super_admin, is_partner, job_title,
+                    company:companies (
+                        id, name, subscription_plan, subscription_status, is_lifetime_access, late_profile_id
+                    )
+                `)
                 .eq('id', userId)
                 .single()
                 .abortSignal(controller.signal);
-
-            let companyData = null;
-            if (profileData?.company_id && !profileError) {
-                const { data: comp } = await supabase
-                    .from('companies')
-                    .select('id, name, subscription_plan, subscription_status, is_lifetime_access, late_profile_id')
-                    .eq('id', profileData.company_id)
-                    .single()
-                    .abortSignal(controller.signal);
-                companyData = comp;
-            }
 
             clearTimeout(timeout);
 
@@ -122,7 +116,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 return null;
             }
 
-            return { ...profileData, company: companyData };
+            return profileData;
 
 
         } catch (err: any) {
@@ -266,7 +260,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
             hasFullAccess: planStats.hasFullAccess,
             plan: planStats.plan,
             planName: planStats.planName,
-            features: planStats.features,
+            features: planStats.features as unknown as Record<string, boolean>,
             signIn,
             signUp,
             signOut,

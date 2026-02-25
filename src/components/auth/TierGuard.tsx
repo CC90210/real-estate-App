@@ -2,7 +2,6 @@
 
 import { useAuth } from '@/lib/hooks/useAuth';
 import { resolveCompanyPlan } from '@/lib/plans/resolve';
-import { FEATURE_TO_LIMIT } from '@/lib/stripe/plans';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -30,17 +29,15 @@ export function TierGuard({ children, feature, fallback }: TierGuardProps) {
         );
     }
 
-    // Bypass for Super Admins/Partners
-    if (hasFullAccess) {
-        return <>{children}</>;
-    }
-
     // Resolve effective plan
     const { effectivePlan } = resolveCompanyPlan(company || {});
 
-    // Check Access
-    const limitKey = FEATURE_TO_LIMIT[feature];
-    const allowed = limitKey ? !!effectivePlan.limits[limitKey] : false;
+    // Check Access logic from Mission TASK 2
+    const featureLimitValue = (effectivePlan.limits as any)[feature];
+    const allowed = hasFullAccess ||
+        featureLimitValue === true ||
+        featureLimitValue === -1 ||
+        (typeof featureLimitValue === 'number' && featureLimitValue > 0);
 
     if (allowed) {
         return <>{children}</>;
@@ -66,7 +63,7 @@ export function TierGuard({ children, feature, fallback }: TierGuardProps) {
 
                 <CardContent className="text-center space-y-8 pb-10 px-8 relative z-10">
                     <p className="text-slate-500 font-medium leading-relaxed">
-                        Access to <span className="font-bold text-slate-900 capitalize">{feature.replace('_', ' ')}</span> is restricted on the {effectivePlan.name} plan.
+                        Access to <span className="font-bold text-slate-900 capitalize">{feature.replace(/_/g, ' ')}</span> is restricted on the {effectivePlan.name} plan.
                         Unlock this powerful tool by upgrading to a higher tier.
                     </p>
 

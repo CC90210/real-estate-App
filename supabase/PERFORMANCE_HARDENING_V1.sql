@@ -1,15 +1,22 @@
--- =======================================================================
--- CANONICAL_SCHEMA_V1.sql
--- This is the ONLY schema script to run. All previous scripts are superseded:
--- CRITICAL_FIX_2026.sql, FINAL_REPAIR.sql, FINAL_PRODUCTION_SETUP.sql,
--- DASHBOARD_PERFORMANCE_OPTIMIZATION.sql, PRODUCTION_ENGINE_V7.sql,
--- production_stabilization.sql, emergency_restore_konamak.sql
--- =======================================================================
--- 1. DROP ALL VARIANTS OF get_enhanced_dashboard_stats
-DROP FUNCTION IF EXISTS public.get_enhanced_dashboard_stats(UUID);
-DROP FUNCTION IF EXISTS public.get_enhanced_dashboard_stats(UUID, UUID, BOOLEAN);
-DROP FUNCTION IF EXISTS public.get_enhanced_dashboard_stats(UUID, TEXT);
--- 2. CREATE ONE CANONICAL VERSION
+-- PERFORMANCE_HARDENING_V1.sql
+-- Optimizes activity log, invoices, and dashboard stats for production scale.
+-- 1. ADD CRITICAL COMPOSITE INDEXES & SCHEMA UPDATES
+ALTER TABLE public.activity_log
+ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE public.activity_log
+ADD COLUMN IF NOT EXISTS details JSONB DEFAULT '{}'::jsonb;
+CREATE INDEX IF NOT EXISTS idx_activity_log_company_created ON public.activity_log(company_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_invoices_company_status_paid ON public.invoices(company_id, status, paid_at DESC);
+CREATE INDEX IF NOT EXISTS idx_invoices_company_status_updated ON public.invoices(company_id, status, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_applications_company_status_created ON public.applications(company_id, status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_properties_company_status_created ON public.properties(company_id, status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_leases_company_status ON public.leases(company_id, status);
+-- 2. ENSURE paid_at IS FULLY POPULATED for historical data
+UPDATE public.invoices
+SET paid_at = COALESCE(updated_at, created_at)
+WHERE status IN ('paid', 'Paid', 'settled')
+    AND paid_at IS NULL;
+-- 3. OPTIMIZED CANONICAL RPC
 CREATE OR REPLACE FUNCTION public.get_enhanced_dashboard_stats(
         p_company_id UUID,
         p_user_id UUID DEFAULT NULL,
@@ -26,7 +33,8 @@ v_total_areas INTEGER;
 v_total_buildings INTEGER;
 v_team_members INTEGER;
 v_upcoming_showings INTEGER;
-v_total_revenue NUMERIC;
+v_monthly_revenue NUMERIC;
+v_lifetime_revenue NUMERIC;
 v_total_monthly_rent NUMERIC;
 v_occupancy_rate NUMERIC;
 v_current_week_props INTEGER;
@@ -35,11 +43,10 @@ v_current_week_apps INTEGER;
 v_last_week_apps INTEGER;
 v_one_week_ago TIMESTAMPTZ := NOW() - INTERVAL '7 days';
 v_two_weeks_ago TIMESTAMPTZ := NOW() - INTERVAL '14 days';
-BEGIN -- Property Counts
+BEGIN -- Property Counts (Optimized)
 SELECT COUNT(*),
     COUNT(*) FILTER (
-        WHERE status = 'available'
-            OR status = 'active'
+        WHERE status IN ('available', 'active', 'listed')
     ),
     COUNT(*) FILTER (
         WHERE status = 'rented'
@@ -71,38 +78,41 @@ WHERE company_id = p_company_id;
 SELECT COUNT(*) INTO v_total_buildings
 FROM public.buildings
 WHERE company_id = p_company_id;
--- Upcoming Showings (using scheduled_date)
+-- Upcoming Showings
 SELECT COUNT(*) INTO v_upcoming_showings
 FROM public.showings
 WHERE company_id = p_company_id
     AND scheduled_date >= CURRENT_DATE
     AND status NOT IN ('cancelled', 'no_show');
--- Total Revenue (paid invoices this month)
-SELECT COALESCE(SUM(total), 0) INTO v_total_revenue
+-- Revenue (This Month)
+SELECT COALESCE(SUM(total), 0) INTO v_monthly_revenue
 FROM public.invoices
 WHERE company_id = p_company_id
     AND status IN ('paid', 'Paid', 'settled')
-    AND (
-        paid_at >= DATE_TRUNC('month', NOW())
-        OR (
-            paid_at IS NULL
-            AND updated_at >= DATE_TRUNC('month', NOW())
-        )
-    );
--- Total Monthly Rent (from active leases)
-BEGIN
+    AND paid_at >= DATE_TRUNC('month', NOW());
+-- Revenue (Lifetime) - The user was asking for "total money collected"
+SELECT COALESCE(SUM(total), 0) INTO v_lifetime_revenue
+FROM public.invoices
+WHERE company_id = p_company_id
+    AND status IN ('paid', 'Paid', 'settled');
+-- Total Monthly Rent (from active leases or fallback)
+-- Using a direct check to avoid expensive exception blocks if possible
+IF EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_name = 'leases'
+        AND table_schema = 'public'
+) THEN
 SELECT COALESCE(SUM(monthly_rent), 0) INTO v_total_monthly_rent
 FROM public.leases
 WHERE company_id = p_company_id
     AND status IN ('active', 'Active');
-EXCEPTION
-WHEN undefined_column
-OR undefined_table THEN -- Fallback to property rent if leases table/column missing or failing
+ELSE
 SELECT COALESCE(SUM(rent), 0) INTO v_total_monthly_rent
 FROM public.properties
 WHERE company_id = p_company_id
     AND status = 'rented';
-END;
+END IF;
 -- Occupancy Rate
 IF v_total_props > 0 THEN v_occupancy_rate := ROUND(
     (v_rented_props::NUMERIC / v_total_props::NUMERIC) * 100,
@@ -152,7 +162,9 @@ result := jsonb_build_object(
     'upcomingShowings',
     v_upcoming_showings,
     'totalMonthlyRevenue',
-    v_total_revenue,
+    v_monthly_revenue,
+    'totalLifetimeRevenue',
+    v_lifetime_revenue,
     'totalMonthlyRent',
     v_total_monthly_rent,
     'occupancyRate',
@@ -172,6 +184,7 @@ result := jsonb_build_object(
                 SELECT a.id,
                     a.action,
                     a.entity_type,
+                    a.description,
                     a.details,
                     a.created_at,
                     jsonb_build_object(
@@ -193,27 +206,3 @@ result := jsonb_build_object(
 RETURN result;
 END;
 $$;
--- 3. ADD paid_at COLUMN AND TRIGGER
-ALTER TABLE public.invoices
-ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
-UPDATE public.invoices
-SET paid_at = COALESCE(updated_at, created_at)
-WHERE status IN ('paid', 'Paid')
-    AND paid_at IS NULL;
-CREATE OR REPLACE FUNCTION public.handle_invoice_paid_at() RETURNS TRIGGER AS $$ BEGIN IF (
-        NEW.status IN ('paid', 'Paid')
-        AND (
-            OLD.status NOT IN ('paid', 'Paid')
-            OR OLD.status IS NULL
-        )
-    ) THEN NEW.paid_at := NOW();
-END IF;
-RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-DROP TRIGGER IF EXISTS tr_invoice_paid_at ON public.invoices;
-CREATE TRIGGER tr_invoice_paid_at BEFORE
-UPDATE ON public.invoices FOR EACH ROW EXECUTE FUNCTION public.handle_invoice_paid_at();
--- 4. GRANT PERMISSIONS
-GRANT EXECUTE ON FUNCTION public.get_enhanced_dashboard_stats(UUID, UUID, BOOLEAN) TO authenticated,
-    service_role;

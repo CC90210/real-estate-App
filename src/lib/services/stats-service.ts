@@ -14,8 +14,8 @@ export interface DashboardStats {
     totalAreas: number;
     totalBuildings: number;
     openMaintenance: number;
-    upcomingShowings: number;
     totalMonthlyRent: number;
+    totalLifetimeRevenue: number;
 }
 
 export interface ActivityItem {
@@ -73,6 +73,7 @@ export class StatsService {
             openMaintenance: data.openMaintenance || 0,
             upcomingShowings: data.upcomingShowings || 0,
             totalMonthlyRent: data.totalMonthlyRent || 0,
+            totalLifetimeRevenue: data.totalLifetimeRevenue || 0,
             recentActivity: data.recentActivity || [],
             occupancyRate: data.occupancyRate || 0,
         } as any;

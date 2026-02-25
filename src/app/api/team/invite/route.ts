@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { logActivity } from '@/lib/services/activity-logger'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { canAddTeamMember } from '@/lib/plan-limits'
 import { sendTeamInviteEmail } from '@/lib/email'
@@ -108,11 +109,12 @@ export async function POST(req: Request) {
 
         // Log activity
         try {
-            await supabase.from('activity_log').insert({
-                company_id: profile.company_id,
-                user_id: user.id,
+            await logActivity(supabase, {
+                companyId: profile.company_id,
+                userId: user.id,
                 action: 'invited',
-                entity_type: 'team_member',
+                entityType: 'team_member',
+                description: `Invited ${normalizedEmail} to the team as ${role}`,
                 details: { email: normalizedEmail, role },
             })
         } catch {

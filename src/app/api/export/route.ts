@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { logActivity } from '@/lib/services/activity-logger'
 
 export async function GET(req: Request) {
     const supabase = await createClient()
@@ -121,11 +122,11 @@ export async function GET(req: Request) {
         }
 
         // Log the export
-        await supabase.from('activity_log').insert({
-            user_id: user.id,
-            company_id: profile.company_id,
+        await logActivity(supabase, {
+            companyId: profile.company_id,
+            userId: user.id,
             action: 'data_export',
-            entity_type: type,
+            entityType: type as string,
             description: `Exported ${type} data to CSV`,
         })
 

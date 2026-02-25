@@ -1,5 +1,6 @@
 
 import { createClient } from '@/lib/supabase/server';
+import { logActivity } from '@/lib/services/activity-logger';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
                 status: 'screening' // Move to screening status once results are in
             })
             .eq('id', application_id)
-            .select('*, property:properties(owner_id)')
+            .select('*, property:properties(owner_id, address)')
             .single();
 
         if (updateError) {
@@ -56,10 +57,14 @@ export async function POST(request: Request) {
         // 4. TRIGGER NOTIFICATION (Notify Landlord)
         const landlordId = application.property?.owner_id;
         if (landlordId) {
-            await supabase.from('activity_log').insert({
-                user_id: landlordId,
+            await logActivity(supabase, {
+                companyId: application.company_id,
+                userId: landlordId,
                 action: 'SCREEN_READY',
-                description: `New screening report ready for ${application.applicant_name} at ${application.property?.address}`
+                entityType: 'application',
+                entityId: application_id,
+                description: `New screening report ready for ${application.applicant_name} at ${application.property?.address}`,
+                details: { score }
             });
         }
 

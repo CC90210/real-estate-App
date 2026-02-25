@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { logActivity } from '@/lib/services/activity-logger'
 
 // MUST use admin client for creating users - this was the critical bug
 const supabaseAdmin = createClient(
@@ -169,11 +170,12 @@ export async function POST(req: Request) {
 
         // 7. Log activity
         try {
-            await supabaseAdmin.from('activity_log').insert({
-                company_id: invitation.company_id,
-                user_id: userId,
+            await logActivity(supabaseAdmin, {
+                companyId: invitation.company_id,
+                userId: userId,
                 action: 'joined',
-                entity_type: 'team',
+                entityType: 'team',
+                description: `${fullName} joined the team as ${invitation.role}`,
                 details: { role: invitation.role },
             })
         } catch {

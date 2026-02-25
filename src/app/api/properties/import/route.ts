@@ -1,6 +1,7 @@
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { logActivity } from '@/lib/services/activity-logger'
 import Papa from 'papaparse'
 
 export async function POST(req: Request) {
@@ -107,12 +108,13 @@ export async function POST(req: Request) {
     }
 
     // Log activity
-    await supabase.from('activity_log').insert({
-        company_id: profile.company_id,
-        user_id: user.id,
+    await logActivity(supabase, {
+        companyId: profile.company_id,
+        userId: user.id,
         action: 'imported',
-        entity_type: 'properties',
-        details: { count: inserted.length } // Using details as per my previous fix
+        entityType: 'properties',
+        description: `Imported ${inserted.length} properties from CSV`,
+        details: { count: inserted.length }
     })
 
     return NextResponse.json({

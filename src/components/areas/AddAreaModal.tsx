@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { createClient } from '@/lib/supabase/client';
+import { logActivity } from '@/lib/services/activity-logger';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -135,13 +136,14 @@ export function AddAreaModal() {
         },
         onSuccess: async (data) => {
             // Fire-and-forget logging
-            if (company?.id) {
-                await supabase.from('activity_log').insert({
-                    company_id: company.id,
-                    user_id: profile?.id,
+            if (company?.id && profile?.id) {
+                await logActivity(supabase, {
+                    companyId: company.id,
+                    userId: profile.id,
                     action: 'AREA_CREATED',
-                    entity_type: 'area',
-                    entity_id: data.id,
+                    entityType: 'area',
+                    entityId: data.id,
+                    description: `Created area: ${data.name}`,
                     details: { name: data.name }
                 });
             }

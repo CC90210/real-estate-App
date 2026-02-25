@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { logActivity } from '@/lib/services/activity-logger'
 import { createNotification, notifyCompanyMembers } from '@/lib/notifications'
 
 export async function POST(req: Request) {
@@ -47,12 +48,12 @@ export async function POST(req: Request) {
         }
 
         // Log activity
-        await supabase.from('activity_log').insert({
-            user_id: user.id,
-            company_id: companyId,
+        await logActivity(supabase, {
+            companyId: companyId,
+            userId: user.id,
             action: 'maintenance_created',
-            entity_type: 'maintenance_request',
-            entity_id: request.id,
+            entityType: 'maintenance_request',
+            entityId: request.id,
             description: `Submitted maintenance request: ${title}`,
         })
 

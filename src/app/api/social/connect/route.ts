@@ -31,13 +31,18 @@ export async function POST(req: Request) {
         // Get user's profile and company
         const { data: profile } = await supabase
             .from('profiles')
-            .select('company_id, companies(id, name, subscription_plan, late_profile_id)')
+            .select(`
+                company_id, 
+                company:companies(id, name, subscription_plan, late_profile_id)
+            `)
             .eq('id', user.id)
             .single()
 
-        const company = Array.isArray(profile?.companies) ? profile.companies[0] : profile?.companies
+        const companyData = profile?.company
+        const company: any = Array.isArray(companyData) ? companyData[0] : companyData
 
         if (!company) {
+            console.error('[SocialConnect] No company found for profile:', (profile as any)?.id, 'company_id:', (profile as any)?.company_id)
             return NextResponse.json({ error: 'No company found. Please complete your profile setup first.' }, { status: 400 })
         }
 

@@ -62,7 +62,10 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
         retry: 2,
         refetchOnWindowFocus: false,
     })
-    const { data: recentActivity, isLoading: activityLoading } = useActivity(10)
+
+    // Leverage activity data already returned by the stats RPC to avoid redundant fetch
+    const recentActivity = stats?.recentActivity || []
+    const activityLoading = statsLoading && !stats;
 
     // Fetch recent applications
     const { data: recentApplications } = useQuery({
@@ -184,11 +187,19 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                         href="/leases"
                     />
                     <StatCard
-                        title="Collected"
+                        title="Collected (Mo)"
                         value={`$${(stats?.totalMonthlyRevenue || 0).toLocaleString()}`}
                         subtitle="Paid this month"
                         icon={Wallet}
                         gradient="from-emerald-500 to-emerald-600"
+                        href="/invoices"
+                    />
+                    <StatCard
+                        title="Total Collected"
+                        value={`$${(stats?.totalLifetimeRevenue || 0).toLocaleString()}`}
+                        subtitle="Lifetime revenue"
+                        icon={Star}
+                        gradient="from-amber-500 to-amber-600"
                         href="/invoices"
                     />
                     <StatCard
@@ -384,7 +395,7 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                                                     <span className="font-bold text-slate-900">{activity.user?.full_name || 'System'}</span>
                                                     <span className="text-slate-500"> {formatAction(activity.action)} </span>
                                                     <span className="font-semibold" style={{ color: colors.primary }}>
-                                                        {activity.details?.title || activity.details?.description || activity.entity_type}
+                                                        {activity.description || activity.details?.title || activity.details?.description || activity.entity_type}
                                                     </span>
                                                 </p>
                                                 {activity.details?.description && activity.details?.title && (

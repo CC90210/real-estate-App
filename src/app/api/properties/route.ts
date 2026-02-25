@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { logActivity } from '@/lib/services/activity-logger'
 import { guardPropertyCreation } from '@/lib/api-guards'
 import { z } from 'zod';
 
@@ -102,12 +103,13 @@ export async function POST(req: Request) {
         if (unitError) throw unitError;
 
         // Log activity
-        await supabase.from('activity_log').insert({
-            company_id: companyId,
-            user_id: user.id,
+        await logActivity(supabase, {
+            companyId,
+            userId: user.id,
             action: 'created',
-            entity_type: 'property',
-            entity_id: property.id,
+            entityType: 'property',
+            entityId: property.id,
+            description: `Created new property: ${data.address}`,
             details: { address: data.address }
         })
 

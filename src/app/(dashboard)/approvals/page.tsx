@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { logActivity } from '@/lib/services/activity-logger'
 import { useRouter } from 'next/navigation'
 import { useCompanyId } from '@/lib/hooks/useCompanyId'
 import { toast } from 'sonner'
@@ -100,12 +101,13 @@ export default function ApprovalsPage() {
 
             // Log activity
             if (companyId) {
-                await supabase.from('activity_log').insert({
-                    company_id: companyId,
-                    user_id: user?.id,
+                await logActivity(supabase, {
+                    companyId: companyId,
+                    userId: user?.id || '',
                     action: 'approved',
-                    entity_type: 'application',
-                    entity_id: applicationId
+                    entityType: 'application',
+                    entityId: applicationId,
+                    description: `Approved application: ${applicationId}`
                 })
             }
         },
@@ -139,12 +141,13 @@ export default function ApprovalsPage() {
 
             // Log activity
             if (companyId) {
-                await supabase.from('activity_log').insert({
-                    company_id: companyId,
-                    user_id: user?.id,
+                await logActivity(supabase, {
+                    companyId: companyId,
+                    userId: user?.id || '',
                     action: 'denied',
-                    entity_type: 'application',
-                    entity_id: applicationId,
+                    entityType: 'application',
+                    entityId: applicationId,
+                    description: `Denied application: ${applicationId}`,
                     details: { reason }
                 })
             }

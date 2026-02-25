@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { logActivity } from '@/lib/services/activity-logger';
 import { generateDocumentSchema } from '@/lib/schemas/document-schema';
 import { rateLimit } from '@/lib/rate-limit';
 import { logAuditEvent } from '@/lib/audit-log';
@@ -244,15 +245,17 @@ export async function POST(request: Request) {
         // LOG ACTIVITY FOR DASHBOARD FEED
         // ====================================================================
         try {
-            await supabase.from('activity_log').insert({
-                company_id: companyId,
-                user_id: user.id,
-                entity_type: 'document',
-                entity_id: savedDoc.id,
+            const title = titles[type] || `Document - ${type}`;
+            await logActivity(supabase, {
+                companyId: companyId,
+                userId: user.id,
+                entityType: 'document',
+                entityId: savedDoc.id,
                 action: 'created',
+                description: `Generated document: ${title}`,
                 details: {
                     document_type: type,
-                    title: titles[type] || `Document - ${type}`,
+                    title: title,
                     property_address: documentData.property?.address || null,
                     tenant_name: customFields.tenantName || null,
                     applicant_name: documentData.application?.applicant_name || null
