@@ -37,8 +37,7 @@ interface SocialAccount {
     account_name: string
     account_avatar: string | null
     status: string
-    connected_at: string
-    late_account_id: string
+    created_at: string
 }
 
 interface SocialPost {
@@ -101,9 +100,9 @@ export default function SocialPage() {
             const [accountsRes, postsRes] = await Promise.all([
                 supabase
                     .from('social_accounts')
-                    .select('id, platform, account_name, account_avatar, status, connected_at, late_account_id')
+                    .select('id, platform, account_name, account_avatar, status, created_at')
                     .eq('company_id', profile.company_id)
-                    .order('connected_at', { ascending: false }),
+                    .order('created_at', { ascending: false }),
                 supabase
                     .from('social_posts')
                     .select('id, content, platforms, status, scheduled_for, published_at, created_at')

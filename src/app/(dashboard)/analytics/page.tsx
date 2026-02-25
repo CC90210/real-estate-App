@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useCompanyId } from '@/lib/hooks/useCompanyId'
 import { useAccentColor } from '@/lib/hooks/useAccentColor'
-import { useStats } from '@/lib/hooks/useStats'
 import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -125,50 +124,82 @@ export default function AnalyticsPage() {
     const supabase = createClient()
     const companyId = useCompanyId()
     const { colors } = useAccentColor()
-    const { stats: centralizedStats, isLoading: statsLoading } = useStats()
-
-    const { data: analyticsData, isLoading: analyticsLoading } = useQuery({
-        queryKey: ['analytics-extra', companyId.companyId],
+    const { data: centralizedStats, isLoading: analyticsLoading } = useQuery({
+        queryKey: ['analytics-direct', companyId.companyId],
         queryFn: async () => {
             if (!companyId.companyId) return null
+            const id = companyId.companyId
 
-            const [properties, applications] = await Promise.all([
-                supabase.from('properties').select('status, created_at').eq('company_id', companyId.companyId),
-                supabase.from('applications').select('status, created_at').eq('company_id', companyId.companyId),
+            const [
+                propsRes,
+                appsRes,
+                paidInvoicesRes,
+                maintenanceRes,
+                showingsRes,
+                teamRes
+            ] = await Promise.all([
+                supabase.from('properties').select('status, created_at').eq('company_id', id),
+                supabase.from('applications').select('status, created_at').eq('company_id', id),
+                supabase.from('invoices').select('total, updated_at, created_at, paid_date').eq('company_id', id).eq('status', 'paid'),
+                supabase.from('maintenance_requests').select('id', { count: 'exact', head: true }).eq('company_id', id).in('status', ['open', 'in_progress']),
+                supabase.from('showings').select('id', { count: 'exact', head: true }).eq('company_id', id).gte('showing_date', new Date().toISOString()),
+                supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('company_id', id)
             ])
 
-            const props = properties.data || []
-            const apps = applications.data || []
+            const props = propsRes.data || []
+            const apps = appsRes.data || []
+
+            // Calculate revenue
+            let totalMonthlyRevenue = 0
+            const now = new Date()
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+            if (paidInvoicesRes.data) {
+                totalMonthlyRevenue = paidInvoicesRes.data.reduce((sum, inv: any) => {
+                    const d = new Date(inv.paid_date || inv.updated_at || inv.created_at)
+                    if (d >= startOfMonth) {
+                        return sum + (Number(inv.total) || 0)
+                    }
+                    return sum
+                }, 0)
+            }
 
             // Property status breakdown
-            const propByStatus = {
-                available: props.filter(p => p.status === 'available').length,
-                rented: props.filter(p => p.status === 'rented').length,
-                pending: props.filter(p => p.status === 'pending').length,
-                maintenance: props.filter(p => p.status === 'maintenance').length,
-            }
+            const availableProps = props.filter(p => p.status === 'available').length
+            const rentedProps = props.filter(p => p.status === 'rented').length
+            const pendingProps = props.filter(p => p.status === 'pending').length
+            const maintenanceProps = props.filter(p => p.status === 'maintenance').length
 
             // App pipeline
-            const appPipeline = {
-                new: apps.filter(a => a.status === 'new' || a.status === 'submitted').length,
-                screening: apps.filter(a => a.status === 'screening').length,
-                approved: apps.filter(a => a.status === 'approved').length,
-                denied: apps.filter(a => prevStatus(a.status)).length, // Simplified catch-all
-            }
+            const pendingApps = apps.filter(a => a.status === 'pending').length
+            const newApps = apps.filter(a => a.status === 'new' || a.status === 'submitted').length
+            const screeningApps = apps.filter(a => a.status === 'screening').length
+            const approvedApps = apps.filter(a => a.status === 'approved').length
+            function prevStatus(s: string) { return s === 'denied' || s === 'rejected' || s === 'cancelled' }
+            const deniedApps = apps.filter(a => prevStatus(a.status)).length
 
             return {
-                propByStatus,
-                appPipeline,
-            }
-
-            function prevStatus(s: string) {
-                return s === 'denied' || s === 'rejected' || s === 'cancelled';
+                totalProperties: props.length,
+                availableProperties: availableProps,
+                rentedProperties: rentedProps,
+                pendingProperties: pendingProps,
+                maintenanceProperties: maintenanceProps,
+                totalApplications: apps.length,
+                pendingApplications: pendingApps,
+                newApplications: newApps,
+                screeningApplications: screeningApps,
+                approvedApplications: approvedApps,
+                deniedApplications: deniedApps,
+                totalMonthlyRevenue,
+                openMaintenance: maintenanceRes.count || 0,
+                upcomingShowings: showingsRes.count || 0,
+                teamMembers: teamRes.count || 0
             }
         },
         enabled: !!companyId.companyId,
     })
 
-    if (statsLoading || !centralizedStats || analyticsLoading) {
+    if (analyticsLoading || !centralizedStats) {
         return (
             <div className="flex items-center justify-center min-h-[500px]">
                 <Loader2 className={cn("w-10 h-10 animate-spin", colors.text)} />

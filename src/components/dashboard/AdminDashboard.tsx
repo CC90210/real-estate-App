@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useAccentColor } from '@/lib/hooks/useAccentColor'
-import { useStats } from '@/lib/hooks/useStats'
 import { useActivity } from '@/hooks/use-activity'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -49,7 +48,70 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
     const { profile, company } = useAuth()
     const supabase = createClient()
     const { colors } = useAccentColor()
-    const { stats, isLoading: statsLoading } = useStats()
+    // Step 2: Get stats using simple COUNT queries
+    const { data: stats, isLoading: statsLoading } = useQuery({
+        queryKey: ['dashboard-stats-direct', company?.id],
+        queryFn: async () => {
+            if (!company?.id) return null
+            const companyId = company.id
+
+            // Fetch counts directly
+            const [
+                propertiesResult,
+                availableResult,
+                applicationsResult,
+                pendingAppsResult,
+                teamResult,
+                areasResult,
+                buildingsResult,
+                leasesResult
+            ] = await Promise.all([
+                supabase.from('properties').select('id', { count: 'exact', head: true }).eq('company_id', companyId),
+                supabase.from('properties').select('id', { count: 'exact', head: true }).eq('company_id', companyId).eq('status', 'available'),
+                supabase.from('applications').select('id', { count: 'exact', head: true }).eq('company_id', companyId),
+                supabase.from('applications').select('id', { count: 'exact', head: true }).eq('company_id', companyId).eq('status', 'pending'),
+                supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('company_id', companyId),
+                supabase.from('areas').select('id', { count: 'exact', head: true }).eq('company_id', companyId),
+                supabase.from('buildings').select('id', { count: 'exact', head: true }).eq('company_id', companyId),
+                supabase.from('leases').select('rent_amount').eq('company_id', companyId).eq('status', 'active')
+            ])
+
+            // For revenue, fetch actual invoice totals using verified columns
+            const now = new Date()
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+            const { data: paidInvoices } = await supabase
+                .from('invoices')
+                .select('total, updated_at, created_at')
+                .eq('company_id', companyId)
+                .eq('status', 'paid')
+
+            let totalMonthlyRevenue = 0
+            if (paidInvoices) {
+                totalMonthlyRevenue = paidInvoices
+                    .filter((inv: any) => new Date(inv.updated_at || inv.created_at) >= new Date(startOfMonth))
+                    .reduce((sum, inv) => sum + (Number(inv.total) || 0), 0)
+            }
+
+            const leases = leasesResult.data || []
+            const totalMonthlyRent = leases.reduce((sum, l) => sum + (Number(l.rent_amount) || 0), 0)
+
+            return {
+                totalProperties: propertiesResult.count || 0,
+                availableProperties: availableResult.count || 0,
+                totalApplications: applicationsResult.count || 0,
+                pendingApplications: pendingAppsResult.count || 0,
+                teamMembers: teamResult.count || 0,
+                totalAreas: areasResult.count || 0,
+                totalBuildings: buildingsResult.count || 0,
+                totalMonthlyRent,
+                totalMonthlyRevenue,
+                propertyTrend: null,
+                applicationTrend: null
+            }
+        },
+        enabled: !!company?.id,
+        staleTime: 30000,
+    })
     const { data: recentActivity, isLoading: activityLoading } = useActivity(10)
 
     // Fetch recent applications

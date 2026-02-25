@@ -28,14 +28,56 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { useActivity } from '@/hooks/use-activity'
+import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/hooks/useAuth'
+import { useQuery } from '@tanstack/react-query'
 
 export default function ActivityPage() {
     const [search, setSearch] = useState('')
     const [filter, setFilter] = useState<string>('all')
 
-    // Uses the SAME shared hook as the dashboard — ensures data consistency
-    const { data: activities, isLoading, isError, error, refetch } = useActivity(100, filter)
+    const supabase = createClient()
+    const { profile } = useAuth()
+
+    // Direct query as requested to guarantee data load
+    const { data: activities, isLoading, isError, error, refetch } = useQuery({
+        queryKey: ['activity-page-direct', profile?.company_id, filter],
+        queryFn: async () => {
+            if (!profile?.company_id) return []
+
+            let q = supabase
+                .from('activity_log')
+                .select('id, action, entity_type, details, description, created_at, user_id')
+                .eq('company_id', profile.company_id)
+                .order('created_at', { ascending: false })
+                .limit(100)
+
+            if (filter !== 'all') {
+                q = q.eq('entity_type', filter)
+            }
+
+            const { data, error } = await q
+            if (error) throw error
+            if (!data || data.length === 0) return []
+
+            // Fetch users manually to avoid Join/RLS issues
+            const userIds = [...new Set(data.filter(a => a.user_id).map(a => a.user_id))]
+            let userMap: Record<string, any> = {}
+            if (userIds.length > 0) {
+                const { data: profs } = await supabase.from('profiles').select('id, full_name, avatar_url').in('id', userIds)
+                if (profs) {
+                    userMap = profs.reduce((acc, p) => ({ ...acc, [p.id]: p }), {})
+                }
+            }
+
+            return data.map(a => ({
+                ...a,
+                user: userMap[a.user_id] || { full_name: 'Unknown', avatar_url: null }
+            }))
+        },
+        enabled: !!profile?.company_id,
+        staleTime: 30000
+    })
 
     const getIcon = (type: string) => {
         const t = type.toLowerCase()

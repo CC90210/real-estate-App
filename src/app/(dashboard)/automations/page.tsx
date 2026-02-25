@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useUser } from '@/lib/hooks/useUser'
 import { AutomationStore } from './automation-store'
 import { AutomationMetrics } from './automation-metrics'
 import { Zap, Store, BarChart3, Loader2 } from 'lucide-react'
@@ -16,15 +17,24 @@ export default function AutomationsPage() {
     const { data: automations, isLoading } = useQuery({
         queryKey: ['automations'],
         queryFn: async () => {
-            const { data } = await supabase
-                .from('automation_configs')
-                .select('*')
-                .order('created_at', { ascending: false })
-            return data || []
+            // Using a try-catch because automation_configs might not exist yet
+            try {
+                const { data, error } = await supabase
+                    .from('automation_configs')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                if (error) return []
+                return data || []
+            } catch (e) {
+                return []
+            }
         },
     })
 
-    const hasActiveAutomations = automations?.some(a => a.status === 'active')
+    const { profile } = useUser()
+    const isSuperAdmin = !!profile?.is_super_admin
+
+    const hasActiveAutomations = isSuperAdmin || automations?.some(a => a.status === 'active')
 
     return (
         <div className="p-6 max-w-7xl mx-auto">

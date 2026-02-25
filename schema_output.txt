@@ -1,0 +1,96 @@
+Table maintenance_requests columns:
+id, company_id, property_id, lease_id, submitted_by, title, description, category, priority, status, photos, resolution_notes, resolved_at, created_at, updated_at
+---
+Table commissions columns:
+id, agent_id, property_id, application_id, company_id, amount, status, description, earned_date, paid_date, created_at, updated_at
+---
+Table tenant_payments columns:
+id, company_id, property_id, tenant_name, tenant_email, amount, description, status, stripe_payment_intent_id, stripe_checkout_session_id, paid_at, created_by, created_at
+---
+Table activity_log columns:
+id, user_id, action, entity_type, entity_id, metadata, company_id, created_at, details, description
+---
+Table areas columns:
+id, name, description, image_url, company_id, created_at, available_count
+---
+Table properties columns:
+id, building_id, landlord_id, company_id, unit_number, address, rent, bedrooms, bathrooms, square_feet, description, lockbox_code, status, available_date, pet_policy, parking_included, utilities_included, photos, created_at, updated_at, deposit, amenities, last_email_sent_at, last_social_posted_at, last_ad_generated_at, email_send_count, social_post_count, ad_generation_count, auto_post_enabled, marketing_description
+---
+Table showings columns:
+id, property_id, agent_id, company_id, client_name, client_email, client_phone, scheduled_date, scheduled_time, status, notes, feedback, created_at, updated_at
+---
+Table automation_logs columns:
+id, company_id, user_id, action_type, entity_type, entity_id, payload, status, result, error_message, recipient_email, email_subject, platform, post_url, generated_asset_url, triggered_at, started_at, completed_at, attempts, max_attempts, next_retry_at, created_at
+---
+Table companies columns:
+id, name, logo_url, created_at, email, trial_ends_at, subscription_status, address, phone, tagline, updated_at, accent_color, subscription_tier, automation_enabled, feature_flags, stripe_subscription_id, subscription_current_period_end, subscription_plan, stripe_connect_id, stripe_connect_enabled, is_lifetime_access, plan, late_profile_id, stripe_customer_id, plan_override, plan_override_reason, plan_override_by, plan_override_at, property_count, team_member_count, social_account_count
+---
+Table profiles columns:
+id, email, full_name, avatar_url, role, company_id, phone, created_at, preferences, branding, automation_webhook_id, job_title, notification_preferences, updated_at, stripe_customer_id, is_super_admin, is_partner, partner_type, is_active, last_active_at
+---
+Table landlords columns:
+id, name, email, phone, company_name, address, notes, company_id, created_at
+---
+Table webhook_events columns:
+id, company_id, event_type, entity_type, entity_id, payload, status, response_status, error_message, created_at, delivered_at, attempts, response_code
+---
+Table invoice_items columns:
+id, invoice_id, description, reference, quantity, rate, amount, created_at
+---
+Table agent_social_profiles columns:
+id, user_id, late_profile_id, created_at
+---
+Table invitations columns:
+id, email, role, company_id, token, expires_at, status, created_at, invited_by, updated_at
+---
+Table social_accounts columns:
+id, company_id, late_account_id, platform, account_name, account_avatar, connected_at, status, created_at, updated_at
+---
+Table stripe_connect_accounts columns:
+id, company_id, stripe_account_id, details_submitted, payouts_enabled, charges_enabled, onboarding_complete, created_at, updated_at
+---
+Table application_documents columns:
+id, application_id, company_id, file_name, file_type, file_url, file_size, uploaded_by, created_at
+---
+Table automation_subscriptions columns:
+id, company_id, is_active, tier, features, n8n_webhook_url, n8n_webhook_secret, emails_sent_this_month, social_posts_this_month, ads_generated_this_month, monthly_email_limit, monthly_social_limit, monthly_ad_limit, purchased_at, expires_at, stripe_subscription_id, created_at, updated_at
+---
+Table leases columns:
+id, company_id, property_id, tenant_id, tenant_name, tenant_email, tenant_phone, start_date, end_date, rent_amount, deposit_amount, payment_day, status, auto_renew, renewal_notice_days, lease_document_url, created_at, updated_at
+---
+Table invoices columns:
+id, company_id, invoice_number, property_id, landlord_id, recipient_name, recipient_email, recipient_address, subtotal, tax_rate, tax_amount, total, items, issue_date, due_date, paid_date, status, notes, created_by, created_at, updated_at, pdf_url, currency, pdf_generated_at
+---
+Table platform_settings columns:
+id, maintenance_mode, signup_enabled, global_announcement, updated_at
+---
+Table buildings columns:
+id, name, address, area_id, company_id, total_units, year_built, amenities, image_url, created_at
+---
+Table platform_invitations columns:
+id, token, label, company_name, assigned_plan, is_enterprise, created_by, status, used_by, used_at, company_created_id, max_uses, use_count, expires_at, created_at, updated_at
+---
+Table documents columns:
+id, type, title, related_property_id, related_landlord_id, related_application_id, content, pdf_url, created_by, company_id, created_at, property_id, application_id, status, updated_at, currency
+---
+Table property_photos columns:
+id, property_id, url, created_at, company_id
+---
+Table applications columns:
+id, property_id, agent_id, company_id, applicant_name, applicant_email, applicant_phone, current_address, employer, monthly_income, move_in_date, num_occupants, has_pets, pet_details, additional_notes, screening_status, credit_score, background_check_passed, income_verified, screening_report_url, screening_completed_at, status, webhook_sent, webhook_sent_at, created_at, updated_at, risk_score, notes, employment_status, employer_name, created_by, denial_reason, reviewed_at, reviewed_by
+---
+Table social_posts columns:
+id, company_id, created_by, late_post_id, content, media_urls, hashtags, platforms, status, scheduled_for, published_at, error_message, created_at, updated_at
+---
+Table automation_settings columns:
+id, company_id, document_email_enabled, document_email_recipients, document_email_template, invoice_email_enabled, invoice_email_recipients, invoice_email_template, webhook_url, webhook_secret, webhook_events, updated_by, updated_at, created_at
+---
+Table team_invitations columns:
+id, company_id, email, role, token, status, invited_by, created_at, expires_at, accepted_at, accepted_by
+---
+Table notifications columns:
+id, user_id, title, message, type, is_read, created_at, company_id
+---
+Table audit_logs columns:
+id, action, user_id, company_id, resource_type, resource_id, metadata, ip_address, user_agent, created_at
+---

@@ -42,24 +42,8 @@ export class StatsService {
     }
 
     async getDashboardStats(companyId: string, userId?: string, isLandlord?: boolean): Promise<DashboardStats & { recentActivity: ActivityItem[] }> {
-        // Try the optimized RPC first
-        const { data, error } = await this.supabase.rpc('get_enhanced_dashboard_stats', {
-            p_company_id: companyId,
-            p_user_id: userId,
-            p_is_landlord: isLandlord
-        });
+        // ALWAYS fallback to manual direct DB queries because RPC falls out of sync
 
-        if (!error && data && typeof data === 'object' && data.totalProperties !== undefined) {
-            return {
-                ...data,
-                recentActivity: data.recent_activity || [],
-                propertyTrend: this.calcTrend(data.currentWeekProps || 0, data.lastWeekProps || 0),
-                applicationTrend: this.calcTrend(data.currentWeekApps || 0, data.lastWeekApps || 0)
-            };
-        }
-
-        // FALLBACK: RPC missing or failed — query tables directly
-        console.warn('Dashboard RPC unavailable, using manual counts. Error:', error?.message);
 
         const now = new Date();
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
@@ -84,8 +68,8 @@ export class StatsService {
             this.supabase.from('properties').select('id', { count: 'exact', head: true }).eq('company_id', companyId).eq('status', 'rented'),
             this.supabase.from('applications').select('id', { count: 'exact', head: true }).eq('company_id', companyId),
             this.supabase.from('applications').select('id', { count: 'exact', head: true }).eq('company_id', companyId).eq('status', 'pending'),
-            // Fetch paid invoices - use total field (not amount) and check both paid_at and updated_at
-            this.supabase.from('invoices').select('total, paid_at, updated_at, created_at').eq('company_id', companyId).eq('status', 'paid'),
+            // Fetch paid invoices - use total field (not amount) and check both paid_date and updated_at
+            this.supabase.from('invoices').select('total, updated_at, created_at, paid_date').eq('company_id', companyId).eq('status', 'paid'),
             this.supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('company_id', companyId),
             Promise.resolve(this.supabase.from('areas').select('id', { count: 'exact', head: true }).eq('company_id', companyId)).catch(() => ({ count: 0, data: null, error: null })),
             Promise.resolve(this.supabase.from('buildings').select('id', { count: 'exact', head: true }).eq('company_id', companyId)).catch(() => ({ count: 0, data: null, error: null })),
@@ -100,8 +84,8 @@ export class StatsService {
         if (invoicesRes.data && Array.isArray(invoicesRes.data)) {
             totalMonthlyRevenue = invoicesRes.data
                 .filter((inv: any) => {
-                    // Use paid_at if available, otherwise fall back to updated_at or created_at
-                    const paidDate = new Date(inv.paid_at || inv.updated_at || inv.created_at);
+                    // Use paid_date if available, otherwise fall back to updated_at or created_at
+                    const paidDate = new Date(inv.paid_date || inv.updated_at || inv.created_at);
                     return paidDate >= new Date(monthStart);
                 })
                 .reduce((sum: number, inv: any) => sum + (Number(inv.total) || 0), 0);

@@ -82,17 +82,28 @@ export function UserProvider({ children }: { children: ReactNode }) {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 5000);
 
-            const { data, error } = await supabase
+            const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
-                .select('id, full_name, email, role, company_id, avatar_url, is_super_admin, is_partner, job_title, company:companies(id, name, subscription_plan, subscription_status, is_lifetime_access, late_profile_id)')
+                .select('id, full_name, email, role, company_id, avatar_url, is_super_admin, is_partner, job_title')
                 .eq('id', userId)
                 .single()
                 .abortSignal(controller.signal);
 
+            let companyData = null;
+            if (profileData?.company_id && !profileError) {
+                const { data: comp } = await supabase
+                    .from('companies')
+                    .select('id, name, subscription_plan, subscription_status, is_lifetime_access, late_profile_id')
+                    .eq('id', profileData.company_id)
+                    .single()
+                    .abortSignal(controller.signal);
+                companyData = comp;
+            }
+
             clearTimeout(timeout);
 
-            if (error) {
-                if (error.message?.includes('recursion') || error.message?.includes('infinite') || error.message?.includes('policy')) {
+            if (profileError) {
+                if (profileError.message?.includes('recursion') || profileError.message?.includes('infinite') || profileError.message?.includes('policy')) {
                     console.error('[CRITICAL] RLS recursion detected on profiles table.');
                     return {
                         id: userId,
@@ -102,16 +113,18 @@ export function UserProvider({ children }: { children: ReactNode }) {
                         _rlsError: true,
                     } as any;
                 }
-                console.warn('Profile sync issue:', error.message);
+                console.warn('Profile sync issue:', profileError.message);
                 return null;
             }
 
-            if (!data) {
+            if (!profileData) {
                 console.warn('Profile not found for user:', userId);
                 return null;
             }
 
-            return data;
+            return { ...profileData, company: companyData };
+
+
         } catch (err: any) {
             // Handle abort (timeout)
             if (err?.name === 'AbortError') {
