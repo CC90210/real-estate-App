@@ -49,12 +49,21 @@ export default function LandlordDashboard({ onQuickFind }: LandlordDashboardProp
     const { data: recentApplications } = useQuery({
         queryKey: ['landlord-recent-applications', user?.id],
         queryFn: async () => {
-            if (!user?.id) return []
+            if (!user?.email) return []
+
+            // Find landlord record by email
+            const { data: landlordRecords } = await supabase
+                .from('landlords')
+                .select('id')
+                .eq('email', user.email)
+
+            const landlordIds = landlordRecords?.map(l => l.id) || []
+            if (landlordIds.length === 0) return []
 
             const { data: properties } = await supabase
                 .from('properties')
                 .select('id')
-                .eq('owner_id', user.id)
+                .in('landlord_id', landlordIds)
 
             const propertyIds = properties?.map(p => p.id) || []
             if (propertyIds.length === 0) return []
@@ -82,12 +91,20 @@ export default function LandlordDashboard({ onQuickFind }: LandlordDashboardProp
     const { data: properties } = useQuery({
         queryKey: ['landlord-properties', user?.id],
         queryFn: async () => {
-            if (!user?.id) return []
+            if (!user?.email) return []
+
+            const { data: landlordRecords } = await supabase
+                .from('landlords')
+                .select('id')
+                .eq('email', user.email)
+
+            const landlordIds = landlordRecords?.map(l => l.id) || []
+            if (landlordIds.length === 0) return []
 
             const { data } = await supabase
                 .from('properties')
                 .select('id, address, unit_number, rent, status, bedrooms, bathrooms')
-                .eq('owner_id', user.id)
+                .in('landlord_id', landlordIds)
                 .order('created_at', { ascending: false })
                 .limit(6)
 
