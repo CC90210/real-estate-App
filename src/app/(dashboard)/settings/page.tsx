@@ -36,6 +36,7 @@ export default function SettingsPage() {
     const supabase = createClient();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { colors } = useAccentColor();
+    const { profile: authProfile, company: authCompany, isLoading: authLoading } = useAuth();
 
     // Security State
     const [showPasswords, setShowPasswords] = useState(false);
@@ -82,12 +83,24 @@ export default function SettingsPage() {
     const fetchProfile = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-            // Fetch profile
-            const { data: profileData } = await supabase
-                .from('profiles')
-                .select('*, company_id')
-                .eq('id', user.id)
-                .single();
+            // Fetch profile with error recovery for RLS issues
+            let profileData: any = null;
+            try {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*, company_id')
+                    .eq('id', user.id)
+                    .single();
+                if (!error) profileData = data;
+                else console.warn('[Settings] Profile fetch error:', error.message);
+            } catch (e) {
+                console.warn('[Settings] Profile fetch failed, using auth context');
+            }
+
+            // If direct query failed, use auth context data as fallback
+            if (!profileData && authProfile) {
+                profileData = authProfile;
+            }
 
             setProfile(profileData);
 
@@ -113,13 +126,13 @@ export default function SettingsPage() {
             setBranding(loadedBranding);
             applyBrandingCSS(loadedBranding);
 
-
             // Fetch company data for branding
-            if (profileData?.company_id) {
+            const companyId = profileData?.company_id || authCompany?.id;
+            if (companyId) {
                 const { data: company } = await supabase
                     .from('companies')
                     .select('*')
-                    .eq('id', profileData.company_id)
+                    .eq('id', companyId)
                     .single();
 
                 if (company) {
@@ -388,8 +401,7 @@ export default function SettingsPage() {
     const getAccentColor = (name: string) => accentColors.find(c => c.name === name) || accentColors[0];
     const activeAccent = getAccentColor(branding.accent);
 
-    const { isLoading: authLoading, company } = useAuth();
-    const resolvedCompanyId = company?.id;
+    const resolvedCompanyId = authCompany?.id;
 
     if (authLoading) {
         return (

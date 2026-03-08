@@ -310,8 +310,123 @@ DO $$ BEGIN
     END IF;
 END $$;
 
+-- SOCIAL_ACCOUNTS (if exists)
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'social_accounts' AND table_schema = 'public') THEN
+        ALTER TABLE public.social_accounts ENABLE ROW LEVEL SECURITY;
+        EXECUTE 'DROP POLICY IF EXISTS "social_accounts_select_company" ON public.social_accounts';
+        EXECUTE 'DROP POLICY IF EXISTS "Enable read access for authenticated users" ON public.social_accounts';
+        EXECUTE 'CREATE POLICY "social_accounts_select_company" ON public.social_accounts FOR SELECT TO authenticated USING (company_id = public.get_my_company_id())';
+        EXECUTE 'DROP POLICY IF EXISTS "social_accounts_insert_company" ON public.social_accounts';
+        EXECUTE 'CREATE POLICY "social_accounts_insert_company" ON public.social_accounts FOR INSERT TO authenticated WITH CHECK (company_id = public.get_my_company_id())';
+        EXECUTE 'DROP POLICY IF EXISTS "social_accounts_update_company" ON public.social_accounts';
+        EXECUTE 'CREATE POLICY "social_accounts_update_company" ON public.social_accounts FOR UPDATE TO authenticated USING (company_id = public.get_my_company_id())';
+        EXECUTE 'DROP POLICY IF EXISTS "social_accounts_delete_company" ON public.social_accounts';
+        EXECUTE 'CREATE POLICY "social_accounts_delete_company" ON public.social_accounts FOR DELETE TO authenticated USING (company_id = public.get_my_company_id())';
+    END IF;
+END $$;
+
+-- SOCIAL_POSTS (if exists)
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'social_posts' AND table_schema = 'public') THEN
+        ALTER TABLE public.social_posts ENABLE ROW LEVEL SECURITY;
+        EXECUTE 'DROP POLICY IF EXISTS "social_posts_select_company" ON public.social_posts';
+        EXECUTE 'DROP POLICY IF EXISTS "Enable read access for authenticated users" ON public.social_posts';
+        EXECUTE 'CREATE POLICY "social_posts_select_company" ON public.social_posts FOR SELECT TO authenticated USING (company_id = public.get_my_company_id())';
+        EXECUTE 'DROP POLICY IF EXISTS "social_posts_insert_company" ON public.social_posts';
+        EXECUTE 'CREATE POLICY "social_posts_insert_company" ON public.social_posts FOR INSERT TO authenticated WITH CHECK (company_id = public.get_my_company_id())';
+        EXECUTE 'DROP POLICY IF EXISTS "social_posts_update_company" ON public.social_posts';
+        EXECUTE 'CREATE POLICY "social_posts_update_company" ON public.social_posts FOR UPDATE TO authenticated USING (company_id = public.get_my_company_id())';
+        EXECUTE 'DROP POLICY IF EXISTS "social_posts_delete_company" ON public.social_posts';
+        EXECUTE 'CREATE POLICY "social_posts_delete_company" ON public.social_posts FOR DELETE TO authenticated USING (company_id = public.get_my_company_id())';
+    END IF;
+END $$;
+
+-- AUTOMATION_CONFIGS (if exists)
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'automation_configs' AND table_schema = 'public') THEN
+        ALTER TABLE public.automation_configs ENABLE ROW LEVEL SECURITY;
+        EXECUTE 'DROP POLICY IF EXISTS "automation_configs_select_company" ON public.automation_configs';
+        EXECUTE 'DROP POLICY IF EXISTS "Enable read access for authenticated users" ON public.automation_configs';
+        EXECUTE 'CREATE POLICY "automation_configs_select_company" ON public.automation_configs FOR SELECT TO authenticated USING (company_id = public.get_my_company_id())';
+        EXECUTE 'DROP POLICY IF EXISTS "automation_configs_insert_company" ON public.automation_configs';
+        EXECUTE 'CREATE POLICY "automation_configs_insert_company" ON public.automation_configs FOR INSERT TO authenticated WITH CHECK (company_id = public.get_my_company_id())';
+        EXECUTE 'DROP POLICY IF EXISTS "automation_configs_update_company" ON public.automation_configs';
+        EXECUTE 'CREATE POLICY "automation_configs_update_company" ON public.automation_configs FOR UPDATE TO authenticated USING (company_id = public.get_my_company_id())';
+        EXECUTE 'DROP POLICY IF EXISTS "automation_configs_delete_company" ON public.automation_configs';
+        EXECUTE 'CREATE POLICY "automation_configs_delete_company" ON public.automation_configs FOR DELETE TO authenticated USING (company_id = public.get_my_company_id())';
+    END IF;
+END $$;
+
 -- ==========================================================================
--- 6. ENSURE YOUR ADMIN PROFILE IS PROPERLY LINKED
+-- 6. PLATFORM ADMIN METRICS RPC
+-- Used by /admin page to show total companies, users, properties, MRR, etc.
+-- SECURITY DEFINER so it can read across all companies (super admin only).
+-- ==========================================================================
+CREATE OR REPLACE FUNCTION public.get_platform_metrics()
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    result JSONB;
+    v_caller_role TEXT;
+BEGIN
+    -- Only super admins can call this
+    SELECT role INTO v_caller_role FROM public.profiles WHERE id = auth.uid();
+    IF v_caller_role != 'admin' THEN
+        SELECT is_super_admin INTO v_caller_role FROM public.profiles WHERE id = auth.uid();
+        IF v_caller_role IS NULL OR v_caller_role::boolean = false THEN
+            RETURN jsonb_build_object('error', 'Unauthorized');
+        END IF;
+    END IF;
+
+    result := jsonb_build_object(
+        'total_companies', (SELECT COUNT(*) FROM public.companies),
+        'total_users', (SELECT COUNT(*) FROM public.profiles WHERE company_id IS NOT NULL),
+        'total_properties', (SELECT COUNT(*) FROM public.properties),
+        'total_applications', (SELECT COUNT(*) FROM public.applications),
+        'subscriptions', jsonb_build_object(
+            'active', (SELECT COUNT(*) FROM public.companies WHERE subscription_status = 'active'),
+            'trialing', (SELECT COUNT(*) FROM public.companies WHERE subscription_status IN ('trialing', 'trial')),
+            'enterprise', (SELECT COUNT(*) FROM public.companies WHERE COALESCE(plan_override, '') = 'enterprise'),
+            'cancelled', (SELECT COUNT(*) FROM public.companies WHERE subscription_status = 'cancelled'),
+            'none', (SELECT COUNT(*) FROM public.companies WHERE subscription_status IS NULL OR subscription_status = 'none')
+        ),
+        'plans', jsonb_build_object(
+            'agent_pro', (SELECT COUNT(*) FROM public.companies WHERE COALESCE(plan_override, subscription_plan) = 'agent_pro'),
+            'agency_growth', (SELECT COUNT(*) FROM public.companies WHERE COALESCE(plan_override, subscription_plan) = 'agency_growth'),
+            'brokerage_command', (SELECT COUNT(*) FROM public.companies WHERE COALESCE(plan_override, subscription_plan) = 'brokerage_command'),
+            'enterprise', (SELECT COUNT(*) FROM public.companies WHERE COALESCE(plan_override, subscription_plan) = 'enterprise')
+        ),
+        'recent', jsonb_build_object(
+            'new_companies_30d', (SELECT COUNT(*) FROM public.companies WHERE created_at > NOW() - INTERVAL '30 days'),
+            'new_users_30d', (SELECT COUNT(*) FROM public.profiles WHERE created_at > NOW() - INTERVAL '30 days')
+        ),
+        'mrr_estimate', (
+            SELECT COALESCE(SUM(
+                CASE COALESCE(plan_override, subscription_plan)
+                    WHEN 'agent_pro' THEN 149
+                    WHEN 'agency_growth' THEN 289
+                    WHEN 'brokerage_command' THEN 499
+                    WHEN 'enterprise' THEN 999
+                    ELSE 0
+                END
+            ), 0)
+            FROM public.companies
+            WHERE subscription_status = 'active'
+        )
+    );
+
+    RETURN result;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_platform_metrics() TO authenticated;
+
+-- ==========================================================================
+-- 7. ENSURE YOUR ADMIN PROFILE IS PROPERLY LINKED
 -- ==========================================================================
 -- Link konamak@icloud.com to the first available company if not already linked
 UPDATE public.profiles

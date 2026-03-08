@@ -59,6 +59,8 @@ interface MediaFile {
 
 export default function SocialPage() {
     const { profile } = useUser()
+    const { company, isLoading: authLoading } = useAuth()
+    const resolvedCompanyId = company?.id
     const supabase = createClient()
     const searchParams = useSearchParams()
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -95,19 +97,19 @@ export default function SocialPage() {
     }, [searchParams])
 
     const fetchData = useCallback(async () => {
-        if (!profile?.company_id) return
+        if (!resolvedCompanyId) return
         setLoading(true)
         try {
             const [accountsRes, postsRes] = await Promise.all([
                 supabase
                     .from('social_accounts')
                     .select('id, platform, account_name, account_avatar, status, created_at')
-                    .eq('company_id', profile.company_id)
+                    .eq('company_id', resolvedCompanyId)
                     .order('created_at', { ascending: false }),
                 supabase
                     .from('social_posts')
                     .select('id, content, platforms, status, scheduled_for, published_at, created_at')
-                    .eq('company_id', profile.company_id)
+                    .eq('company_id', resolvedCompanyId)
                     .order('created_at', { ascending: false })
                     .range(0, 19),
             ])
@@ -119,7 +121,7 @@ export default function SocialPage() {
         } finally {
             setLoading(false)
         }
-    }, [profile?.company_id, supabase])
+    }, [resolvedCompanyId, supabase])
 
     useEffect(() => {
         fetchData()
@@ -311,9 +313,6 @@ export default function SocialPage() {
     const charCount = postContent.length
     const allSelected = selectedAccounts.length === activeAccounts.length && activeAccounts.length > 0
 
-    const { isLoading: authLoading, company } = useAuth();
-    const companyId = company?.id;
-
     if (authLoading) {
         return (
             <div className="flex items-center justify-center min-h-[500px]">
@@ -322,7 +321,7 @@ export default function SocialPage() {
         )
     }
 
-    if (!companyId) {
+    if (!resolvedCompanyId) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
                 <p className="text-slate-500 font-medium">Unable to load workspace data.</p>
