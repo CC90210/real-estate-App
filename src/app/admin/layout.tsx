@@ -52,9 +52,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div className="flex flex-1 overflow-hidden">
                 <aside className="w-64 bg-gray-900 p-4 space-y-2 border-t border-gray-800 shrink-0">
                     <AdminNavLink href="/admin" label="Overview" current={pathname === '/admin'} />
-                    <AdminNavLink href="/admin/companies" label="Companies" current={pathname === '/admin/companies'} />
-                    <AdminNavLink href="/admin/users" label="Users" current={pathname === '/admin/users'} />
-                    <AdminNavLink href="/admin/invites" label="Enterprise Invites" current={pathname === '/admin/invites'} />
+                    <AdminNavLink href="/admin/companies" label="Companies" current={pathname?.startsWith('/admin/companies') || false} />
+                    <AdminNavLink href="/admin/users" label="Users" current={pathname?.startsWith('/admin/users') || false} />
+                    <AdminNavLink href="/admin/invites" label="Enterprise Invites" current={pathname?.startsWith('/admin/invites') || false} />
                 </aside>
                 <main className="flex-1 p-8 overflow-y-auto w-full">
                     <div className="max-w-6xl mx-auto">

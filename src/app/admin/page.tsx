@@ -37,12 +37,17 @@ export default function AdminOverviewPage() {
             <div className="bg-white rounded-[2rem] border shadow-sm p-8 space-y-6">
                 <h2 className="text-xl font-bold text-gray-900">Subscription Status</h2>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    <StatusCard label="Active" count={metrics?.subscriptions?.active || 0} color="green" />
+                    <StatusCard label="Active (Stripe)" count={metrics?.subscriptions?.active || 0} color="green" />
                     <StatusCard label="Trialing" count={metrics?.subscriptions?.trialing || 0} color="blue" />
                     <StatusCard label="Enterprise" count={metrics?.subscriptions?.enterprise || 0} color="purple" />
                     <StatusCard label="Cancelled" count={metrics?.subscriptions?.cancelled || 0} color="red" />
                     <StatusCard label="No Plan" count={metrics?.subscriptions?.none || 0} color="gray" />
                 </div>
+                {(metrics?.subscriptions?.override_only || 0) > 0 && (
+                    <p className="text-xs text-amber-600 font-medium bg-amber-50 px-4 py-2 rounded-xl">
+                        {metrics.subscriptions.override_only} company(s) have plan overrides without Stripe subscriptions (not counted in MRR)
+                    </p>
+                )}
             </div>
 
             {/* Plan distribution */}

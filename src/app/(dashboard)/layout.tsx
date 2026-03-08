@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import { MobileHeader } from '@/components/mobile/MobileHeader'
 import { MobileQuickFind } from '@/components/mobile/MobileQuickFind'
+import { QuickFind } from '@/components/QuickFind'
 import { DesktopSidebar } from '@/components/DesktopSidebar'
 import { QuickFindProvider, useQuickFind } from '@/lib/contexts/QuickFindContext'
 import { useAuth } from '@/lib/hooks/useAuth'
@@ -20,8 +21,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
     const router = useRouter()
+    const pathname = usePathname()
     const { open, setOpen } = useQuickFind()
     const { profile, company, role, isLoading, isAuthenticated } = useAuth()
+    const [isNavigating, setIsNavigating] = useState(false)
+    const [prevPathname, setPrevPathname] = useState(pathname)
+
+    // Detect route changes and show/hide loading indicator
+    useEffect(() => {
+        if (pathname !== prevPathname) {
+            setIsNavigating(false)
+            setPrevPathname(pathname)
+        }
+    }, [pathname, prevPathname])
+
+    // Intercept navigation to show loading bar
+    useEffect(() => {
+        const originalPush = router.push.bind(router)
+        const patchedPush = (...args: Parameters<typeof router.push>) => {
+            setIsNavigating(true)
+            return originalPush(...args)
+        }
+        router.push = patchedPush
+        return () => { router.push = originalPush }
+    }, [router])
 
     // Role-based route guard (tenant goes to tenant dashboard)
     useEffect(() => {
@@ -54,6 +77,13 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
     return (
         <div className="min-h-screen bg-[#fcfdfe]">
+            {/* Route change loading bar */}
+            {isNavigating && (
+                <div className="fixed top-0 left-0 right-0 z-[100] h-1 bg-blue-100">
+                    <div className="h-full bg-blue-600 animate-pulse rounded-r-full" style={{ width: '70%', animation: 'loading-bar 1.5s ease-in-out infinite' }} />
+                </div>
+            )}
+
             {/* Mobile Header */}
             <MobileHeader
                 onQuickFindOpen={() => setOpen(true)}
@@ -73,11 +103,13 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
                 </div>
             </main>
 
-            {/* Quick Find Modal */}
-            <MobileQuickFind
-                open={open}
-                onOpenChange={setOpen}
-            />
+            {/* Quick Find — Full search on desktop, simple on mobile */}
+            <div className="hidden lg:block">
+                <QuickFind open={open} onOpenChange={setOpen} />
+            </div>
+            <div className="lg:hidden">
+                <MobileQuickFind open={open} onOpenChange={setOpen} />
+            </div>
         </div>
     )
 }
