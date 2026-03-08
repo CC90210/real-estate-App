@@ -3,18 +3,15 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useUser } from './useUser';
+import { useRouter, usePathname } from 'next/navigation';
 
 /**
  * useAuth – the single source of truth for auth + company in the client.
- *
- * CRITICAL DESIGN: company resolution has two paths:
- *   1. Profile JOIN (fast – returned inline by useUser's fetchProfile)
- *   2. Fallback direct fetch (when JOIN returns null/empty)
- *
- * `isLoading` stays TRUE until company is resolved OR confirmed missing.
- * This prevents every downstream page from flashing "Unable to load workspace".
+ * Includes auto-redirect for users missing workspace data.
  */
 export function useAuth() {
+    const router = useRouter();
+    const pathname = usePathname();
     const {
         user,
         profile,
@@ -35,7 +32,7 @@ export function useAuth() {
     const [fallbackDone, setFallbackDone] = useState(false);
     const fetchingRef = useRef(false);
 
-    // Normalize company from profile — Supabase can return as array, object, or null
+    // Normalize company from profile
     const company = useMemo(() => {
         const rawCompany = profile?.company;
         if (!rawCompany) return null;
@@ -47,7 +44,6 @@ export function useAuth() {
 
     // Fallback: fetch company directly if profile has company_id but JOIN didn't resolve
     useEffect(() => {
-        // No profile yet or no company_id → nothing to fetch
         if (!profile?.company_id) {
             setFallbackCompany(null);
             setFallbackDone(false);
@@ -55,13 +51,11 @@ export function useAuth() {
             return;
         }
 
-        // Company already resolved from JOIN → done
         if (company) {
             setFallbackDone(true);
             return;
         }
 
-        // Already fetching or already done → skip
         if (fetchingRef.current || fallbackDone) return;
         fetchingRef.current = true;
 
@@ -86,13 +80,21 @@ export function useAuth() {
     }, [profile?.company_id, company, fallbackDone]);
 
     const resolvedCompany = company || fallbackCompany;
-
-    // Compound loading:
-    //  - Still loading while UserContext is loading
-    //  - Still loading if profile has a company_id but we haven't finished resolving it
-    //    (covers the gap between useUser finishing and useEffect running)
-    const pendingCompany = !!profile?.company_id && !resolvedCompany && !fallbackDone;
+    const pendingCompany = !!profile?.company_id && !resolvedCompany && !fallbackDone;   
     const isLoading = userLoading || pendingCompany;
+
+    // AUTO-REPAIR REDIRECT
+    // If authenticated but no company_id is found, redirect to setup-profile
+    useEffect(() => {
+        const isSetupPage = pathname === '/setup-profile';
+        const isAuthPage = pathname === '/login' || pathname === '/signup';
+        const isApi = pathname.startsWith('/api');
+
+        if (!isLoading && isAuthenticated && !profile?.company_id && !isSetupPage && !isAuthPage && !isApi) {
+            console.log('[useAuth] Missing company_id. Routing to setup-profile.');
+            router.push('/setup-profile');
+        }
+    }, [isLoading, isAuthenticated, profile?.company_id, pathname, router]);
 
     return {
         user,
