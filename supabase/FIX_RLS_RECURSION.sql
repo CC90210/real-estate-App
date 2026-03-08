@@ -281,6 +281,7 @@ END $$;
 -- ==========================================================================
 -- 6. PLATFORM ADMIN METRICS RPC
 -- ==========================================================================
+DROP FUNCTION IF EXISTS public.get_platform_metrics();
 CREATE OR REPLACE FUNCTION public.get_platform_metrics()
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
 AS $$
