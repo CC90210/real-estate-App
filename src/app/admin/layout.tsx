@@ -2,40 +2,28 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/hooks/useAuth'
 import Link from 'next/link'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter()
     const pathname = usePathname()
+    const { isSuperAdmin, isLoading: authLoading, isAuthenticated } = useAuth()
     const [authorized, setAuthorized] = useState(false)
-    const [loading, setLoading] = useState(true)
-    const supabase = createClient()
+    const loading = authLoading
 
     useEffect(() => {
-        async function checkAccess() {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) {
-                router.replace('/login')
-                return
-            }
-
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('role')
-                .eq('id', user.id)
-                .single()
-
-            if (profile?.role !== 'super_admin') {
-                router.replace('/dashboard')
-                return
-            }
-
-            setAuthorized(true)
-            setLoading(false)
+        if (authLoading) return
+        if (!isAuthenticated) {
+            router.replace('/login')
+            return
         }
-        checkAccess()
-    }, [router, supabase])
+        if (!isSuperAdmin) {
+            router.replace('/dashboard')
+            return
+        }
+        setAuthorized(true)
+    }, [authLoading, isAuthenticated, isSuperAdmin, router])
 
     if (loading) {
         return (

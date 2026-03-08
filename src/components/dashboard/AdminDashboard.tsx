@@ -113,7 +113,7 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
                     </div>
                     <h1 className="text-4xl lg:text-5xl font-black tracking-tight text-slate-900 animate-in fade-in slide-in-from-left duration-700">
                         {getGreeting()}, <span className={cn("bg-gradient-to-r bg-clip-text text-transparent", colors.gradient)}>
-                            {profile?.full_name?.split(' ')[0] || 'Admin'}
+                            {profile?.full_name?.split(' ')[0] || profile?.email?.split('@')[0] || 'Admin'}
                         </span>
                     </h1>
                     <p className="text-slate-500 font-medium text-lg flex items-center gap-2">

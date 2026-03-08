@@ -61,16 +61,32 @@ export default function MaintenancePage() {
         queryKey: ['maintenance', resolvedCompanyId],
         queryFn: async () => {
             if (!resolvedCompanyId) return []
+
+            // Try full query with profile JOINs first
             const { data, error } = await supabase
                 .from('maintenance_requests')
                 .select('*, properties(address, unit_number), profiles:submitted_by(full_name, email), assigned:assigned_to(full_name)')
                 .eq('company_id', resolvedCompanyId)
                 .order('created_at', { ascending: false })
-            if (error) throw error
-            return data || []
+
+            if (!error) return data || []
+
+            // If profiles JOIN fails (RLS recursion), retry without profile JOINs
+            if (error.message?.includes('recursion') || error.message?.includes('policy')) {
+                console.warn('[Maintenance] Profile JOIN failed, retrying without:', error.message)
+                const { data: fallback, error: fallbackErr } = await supabase
+                    .from('maintenance_requests')
+                    .select('*, properties(address, unit_number)')
+                    .eq('company_id', resolvedCompanyId)
+                    .order('created_at', { ascending: false })
+                if (fallbackErr) throw fallbackErr
+                return fallback || []
+            }
+
+            throw error
         },
         enabled: !!resolvedCompanyId,
-        retry: 3,
+        retry: 1,
         staleTime: 60 * 1000
     })
 
