@@ -143,20 +143,34 @@ export default function TeamPage() {
         }
     })
 
-    // Remove team member
+    // Remove team member via server API (handles auth cleanup)
     const removeTeamMember = useMutation({
-        mutationFn: async (memberId: string) => {
-            // Remove company_id from profile to disassociate them
-            const { error } = await supabase
-                .from('profiles')
-                .update({ company_id: null })
-                .eq('id', memberId)
+        mutationFn: async ({ memberId, deleteAccount = false }: { memberId: string; deleteAccount?: boolean }) => {
+            const res = await fetch('/api/team/remove', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ memberId, deleteAccount }),
+            })
 
-            if (error) throw error
+            const data = await res.json()
+
+            if (!res.ok) {
+                throw new Error(data.error || 'Failed to remove member')
+            }
+
+            if (data.warning) {
+                toast.warning(data.warning)
+            }
+
+            return data
         },
-        onSuccess: () => {
+        onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['team-members'] })
-            toast.success('Team member removed')
+            if (data.deleted) {
+                toast.success('Team member fully deleted from platform')
+            } else {
+                toast.success('Team member removed from company')
+            }
         },
         onError: (error: Error) => {
             toast.error('Failed to remove member', { description: error.message })
@@ -281,11 +295,26 @@ export default function TeamPage() {
                                                             </DropdownMenuTrigger>
                                                             <DropdownMenuContent align="end">
                                                                 <DropdownMenuItem
-                                                                    onClick={() => removeTeamMember.mutate(member.id)}
-                                                                    className="text-red-600"
+                                                                    onClick={() => {
+                                                                        if (confirm(`Remove ${member.full_name || member.email} from the team?`)) {
+                                                                            removeTeamMember.mutate({ memberId: member.id })
+                                                                        }
+                                                                    }}
+                                                                    className="text-orange-600"
                                                                 >
                                                                     <Trash2 className="h-4 w-4 mr-2" />
                                                                     Remove from team
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem
+                                                                    onClick={() => {
+                                                                        if (confirm(`Permanently delete ${member.full_name || member.email}? This removes them from the team AND deletes their account entirely. This cannot be undone.`)) {
+                                                                            removeTeamMember.mutate({ memberId: member.id, deleteAccount: true })
+                                                                        }
+                                                                    }}
+                                                                    className="text-red-600"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4 mr-2" />
+                                                                    Delete account permanently
                                                                 </DropdownMenuItem>
                                                             </DropdownMenuContent>
                                                         </DropdownMenu>

@@ -1,15 +1,20 @@
 {
     "name": "PropFlow",
     "short_name": "PropFlow",
-    "description": "Property Management Software for Real Estate Professionals",
-    "start_url": "/",
+    "description": "Property Management CRM for Real Estate Professionals",
+    "start_url": "/dashboard",
     "display": "standalone",
     "background_color": "#fcfdfe",
     "theme_color": "#2563eb",
     "icons": [
         {
-            "src": "/favicon.ico",
+            "src": "/favicon.svg",
             "sizes": "any",
+            "type": "image/svg+xml"
+        },
+        {
+            "src": "/favicon.ico",
+            "sizes": "48x48",
             "type": "image/x-icon"
         }
     ]

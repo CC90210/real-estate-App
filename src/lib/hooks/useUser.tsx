@@ -162,13 +162,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         let mounted = true;
-        let initialSessionHandled = false;
+        let initComplete = false;
 
         // Safety timeout: ALWAYS stop loading after 10 seconds no matter what
         const safetyTimeout = setTimeout(() => {
             if (mounted && isLoading) {
                 console.warn('[Auth] Safety timeout: forcing isLoading=false after 10s');
                 setIsLoading(false);
+                initComplete = true;
             }
         }, 10000);
 
@@ -177,12 +178,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 const { data: { session } } = await supabase.auth.getSession();
 
                 if (session?.user && mounted) {
-                    // Set user immediately so the app knows we are authenticated
-                    setUser(session.user);
-
-                    // Then fetch profile
+                    // Fetch profile FIRST, then set both atomically
+                    // This prevents the window where user is set but profile is null
                     const profileData = await fetchProfile(session.user.id);
                     if (mounted) {
+                        setUser(session.user);
                         setProfile(profileData);
                     }
                 }
@@ -191,7 +191,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
             } finally {
                 if (mounted) {
                     setIsLoading(false);
-                    initialSessionHandled = true;
+                    initComplete = true;
                 }
             }
         };
@@ -203,13 +203,16 @@ export function UserProvider({ children }: { children: ReactNode }) {
             async (event, session) => {
                 if (!mounted) return;
 
-                // Skip the INITIAL_SESSION event — initAuth already handles it
+                // Skip INITIAL_SESSION — initAuth already handles it
                 if (event === 'INITIAL_SESSION') return;
+
+                // Don't let TOKEN_REFRESHED interfere while init is still running
+                if (!initComplete && event === 'TOKEN_REFRESHED') return;
 
                 if (session?.user) {
                     setUser(session.user);
-                    // Only re-fetch profile on actual auth changes, not initial load
-                    if (initialSessionHandled) {
+                    // Only re-fetch profile on actual auth state changes after init
+                    if (initComplete) {
                         const profileData = await fetchProfile(session.user.id);
                         if (mounted) setProfile(profileData);
                     }
@@ -217,7 +220,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
                     setUser(null);
                     setProfile(null);
                 }
-                setIsLoading(false);
+                // Only clear loading after init is done to prevent premature blank renders
+                if (initComplete) {
+                    setIsLoading(false);
+                }
             }
         );
 
