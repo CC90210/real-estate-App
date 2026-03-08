@@ -176,6 +176,7 @@ export class StatsService {
                 entity_type,
                 details,
                 created_at,
+                user_id,
                 user:profiles(full_name, avatar_url, email)
             `)
             .eq('company_id', companyId)
@@ -186,7 +187,51 @@ export class StatsService {
             query = query.eq('entity_type', filter);
         }
 
-        const { data } = await query;
+        const { data, error } = await query;
+
+        if (error && (error.message.includes('recursion') || error.message.includes('policy'))) {
+            console.warn('[RECOVERY] Activity log JOIN failed due to recursion. Retrying without join...');
+            
+            // Second attempt: Fetch without join
+            let recoveryQuery = this.supabase
+                .from('activity_log')
+                .select(`id, action, entity_type, details, created_at, user_id`)
+                .eq('company_id', companyId)
+                .order('created_at', { ascending: false })
+                .limit(limit);
+            
+            if (filter !== 'all') {
+                recoveryQuery = recoveryQuery.eq('entity_type', filter);
+            }
+
+            const { data: rawLogs, error: logError } = await recoveryQuery;
+            
+            if (logError || !rawLogs) return [];
+
+            // Fetch user profiles via proxy for these logs
+            const userIds = Array.from(new Set(rawLogs.map(l => l.user_id).filter(Boolean)));
+            let userMap: Record<string, any> = {};
+
+            if (userIds.length > 0) {
+                try {
+                    const res = await fetch('/api/user/profiles', {
+                        method: 'POST',
+                        body: JSON.stringify({ userIds })
+                    });
+                    if (res.ok) {
+                        const profiles: any[] = await res.json();
+                        profiles.forEach(p => userMap[p.id] = p);
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch user profiles for activity log:', err);
+                }
+            }
+
+            return rawLogs.map(log => ({
+                ...log,
+                user: userMap[log.user_id] || { full_name: 'Unknown User' }
+            })) as any[];
+        }
 
         return (data || []).map(item => ({
             ...item,

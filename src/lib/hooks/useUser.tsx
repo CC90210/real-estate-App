@@ -8,7 +8,7 @@ import { PLANS, PlanId } from '@/lib/plans';
 
 // ─── Hardcoded super admin emails ───────────────────────────────
 // These ALWAYS get full enterprise access regardless of database state
-const SUPER_ADMIN_EMAILS = ['konamak@icloud.com'];
+const SUPER_ADMIN_EMAILS = ['konamak@icloud.com', 'oasisaisolutions@gmail.com'];
 
 function isSuperAdminEmail(email?: string | null): boolean {
     if (!email) return false;
@@ -98,13 +98,26 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
             if (profileError) {
                 if (profileError.message?.includes('recursion') || profileError.message?.includes('infinite') || profileError.message?.includes('policy')) {
-                    console.error('[CRITICAL] RLS recursion detected on profiles table.');
+                    console.error('[CRITICAL] RLS recursion detected on profiles table. Attempting proxy fallback...');
+                    
+                    // FALLBACK: Use our proxy API which uses service_role
+                    try {
+                        const proxyRes = await fetch(`/api/user/profile?userId=${userId}`);
+                        if (proxyRes.ok) {
+                            const proxyData = await proxyRes.json();
+                            console.log('[RECOVERY] Successfully recovered profile via proxy.');
+                            return proxyData;
+                        }
+                    } catch (proxyErr) {
+                        console.error('[RECOVERY FAILED]:', proxyErr);
+                    }
+
+                    // If proxy also fails, return minimum safe profile
                     return {
                         id: userId,
-                        email: null,
-                        company_id: 'pending',
+                        email: user?.email || null,
+                        company_id: null,
                         role: 'admin',
-                        _rlsError: true,
                     } as any;
                 }
                 console.warn('Profile sync issue:', profileError.message);

@@ -61,13 +61,21 @@ export default function ActivityPage() {
             if (error) throw error
             if (!data || data.length === 0) return []
 
-            // Fetch users manually to avoid Join/RLS issues
-            const userIds = [...new Set(data.filter(a => a.user_id).map(a => a.user_id))]
-            let userMap: Record<string, { id: string; full_name: string | null; avatar_url: string | null }> = {}
+            // Fetch users via Proxy to avoid RLS Recursion
+            const userIds = [...new Set(data.filter(a => a.user_id).map(a => a.user_id))];
+            let userMap: Record<string, any> = {};
             if (userIds.length > 0) {
-                const { data: profs } = await supabase.from('profiles').select('id, full_name, avatar_url').in('id', userIds)
-                if (profs) {
-                    userMap = profs.reduce((acc, p) => ({ ...acc, [p.id]: p }), {})
+                try {
+                    const res = await fetch('/api/user/profiles', {
+                        method: 'POST',
+                        body: JSON.stringify({ userIds })
+                    });
+                    if (res.ok) {
+                        const profs = await res.json();
+                        userMap = (profs || []).reduce((acc: any, p: any) => ({ ...acc, [p.id]: p }), {});
+                    }
+                } catch (err) {
+                    console.error('Proxy profile fetch failed:', err);
                 }
             }
 
