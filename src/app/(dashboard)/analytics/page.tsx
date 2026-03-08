@@ -200,7 +200,7 @@ export default function AnalyticsPage() {
         enabled: !!resolvedCompanyId,
     })
 
-    if (authLoading || analyticsLoading || !centralizedStats) {
+    if (authLoading) {
         return (
             <div className="flex items-center justify-center min-h-[500px]">
                 <Loader2 className={cn("w-10 h-10 animate-spin", colors.text)} />
@@ -220,6 +220,14 @@ export default function AnalyticsPage() {
                 </button>
             </div>
         );
+    }
+
+    if (analyticsLoading || !centralizedStats) {
+        return (
+            <div className="flex items-center justify-center min-h-[500px]">
+                <Loader2 className={cn("w-10 h-10 animate-spin", colors.text)} />
+            </div>
+        )
     }
 
     return (

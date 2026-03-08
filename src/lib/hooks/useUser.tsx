@@ -56,10 +56,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
         const isSuperAdmin = !!profileData.is_super_admin || isHardcodedAdmin;
         const isPartner = !!profileData.is_partner;
 
-        // Normalize company — Supabase can return as array or object
+        // Company is already normalized in fetchProfile, but guard against edge cases
         const rawCompany = profileData.company;
         const company = rawCompany
-            ? (Array.isArray(rawCompany) ? rawCompany[0] : rawCompany)
+            ? (Array.isArray(rawCompany) ? (rawCompany[0] || null) : rawCompany)
             : null;
         const isLifetime = company?.is_lifetime_access === true;
 
@@ -116,8 +116,18 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 return null;
             }
 
-            return profileData;
+            // Normalize company field — Supabase foreign key JOINs can return
+            // an object, an array with one element, or an empty array depending
+            // on the relationship cardinality and RLS policies.
+            if (profileData.company) {
+                if (Array.isArray(profileData.company)) {
+                    (profileData as any).company = profileData.company.length > 0
+                        ? profileData.company[0]
+                        : null;
+                }
+            }
 
+            return profileData;
 
         } catch (err: any) {
             // Handle abort (timeout)
