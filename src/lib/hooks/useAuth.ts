@@ -1,19 +1,18 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useUser } from './useUser';
 
 /**
- * useAuth is a refined hook that provides instant access to the authenticated state,
- * user details, profile, company data, and plan-level attributes.
+ * useAuth – the single source of truth for auth + company in the client.
  *
- * CRITICAL: This hook manages a compound loading state that accounts for:
- * 1. UserContext loading (session + profile fetch)
- * 2. Fallback company fetch (when profile JOIN doesn't return company data)
+ * CRITICAL DESIGN: company resolution has two paths:
+ *   1. Profile JOIN (fast – returned inline by useUser's fetchProfile)
+ *   2. Fallback direct fetch (when JOIN returns null/empty)
  *
- * Without the compound loading state, pages would see isLoading=false + company=null
- * and render "Unable to load workspace data" before the fallback fetch completes.
+ * `isLoading` stays TRUE until company is resolved OR confirmed missing.
+ * This prevents every downstream page from flashing "Unable to load workspace".
  */
 export function useAuth() {
     const {
@@ -33,8 +32,8 @@ export function useAuth() {
     } = useUser();
 
     const [fallbackCompany, setFallbackCompany] = useState<any>(null);
-    const [fallbackLoading, setFallbackLoading] = useState(false);
-    const [fallbackAttempted, setFallbackAttempted] = useState(false);
+    const [fallbackDone, setFallbackDone] = useState(false);
+    const fetchingRef = useRef(false);
 
     // Normalize company from profile — Supabase can return as array, object, or null
     const company = useMemo(() => {
@@ -48,25 +47,23 @@ export function useAuth() {
 
     // Fallback: fetch company directly if profile has company_id but JOIN didn't resolve
     useEffect(() => {
-        // Reset fallback state when profile changes (e.g. user switches accounts)
+        // No profile yet or no company_id → nothing to fetch
         if (!profile?.company_id) {
             setFallbackCompany(null);
-            setFallbackLoading(false);
-            setFallbackAttempted(false);
+            setFallbackDone(false);
+            fetchingRef.current = false;
             return;
         }
 
-        // If company already resolved from JOIN, no fallback needed
+        // Company already resolved from JOIN → done
         if (company) {
-            setFallbackLoading(false);
+            setFallbackDone(true);
             return;
         }
 
-        // Don't re-attempt if we already tried (prevents infinite loop)
-        if (fallbackAttempted) return;
-
-        setFallbackLoading(true);
-        setFallbackAttempted(true);
+        // Already fetching or already done → skip
+        if (fetchingRef.current || fallbackDone) return;
+        fetchingRef.current = true;
 
         const supabase = createClient();
         supabase
@@ -80,20 +77,22 @@ export function useAuth() {
                 } else if (error) {
                     console.warn('[useAuth] Fallback company fetch failed:', error.message);
                 }
-                setFallbackLoading(false);
             })
-            .catch(() => {
-                setFallbackLoading(false);
+            .catch(() => {})
+            .finally(() => {
+                setFallbackDone(true);
+                fetchingRef.current = false;
             });
-    }, [profile?.company_id, company, fallbackAttempted]);
+    }, [profile?.company_id, company, fallbackDone]);
 
     const resolvedCompany = company || fallbackCompany;
 
-    // Compound loading state:
-    // - Still loading if UserContext is loading
-    // - Still loading if we have a company_id but haven't resolved company yet (fallback in progress)
-    const needsCompanyResolution = !!profile?.company_id && !resolvedCompany && fallbackLoading;
-    const isLoading = userLoading || needsCompanyResolution;
+    // Compound loading:
+    //  - Still loading while UserContext is loading
+    //  - Still loading if profile has a company_id but we haven't finished resolving it
+    //    (covers the gap between useUser finishing and useEffect running)
+    const pendingCompany = !!profile?.company_id && !resolvedCompany && !fallbackDone;
+    const isLoading = userLoading || pendingCompany;
 
     return {
         user,

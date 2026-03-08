@@ -188,7 +188,7 @@ BEGIN
         SELECT 1 FROM information_schema.tables
         WHERE table_name = 'leases' AND table_schema = 'public'
     ) THEN
-        SELECT COALESCE(SUM(monthly_rent), 0) INTO v_total_monthly_rent
+        SELECT COALESCE(SUM(rent_amount), 0) INTO v_total_monthly_rent
         FROM public.leases
         WHERE company_id = p_company_id
             AND status IN ('active', 'Active');

@@ -43,42 +43,59 @@ export class StatsService {
     }
 
     private async getStatsDirect(companyId: string): Promise<DashboardStats & { recentActivity: ActivityItem[] }> {
-        // Direct query fallback when the RPC doesn't exist or fails
+        // Direct query fallback when the RPC doesn't exist or fails.
+        // Every query is individually wrapped so a single missing table never
+        // takes down the entire dashboard.
+        const safe = async (fn: () => any): Promise<{ data: any; count: number }> => {
+            try {
+                const res = await fn();
+                return { data: res.data ?? null, count: res.count ?? 0 };
+            } catch { return { data: null, count: 0 }; }
+        };
+
         const [
             propsRes, appsRes, paidInvRes, allInvRes,
             maintenanceRes, showingsRes, teamRes,
-            areasRes, buildingsRes, activityRes
+            areasRes, buildingsRes, leasesRes, activityRes
         ] = await Promise.all([
-            this.supabase.from('properties').select('status, rent').eq('company_id', companyId),
-            this.supabase.from('applications').select('status').eq('company_id', companyId),
-            this.supabase.from('invoices').select('total, paid_at, paid_date, updated_at, created_at').eq('company_id', companyId).eq('status', 'paid'),
-            this.supabase.from('invoices').select('total').eq('company_id', companyId).eq('status', 'paid'),
-            this.supabase.from('maintenance_requests').select('id', { count: 'exact', head: true }).eq('company_id', companyId).in('status', ['open', 'in_progress']),
-            this.supabase.from('showings').select('id', { count: 'exact', head: true }).eq('company_id', companyId).gte('scheduled_date', new Date().toISOString().split('T')[0]),
-            this.supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('company_id', companyId),
-            this.supabase.from('areas').select('id', { count: 'exact', head: true }).eq('company_id', companyId),
-            this.supabase.from('buildings').select('id, area_id').eq('company_id', companyId),
-            this.supabase.from('activity_log').select('id, action, entity_type, details, created_at, user:profiles(full_name, avatar_url, email)').eq('company_id', companyId).order('created_at', { ascending: false }).limit(20),
+            safe(() => this.supabase.from('properties').select('status, rent').eq('company_id', companyId)),
+            safe(() => this.supabase.from('applications').select('status').eq('company_id', companyId)),
+            safe(() => this.supabase.from('invoices').select('total, paid_at, paid_date, updated_at, created_at').eq('company_id', companyId).eq('status', 'paid')),
+            safe(() => this.supabase.from('invoices').select('total').eq('company_id', companyId).eq('status', 'paid')),
+            safe(() => this.supabase.from('maintenance_requests').select('id', { count: 'exact', head: true }).eq('company_id', companyId).in('status', ['open', 'in_progress'])),
+            safe(() => this.supabase.from('showings').select('id', { count: 'exact', head: true }).eq('company_id', companyId).gte('scheduled_date', new Date().toISOString().split('T')[0])),
+            safe(() => this.supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('company_id', companyId)),
+            safe(() => this.supabase.from('areas').select('id', { count: 'exact', head: true }).eq('company_id', companyId)),
+            safe(() => this.supabase.from('buildings').select('id').eq('company_id', companyId)),
+            safe(() => this.supabase.from('leases').select('rent_amount').eq('company_id', companyId).in('status', ['active', 'Active'])),
+            safe(() => this.supabase.from('activity_log').select('id, action, entity_type, details, created_at, user:profiles(full_name, avatar_url, email)').eq('company_id', companyId).order('created_at', { ascending: false }).limit(20)),
         ]);
 
-        const props = propsRes.data || [];
-        const apps = appsRes.data || [];
-        const paidInvoices = paidInvRes.data || [];
+        const props = (propsRes.data as any[]) || [];
+        const apps = (appsRes.data as any[]) || [];
+        const paidInvoices = (paidInvRes.data as any[]) || [];
+        const leases = (leasesRes.data as any[]) || [];
 
         const totalProperties = props.length;
         const availableProperties = props.filter(p => p.status === 'available').length;
         const rentedProperties = props.filter(p => p.status === 'rented').length;
-        const totalMonthlyRent = props.filter(p => p.status === 'rented').reduce((sum, p) => sum + (Number(p.rent) || 0), 0);
+
+        // Prefer lease rent_amount; fall back to rented property rents
+        let totalMonthlyRent = leases.reduce((sum: number, l: any) => sum + (Number(l.rent_amount) || 0), 0);
+        if (totalMonthlyRent === 0) {
+            totalMonthlyRent = props.filter(p => p.status === 'rented').reduce((sum: number, p: any) => sum + (Number(p.rent) || 0), 0);
+        }
 
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const totalMonthlyRevenue = paidInvoices.reduce((sum, inv: any) => {
+        const totalMonthlyRevenue = paidInvoices.reduce((sum: number, inv: any) => {
             const d = new Date(inv.paid_at || inv.paid_date || inv.updated_at || inv.created_at);
             return d >= startOfMonth ? sum + (Number(inv.total) || 0) : sum;
         }, 0);
-        const totalLifetimeRevenue = (allInvRes.data || []).reduce((sum, inv: any) => sum + (Number(inv.total) || 0), 0);
+        const totalLifetimeRevenue = ((allInvRes.data as any[]) || []).reduce((sum: number, inv: any) => sum + (Number(inv.total) || 0), 0);
 
-        const activity = (activityRes.data || []).map(item => ({
+        const rawActivity = (activityRes.data as any[]) || [];
+        const activity = rawActivity.map(item => ({
             ...item,
             user: Array.isArray(item.user) ? item.user[0] : item.user
         })) as ActivityItem[];
@@ -95,7 +112,7 @@ export class StatsService {
             applicationTrend: null,
             teamMembers: teamRes.count || 0,
             totalAreas: areasRes.count || 0,
-            totalBuildings: (buildingsRes.data || []).length,
+            totalBuildings: ((buildingsRes.data as any[]) || []).length,
             openMaintenance: maintenanceRes.count || 0,
             upcomingShowings: showingsRes.count || 0,
             totalMonthlyRent,
