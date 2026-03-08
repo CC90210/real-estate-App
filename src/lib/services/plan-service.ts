@@ -52,7 +52,7 @@ export async function getPlanInfo(companyId?: string): Promise<PlanInfo> {
                 is_partner,
                 partner_type,
                 company_id,
-                company:companies (
+                company:companies!profiles_company_id_fkey (
                     id,
                     name,
                     subscription_plan,

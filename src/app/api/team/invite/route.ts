@@ -23,7 +23,7 @@ export async function POST(req: Request) {
         // Get user's profile and verify admin role
         const { data: profile } = await supabase
             .from('profiles')
-            .select('company_id, role, company:companies(name, subscription_plan)')
+            .select('company_id, role, company:companies!profiles_company_id_fkey(name, subscription_plan)')
             .eq('id', user.id)
             .single()
 

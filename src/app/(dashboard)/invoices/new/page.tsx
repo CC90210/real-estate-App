@@ -72,7 +72,7 @@ export default function NewInvoicePage() {
 
                 const { data: profileData } = await supabase
                     .from('profiles')
-                    .select('*, company:companies(id, name, logo_url)')
+                    .select('*, company:companies!profiles_company_id_fkey(id, name, logo_url)')
                     .eq('id', user.id)
                     .single()
 

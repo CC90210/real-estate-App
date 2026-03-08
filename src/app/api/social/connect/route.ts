@@ -33,7 +33,7 @@ export async function POST(req: Request) {
             .from('profiles')
             .select(`
                 company_id, 
-                company:companies(id, name, subscription_plan, late_profile_id)
+                company:companies!profiles_company_id_fkey(id, name, subscription_plan, late_profile_id)
             `)
             .eq('id', user.id)
             .single()

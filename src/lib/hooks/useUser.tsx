@@ -86,7 +86,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 .from('profiles')
                 .select(`
                     id, full_name, email, role, company_id, avatar_url, is_super_admin, is_partner, job_title,
-                    company:companies (
+                    company:companies!profiles_company_id_fkey (
                         id, name, subscription_plan, subscription_status, is_lifetime_access, late_profile_id
                     )
                 `)

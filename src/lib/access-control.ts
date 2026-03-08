@@ -36,7 +36,7 @@ export async function getUserAccess(): Promise<UserAccess> {
             is_super_admin,
             is_partner,
             partner_type,
-            company:companies(
+            company:companies!profiles_company_id_fkey(
                 subscription_plan,
                 subscription_status,
                 plan_override
