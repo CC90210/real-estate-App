@@ -1,7 +1,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
-import { ArrowLeft, Home, BedDouble, Bath, Square, Calendar, MapPin, Key, Shield, Info, Edit, FileText, Plus } from 'lucide-react';
+import { ArrowLeft, Home, BedDouble, Bath, Square, Calendar, MapPin, Key, Shield, Info, Edit, FileText, Plus, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -10,6 +10,7 @@ import { GenerateAdButton } from '@/components/properties/GenerateAdButton';
 import { EditPropertyModal } from '@/components/properties/EditPropertyModal';
 import { DeletePropertyButton } from '@/components/properties/DeletePropertyButton';
 import { LandlordAssignment } from '@/components/properties/LandlordAssignment';
+import { WorkflowTracker } from '@/components/properties/WorkflowTracker';
 // We need client component for interactivity (modal trigger)
 
 export const dynamic = 'force-dynamic';
@@ -101,6 +102,23 @@ export default async function PropertyDetailsPage({ params }: { params: { id: st
                         </div>
                     </div>
 
+                    {/* Video Walkthrough */}
+                    {property.video_walkthrough_url && (
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                            <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                <Video className="w-5 h-5 text-blue-500" /> Video Walkthrough
+                            </h2>
+                            <a
+                                href={property.video_walkthrough_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline font-medium text-sm break-all"
+                            >
+                                {property.video_walkthrough_url}
+                            </a>
+                        </div>
+                    )}
+
                     {/* Description */}
                     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                         <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
@@ -147,6 +165,13 @@ export default async function PropertyDetailsPage({ params }: { params: { id: st
                     </div>
 
 
+
+                    {/* Rental Workflow Progress */}
+                    <WorkflowTracker
+                        propertyId={property.id}
+                        currentPhase={property.workflow_phase || 'onboarding'}
+                        inspectionStatus={property.inspection_status}
+                    />
 
                     {/* Landlord Assignment - Only for Admins/Agents */}
                     {(userProfile?.role === 'admin' || userProfile?.role === 'agent') && (

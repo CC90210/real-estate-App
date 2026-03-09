@@ -25,7 +25,8 @@ import {
     Loader2,
     ArrowRight,
     Command,
-    Sparkles
+    Sparkles,
+    ClipboardCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAccentColor } from '@/lib/hooks/useAccentColor'
@@ -242,13 +243,13 @@ export function QuickFind({ open, onOpenChange }: QuickFindProps) {
                 })
             } catch (e) { console.warn('Documents search failed:', e) }
 
-            // Search Landlords (external landlord records)
+            // Search Landlords (external landlord records) — key dimension per Joseph's guidance
             try {
                 const { data: landlords } = await supabase
                     .from('landlords')
-                    .select('id, name, email')
+                    .select('id, name, email, company_name')
                     .eq('company_id', company.id)
-                    .or(`name.ilike.${searchPattern},email.ilike.${searchPattern}`)
+                    .or(`name.ilike.${searchPattern},email.ilike.${searchPattern},company_name.ilike.${searchPattern}`)
                     .limit(5)
 
                 landlords?.forEach((l: any) => {
@@ -256,9 +257,9 @@ export function QuickFind({ open, onOpenChange }: QuickFindProps) {
                         id: l.id,
                         type: 'landlord',
                         title: l.name || 'Landlord',
-                        subtitle: l.email || 'Landlord',
+                        subtitle: `${l.company_name || ''} ${l.email ? `• ${l.email}` : ''}`.trim(),
                         icon: Users,
-                        href: `/landlords/${l.id}`,
+                        href: `/properties?landlord=${l.id}`,
                         gradient: 'from-purple-500 to-purple-600'
                     })
                 })
@@ -317,9 +318,9 @@ export function QuickFind({ open, onOpenChange }: QuickFindProps) {
     // Quick actions when no query
     const quickActions = [
         { label: 'Add Property', href: '/properties/new', icon: Home, gradient: 'from-blue-500 to-blue-600' },
+        { label: 'Start Inspection', href: '/inspections', icon: ClipboardCheck, gradient: 'from-teal-500 to-teal-600' },
         { label: 'View Applications', href: '/applications', icon: ClipboardList, gradient: 'from-indigo-500 to-indigo-600' },
         { label: 'Schedule Showing', href: '/showings', icon: Calendar, gradient: 'from-violet-500 to-violet-600' },
-        { label: 'Create Invoice', href: '/invoices/new', icon: Receipt, gradient: 'from-emerald-500 to-emerald-600' },
         { label: 'Generate Document', href: '/documents', icon: FileText, gradient: 'from-amber-500 to-amber-600' },
     ]
 
@@ -338,7 +339,7 @@ export function QuickFind({ open, onOpenChange }: QuickFindProps) {
                                 value={query}
                                 onChange={(e) => setQuery(e.target.value)}
                                 onKeyDown={handleKeyDown}
-                                placeholder="Search properties, applications, invoices, documents..."
+                                placeholder="Search properties, landlords, applications, areas..."
                                 className="h-14 text-lg font-medium border-0 bg-transparent focus-visible:ring-0 placeholder:text-slate-400"
                             />
                         </div>

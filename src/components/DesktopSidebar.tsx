@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 import Link from 'next/link';
@@ -25,6 +26,13 @@ import {
     Share2,
     ShieldAlert,
     Lock,
+    ClipboardCheck,
+    Megaphone,
+    MessageSquare,
+    UserCheck,
+    PenTool,
+    CreditCard,
+    KeyRound,
 } from 'lucide-react';
 import { NotificationsPanel } from '@/components/NotificationsPanel';
 import { cn } from '@/lib/utils';
@@ -38,22 +46,36 @@ import { Logo } from '@/components/brand/Logo';
 
 import { useRole } from '@/hooks/use-role';
 
+// Navigation follows the 8-phase rental workflow:
+// 1. Properties → 2. Inspections → 3. Listings & Marketing → 4. Communications
+// 5. Applications & Vetting → 6. Documents & E-Sign → 7. Payments → 8. Key Handoff
 const navItems = [
-    { id: 'dashboard', name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'agent', 'landlord'] },
-    { id: 'areas', name: 'Areas', href: '/areas', icon: MapPin, roles: ['admin', 'agent'] },
-    { id: 'properties', name: 'Properties', href: '/properties', icon: Home, roles: ['admin', 'agent', 'landlord'] },
-    { id: 'applications', name: 'Applications', href: '/applications', icon: ClipboardList, roles: ['admin', 'agent', 'landlord'] },
-    { id: 'approvals', name: 'Approvals', href: '/approvals', icon: CheckCircle, roles: ['admin', 'agent'] },
-    { id: 'leases', name: 'Leases', href: '/leases', icon: BookOpen, roles: ['admin', 'agent', 'landlord'] },
-    { id: 'maintenance', name: 'Maintenance', href: '/maintenance', icon: Wrench, roles: ['admin', 'agent', 'landlord'] },
-    { id: 'showings', name: 'Showings', href: '/showings', icon: Calendar, roles: ['admin', 'agent', 'landlord'] },
-    { id: 'invoices', name: 'Invoices', href: '/invoices', icon: Receipt, roles: ['admin', 'agent', 'landlord'] },
-    { id: 'documents', name: 'Documents', href: '/documents', icon: FileText, roles: ['admin', 'agent', 'landlord'] },
-    { id: 'analytics', name: 'Analytics', href: '/analytics', icon: BarChart3, roles: ['admin', 'agent'] },
-    { id: 'activity', name: 'Activity', href: '/activity', icon: Activity, roles: ['admin'] },
-    { id: 'social', name: 'Social Media', href: '/social', icon: Share2, roles: ['admin', 'agent'] },
-    { id: 'automations', name: 'Automations', href: '/automations', icon: Zap, roles: ['admin'] },
-    { id: 'settings', name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'agent', 'landlord'] },
+    { id: 'dashboard', name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'agent', 'landlord'], section: 'overview' },
+    // Phase 1: Property Onboarding
+    { id: 'properties', name: 'Properties', href: '/properties', icon: Home, roles: ['admin', 'agent', 'landlord'], section: 'workflow' },
+    { id: 'areas', name: 'Areas', href: '/areas', icon: MapPin, roles: ['admin', 'agent'], section: 'workflow' },
+    // Phase 2: Pre-Rental Inspection
+    { id: 'inspections', name: 'Inspections', href: '/inspections', icon: ClipboardCheck, roles: ['admin', 'agent', 'landlord'], section: 'workflow' },
+    // Phase 3: Listings & Marketing
+    { id: 'social', name: 'Listings & Marketing', href: '/social', icon: Megaphone, roles: ['admin', 'agent'], section: 'workflow' },
+    // Phase 4: Communications (Bot + Manual)
+    { id: 'communication', name: 'Communication', href: '/communication', icon: MessageSquare, roles: ['admin', 'agent'], section: 'workflow' },
+    { id: 'showings', name: 'Showings', href: '/showings', icon: Calendar, roles: ['admin', 'agent', 'landlord'], section: 'workflow' },
+    // Phase 5: Applications & Vetting
+    { id: 'applications', name: 'Applications', href: '/applications', icon: ClipboardList, roles: ['admin', 'agent', 'landlord'], section: 'workflow' },
+    { id: 'approvals', name: 'Approvals', href: '/approvals', icon: CheckCircle, roles: ['admin', 'agent'], section: 'workflow' },
+    // Phase 6: Documents & E-Sign
+    { id: 'documents', name: 'Documents', href: '/documents', icon: PenTool, roles: ['admin', 'agent', 'landlord'], section: 'workflow' },
+    { id: 'leases', name: 'Leases', href: '/leases', icon: BookOpen, roles: ['admin', 'agent', 'landlord'], section: 'workflow' },
+    // Phase 7: Payments
+    { id: 'invoices', name: 'Payments', href: '/invoices', icon: CreditCard, roles: ['admin', 'agent', 'landlord'], section: 'workflow' },
+    // Phase 8: Key Handoff (tracked on property detail page)
+    // --- Operations & Insights ---
+    { id: 'maintenance', name: 'Maintenance', href: '/maintenance', icon: Wrench, roles: ['admin', 'agent', 'landlord'], section: 'operations' },
+    { id: 'analytics', name: 'Analytics', href: '/analytics', icon: BarChart3, roles: ['admin', 'agent'], section: 'operations' },
+    { id: 'activity', name: 'Activity', href: '/activity', icon: Activity, roles: ['admin'], section: 'operations' },
+    { id: 'automations', name: 'Automations', href: '/automations', icon: Zap, roles: ['admin'], section: 'operations' },
+    { id: 'settings', name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'agent', 'landlord'], section: 'settings' },
 ];
 
 interface DesktopSidebarProps {
@@ -108,46 +130,64 @@ export function DesktopSidebar({ className, onQuickFindOpen }: DesktopSidebarPro
                 </div>
             </div>
 
-            <nav className="flex-1 px-4 py-2 space-y-1.5 overflow-y-auto">
-                <div className="px-3 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Management</div>
-                {filteredNavItems.map((item) => {
+            <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto">
+                {filteredNavItems.map((item, index) => {
+                    // Show section headers
+                    const prevItem = filteredNavItems[index - 1];
+                    const showSectionHeader = !prevItem || prevItem.section !== item.section;
+                    const sectionLabels: Record<string, string> = {
+                        overview: 'Overview',
+                        workflow: 'Rental Workflow',
+                        operations: 'Operations',
+                        settings: '',
+                    };
+                    const sectionLabel = showSectionHeader ? sectionLabels[item.section || ''] : null;
                     const isAllowed = allowedNav.includes(item.id as any) || item.id === 'settings';
                     const isActive = pathname === item.href || (item.href !== '/dashboard' && (pathname?.startsWith(item.href) || false));
 
+                    const header = sectionLabel ? (
+                        <div key={`section-${item.section}`} className="px-3 pt-4 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">{sectionLabel}</div>
+                    ) : null;
+
                     if (!isAllowed) {
                         return (
-                            <div
-                                key={item.href}
-                                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-300 cursor-not-allowed group opacity-60"
-                                title="Upgrade plan to access"
-                            >
-                                <item.icon className="w-5 h-5 text-slate-300" />
-                                <span>{item.name}</span>
-                                <Lock className="w-3.5 h-3.5 ml-auto text-slate-300" />
-                            </div>
+                            <React.Fragment key={item.href}>
+                                {header}
+                                <div
+                                    className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-300 cursor-not-allowed group opacity-60"
+                                    title="Upgrade plan to access"
+                                >
+                                    <item.icon className="w-5 h-5 text-slate-300" />
+                                    <span>{item.name}</span>
+                                    <Lock className="w-3.5 h-3.5 ml-auto text-slate-300" />
+                                </div>
+                            </React.Fragment>
                         );
                     }
 
                     return (
-                        <Link key={item.href} href={item.href}>
-                            <div
-                                className={cn(
-                                    "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 group relative",
-                                    isActive
-                                        ? cn("bg-white shadow-sm border border-slate-200/50", colors.text)
-                                        : "text-slate-500 hover:text-slate-900 hover:bg-white/50"
-                                )}
-                            >
-                                {isActive && (
-                                    <div
-                                        className="absolute left-0 w-1 h-5 rounded-r-full"
-                                        style={{ backgroundColor: colors.primary }}
-                                    />
-                                )}
-                                <item.icon className={cn("w-5 h-5 transition-transform group-hover:scale-110", isActive ? colors.text : "text-slate-400 group-hover:text-slate-600")} />
-                                <span>{item.name}</span>
-                            </div>
-                        </Link>
+                        <React.Fragment key={item.href}>
+                            {header}
+                            <Link href={item.href}>
+                                <div
+                                    className={cn(
+                                        "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 group relative",
+                                        isActive
+                                            ? cn("bg-white shadow-sm border border-slate-200/50", colors.text)
+                                            : "text-slate-500 hover:text-slate-900 hover:bg-white/50"
+                                    )}
+                                >
+                                    {isActive && (
+                                        <div
+                                            className="absolute left-0 w-1 h-5 rounded-r-full"
+                                            style={{ backgroundColor: colors.primary }}
+                                        />
+                                    )}
+                                    <item.icon className={cn("w-5 h-5 transition-transform group-hover:scale-110", isActive ? colors.text : "text-slate-400 group-hover:text-slate-600")} />
+                                    <span>{item.name}</span>
+                                </div>
+                            </Link>
+                        </React.Fragment>
                     );
                 })}
             </nav>

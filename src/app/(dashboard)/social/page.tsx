@@ -9,8 +9,9 @@ import {
     Share2, Plus, Send, Clock, CheckCircle2,
     Instagram, Linkedin, Facebook, Hash, Sparkles, Loader2,
     Trash2, Youtube, Globe, MessageCircle, Camera, MapPin,
-    AtSign, Radio, Bookmark, Upload, X, Image as ImageIcon, Film,
+    AtSign, Radio, Bookmark, Upload, X, Image as ImageIcon, Film, Store,
 } from 'lucide-react'
+import { MarketplaceListings } from '@/components/social/MarketplaceListings'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { useSearchParams } from 'next/navigation'
@@ -65,7 +66,7 @@ export default function SocialPage() {
     const searchParams = useSearchParams()
     const fileInputRef = useRef<HTMLInputElement>(null)
 
-    const [activeTab, setActiveTab] = useState<'accounts' | 'post' | 'history'>('accounts')
+    const [activeTab, setActiveTab] = useState<'accounts' | 'post' | 'history' | 'marketplaces'>('accounts')
     const [accounts, setAccounts] = useState<SocialAccount[]>([])
     const [posts, setPosts] = useState<SocialPost[]>([])
     const [loading, setLoading] = useState(true)
@@ -366,11 +367,12 @@ export default function SocialPage() {
             )}
 
             {/* Tab Navigation */}
-            <div className="flex gap-1 p-1 bg-slate-100 rounded-xl w-fit">
+            <div className="flex gap-1 p-1 bg-slate-100 rounded-xl w-fit flex-wrap">
                 {[
                     { key: 'accounts' as const, label: `Platforms (${activeAccounts.length})` },
                     { key: 'post' as const, label: 'Create Post' },
                     { key: 'history' as const, label: 'Post History' },
+                    { key: 'marketplaces' as const, label: 'Marketplaces' },
                 ].map(tab => (
                     <button
                         key={tab.key}
@@ -746,6 +748,11 @@ export default function SocialPage() {
                         </div>
                     )}
                 </div>
+            )}
+
+            {/* ═══════════════════ MARKETPLACES TAB ═══════════════════ */}
+            {activeTab === 'marketplaces' && (
+                <MarketplaceListings companyId={resolvedCompanyId} />
             )}
         </div>
     )

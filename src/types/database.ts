@@ -226,6 +226,13 @@ export interface Property {
   updated_at?: string;
   photos: string[] | null;
 
+  // Video walkthrough (mandatory protocol per Joseph's guidance)
+  video_walkthrough_url?: string | null;
+
+  // Workflow gate tracking
+  workflow_phase?: RentalWorkflowPhase;
+  inspection_status?: InspectionGateStatus;
+
   // Fields from old interface to prevent breaking changes
   pet_policy?: string | null;
   parking_included?: boolean;
@@ -352,3 +359,116 @@ export interface Commission {
   created_at: string;
   updated_at: string;
 }
+
+// === Rental Workflow & Inspection Types ===
+
+// 8-phase rental workflow tracking
+export type RentalWorkflowPhase =
+  | 'onboarding'        // Phase 1: Property profile being built
+  | 'inspection'        // Phase 2: Pre-rental inspection in progress
+  | 'listing'           // Phase 3: Listed & marketing
+  | 'communication'     // Phase 4: Lead communication & vetting
+  | 'application'       // Phase 5: Application & tenant vetting
+  | 'documents'         // Phase 6: Document management & e-signing
+  | 'payment'           // Phase 7: Payment collection
+  | 'handoff'           // Phase 8: Key handoff & move-in
+  | 'occupied';         // Property is occupied / active lease
+
+export type InspectionGateStatus = 'not_started' | 'in_progress' | 'passed' | 'failed' | 'overridden';
+
+export type InspectionItemStatus = 'pass' | 'fail' | 'not_checked';
+
+export interface InspectionTemplate {
+  id: string;
+  company_id: string;
+  name: string;
+  description: string | null;
+  items: InspectionTemplateItem[];
+  is_default: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InspectionTemplateItem {
+  id: string;
+  label: string;
+  category: string; // e.g., 'kitchen', 'bathroom', 'electrical', 'safety', 'general'
+  description?: string;
+  required: boolean;
+}
+
+export interface Inspection {
+  id: string;
+  company_id: string;
+  property_id: string;
+  template_id: string | null;
+  inspected_by: string;         // agent user ID
+  inspected_by_name: string;    // agent name for display
+  status: InspectionGateStatus;
+  notes: string | null;
+  signed_at: string | null;     // digital signature timestamp
+  landlord_notified_at: string | null;
+  created_at: string;
+  updated_at: string;
+  // Relations
+  property?: Property;
+  items?: InspectionItem[];
+  inspector?: Profile;
+}
+
+export interface InspectionItem {
+  id: string;
+  inspection_id: string;
+  label: string;
+  category: string;
+  status: InspectionItemStatus;
+  notes: string | null;
+  photo_urls: string[] | null;
+  // If failed: maintenance request generated
+  maintenance_request_id: string | null;
+  landlord_override: boolean;       // landlord acknowledged and declined to fix
+  landlord_override_at: string | null;
+  landlord_override_reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Key Handoff tracking (Phase 8)
+export type KeyHandoffMethod = 'in_person' | 'concierge' | 'lockbox' | 'other';
+
+export interface KeyHandoff {
+  id: string;
+  company_id: string;
+  property_id: string;
+  lease_id: string | null;
+  tenant_name: string;
+  handoff_method: KeyHandoffMethod;
+  handoff_details: string | null;  // e.g., lockbox code, concierge name
+  move_in_date: string;
+  completed_at: string | null;
+  completed_by: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Default inspection checklist items (used when creating templates)
+export const DEFAULT_INSPECTION_ITEMS: InspectionTemplateItem[] = [
+  { id: 'kitchen_sink', label: 'Kitchen sink working', category: 'kitchen', required: true },
+  { id: 'kitchen_faucet', label: 'Kitchen faucet — no leaks', category: 'kitchen', required: true },
+  { id: 'kitchen_appliances', label: 'Kitchen appliances working (if included)', category: 'kitchen', required: false },
+  { id: 'electrical_plugs', label: 'All electrical plugs working', category: 'electrical', required: true },
+  { id: 'light_fixtures', label: 'All light fixtures working', category: 'electrical', required: true },
+  { id: 'bathroom_fixtures', label: 'Bathroom fixtures working', category: 'bathroom', required: true },
+  { id: 'bathroom_faucets', label: 'Bathroom faucets — no leaks', category: 'bathroom', required: true },
+  { id: 'toilet_flushing', label: 'Toilet flushing properly', category: 'bathroom', required: true },
+  { id: 'walls_paint', label: 'Walls/paint in acceptable condition', category: 'general', required: true },
+  { id: 'flooring', label: 'Flooring in acceptable condition', category: 'general', required: true },
+  { id: 'odor_cleanliness', label: 'Odor/cleanliness acceptable', category: 'general', required: true },
+  { id: 'windows', label: 'Windows opening/closing properly', category: 'general', required: true },
+  { id: 'locks_doors', label: 'Locks and doors functioning', category: 'safety', required: true },
+  { id: 'heating_ac', label: 'Heating/AC functioning', category: 'hvac', required: true },
+  { id: 'smoke_detectors', label: 'Smoke detectors working', category: 'safety', required: true },
+  { id: 'general_safety', label: 'No general safety hazards', category: 'safety', required: true },
+];

@@ -42,6 +42,8 @@ import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAccentColor } from '@/lib/hooks/useAccentColor'
 import { useAuth } from '@/lib/hooks/useAuth'
+import { VettingScoreCard } from '@/components/applications/VettingScoreCard'
+import { runVetting } from '@/lib/vetting'
 
 export default function ApprovalsPage() {
     const router = useRouter()
@@ -286,22 +288,68 @@ export default function ApprovalsPage() {
                                                         <h3 className={cn("text-3xl font-black text-slate-900 tracking-tight transition-colors", `group-hover:${colors.text}`)}>
                                                             {app.applicant_name}
                                                         </h3>
-                                                        <div className="flex items-center gap-3 mt-2">
+                                                        <div className="flex flex-wrap items-center gap-3 mt-2">
                                                             <Badge variant="outline" className="bg-white/90 font-black text-[10px] uppercase tracking-widest px-3 py-1 rounded-xl text-slate-400">
                                                                 #{app.id.slice(0, 8)}
                                                             </Badge>
                                                             <Badge className={cn("border-none font-black text-[10px] uppercase tracking-widest px-3 py-1 rounded-xl capitalize", colors.bgLight, colors.text, `hover:${colors.bg}`)}>
                                                                 {(app.status || 'new').replace('_', ' ')}
                                                             </Badge>
+                                                            {(() => {
+                                                                const rent = app.property?.rent ?? 0;
+                                                                const vetting = runVetting(app, rent);
+                                                                if (vetting.overall === 'pass') {
+                                                                    return (
+                                                                        <Badge className="border-none font-black text-[10px] uppercase tracking-widest px-3 py-1 rounded-xl bg-emerald-50 text-emerald-700">
+                                                                            Recommended
+                                                                        </Badge>
+                                                                    );
+                                                                }
+                                                                if (vetting.overall === 'fail') {
+                                                                    return (
+                                                                        <Badge className="border-none font-black text-[10px] uppercase tracking-widest px-3 py-1 rounded-xl bg-rose-50 text-rose-700">
+                                                                            Not Recommended
+                                                                        </Badge>
+                                                                    );
+                                                                }
+                                                                return (
+                                                                    <Badge className="border-none font-black text-[10px] uppercase tracking-widest px-3 py-1 rounded-xl bg-amber-50 text-amber-700">
+                                                                        Review Required
+                                                                    </Badge>
+                                                                );
+                                                            })()}
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                                                     <Metric label="Yield Potential" value={`$${app.monthly_income?.toLocaleString()}/mo`} icon={DollarSign} />
                                                     <Metric label="Current Employer" value={app.employer || '---'} icon={Briefcase} />
                                                     <Metric label="Risk Analysis" value={app.credit_score || 'Pending'} icon={ShieldCheck} status={app.credit_score >= 700 ? 'positive' : app.credit_score >= 600 ? 'neutral' : 'warning'} />
+                                                    {(() => {
+                                                        const rent = app.property?.rent ?? 0;
+                                                        const vetting = runVetting(app, rent);
+                                                        const riskStatus =
+                                                            vetting.overall === 'pass'
+                                                                ? 'positive'
+                                                                : vetting.overall === 'fail'
+                                                                ? 'warning'
+                                                                : 'neutral';
+                                                        return (
+                                                            <Metric
+                                                                label="Risk Summary"
+                                                                value={`${vetting.score}/100`}
+                                                                icon={ShieldCheck}
+                                                                status={riskStatus}
+                                                            />
+                                                        );
+                                                    })()}
                                                 </div>
+
+                                                <VettingScoreCard
+                                                    application={app}
+                                                    propertyRent={app.property?.rent ?? 0}
+                                                />
 
                                                 {app.property && (
                                                     <div className="p-6 rounded-[2rem] bg-slate-50 border border-slate-100/60 flex items-center gap-6 group-hover:bg-white transition-colors">

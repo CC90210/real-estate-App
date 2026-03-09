@@ -13,7 +13,14 @@ const propertySchema = z.object({
     bathrooms: z.number().min(0).max(20),
     status: z.enum(['available', 'rented', 'maintenance']),
     available_date: z.string().optional(),
-    amenities: z.array(z.string()).max(50).optional()
+    amenities: z.array(z.string()).max(50).optional(),
+    video_walkthrough_url: z.string().url().max(500).optional().or(z.literal('')),
+    photos: z.array(z.string()).max(20).optional(),
+    landlord_id: z.string().uuid().optional(),
+    square_feet: z.number().min(0).max(100000).optional(),
+    deposit: z.number().min(0).max(1000000).optional(),
+    unit_number: z.string().max(50).optional(),
+    description: z.string().max(5000).optional(),
 });
 
 export async function POST(req: Request) {
@@ -95,7 +102,16 @@ export async function POST(req: Request) {
                 available_date: data.available_date,
                 building_id: building.id,
                 company_id: companyId,
-                amenities: data.amenities || []
+                amenities: data.amenities || [],
+                video_walkthrough_url: data.video_walkthrough_url || null,
+                photos: data.photos || [],
+                landlord_id: data.landlord_id || null,
+                square_feet: data.square_feet || null,
+                unit_number: data.unit_number || null,
+                description: data.description || null,
+                deposit: data.deposit || null,
+                workflow_phase: 'onboarding',
+                inspection_status: 'not_started',
             })
             .select()
             .single();

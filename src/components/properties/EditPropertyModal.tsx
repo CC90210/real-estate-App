@@ -8,7 +8,7 @@ import { updatePropertyAction } from '@/lib/actions/property-actions';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Edit, Loader2, Upload, X, Plus } from 'lucide-react';
+import { Edit, Loader2, Upload, X, Plus, Video } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
@@ -69,6 +69,9 @@ export function EditPropertyModal({ property }: EditPropertyModalProps) {
     const [amenities, setAmenities] = useState<string[]>(property.amenities || []);
     const [customAmenity, setCustomAmenity] = useState('');
 
+    // Video Walkthrough
+    const [videoWalkthroughUrl, setVideoWalkthroughUrl] = useState(property.video_walkthrough_url || '');
+
     // Image State
     const [uploading, setUploading] = useState(false);
     const [photos, setPhotos] = useState<string[]>(property.photos || []);
@@ -88,7 +91,8 @@ export function EditPropertyModal({ property }: EditPropertyModalProps) {
                 square_feet: parseInt(squareFeet) || 0,
                 deposit: parseFloat(deposit) || parseFloat(rent) || 0,
                 available_date: availableDate,
-                amenities: amenities
+                amenities: amenities,
+                video_walkthrough_url: videoWalkthroughUrl || null
             };
 
             const result = await updatePropertyAction(property.id, formData);
@@ -293,6 +297,22 @@ export function EditPropertyModal({ property }: EditPropertyModalProps) {
                                 </div>
                             </div>
                         )}
+                    </div>
+
+                    {/* Video Walkthrough */}
+                    <div className="space-y-2">
+                        <Label className="flex items-center gap-2">
+                            <Video className="w-4 h-4 text-slate-400" />
+                            Video Walkthrough URL
+                            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full uppercase tracking-wider">Required</span>
+                        </Label>
+                        <Input
+                            type="url"
+                            value={videoWalkthroughUrl}
+                            onChange={(e) => setVideoWalkthroughUrl(e.target.value)}
+                            placeholder="https://youtube.com/watch?v=... or https://vimeo.com/..."
+                        />
+                        <p className="text-xs text-slate-400">Video walkthroughs eliminate 90% of wasted showings — mandatory protocol.</p>
                     </div>
 
                     <div className="space-y-4">

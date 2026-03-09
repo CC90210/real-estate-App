@@ -35,25 +35,32 @@ import {
     BookOpen,
     BarChart3,
     Activity,
-    Share2
+    Share2,
+    ClipboardCheck,
+    Megaphone,
+    PenTool,
+    CreditCard,
 } from 'lucide-react'
 
+// Navigation follows the 8-phase rental workflow
 const navigationItems = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, section: 'Overview' },
+    // Rental Workflow
+    { name: 'Properties', href: '/properties', icon: Home, section: 'Rental Workflow' },
     { name: 'Areas', href: '/areas', icon: MapPin },
-    { name: 'Properties', href: '/properties', icon: Home },
+    { name: 'Inspections', href: '/inspections', icon: ClipboardCheck },
+    { name: 'Listings & Marketing', href: '/social', icon: Megaphone },
+    { name: 'Showings', href: '/showings', icon: Calendar },
     { name: 'Applications', href: '/applications', icon: ClipboardList },
     { name: 'Approvals', href: '/approvals', icon: CheckCircle },
+    { name: 'Documents', href: '/documents', icon: PenTool },
     { name: 'Leases', href: '/leases', icon: BookOpen },
-    { name: 'Maintenance', href: '/maintenance', icon: Wrench },
-    { name: 'Showings', href: '/showings', icon: Calendar },
-    { name: 'Documents', href: '/documents', icon: FileText },
-    { name: 'Invoices', href: '/invoices', icon: Receipt },
-    { name: 'Landlords', href: '/landlords', icon: Users },
+    { name: 'Payments', href: '/invoices', icon: CreditCard },
+    // Operations
+    { name: 'Maintenance', href: '/maintenance', icon: Wrench, section: 'Operations' },
     { name: 'Analytics', href: '/analytics', icon: BarChart3 },
     { name: 'Activity', href: '/activity', icon: Activity },
     { name: 'Automations', href: '/automations', icon: Zap },
-    { name: 'Social', href: '/social', icon: Share2 },
     { name: 'Settings', href: '/settings', icon: Settings },
 ]
 
@@ -107,7 +114,7 @@ export function MobileHeader({ onQuickFindOpen, companyName, userName }: MobileH
                                 <div className="text-left">
                                     <p className="font-bold">PropFlow</p>
                                     <p className="text-xs text-gray-500 font-normal">
-                                        {companyName || 'Property Management'}
+                                        {companyName || 'Rental Automation'}
                                     </p>
                                 </div>
                             </SheetTitle>
@@ -115,24 +122,30 @@ export function MobileHeader({ onQuickFindOpen, companyName, userName }: MobileH
 
                         {/* Navigation Items - Scrollable */}
                         <nav className="flex-1 overflow-y-auto py-2">
-                            {navigationItems.map((item) => {
+                            {navigationItems.map((item, index) => {
                                 const Icon = item.icon
                                 const isActive = pathname === item.href ||
                                     (pathname?.startsWith(item.href + '/') || false)
 
                                 return (
-                                    <button
-                                        key={item.href}
-                                        onClick={() => handleNavigation(item.href)}
-                                        className={`w-full flex items-center gap-4 px-4 py-4 text-left transition-colors ${isActive
-                                            ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
-                                            : 'text-gray-700 hover:bg-gray-50 border-l-4 border-transparent'
-                                            }`}
-                                    >
-                                        <Icon className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
-                                        <span className="font-medium">{item.name}</span>
-                                        <ChevronRight className={`h-4 w-4 ml-auto ${isActive ? 'text-blue-400' : 'text-gray-300'}`} />
-                                    </button>
+                                    <div key={item.href}>
+                                        {item.section && (
+                                            <div className="px-4 pt-4 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                                {item.section}
+                                            </div>
+                                        )}
+                                        <button
+                                            onClick={() => handleNavigation(item.href)}
+                                            className={`w-full flex items-center gap-4 px-4 py-3.5 text-left transition-colors ${isActive
+                                                ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                                                : 'text-gray-700 hover:bg-gray-50 border-l-4 border-transparent'
+                                                }`}
+                                        >
+                                            <Icon className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
+                                            <span className="font-medium">{item.name}</span>
+                                            <ChevronRight className={`h-4 w-4 ml-auto ${isActive ? 'text-blue-400' : 'text-gray-300'}`} />
+                                        </button>
+                                    </div>
                                 )
                             })}
                         </nav>

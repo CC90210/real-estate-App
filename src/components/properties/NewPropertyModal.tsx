@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Plus, Home, DollarSign, Bed, Bath, Move, User, Building, MapPin, CheckCircle, ArrowRight } from 'lucide-react';
+import { Loader2, Plus, Home, DollarSign, Bed, Bath, Move, User, Building, MapPin, CheckCircle, ArrowRight, Video } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { propertySchema, PropertyFormValues } from '@/lib/schemas/property-schema';
@@ -259,6 +259,26 @@ export function NewPropertyModal({ open: controlledOpen, onOpenChange }: NewProp
                                 </SelectContent>
                             </Select>
                             {errors.landlord_id && <p className="text-red-500 text-xs">Owner assignment is required</p>}
+                        </div>
+                    </div>
+
+                    {/* SECTION: VIDEO WALKTHROUGH */}
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                            <Video className="w-5 h-5 text-slate-400" />
+                            <h3 className="font-bold text-slate-900">Video Walkthrough</h3>
+                            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full uppercase tracking-wider">Required</span>
+                        </div>
+                        <p className="text-sm text-slate-500">
+                            Upload a video walkthrough or paste a YouTube/Vimeo link. Video walkthroughs eliminate 90% of wasted showings.
+                        </p>
+                        <div className="space-y-2">
+                            <Label htmlFor="video_walkthrough_url">Video URL</Label>
+                            <Input
+                                id="video_walkthrough_url"
+                                placeholder="https://youtube.com/watch?v=... or https://vimeo.com/..."
+                                {...register('video_walkthrough_url')}
+                            />
                         </div>
                     </div>
 

@@ -9,10 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Search, Filter, BedDouble, Bath, Plus, MapPin, User, ArrowRight, Building2, Home, TrendingUp, Sparkles, Upload } from 'lucide-react';
+import { Search, Filter, BedDouble, Bath, Plus, MapPin, User, ArrowRight, Building2, Home, TrendingUp, Sparkles, Upload, Users } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { cn } from '@/lib/utils';
 import { useAccentColor } from '@/lib/hooks/useAccentColor';
@@ -32,10 +32,12 @@ export default function PropertiesPage() {
     const { data: landlords } = useLandlords();
     const { data: limits } = usePlanLimits();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { colors } = useAccentColor();
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [bedsFilter, setBedsFilter] = useState('all');
+    const [landlordFilter, setLandlordFilter] = useState(searchParams?.get('landlord') || 'all');
     const [priceSort, setPriceSort] = useState('default');
     const [newPropertyOpen, setNewPropertyOpen] = useState(false);
 
@@ -51,7 +53,9 @@ export default function PropertiesPage() {
         const matchesBeds = bedsFilter === 'all' ||
             (bedsFilter === '3+' ? property.bedrooms >= 3 : property.bedrooms === parseInt(bedsFilter));
 
-        return matchesSearch && matchesStatus && matchesBeds;
+        const matchesLandlord = landlordFilter === 'all' || property.landlord_id === landlordFilter;
+
+        return matchesSearch && matchesStatus && matchesBeds && matchesLandlord;
     }).sort((a, b) => {
         if (priceSort === 'asc') return a.rent - b.rent;
         if (priceSort === 'desc') return b.rent - a.rent;
@@ -247,11 +251,11 @@ export default function PropertiesPage() {
 
                     {/* Filters */}
                     <Card className="bg-white/80 backdrop-blur-xl border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 p-6">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                            <div className="relative group">
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+                            <div className="relative group md:col-span-2">
                                 <Search className={cn("absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors", `group-focus-within:${colors.text}`)} />
                                 <Input
-                                    placeholder="Identify asset..."
+                                    placeholder="Search by address, city, neighborhood..."
                                     className={cn("pl-12 h-14 bg-white/50 border-slate-200/60 transition-all rounded-2xl font-medium", colors.focusRing, `focus:${colors.border}`)}
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
@@ -270,27 +274,28 @@ export default function PropertiesPage() {
                                     <SelectItem value="maintenance">Maintenance</SelectItem>
                                 </SelectContent>
                             </Select>
+                            <Select value={landlordFilter} onValueChange={setLandlordFilter}>
+                                <SelectTrigger className="h-12 bg-slate-50 border-transparent text-slate-600 font-bold rounded-xl">
+                                    <Users className="w-4 h-4 mr-2 opacity-50" />
+                                    <SelectValue placeholder="Landlord" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl border-slate-100 shadow-2xl">
+                                    <SelectItem value="all">All Landlords</SelectItem>
+                                    {landlords?.map(l => (
+                                        <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                             <Select value={bedsFilter} onValueChange={setBedsFilter}>
                                 <SelectTrigger className="h-12 bg-slate-50 border-transparent text-slate-600 font-bold rounded-xl">
                                     <BedDouble className="w-4 h-4 mr-2 opacity-50" />
-                                    <SelectValue placeholder="Format" />
+                                    <SelectValue placeholder="Bedrooms" />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl border-slate-100 shadow-2xl">
-                                    <SelectItem value="all">Any Capacity</SelectItem>
+                                    <SelectItem value="all">Any Bedrooms</SelectItem>
                                     <SelectItem value="1">1 Bedroom</SelectItem>
                                     <SelectItem value="2">2 Bedrooms</SelectItem>
                                     <SelectItem value="3+">3+ Bedrooms</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <Select value={priceSort} onValueChange={setPriceSort}>
-                                <SelectTrigger className="h-12 bg-slate-50 border-transparent text-slate-600 font-bold rounded-xl">
-                                    <TrendingUp className="w-4 h-4 mr-2 opacity-50" />
-                                    <SelectValue placeholder="Financials" />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl border-slate-100 shadow-2xl">
-                                    <SelectItem value="default">Default Analytics</SelectItem>
-                                    <SelectItem value="asc">Yield: Low to High</SelectItem>
-                                    <SelectItem value="desc">Yield: High to Low</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

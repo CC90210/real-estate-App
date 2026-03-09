@@ -36,13 +36,18 @@ import {
     MapPin,
     Check,
     Plus,
-    Loader2
+    Loader2,
+    Send,
+    Package,
+    Mail,
 } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { useAccentColor } from '@/lib/hooks/useAccentColor'
 import { TierGuard } from '@/components/auth/TierGuard'
 import { useAuth } from '@/lib/hooks/useAuth'
+import { DocumentPackageBuilder } from '@/components/documents/DocumentPackageBuilder'
+import { DocumentSendDialog } from '@/components/documents/DocumentSendDialog'
 
 const documentTypes = [
     {
@@ -93,6 +98,7 @@ function DocumentsContent() {
     const [selectedApplication, setSelectedApplication] = useState<string>(searchParams.get('applicationId') || '')
     const [customFields, setCustomFields] = useState<any>({})
     const [isGenerating, setIsGenerating] = useState(false)
+    const [quickSendOpen, setQuickSendOpen] = useState(false)
 
     // Sync search params if they change
     useEffect(() => {
@@ -142,6 +148,23 @@ function DocumentsContent() {
             return data || []
         },
         enabled: !!companyId
+    })
+
+    // Fetch full application detail when applicationId is in URL (for package builder)
+    const urlApplicationId = searchParams.get('applicationId')
+    const { data: activeApplication } = useQuery({
+        queryKey: ['application-detail', urlApplicationId],
+        queryFn: async () => {
+            if (!urlApplicationId) return null
+            const { data, error } = await supabase
+                .from('applications')
+                .select('id, applicant_name, applicant_email, status, property_id, property:properties(address)')
+                .eq('id', urlApplicationId)
+                .single()
+            if (error) throw error
+            return data
+        },
+        enabled: !!urlApplicationId,
     })
 
     // Auto-fill fields from selected application
@@ -301,8 +324,43 @@ function DocumentsContent() {
                             <Zap className={cn("h-4 w-4", colors.text)} />
                             <span className={cn("text-sm font-bold", colors.text)}>{documents?.length || 0} Documents Created</span>
                         </div>
+                        <Button
+                            onClick={() => setQuickSendOpen(true)}
+                            className="h-10 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-black border-0 shadow-lg shadow-indigo-200 hover:from-indigo-700 hover:to-violet-700 hover:-translate-y-0.5 transition-all duration-200"
+                        >
+                            <Send className="h-4 w-4 mr-2" />
+                            Quick Send
+                        </Button>
                     </div>
                 </div>
+
+                {/* Send Documents — application package builder (shown when applicationId in URL) */}
+                {urlApplicationId && activeApplication && (
+                    <div className="animate-in fade-in slide-in-from-top duration-500" style={{ animationDelay: '50ms' }}>
+                        <div className="flex items-center gap-2 mb-4">
+                            <div className="h-px flex-1 bg-gradient-to-r from-indigo-200 to-transparent" />
+                            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200">
+                                <Package className="h-3 w-3 text-indigo-600" />
+                                <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">
+                                    Send Documents
+                                </span>
+                            </div>
+                            <div className="h-px flex-1 bg-gradient-to-l from-indigo-200 to-transparent" />
+                        </div>
+                        <DocumentPackageBuilder
+                            applicationId={activeApplication.id}
+                            applicantName={activeApplication.applicant_name}
+                            applicantEmail={activeApplication.applicant_email}
+                            propertyAddress={
+                                (Array.isArray(activeApplication.property)
+                                    ? activeApplication.property[0]
+                                    : activeApplication.property
+                                )?.address ?? 'Unknown property'
+                            }
+                            paymentReceived={false}
+                        />
+                    </div>
+                )}
 
                 {/* Main Content - Responsive Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '100ms' }}>
@@ -904,7 +962,97 @@ function DocumentsContent() {
                         )}
                     </CardContent>
                 </Card>
+
+                {/* Document Packages — recent sent packages */}
+                {documents && documents.filter(d => d.content && (d.content as Record<string, unknown>).documents).length > 0 && (
+                    <Card className="rounded-[2rem] border-slate-100/50 bg-white/70 backdrop-blur-xl shadow-xl shadow-slate-200/30 overflow-hidden animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '300ms' }}>
+                        <CardHeader className="p-6 pb-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-200">
+                                        <Package className="h-5 w-5 text-white" />
+                                    </div>
+                                    <div>
+                                        <CardTitle className="text-lg font-black text-slate-900">Document Packages</CardTitle>
+                                        <p className="text-sm text-slate-500">Recently sent document packages</p>
+                                    </div>
+                                </div>
+                                <Button
+                                    onClick={() => setQuickSendOpen(true)}
+                                    variant="outline"
+                                    className="h-9 rounded-xl font-bold text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300"
+                                >
+                                    <Send className="h-3.5 w-3.5 mr-2" />
+                                    Send New
+                                </Button>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-6 pt-0">
+                            <div className="space-y-3">
+                                {documents
+                                    .filter(d => d.content && (d.content as Record<string, unknown>).documents)
+                                    .slice(0, 5)
+                                    .map(doc => {
+                                        const meta = doc.content as Record<string, unknown>
+                                        const docList = (meta.documents as string[]) ?? []
+                                        const esignEnabled = meta.esign_enabled as boolean
+                                        const recipientEmail = meta.recipient_email as string
+                                        const recipientName = meta.recipient_name as string | null
+                                        return (
+                                            <div
+                                                key={doc.id}
+                                                className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50/50 border-2 border-transparent hover:border-indigo-100 hover:bg-white transition-all duration-300 hover:shadow-md"
+                                            >
+                                                <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-200 flex-shrink-0">
+                                                    <Package className="h-5 w-5 text-white" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-bold text-slate-900 truncate">
+                                                        {recipientName ?? recipientEmail}
+                                                    </p>
+                                                    <div className="flex items-center gap-3 mt-1 flex-wrap">
+                                                        <span className="flex items-center gap-1 text-xs text-slate-400">
+                                                            <Mail className="h-3 w-3" />
+                                                            {recipientEmail}
+                                                        </span>
+                                                        <span className="text-xs text-slate-300">·</span>
+                                                        <span className="text-xs text-slate-400 font-medium">
+                                                            {docList.length} doc{docList.length !== 1 ? 's' : ''}
+                                                        </span>
+                                                        {esignEnabled && (
+                                                            <>
+                                                                <span className="text-xs text-slate-300">·</span>
+                                                                <span className="flex items-center gap-1 text-xs text-indigo-600 font-bold">
+                                                                    <Send className="h-3 w-3" />
+                                                                    E-Sign
+                                                                </span>
+                                                            </>
+                                                        )}
+                                                        <span className="text-xs text-slate-300">·</span>
+                                                        <span className="flex items-center gap-1 text-xs text-slate-400">
+                                                            <Clock className="h-3 w-3" />
+                                                            {formatDistanceToNow(new Date(doc.created_at), { addSuffix: true })}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
             </div>
+
+            {/* Quick Send dialog — opened from header button */}
+            <DocumentSendDialog
+                open={quickSendOpen}
+                onOpenChange={setQuickSendOpen}
+                propertyId={selectedProperty || undefined}
+                recipientEmail={customFields.tenantEmail ?? ''}
+                recipientName={customFields.tenantName ?? ''}
+                paymentReceived={false}
+            />
         </TierGuard>
     )
 }
