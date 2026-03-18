@@ -44,7 +44,7 @@ export async function POST(req: Request) {
             .single()
 
         if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 })
+            return NextResponse.json({ error: 'Maintenance request failed' }, { status: 500 })
         }
 
         // Log activity
@@ -70,8 +70,8 @@ export async function POST(req: Request) {
         })
 
         return NextResponse.json(request)
-    } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 })
+    } catch (err) {
+        return NextResponse.json({ error: 'Maintenance request failed' }, { status: 500 })
     }
 }
 
@@ -104,11 +104,11 @@ export async function PATCH(req: Request) {
             .single()
 
         if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 })
+            return NextResponse.json({ error: 'Maintenance request failed' }, { status: 500 })
         }
 
         return NextResponse.json(data)
-    } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 })
+    } catch (err) {
+        return NextResponse.json({ error: 'Maintenance request failed' }, { status: 500 })
     }
 }

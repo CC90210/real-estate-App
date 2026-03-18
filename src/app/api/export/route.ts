@@ -138,13 +138,17 @@ export async function GET(req: Request) {
         })
     } catch (err: any) {
         console.error('[EXPORT]', err)
-        return NextResponse.json({ error: err.message }, { status: 500 })
+        return NextResponse.json({ error: 'Export failed' }, { status: 500 })
     }
 }
 
 function generateCSV(headers: string[], rows: any[][]): string {
     const escape = (val: any) => {
-        const str = String(val ?? '')
+        let str = String(val ?? '')
+        // Protect against CSV formula injection
+        if (/^[=+\-@\t\r]/.test(str)) {
+            str = `'${str}`
+        }
         if (str.includes(',') || str.includes('"') || str.includes('\n')) {
             return `"${str.replace(/"/g, '""')}"`
         }

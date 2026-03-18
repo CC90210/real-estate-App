@@ -46,10 +46,10 @@ export async function GET(
         }
 
         return NextResponse.json({ success: true, document: data });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Document GET Error:', error);
         return NextResponse.json(
-            { error: 'Failed to fetch document', details: error.message },
+            { error: 'Failed to fetch document' },
             { status: 500 }
         );
     }
@@ -108,10 +108,10 @@ export async function DELETE(
         if (error) throw error;
 
         return NextResponse.json({ success: true, message: 'Document deleted' });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Document DELETE Error:', error);
         return NextResponse.json(
-            { error: 'Failed to delete document', details: error.message },
+            { error: 'Failed to delete document' },
             { status: 500 }
         );
     }

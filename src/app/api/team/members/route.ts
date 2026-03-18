@@ -33,7 +33,7 @@ export async function GET(req: Request) {
 
         return NextResponse.json({ members: members || [] })
 
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+    } catch (error) {
+        return NextResponse.json({ error: 'Failed to fetch members' }, { status: 500 })
     }
 }

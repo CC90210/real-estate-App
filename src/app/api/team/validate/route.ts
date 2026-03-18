@@ -71,8 +71,8 @@ export async function GET(req: Request) {
             },
         })
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('Validate invitation error:', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: 'Validation failed' }, { status: 500 })
     }
 }

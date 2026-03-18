@@ -279,11 +279,10 @@ export async function POST(request: Request) {
             documentId: savedDoc.id
         });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('Document Generation Critical Failure:', error);
         return NextResponse.json({
-            error: 'Document generation failed',
-            details: error.message || 'An unexpected error occurred'
+            error: 'Document generation failed'
         }, { status: 500 });
     }
 }

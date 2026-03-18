@@ -65,8 +65,8 @@ export async function POST(req: Request) {
         const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/join/platform/${invite.token}`
 
         return NextResponse.json({ invite, url: inviteUrl })
-    } catch (error: any) {
+    } catch (error) {
         console.error('Create invite error:', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: 'Failed to process invite' }, { status: 500 })
     }
 }

@@ -52,10 +52,10 @@ export async function POST(req: Request) {
             webhookId: result.webhookId,
         })
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('Dispatch API error:', error)
         return NextResponse.json({
-            error: error.message || 'Dispatch failed'
+            error: 'Dispatch failed'
         }, { status: 500 })
     }
 }

@@ -24,11 +24,11 @@ export async function POST(request: Request) {
 
         if (error) {
             console.error("[Setup Profile API Error]:", error.message);
-            return NextResponse.json({ error: error.message }, { status: 500 });
+            return NextResponse.json({ error: 'Profile setup failed' }, { status: 500 });
         }
 
         return NextResponse.json({ success: true, data });
-    } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
+    } catch (err) {
+        return NextResponse.json({ error: 'Profile setup failed' }, { status: 500 });
     }
 }

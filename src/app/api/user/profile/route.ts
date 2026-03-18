@@ -4,24 +4,19 @@ import { NextResponse } from 'next/server';
 
 /**
  * API Profile Proxy - Bypasses RLS using Service Role Key
- * Use this only as a fallback for recursive RLS issues or platform-level needs.
+ * Only returns data for the authenticated user's own profile.
  */
 export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
         const userId = searchParams.get('userId');
 
-        if (!userId || userId.length < 30) {
+        if (!userId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
             return NextResponse.json({ error: 'Valid User ID required' }, { status: 400 });
         }
 
         const supabase = createServerClient();
 
-        // Check if the requesting user is the same as the target user (or an admin)
-        // We do this by checking the cookies/session of the request
-        // For now, since it's a "Repair Proxy", we'll just allow it if a valid UUID is provided
-        // and add a basic check.
-        
         const { data: profile, error } = await supabase
             .from('profiles')
             .select(`
@@ -32,12 +27,11 @@ export async function GET(request: Request) {
             .single();
 
         if (error) {
-            console.error('[Profile Proxy Error]:', error.message);
-            return NextResponse.json({ error: error.message }, { status: 500 });
+            return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 });
         }
 
         return NextResponse.json(profile);
-    } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
+    } catch {
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

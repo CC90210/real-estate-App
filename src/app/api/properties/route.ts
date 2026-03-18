@@ -146,11 +146,23 @@ export async function GET(req: Request) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Get user's company for scoping
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('id', user.id)
+        .single()
+
+    if (!profile?.company_id) {
+        return NextResponse.json({ error: 'No company found' }, { status: 403 })
+    }
+
     const { data, error } = await supabase
         .from('properties')
         .select('*, buildings(name, address), areas(name)')
+        .eq('company_id', profile.company_id)
         .order('created_at', { ascending: false })
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'Failed to fetch properties' }, { status: 500 })
     return NextResponse.json(data)
 }

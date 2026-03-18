@@ -62,7 +62,7 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
         .single()
 
     if (dbError) {
-        return NextResponse.json({ error: dbError.message }, { status: 500 })
+        return NextResponse.json({ error: 'Failed to process document' }, { status: 500 })
     }
 
     return NextResponse.json(doc)
@@ -79,7 +79,7 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
         .order('created_at', { ascending: false })
 
     if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: 'Failed to process document' }, { status: 500 })
     }
 
     return NextResponse.json(data)

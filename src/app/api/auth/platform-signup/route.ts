@@ -122,8 +122,8 @@ export async function POST(req: Request) {
             userId: userId,
             plan: invite.is_enterprise ? 'enterprise' : invite.assigned_plan,
         })
-    } catch (error: any) {
+    } catch (error) {
         console.error('Platform signup error:', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: 'Signup failed' }, { status: 500 })
     }
 }

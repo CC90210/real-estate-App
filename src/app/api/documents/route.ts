@@ -44,17 +44,20 @@ export async function GET(req: NextRequest) {
         if (type) query = query.eq('type', type);
         if (propertyId) query = query.eq('property_id', propertyId);
         if (applicationId) query = query.eq('application_id', applicationId);
-        if (limit) query = query.limit(parseInt(limit));
+        if (limit) {
+            const parsedLimit = Math.min(Math.max(parseInt(limit) || 50, 1), 200);
+            query = query.limit(parsedLimit);
+        }
 
         const { data, error } = await query;
 
         if (error) throw error;
 
         return NextResponse.json({ success: true, documents: data });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Documents GET Error:', error);
         return NextResponse.json(
-            { error: 'Failed to fetch documents', details: error.message },
+            { error: 'Failed to fetch documents' },
             { status: 500 }
         );
     }
@@ -105,10 +108,10 @@ export async function POST(req: NextRequest) {
         if (error) throw error;
 
         return NextResponse.json({ success: true, document: data }, { status: 201 });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Documents POST Error:', error);
         return NextResponse.json(
-            { error: 'Failed to create document', details: error.message },
+            { error: 'Failed to create document' },
             { status: 500 }
         );
     }

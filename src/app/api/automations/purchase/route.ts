@@ -51,8 +51,8 @@ export async function POST(request: Request) {
             checkoutUrl: `/settings/billing?upgrade=${type}`
         })
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('Automation purchase error:', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: 'Purchase failed' }, { status: 500 })
     }
 }

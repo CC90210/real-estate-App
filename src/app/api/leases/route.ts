@@ -47,7 +47,7 @@ export async function POST(req: Request) {
             .single()
 
         if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 })
+            return NextResponse.json({ error: 'Lease operation failed' }, { status: 500 })
         }
 
         // Log activity
@@ -61,8 +61,8 @@ export async function POST(req: Request) {
         })
 
         return NextResponse.json(lease)
-    } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 })
+    } catch (err) {
+        return NextResponse.json({ error: 'Lease operation failed' }, { status: 500 })
     }
 }
 
@@ -91,7 +91,7 @@ export async function GET(req: Request) {
         .order('created_at', { ascending: false })
 
     if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: 'Lease operation failed' }, { status: 500 })
     }
 
     return NextResponse.json(data)

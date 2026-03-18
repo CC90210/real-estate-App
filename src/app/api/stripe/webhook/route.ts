@@ -24,10 +24,10 @@ export async function POST(req: Request) {
             signature,
             process.env.STRIPE_WEBHOOK_SIGNING_SECRET!  // Matches your Vercel setup
         )
-    } catch (error: any) {
-        console.error('Webhook signature verification failed:', error.message)
+    } catch (error) {
+        console.error('Webhook signature verification failed:', error)
         return NextResponse.json(
-            { error: `Webhook Error: ${error.message}` },
+            { error: 'Webhook verification failed' },
             { status: 400 }
         )
     }
@@ -82,7 +82,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ received: true })
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('Webhook handler error:', error)
         return NextResponse.json(
             { error: 'Webhook handler failed' },

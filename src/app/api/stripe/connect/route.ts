@@ -43,12 +43,12 @@ export async function GET() {
             payoutsEnabled: connectAccount.payouts_enabled || false,
         })
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('Connect status error:', error)
         return NextResponse.json({
             connected: false,
             status: 'error',
-            error: error.message
+            error: 'Failed to create connect account'
         })
     }
 }

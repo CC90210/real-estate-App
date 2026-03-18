@@ -170,10 +170,10 @@ export async function POST(req: Request) {
             message: 'Automation triggered successfully'
         })
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('Automation Trigger Critical Failure:', error);
         return NextResponse.json(
-            { error: 'Failed to trigger automation', details: error.message },
+            { error: 'Failed to trigger automation' },
             { status: 500 }
         )
     }

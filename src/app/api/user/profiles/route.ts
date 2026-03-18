@@ -22,11 +22,11 @@ export async function POST(request: Request) {
 
         if (error) {
             console.error('[Profiles Proxy Error]:', error.message);
-            return NextResponse.json({ error: error.message }, { status: 500 });
+            return NextResponse.json({ error: 'Failed to fetch profiles' }, { status: 500 });
         }
 
         return NextResponse.json(profiles);
-    } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
+    } catch (err) {
+        return NextResponse.json({ error: 'Failed to fetch profiles' }, { status: 500 });
     }
 }

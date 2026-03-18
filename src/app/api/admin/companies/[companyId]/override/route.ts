@@ -49,8 +49,8 @@ export async function POST(req: Request, props: { params: Promise<{ companyId: s
         if (error) throw error
 
         return NextResponse.json({ success: true, plan })
-    } catch (error: any) {
+    } catch (error) {
         console.error('Plan override error:', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: 'Override failed' }, { status: 500 })
     }
 }

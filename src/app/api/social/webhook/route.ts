@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createHmac } from 'crypto'
 
 // Admin client (bypasses RLS for webhook processing)
 const supabaseAdmin = createClient(
@@ -7,15 +8,33 @@ const supabaseAdmin = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// Late webhook events — payload format confirmed from dashboard:
-// {
-//   "event": "post.published",
-//   "post": { "id": "abc123", "content": "...", "status": "published", "platforms": [...] },
-//   "timestamp": "2024-12-15T10:00:00.122Z"
-// }
+function verifyWebhookSignature(payload: string, signature: string | null, secret: string): boolean {
+    if (!signature) return false
+    const expected = createHmac('sha256', secret).update(payload).digest('hex')
+    // Constant-time comparison
+    if (expected.length !== signature.length) return false
+    let mismatch = 0
+    for (let i = 0; i < expected.length; i++) {
+        mismatch |= expected.charCodeAt(i) ^ signature.charCodeAt(i)
+    }
+    return mismatch === 0
+}
+
 export async function POST(req: Request) {
     try {
-        const body = await req.json()
+        const rawBody = await req.text()
+
+        // Verify webhook signature when secret is configured
+        const webhookSecret = process.env.WEBHOOK_SECRET
+        if (webhookSecret && webhookSecret !== 'replace_with_your_secret') {
+            const signature = req.headers.get('x-webhook-signature') || req.headers.get('x-late-signature')
+            if (!verifyWebhookSignature(rawBody, signature, webhookSecret)) {
+                console.error('[Social Webhook] Invalid signature')
+                return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+            }
+        }
+
+        const body = JSON.parse(rawBody)
         const event = body.event
 
         console.log('[Social Webhook] Event:', event, '| Timestamp:', body.timestamp)
@@ -165,7 +184,7 @@ export async function POST(req: Request) {
         }
 
         return NextResponse.json({ received: true })
-    } catch (error: any) {
+    } catch (error) {
         console.error('[Social Webhook] Error:', error)
         return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 })
     }

@@ -117,11 +117,10 @@ RESPONSE FORMAT:
             }
         });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('Gemini API Error:', error);
         return NextResponse.json({
-            error: 'Generation failed',
-            details: error.message
+            error: 'Generation failed'
         }, { status: 500 });
     }
 }

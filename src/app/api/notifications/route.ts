@@ -27,7 +27,7 @@ export async function GET(req: Request) {
     const { data, error, count } = await query
 
     if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: 'Notification operation failed' }, { status: 500 })
     }
 
     // Also get unread count
@@ -63,7 +63,7 @@ export async function PATCH(req: Request) {
             .eq('user_id', user.id)
             .eq('read', false)
 
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+        if (error) return NextResponse.json({ error: 'Notification operation failed' }, { status: 500 })
         return NextResponse.json({ success: true })
     }
 
@@ -74,7 +74,7 @@ export async function PATCH(req: Request) {
             .eq('user_id', user.id)
             .in('id', ids)
 
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+        if (error) return NextResponse.json({ error: 'Notification operation failed' }, { status: 500 })
         return NextResponse.json({ success: true })
     }
 

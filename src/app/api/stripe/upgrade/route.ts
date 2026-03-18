@@ -122,8 +122,8 @@ export async function POST(req: Request) {
         })
 
         return NextResponse.json({ url: session.url })
-    } catch (error: any) {
+    } catch (error) {
         console.error('Upgrade error:', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: 'Upgrade failed' }, { status: 500 })
     }
 }

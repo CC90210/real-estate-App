@@ -150,9 +150,9 @@ export async function POST(req: Request) {
             },
         })
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('Invite error:', error)
-        return NextResponse.json({ error: error.message || 'Internal error' }, { status: 500 })
+        return NextResponse.json({ error: 'Failed to send invite' }, { status: 500 })
     }
 }
 
@@ -184,8 +184,8 @@ export async function GET(req: Request) {
 
         return NextResponse.json({ invitations: invitations || [] })
 
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+    } catch (error) {
+        return NextResponse.json({ error: 'Failed to fetch invitations' }, { status: 500 })
     }
 }
 
@@ -229,7 +229,7 @@ export async function DELETE(req: Request) {
 
         return NextResponse.json({ success: true })
 
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+    } catch (error) {
+        return NextResponse.json({ error: 'Failed to revoke invite' }, { status: 500 })
     }
 }

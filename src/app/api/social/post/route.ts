@@ -83,8 +83,8 @@ export async function POST(req: Request) {
         }).select().single()
 
         return NextResponse.json({ post: savedPost, latePost })
-    } catch (error: any) {
+    } catch (error) {
         console.error('Social post error:', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: 'Failed to create post' }, { status: 500 })
     }
 }
