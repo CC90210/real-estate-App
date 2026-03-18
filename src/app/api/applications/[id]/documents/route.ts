@@ -36,7 +36,8 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
         .upload(fileName, file)
 
     if (uploadError) {
-        return NextResponse.json({ error: uploadError.message }, { status: 500 })
+        console.error('Upload error:', uploadError.message)
+        return NextResponse.json({ error: 'File upload failed' }, { status: 500 })
     }
 
     // Get public URL
@@ -71,6 +72,11 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
 export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
     const params = await props.params
     const supabase = await createClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     const { data, error } = await supabase
         .from('application_documents')

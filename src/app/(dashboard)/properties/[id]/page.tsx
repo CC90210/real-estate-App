@@ -19,6 +19,14 @@ export default async function PropertyDetailsPage({ params }: { params: { id: st
     const supabase = await createClient();
     const { id } = await params;
 
+    // Auth check first — before any data queries
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: userProfile } = user ? await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single() : { data: null };
+
     const { data: property } = await supabase
         .from('properties')
         .select(`
@@ -30,14 +38,6 @@ export default async function PropertyDetailsPage({ params }: { params: { id: st
         `)
         .eq('id', id)
         .single();
-
-    // Get current user and role
-    const { data: { user } } = await supabase.auth.getUser();
-    const { data: userProfile } = user ? await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single() : { data: null };
 
     if (!property) return <div className="p-8">Property not found</div>;
 
