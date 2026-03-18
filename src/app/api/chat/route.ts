@@ -57,19 +57,32 @@ export async function POST(request: Request) {
         }
 
 
-        // 1. Fetch Context: Properties (lockbox_code excluded for security)
+        // Get user's company for scoping
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('company_id')
+            .eq('id', user.id)
+            .single();
+
+        if (!profile?.company_id) {
+            return NextResponse.json({ error: 'No company found' }, { status: 403 });
+        }
+
+        // 1. Fetch Context: Properties (company-scoped, lockbox_code excluded for security)
         const { data: properties } = await supabase
             .from('properties')
             .select(`
                 id, address, rent, bedrooms, bathrooms, status,
                 available_date,
                 buildings (name)
-            `);
+            `)
+            .eq('company_id', profile.company_id);
 
-        // 2. Fetch Context: Applications
+        // 2. Fetch Context: Applications (company-scoped)
         const { data: applications } = await supabase
             .from('applications')
             .select('applicant_name, status, monthly_income, credit_score, properties(address)')
+            .eq('company_id', profile.company_id)
             .order('created_at', { ascending: false })
             .limit(10);
 

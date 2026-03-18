@@ -13,7 +13,7 @@ export async function POST(req: Request) {
 
     try {
         const body = await req.json()
-        const { property_id, title, description, category, priority, photos, company_id: bodyCompanyId } = body
+        const { property_id, title, description, category, priority, photos } = body
 
         const { data: profile } = await supabase
             .from('profiles')
@@ -21,8 +21,8 @@ export async function POST(req: Request) {
             .eq('id', user.id)
             .single()
 
-        // Use company from profile OR from body (tenants use property company)
-        const companyId = profile?.company_id || bodyCompanyId
+        // Company must come from authenticated user's profile — never from request body
+        const companyId = profile?.company_id
 
         if (!companyId) {
             return NextResponse.json({ error: 'No company context found' }, { status: 400 })

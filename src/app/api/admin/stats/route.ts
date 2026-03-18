@@ -60,7 +60,8 @@ export async function GET() {
             },
             recentSignups
         })
-    } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 })
+    } catch (err) {
+        console.error('Admin stats error:', err)
+        return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 })
     }
 }

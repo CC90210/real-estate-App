@@ -54,9 +54,9 @@ export async function POST(req: Request) {
                     company_id: profile.company_id,
                     stripe_account_id: stripeAccountId,
                 })
-            } catch (err: any) {
+            } catch (err) {
                 // HANDLE SPECIFIC PLATFORM ERROR
-                if (err.message.includes('responsibilities of managing losses')) {
+                if (err instanceof Error && err.message.includes('responsibilities of managing losses')) {
                     return NextResponse.json({
                         error: 'Stripe Platform Profile Incomplete: Please log in to your Stripe Dashboard and complete the "Connect Platform Profile" settings to accept responsibility for managing losses.'
                     }, { status: 400 })
@@ -75,9 +75,9 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ url: accountLink.url })
 
-    } catch (err: any) {
+    } catch (err) {
         console.error('Stripe Connect error:', err)
-        return NextResponse.json({ error: err.message }, { status: 500 })
+        return NextResponse.json({ error: 'Stripe Connect setup failed' }, { status: 500 })
     }
 }
 export async function GET(req: Request) {
@@ -117,7 +117,8 @@ export async function GET(req: Request) {
             .eq('company_id', profile.company_id)
 
         return NextResponse.json({ success: true, status: updateData })
-    } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 })
+    } catch (err) {
+        console.error('Stripe Connect status error:', err)
+        return NextResponse.json({ error: 'Failed to check account status' }, { status: 500 })
     }
 }
