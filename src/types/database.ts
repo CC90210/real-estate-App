@@ -453,22 +453,45 @@ export interface KeyHandoff {
   updated_at: string;
 }
 
-// Default inspection checklist items (used when creating templates)
+// LS Capital Group — Rental Protocol Pre-Rental Checklist
+// Source: "Rental check list .docx.pdf" — official agent walkthrough protocol
 export const DEFAULT_INSPECTION_ITEMS: InspectionTemplateItem[] = [
-  { id: 'kitchen_sink', label: 'Kitchen sink working', category: 'kitchen', required: true },
-  { id: 'kitchen_faucet', label: 'Kitchen faucet — no leaks', category: 'kitchen', required: true },
-  { id: 'kitchen_appliances', label: 'Kitchen appliances working (if included)', category: 'kitchen', required: false },
-  { id: 'electrical_plugs', label: 'All electrical plugs working', category: 'electrical', required: true },
-  { id: 'light_fixtures', label: 'All light fixtures working', category: 'electrical', required: true },
-  { id: 'bathroom_fixtures', label: 'Bathroom fixtures working', category: 'bathroom', required: true },
-  { id: 'bathroom_faucets', label: 'Bathroom faucets — no leaks', category: 'bathroom', required: true },
-  { id: 'toilet_flushing', label: 'Toilet flushing properly', category: 'bathroom', required: true },
-  { id: 'walls_paint', label: 'Walls/paint in acceptable condition', category: 'general', required: true },
-  { id: 'flooring', label: 'Flooring in acceptable condition', category: 'general', required: true },
-  { id: 'odor_cleanliness', label: 'Odor/cleanliness acceptable', category: 'general', required: true },
-  { id: 'windows', label: 'Windows opening/closing properly', category: 'general', required: true },
-  { id: 'locks_doors', label: 'Locks and doors functioning', category: 'safety', required: true },
-  { id: 'heating_ac', label: 'Heating/AC functioning', category: 'hvac', required: true },
-  { id: 'smoke_detectors', label: 'Smoke detectors working', category: 'safety', required: true },
-  { id: 'general_safety', label: 'No general safety hazards', category: 'safety', required: true },
+  // ── Kitchen ──────────────────────────────────────────────────────
+  { id: 'kitchen_fridge', label: 'Fridge is working', category: 'kitchen', required: true },
+  { id: 'kitchen_oven', label: 'Oven is working, turn on all elements', category: 'kitchen', required: true },
+  { id: 'kitchen_dishwasher', label: 'Start a cycle on the dishwasher', category: 'kitchen', required: false },
+  { id: 'kitchen_cabinets', label: 'Cabinets are cleaned out', category: 'kitchen', required: true },
+  { id: 'kitchen_shelves', label: 'Shelves are installed', category: 'kitchen', required: true },
+  { id: 'kitchen_water', label: 'All water sources are working — check hot water as well', category: 'kitchen', required: true },
+  { id: 'kitchen_silicone', label: 'Silicone is installed on the sink (if applicable) and counter', category: 'kitchen', required: false },
+  { id: 'kitchen_leaks', label: 'No leaks on the dishwasher and sink', category: 'kitchen', required: true },
+  // ── Bathroom ─────────────────────────────────────────────────────
+  { id: 'bathroom_sink', label: 'Check sink (hot/cold water)', category: 'bathroom', required: true },
+  { id: 'bathroom_shower', label: 'Check shower (hot/cold water)', category: 'bathroom', required: true },
+  { id: 'bathroom_toilet', label: 'Toilet flushes', category: 'bathroom', required: true },
+  { id: 'bathroom_shower_rod', label: 'Shower rod is installed (if applicable)', category: 'bathroom', required: false },
+  { id: 'bathroom_window_screens', label: 'Window screens are installed and in working order', category: 'bathroom', required: true },
+  { id: 'bathroom_french_doors', label: 'Plastic is removed from French doors', category: 'bathroom', required: false },
+  // ── General ──────────────────────────────────────────────────────
+  { id: 'general_cleanliness', label: 'Overall cleanliness of the apartment', category: 'general', required: true },
+  { id: 'general_paint', label: 'Any touch-ups to paint necessary?', category: 'general', required: true },
+  { id: 'general_plugs', label: 'Check all plugs', category: 'general', required: true },
+  { id: 'general_lights', label: 'Check all lights', category: 'general', required: true },
+];
+
+// Tenant Vetting Protocol — screening checklist (from rental protocol document)
+export const TENANT_VETTING_CHECKLIST = [
+  // ── Screening (18+ years old) ────────────────────────────────────
+  { id: 'vetting_credit', label: 'A full credit check', category: 'screening', required: true },
+  { id: 'vetting_regis', label: 'Regis Record check', category: 'screening', required: true },
+  { id: 'vetting_criminal', label: 'Criminal Record check', category: 'screening', required: true },
+  { id: 'vetting_income_ratio', label: 'Income to rent ratio = max 30%', category: 'screening', required: true },
+  { id: 'vetting_proof_income', label: '3 months proof of income', category: 'screening', required: true },
+  { id: 'vetting_application', label: 'Full application filled out', category: 'screening', required: true },
+  // ── Documents to sign ────────────────────────────────────────────
+  { id: 'doc_building_regs', label: 'Building regulations', category: 'documents', required: true },
+  { id: 'doc_hydro_consent', label: 'Hydro Consent form', category: 'documents', required: true },
+  { id: 'doc_lease', label: 'Lease', category: 'documents', required: true },
+  { id: 'doc_parking_lease', label: 'Parking lease', category: 'documents', required: false },
+  { id: 'doc_cannabis_form', label: 'Cannabis form', category: 'documents', required: true },
 ];

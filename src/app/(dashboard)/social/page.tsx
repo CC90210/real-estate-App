@@ -529,7 +529,7 @@ export default function SocialPage() {
                                         {mediaFiles.map((media, i) => (
                                             <div key={i} className="relative group w-20 h-20 rounded-lg overflow-hidden border border-slate-200">
                                                 {media.type === 'image' ? (
-                                                    <img src={media.preview} alt="" className="w-full h-full object-cover" />
+                                                    <img src={media.preview} alt="Uploaded image preview" className="w-full h-full object-cover" />
                                                 ) : (
                                                     <div className="w-full h-full bg-slate-800 flex items-center justify-center">
                                                         <Film className="w-6 h-6 text-white" />

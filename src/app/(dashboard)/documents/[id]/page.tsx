@@ -253,7 +253,7 @@ export default function DocumentViewPage() {
                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-xs text-slate-400">
                             <div className="flex items-center gap-4">
                                 {company?.logo_url && (
-                                    <img src={company.logo_url} alt="" className="h-6 w-auto opacity-50" />
+                                    <img src={company.logo_url} alt={`${company.name || 'Company'} logo`} className="h-6 w-auto opacity-50" />
                                 )}
                                 <span className="font-medium">{company?.name || 'Verified Record'}</span>
                             </div>

@@ -254,7 +254,7 @@ export default function ActivityPage() {
                                 <div className="flex items-center gap-2 mt-4">
                                     <div className="h-5 w-5 bg-slate-100 rounded-full flex items-center justify-center overflow-hidden">
                                         {(activity.user as any)?.avatar_url ? (
-                                            <img src={(activity.user as any).avatar_url} alt="" className="h-full w-full object-cover" />
+                                            <img src={(activity.user as any).avatar_url} alt={`${activity.user?.full_name || 'User'} avatar`} className="h-full w-full object-cover" />
                                         ) : (
                                             <Users className="h-3 w-3 text-slate-400" />
                                         )}

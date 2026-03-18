@@ -125,8 +125,7 @@ export async function POST(req: Request) {
         const n8nBaseUrl = process.env.N8N_BASE_URL
         const n8nWebhookSecret = process.env.N8N_WEBHOOK_SECRET
 
-        // Use the new production webhook URL as the primary target
-        const n8nUrl = 'https://n8n.srv993801.hstgr.cloud/webhook/ad6dd389-7003-4276-9f6c-5eec3836020d'
+        const n8nUrl = process.env.N8N_WEBHOOK_URL || n8nBaseUrl || ''
 
         const signature = crypto
             .createHmac('sha256', n8nWebhookSecret || 'default_secret')

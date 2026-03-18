@@ -46,30 +46,21 @@ import { Logo } from '@/components/brand/Logo';
 
 import { useRole } from '@/hooks/use-role';
 
-// Navigation follows the 8-phase rental workflow:
-// 1. Properties → 2. Inspections → 3. Listings & Marketing → 4. Communications
-// 5. Applications & Vetting → 6. Documents & E-Sign → 7. Payments → 8. Key Handoff
+// Navigation follows the rental workflow order specified by stakeholders
 const navItems = [
     { id: 'dashboard', name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'agent', 'landlord'], section: 'overview' },
-    // Phase 1: Property Onboarding
+    // Rental Workflow — ordered per stakeholder spec
+    { id: 'inspections', name: 'Inspections', href: '/inspections', icon: ClipboardCheck, roles: ['admin', 'agent', 'landlord'], section: 'workflow' },
     { id: 'properties', name: 'Properties', href: '/properties', icon: Home, roles: ['admin', 'agent', 'landlord'], section: 'workflow' },
     { id: 'areas', name: 'Areas', href: '/areas', icon: MapPin, roles: ['admin', 'agent'], section: 'workflow' },
-    // Phase 2: Pre-Rental Inspection
-    { id: 'inspections', name: 'Inspections', href: '/inspections', icon: ClipboardCheck, roles: ['admin', 'agent', 'landlord'], section: 'workflow' },
-    // Phase 3: Listings & Marketing
-    { id: 'social', name: 'Listings & Marketing', href: '/social', icon: Megaphone, roles: ['admin', 'agent'], section: 'workflow' },
-    // Phase 4: Communications (Bot + Manual)
-    { id: 'communication', name: 'Communication', href: '/communication', icon: MessageSquare, roles: ['admin', 'agent'], section: 'workflow' },
+    { id: 'social', name: 'Listings', href: '/social', icon: Megaphone, roles: ['admin', 'agent'], section: 'workflow' },
     { id: 'showings', name: 'Showings', href: '/showings', icon: Calendar, roles: ['admin', 'agent', 'landlord'], section: 'workflow' },
-    // Phase 5: Applications & Vetting
     { id: 'applications', name: 'Applications', href: '/applications', icon: ClipboardList, roles: ['admin', 'agent', 'landlord'], section: 'workflow' },
-    { id: 'approvals', name: 'Approvals', href: '/approvals', icon: CheckCircle, roles: ['admin', 'agent'], section: 'workflow' },
-    // Phase 6: Documents & E-Sign
     { id: 'documents', name: 'Documents', href: '/documents', icon: PenTool, roles: ['admin', 'agent', 'landlord'], section: 'workflow' },
     { id: 'leases', name: 'Leases', href: '/leases', icon: BookOpen, roles: ['admin', 'agent', 'landlord'], section: 'workflow' },
-    // Phase 7: Payments
+    { id: 'approvals', name: 'Approvals', href: '/approvals', icon: CheckCircle, roles: ['admin', 'agent'], section: 'workflow' },
     { id: 'invoices', name: 'Payments', href: '/invoices', icon: CreditCard, roles: ['admin', 'agent', 'landlord'], section: 'workflow' },
-    // Phase 8: Key Handoff (tracked on property detail page)
+    { id: 'communication', name: 'Communication', href: '/communication', icon: MessageSquare, roles: ['admin', 'agent'], section: 'workflow' },
     // --- Operations & Insights ---
     { id: 'maintenance', name: 'Maintenance', href: '/maintenance', icon: Wrench, roles: ['admin', 'agent', 'landlord'], section: 'operations' },
     { id: 'analytics', name: 'Analytics', href: '/analytics', icon: BarChart3, roles: ['admin', 'agent'], section: 'operations' },

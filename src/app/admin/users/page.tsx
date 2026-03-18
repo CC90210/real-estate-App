@@ -198,7 +198,7 @@ export default function AdminUsersPage() {
                                             <div className="flex items-center gap-3">
                                                 <div className="h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold text-sm">
                                                     {user.avatar_url ? (
-                                                        <img src={user.avatar_url} className="h-10 w-10 rounded-full object-cover" alt="" />
+                                                        <img src={user.avatar_url} className="h-10 w-10 rounded-full object-cover" alt={`${user.full_name || user.email || 'User'} avatar`} />
                                                     ) : (
                                                         user.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || '?'
                                                     )}

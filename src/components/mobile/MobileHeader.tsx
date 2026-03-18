@@ -38,24 +38,26 @@ import {
     Share2,
     ClipboardCheck,
     Megaphone,
+    MessageSquare,
     PenTool,
     CreditCard,
 } from 'lucide-react'
 
-// Navigation follows the 8-phase rental workflow
+// Navigation follows stakeholder-specified order
 const navigationItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, section: 'Overview' },
     // Rental Workflow
-    { name: 'Properties', href: '/properties', icon: Home, section: 'Rental Workflow' },
+    { name: 'Inspections', href: '/inspections', icon: ClipboardCheck, section: 'Rental Workflow' },
+    { name: 'Properties', href: '/properties', icon: Home },
     { name: 'Areas', href: '/areas', icon: MapPin },
-    { name: 'Inspections', href: '/inspections', icon: ClipboardCheck },
-    { name: 'Listings & Marketing', href: '/social', icon: Megaphone },
+    { name: 'Listings', href: '/social', icon: Megaphone },
     { name: 'Showings', href: '/showings', icon: Calendar },
     { name: 'Applications', href: '/applications', icon: ClipboardList },
-    { name: 'Approvals', href: '/approvals', icon: CheckCircle },
     { name: 'Documents', href: '/documents', icon: PenTool },
     { name: 'Leases', href: '/leases', icon: BookOpen },
+    { name: 'Approvals', href: '/approvals', icon: CheckCircle },
     { name: 'Payments', href: '/invoices', icon: CreditCard },
+    { name: 'Communication', href: '/communication', icon: MessageSquare },
     // Operations
     { name: 'Maintenance', href: '/maintenance', icon: Wrench, section: 'Operations' },
     { name: 'Analytics', href: '/analytics', icon: BarChart3 },

@@ -92,9 +92,8 @@ export default function SettingsPage() {
                     .eq('id', user.id)
                     .single();
                 if (!error) profileData = data;
-                else console.warn('[Settings] Profile fetch error:', error.message);
             } catch (e) {
-                console.warn('[Settings] Profile fetch failed, using auth context');
+                // Profile fetch failed, fall through to auth context fallback below
             }
 
             // If direct query failed, use auth context data as fallback
@@ -342,12 +341,6 @@ export default function SettingsPage() {
     const handleSaveProfile = async () => {
         setIsSaving(true);
         try {
-            console.log('Attempting to save profile:', {
-                id: profile.id,
-                full_name: profile.full_name,
-                phone: profile.phone
-            });
-
             const { data, error } = await supabase
                 .from('profiles')
                 .update({
@@ -368,7 +361,6 @@ export default function SettingsPage() {
                 throw new Error("No data returned from update. Please check your connection.");
             }
 
-            console.log('Profile saved successfully:', data);
             setProfile(data); // Update local state with server response to be sure
             toast.success(`Profile saved: ${data.full_name}`);
         } catch (error: any) {

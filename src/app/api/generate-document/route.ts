@@ -64,7 +64,6 @@ export async function POST(request: Request) {
 
         // Self-healing: If profile doesn't exist, create it
         if (profileError || !profile) {
-            console.log('Profile not found, attempting to create...');
             const { data: newProfile, error: createProfileError } = await supabase
                 .from('profiles')
                 .insert({
@@ -85,7 +84,6 @@ export async function POST(request: Request) {
         // Self-healing: If profile has no company_id, create a company
         let companyId = profile?.company_id;
         if (!companyId) {
-            console.log('Company not found for profile, creating company...');
             const companyName = `${profile?.full_name || 'User'}'s Company`;
             const { data: newCompany, error: companyError } = await supabase
                 .from('companies')
@@ -121,8 +119,6 @@ export async function POST(request: Request) {
         if (companyFetchError) {
             console.error('Failed to fetch company details:', companyFetchError);
         }
-
-        console.log('Company for document:', company);
 
         // Initialize document data with company branding
         const documentData: any = {

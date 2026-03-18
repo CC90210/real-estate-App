@@ -264,7 +264,7 @@ export default function TenantMaintenancePage() {
                                             <div className="flex items-start gap-5">
                                                 <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center shrink-0">
                                                     {req.photos?.[0] ? (
-                                                        <img src={req.photos[0]} alt="" className="w-full h-full object-cover rounded-2xl" />
+                                                        <img src={req.photos[0]} alt={`Photo for maintenance request: ${req.title}`} className="w-full h-full object-cover rounded-2xl" />
                                                     ) : (
                                                         <ImageIcon className="w-6 h-6 text-slate-200" />
                                                     )}
