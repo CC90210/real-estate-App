@@ -104,8 +104,8 @@ export function useUpdateApplication() {
             queryClient.invalidateQueries({ queryKey: ['applications'] });
             toast.success('Application updated successfully');
         },
-        onError: (error: any) => {
-            toast.error('Failed to update application: ' + error.message);
+        onError: () => {
+            toast.error('Failed to update application');
         },
     });
 }
@@ -203,8 +203,8 @@ export function useCreateApplication() {
             queryClient.invalidateQueries({ queryKey: ['applications'] });
             toast.success('Application created successfully');
         },
-        onError: (error: any) => {
-            toast.error('Failed to create application: ' + error.message);
+        onError: () => {
+            toast.error('Failed to create application');
         },
     });
 }

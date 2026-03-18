@@ -65,8 +65,8 @@ export function useCreateArea() {
             queryClient.invalidateQueries({ queryKey: ['areas'] });
             toast.success('Area created successfully');
         },
-        onError: (error: any) => {
-            toast.error('Failed to create area: ' + error.message);
+        onError: () => {
+            toast.error('Failed to create area');
         },
     });
 }

@@ -168,8 +168,8 @@ export function useCreateCommission() {
             queryClient.invalidateQueries({ queryKey: ['commissions_summary'] });
             toast.success('Commission created');
         },
-        onError: (error: any) => {
-            toast.error('Failed to create commission: ' + error.message);
+        onError: () => {
+            toast.error('Failed to create commission');
         },
     });
 }
@@ -202,8 +202,8 @@ export function useUpdateCommissionStatus() {
             queryClient.invalidateQueries({ queryKey: ['commissions_summary'] });
             toast.success('Commission status updated');
         },
-        onError: (error: any) => {
-            toast.error('Failed to update commission: ' + error.message);
+        onError: () => {
+            toast.error('Failed to update commission');
         },
     });
 }

@@ -218,8 +218,8 @@ export function useCreateShowing() {
             queryClient.invalidateQueries({ queryKey: ['showings_count'] });
             toast.success('Showing scheduled');
         },
-        onError: (error: any) => {
-            toast.error('Failed to schedule showing: ' + error.message);
+        onError: () => {
+            toast.error('Failed to schedule showing');
         },
     });
 }
@@ -245,8 +245,8 @@ export function useUpdateShowing() {
             queryClient.invalidateQueries({ queryKey: ['showings_count'] });
             toast.success('Showing updated');
         },
-        onError: (error: any) => {
-            toast.error('Failed to update showing: ' + error.message);
+        onError: () => {
+            toast.error('Failed to update showing');
         },
     });
 }
@@ -270,8 +270,8 @@ export function useDeleteShowing() {
             queryClient.invalidateQueries({ queryKey: ['showings_count'] });
             toast.success('Showing deleted');
         },
-        onError: (error: any) => {
-            toast.error('Failed to delete showing: ' + error.message);
+        onError: () => {
+            toast.error('Failed to delete showing');
         },
     });
 }

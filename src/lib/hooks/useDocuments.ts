@@ -128,8 +128,8 @@ export function useCreateDocument() {
             queryClient.invalidateQueries({ queryKey: ['documents'] });
             toast.success('Document saved');
         },
-        onError: (error: any) => {
-            toast.error('Failed to save document: ' + error.message);
+        onError: () => {
+            toast.error('Failed to save document');
         },
     });
 }

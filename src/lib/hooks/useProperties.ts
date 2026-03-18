@@ -86,18 +86,22 @@ export function useProperty(propertyId: string) {
     });
 }
 
-async function logActivity(supabase: any, { companyId, action, entityType, entityId, details }: any) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !companyId) return;
+async function logActivity(supabase: ReturnType<typeof createClient>, { companyId, action, entityType, entityId, details }: { companyId: string | undefined; action: string; entityType: string; entityId: string; details: Record<string, unknown> }) {
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || !companyId) return;
 
-    await supabase.from('activity_log').insert({
-        company_id: companyId,
-        user_id: user.id,
-        action,
-        entity_type: entityType,
-        entity_id: entityId,
-        details
-    });
+        await supabase.from('activity_log').insert({
+            company_id: companyId,
+            user_id: user.id,
+            action,
+            entity_type: entityType,
+            entity_id: entityId,
+            details
+        });
+    } catch (err) {
+        console.error('Failed to log activity:', err);
+    }
 }
 
 export function useDeleteProperty() {
@@ -254,7 +258,7 @@ export function useCreateProperty() {
             context?.previousQueries.forEach(([queryKey, data]: any) => {
                 queryClient.setQueryData(queryKey, data);
             });
-            toast.error('Failed to create property: ' + err.message);
+            toast.error('Failed to create property');
         },
         onSettled: () => {
             // Invalidate fuzzy to catch all filters
