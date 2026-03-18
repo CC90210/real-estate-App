@@ -4,8 +4,8 @@ export function OrganizationSchema() {
         '@context': 'https://schema.org',
         '@type': 'Organization',
         name: 'PropFlow',
-        url: 'https://propflow.io',
-        logo: 'https://propflow.io/logo.png',
+        url: 'https://propflow.pro',
+        logo: 'https://propflow.pro/logo.png',
         description: 'Property management software for real estate professionals',
         foundingDate: '2024',
         founders: [{
@@ -47,15 +47,10 @@ export function SoftwareApplicationSchema() {
         operatingSystem: 'Web',
         offers: {
             '@type': 'AggregateOffer',
-            lowPrice: '49',
-            highPrice: '249',
+            lowPrice: '149',
+            highPrice: '499',
             priceCurrency: 'USD',
             offerCount: '3'
-        },
-        aggregateRating: {
-            '@type': 'AggregateRating',
-            ratingValue: '4.8',
-            ratingCount: '150'
         },
         description: 'Property management software for leasing agents, property managers, and landlords.',
         featureList: [

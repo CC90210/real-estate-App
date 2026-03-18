@@ -14,6 +14,6 @@ export default function robots(): MetadataRoute.Robots {
                 ],
             },
         ],
-        sitemap: 'https://propflow.io/sitemap.xml',
+        sitemap: 'https://propflow.pro/sitemap.xml',
     }
 }

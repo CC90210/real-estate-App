@@ -11,7 +11,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://propflow.io'),
+  metadataBase: new URL('https://propflow.pro'),
 
   // Primary Meta Tags
   title: {
@@ -60,7 +60,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://propflow.io',
+    url: 'https://propflow.pro',
     siteName: 'PropFlow',
     title: 'PropFlow | Property Management Software for Real Estate Professionals',
     description: 'The all-in-one platform for modern property managers. Automate leases, track applications, and manage your portfolio with confidence.',
@@ -83,14 +83,16 @@ export const metadata: Metadata = {
     creator: '@propflow',
   },
 
-  // Icons — SVG favicon works in all modern browsers
+  // Icons — full coverage for all browsers and devices
   icons: {
     icon: [
       { url: '/favicon.svg', type: 'image/svg+xml' },
-      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon.ico', sizes: '32x32' },
+      { url: '/favicon-32x32.png', type: 'image/png', sizes: '32x32' },
+      { url: '/favicon-16x16.png', type: 'image/png', sizes: '16x16' },
     ],
     apple: [
-      { url: '/favicon.svg' },
+      { url: '/apple-touch-icon.png', sizes: '180x180' },
     ],
     other: [
       { rel: 'mask-icon', url: '/favicon.svg', color: '#2563eb' },
@@ -109,10 +111,9 @@ export const metadata: Metadata = {
 
   // Alternate Languages (if applicable)
   alternates: {
-    canonical: 'https://propflow.io',
+    canonical: 'https://propflow.pro',
     languages: {
-      'en-US': 'https://propflow.io',
-      // 'fr-CA': 'https://propflow.io/fr',
+      'en-US': 'https://propflow.pro',
     },
   },
 
