@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label'
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogFooter,
@@ -301,6 +302,9 @@ export default function ShowingsPage() {
                     <DialogContent className="rounded-[2rem] p-8 max-w-lg">
                         <DialogHeader>
                             <DialogTitle className="text-2xl font-black text-slate-900">Schedule Showing</DialogTitle>
+                            <DialogDescription className="sr-only">
+                                Fill in the client and property details to schedule a new property showing appointment.
+                            </DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleSubmit} className="space-y-6 mt-4">
                             <div className="space-y-2">

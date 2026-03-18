@@ -4,6 +4,7 @@ import { ReactNode } from 'react'
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogFooter,
@@ -49,6 +50,9 @@ export function MobileDialog({
                         <DialogTitle className="text-lg font-semibold">
                             {title}
                         </DialogTitle>
+                        <DialogDescription className="sr-only">
+                            {title}
+                        </DialogDescription>
                         <Button
                             variant="ghost"
                             size="icon"

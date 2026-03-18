@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/hooks/useAuth'
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog'
@@ -327,6 +328,12 @@ export function QuickFind({ open, onOpenChange }: QuickFindProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden rounded-3xl border-0 shadow-2xl">
+                <DialogHeader className="sr-only">
+                    <DialogTitle>Quick Find</DialogTitle>
+                    <DialogDescription>
+                        Search across properties, landlords, applications, areas, and more. Use arrow keys to navigate results and Enter to select.
+                    </DialogDescription>
+                </DialogHeader>
                 {/* Search Header */}
                 <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
                     <div className="flex items-center gap-4">

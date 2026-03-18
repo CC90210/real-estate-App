@@ -283,7 +283,7 @@ export default function CommunicationPage() {
                 <p className="text-slate-500 font-medium">Unable to load workspace data.</p>
                 <button
                     onClick={() => window.location.reload()}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                    className={cn("px-4 py-2 text-white rounded-lg text-sm font-medium", colors.bg, colors.bgHover)}
                 >
                     Refresh Page
                 </button>

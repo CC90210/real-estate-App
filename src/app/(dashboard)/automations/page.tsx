@@ -9,6 +9,8 @@ import { useAuth } from '@/lib/hooks/useAuth'
 import { AutomationStore } from './automation-store'
 import { AutomationMetrics } from './automation-metrics'
 import { Zap, Store, BarChart3, Loader2 } from 'lucide-react'
+import { useAccentColor } from '@/lib/hooks/useAccentColor'
+import { cn } from '@/lib/utils'
 
 export default function AutomationsPage() {
     const supabase = createClient()
@@ -18,6 +20,7 @@ export default function AutomationsPage() {
     const { isLoading: authLoading, company } = useAuth();
     const resolvedCompanyId = company?.id;
     const isSuperAdmin = !!profile?.is_super_admin
+    const { colors } = useAccentColor()
 
     // Check if user has any active automations
     const { data: automations, isLoading } = useQuery({
@@ -45,7 +48,7 @@ export default function AutomationsPage() {
     if (authLoading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[500px] gap-4">
-                <Loader2 className="w-10 h-10 animate-spin text-orange-600" />
+                <Loader2 className={cn("w-10 h-10 animate-spin", colors.text)} />
             </div>
         );
     }
@@ -56,7 +59,7 @@ export default function AutomationsPage() {
                 <p className="text-slate-500 font-medium">Unable to load workspace data.</p>
                 <button
                     onClick={() => window.location.reload()}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                    className={cn("px-4 py-2 text-white rounded-lg text-sm font-medium", colors.bg, colors.bgHover)}
                 >
                     Refresh Page
                 </button>
@@ -83,14 +86,14 @@ export default function AutomationsPage() {
                 <TabsList className="bg-slate-100/50 p-1.5 rounded-2xl h-14 border border-slate-200/60 shadow-sm">
                     <TabsTrigger
                         value="store"
-                        className="rounded-xl h-11 px-8 gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 font-bold transition-all"
+                        className={cn("rounded-xl h-11 px-8 gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md font-bold transition-all", `data-[state=active]:${colors.text}`)}
                     >
                         <Store className="h-4 w-4" />
                         Automation Store
                     </TabsTrigger>
                     <TabsTrigger
                         value="metrics"
-                        className="rounded-xl h-11 px-8 gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 font-bold transition-all disabled:opacity-50"
+                        className={cn("rounded-xl h-11 px-8 gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md font-bold transition-all disabled:opacity-50", `data-[state=active]:${colors.text}`)}
                         disabled={!hasActiveAutomations && !isLoading}
                     >
                         <BarChart3 className="h-4 w-4" />
@@ -104,7 +107,7 @@ export default function AutomationsPage() {
                 <TabsContent value="store" className="mt-0 outline-none">
                     {isLoading ? (
                         <div className="py-20 text-center">
-                            <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
+                            <Loader2 className={cn("h-8 w-8 animate-spin mx-auto", colors.text)} />
                         </div>
                     ) : (
                         <AutomationStore

@@ -19,6 +19,7 @@ import {
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogFooter,
@@ -211,6 +212,9 @@ export function DocumentSendDialog({
                             <DialogTitle className="text-lg font-black text-slate-900">
                                 Send Document Package
                             </DialogTitle>
+                            <DialogDescription className="sr-only">
+                                Select documents to include, configure e-sign options, and send the package to the recipient.
+                            </DialogDescription>
                             <p className="text-sm text-slate-500 font-medium mt-0.5">
                                 Select documents, configure e-sign, and send
                             </p>
