@@ -25,7 +25,8 @@ export async function GET(req: Request) {
         const lateProfileId = company?.late_profile_id
 
         if (!lateProfileId) {
-            return NextResponse.redirect(new URL('/social?error=no_profile', req.url))
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+            return NextResponse.redirect(`${appUrl}/social?error=no_profile`)
         }
 
         // Fetch connected accounts from Late and sync to our DB
@@ -35,17 +36,22 @@ export async function GET(req: Request) {
             const late = new Late({ apiKey })
 
             try {
-                const { accounts } = await late.accounts.listAccounts({
+                // Late SDK response shape may vary — handle both patterns
+                const result = await late.accounts.listAccounts({
                     profileId: lateProfileId,
                 })
+                const accounts = result?.accounts || result?.data?.accounts || []
 
                 if (accounts?.length) {
                     for (const account of accounts) {
+                        const accountId = account._id || account.id
+                        if (!accountId) continue
+
                         // Check if this LATE account is already claimed by ANY company in our DB
                         const { data: existingAnywhere } = await supabase
                             .from('social_accounts')
                             .select('id, company_id')
-                            .eq('late_account_id', account._id)
+                            .eq('late_account_id', accountId)
 
                         const isClaimedByOther = existingAnywhere && existingAnywhere.some(e => e.company_id !== profile?.company_id)
                         const isClaimedByMe = existingAnywhere && existingAnywhere.some(e => e.company_id === profile?.company_id)
@@ -55,12 +61,45 @@ export async function GET(req: Request) {
 
                         // If it's completely new, or not claimed by me yet, insert it
                         if (!isClaimedByMe) {
-                            await supabase.from('social_accounts').insert({
+                            const { error: insertError } = await supabase.from('social_accounts').insert({
                                 company_id: profile?.company_id,
-                                late_account_id: account._id,
+                                late_account_id: accountId,
                                 platform: account.platform || platform || 'unknown',
                                 account_name: account.name || account.username || account.platform || platform,
                                 account_avatar: account.avatar || account.image || null,
+                                status: 'active',
+                            })
+                            if (insertError) {
+                                console.error('Failed to insert social account:', insertError.message)
+                            }
+                        } else {
+                            // Update existing account to active (in case it was previously disconnected)
+                            await supabase
+                                .from('social_accounts')
+                                .update({ status: 'active', account_name: account.name || account.username || account.platform || platform })
+                                .eq('late_account_id', accountId)
+                                .eq('company_id', profile?.company_id)
+                        }
+                    }
+                } else {
+                    // No accounts returned from Late — the platform may take a moment to register
+                    // Create a placeholder entry so the user sees something
+                    if (platform) {
+                        const { data: existingPlatform } = await supabase
+                            .from('social_accounts')
+                            .select('id')
+                            .eq('company_id', profile?.company_id)
+                            .eq('platform', platform)
+                            .eq('status', 'active')
+                            .limit(1)
+
+                        if (!existingPlatform?.length) {
+                            await supabase.from('social_accounts').insert({
+                                company_id: profile?.company_id,
+                                late_account_id: `pending_${platform}_${Date.now()}`,
+                                platform: platform,
+                                account_name: `${platform} account`,
+                                account_avatar: null,
                                 status: 'active',
                             })
                         }
@@ -75,7 +114,7 @@ export async function GET(req: Request) {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
         return NextResponse.redirect(`${appUrl}/social?connected=${platform}`)
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Social callback error:', error)
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
         return NextResponse.redirect(`${appUrl}/social?error=callback_failed`)

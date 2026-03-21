@@ -103,16 +103,40 @@ export interface Application {
   pet_details: string | null;
   additional_notes: string | null;
 
+  // Extended Applicant Info (SingleKey-style fields)
+  combined_household_income: number | null;    // Total income of all applicants on lease
+  employment_status: string | null;            // full-time, part-time, self-employed, retired, unemployed
+  employment_duration: string | null;          // How long at current employer
+  previous_addresses: string | null;           // JSON array of previous addresses (last 3)
+  current_rent: number | null;                 // What they currently pay in rent
+  current_landlord_name: string | null;        // Reference: current landlord
+  current_landlord_phone: string | null;       // Reference: landlord phone
+  total_debt: number | null;                   // Total outstanding debt
+  num_vehicles: number | null;                 // Number of vehicles
+  is_smoker: boolean | null;                   // Smoking status
+  government_id_verified: boolean | null;      // ID matches application info
+
   // Screening Results (SENSITIVE: Only visible to landlords/admins)
   screening_status: ScreeningStatus;
   credit_score: number | null;
   background_check_passed: boolean | null;
+  criminal_check_passed: boolean | null;       // Criminal record check result
+  public_records_clear: boolean | null;        // No bankruptcies, collections, legal cases
   income_verified: boolean | null;
   screening_report_url: string | null;
+  singlekey_report_url: string | null;         // SingleKey PDF report URL
   screening_completed_at: string | null;
+
+  // Computed / stored ratios
+  income_to_rent_ratio: number | null;         // yearly_income / yearly_rent (e.g., 5.5 = 5.5x)
+  yearly_rent_cost: number | null;             // rent * 12
+  dti_ratio: number | null;                    // debt-to-income ratio as percentage
 
   // Workflow
   status: ApplicationStatus;
+  denial_reason: string | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
   webhook_sent: boolean;
   webhook_sent_at: string | null;
 
@@ -158,11 +182,20 @@ export interface ApplicationFormData {
   applicant_phone: string;
   current_address?: string;
   employer?: string;
+  employment_status?: string;
+  employment_duration?: string;
   monthly_income?: number;
+  combined_household_income?: number;
   move_in_date?: string;
   num_occupants: number;
   has_pets: boolean;
   pet_details?: string;
+  current_rent?: number;
+  current_landlord_name?: string;
+  current_landlord_phone?: string;
+  total_debt?: number;
+  num_vehicles?: number;
+  is_smoker?: boolean;
   additional_notes?: string;
 }
 

@@ -89,13 +89,19 @@ export default function SocialPage() {
         const callbackError = searchParams.get('error')
         if (connected) {
             toast.success(`${connected} connected successfully!`)
+            // Refetch data to show the newly connected account
+            fetchData()
             window.history.replaceState({}, '', '/social')
         }
         if (callbackError) {
-            toast.error('Failed to connect account. Please try again.')
+            const errorMessages: Record<string, string> = {
+                no_profile: 'No social profile found. Please try connecting again.',
+                callback_failed: 'Connection callback failed. The platform may be temporarily unavailable.',
+            }
+            toast.error(errorMessages[callbackError] || 'Failed to connect account. Please try again.')
             window.history.replaceState({}, '', '/social')
         }
-    }, [searchParams])
+    }, [searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const fetchData = useCallback(async () => {
         if (!resolvedCompanyId) return
