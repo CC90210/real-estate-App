@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useAuth } from '@/lib/hooks/useAuth'
+import Link from 'next/link'
+import { Lock, ArrowUpRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import {
@@ -59,9 +61,12 @@ interface MediaFile {
 }
 
 export default function SocialPage() {
-    const { profile } = useUser()
+    const { profile, plan, hasFullAccess } = useUser()
     const { company, isLoading: authLoading } = useAuth()
     const resolvedCompanyId = company?.id
+
+    // Social Media Suite is exclusive to Brokerage Command
+    const hasSocialAccess = hasFullAccess || plan === 'brokerage_command' || plan === 'enterprise'
     const supabase = createClient()
     const searchParams = useSearchParams()
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -342,6 +347,42 @@ export default function SocialPage() {
                 </button>
             </div>
         );
+    }
+
+    // Gate: Social Media Suite requires Brokerage Command plan
+    if (!authLoading && !hasSocialAccess) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[600px] px-6">
+                <div className="max-w-lg text-center space-y-6">
+                    <div className="mx-auto w-20 h-20 rounded-3xl bg-slate-100 flex items-center justify-center">
+                        <Lock className="w-10 h-10 text-slate-400" />
+                    </div>
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">
+                        Social Media Suite
+                    </h1>
+                    <p className="text-slate-500 font-medium text-lg leading-relaxed">
+                        Connect and manage all your social media platforms from one dashboard.
+                        Post listings, schedule content, and grow your brand across Instagram,
+                        Facebook, LinkedIn, TikTok, and more.
+                    </p>
+                    <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 text-left space-y-3">
+                        <p className="text-white font-black text-sm uppercase tracking-widest">Included with Brokerage Command</p>
+                        <ul className="text-slate-300 text-sm space-y-2 font-medium">
+                            <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> Unlimited connected platforms</li>
+                            <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> Multi-account scheduling</li>
+                            <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> AI-powered ad copy generation</li>
+                            <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> Marketplace listing integrations</li>
+                        </ul>
+                    </div>
+                    <Link href="/settings/billing">
+                        <Button className="h-14 px-10 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-blue-200 mt-4">
+                            Upgrade to Brokerage Command
+                            <ArrowUpRight className="w-4 h-4 ml-2" />
+                        </Button>
+                    </Link>
+                </div>
+            </div>
+        )
     }
 
     if (loading) {

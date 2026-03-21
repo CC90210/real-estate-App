@@ -231,7 +231,14 @@ function PricingCard({
             <div className="flex-1 space-y-2 mb-8">
                 <FeatureSection title="CRM & Leasing" features={plan.features.crm} />
                 <FeatureSection title="Automated Finance" features={plan.features.finance} />
-                <FeatureSection title="Social Media Suite" features={plan.features.social} />
+                {plan.features.social.length > 0 ? (
+                    <FeatureSection title="Social Media Suite" features={plan.features.social} />
+                ) : (
+                    <div className="mb-6 last:mb-0">
+                        <h4 className="text-xs font-black uppercase tracking-widest text-slate-300 mb-3">Social Media Suite</h4>
+                        <p className="text-xs font-bold text-slate-400 italic">Available on Brokerage Command</p>
+                    </div>
+                )}
             </div>
 
             <Button

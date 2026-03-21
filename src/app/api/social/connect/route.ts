@@ -46,22 +46,12 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'No company found. Please complete your profile setup first.' }, { status: 400 })
         }
 
-        // Check plan limits
+        // Social Media Suite is exclusive to Brokerage Command plan
         const plan = company.subscription_plan || 'agent_pro'
-        const { count } = await supabase
-            .from('social_accounts')
-            .select('*', { count: 'exact', head: true })
-            .eq('company_id', profile?.company_id)
-            .eq('status', 'active')
-
-        const planLimits: Record<string, number> = {
-            agent_pro: 2, agency_growth: 8, brokerage_command: 999,
-            essentials: 2, professional: 8, enterprise: 999,
-        }
-        const limit = planLimits[plan] || 2
-        if ((count || 0) >= limit) {
+        const socialAllowedPlans = ['brokerage_command', 'enterprise']
+        if (!socialAllowedPlans.includes(plan)) {
             return NextResponse.json(
-                { error: `Your plan supports up to ${limit} connected platform(s). Upgrade for more.` },
+                { error: 'The Social Media Suite is available exclusively on the Brokerage Command plan. Upgrade to connect social platforms.' },
                 { status: 403 }
             )
         }

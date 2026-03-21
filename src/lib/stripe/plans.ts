@@ -39,21 +39,19 @@ export const PLANS: Record<PlanId, Plan> = {
                 'Up to 25 Properties',
                 '1 Team Member',
                 'Application Management',
+                'Tenant Screening (SingleKey)',
             ],
             finance: [
                 'Basic Reporting',
                 'Digital Rent Collection',
                 'Expense Tracking',
             ],
-            social: [
-                'Basic Social Connector',
-                '1 Connected Platform',
-            ],
+            social: [],  // Social Media Suite not included
         },
         limits: {
             properties: 25,
             teamMembers: 1,
-            socialPlatforms: 1,
+            socialPlatforms: 0,    // No social access
             showings: false,
             invoices: false,
             analytics: false,
@@ -75,21 +73,19 @@ export const PLANS: Record<PlanId, Plan> = {
                 'Up to 100 Properties',
                 '5 Team Members',
                 'Automated Lease Drafting',
+                'Approval Workflows',
             ],
             finance: [
                 'Advanced Analytics',
                 'Automated Invoicing',
                 'Custom Fee Structures',
             ],
-            social: [
-                'Multi-account Scheduling',
-                'Up to 5 Connected Platforms',
-            ],
+            social: [],  // Social Media Suite not included
         },
         limits: {
             properties: 100,
             teamMembers: 5,
-            socialPlatforms: 5,
+            socialPlatforms: 0,    // No social access
             showings: true,
             invoices: true,
             analytics: true,
@@ -117,14 +113,16 @@ export const PLANS: Record<PlanId, Plan> = {
                 'Brokerage Commission Splits',
             ],
             social: [
-                'Unlimited Platforms',
-                'White-labeled Social Suite',
+                'Full Social Media Suite',
+                'Unlimited Connected Platforms',
+                'Multi-account Scheduling',
+                'AI-Powered Ad Copy',
             ],
         },
         limits: {
             properties: -1,
             teamMembers: -1,
-            socialPlatforms: -1,
+            socialPlatforms: -1,  // Unlimited social access
             showings: true,
             invoices: true,
             analytics: true,
@@ -176,6 +174,7 @@ export const FEATURE_TO_LIMIT: Record<string, keyof Plan['limits']> = {
     'showings': 'showings',
     'analytics': 'analytics',
     'automations': 'automations',
-    'documents': 'invoices', // documents available at same tier as invoices
-    'approvals': 'invoices', // approvals available at same tier as invoices
+    'documents': 'invoices',       // documents available at same tier as invoices
+    'approvals': 'invoices',       // approvals available at same tier as invoices
+    'social': 'customIntegrations', // social only on Brokerage Command (same gate as customIntegrations)
 };

@@ -60,7 +60,7 @@ const essentialsConfig: PlanConfig = {
         analytics: false,
         activity: false,
         automations: false,
-        social: true,
+        social: false,          // Social Media Suite: Brokerage Command only
         tenantPortal: false,
         paymentProcessing: false,
         customIntegrations: false,
@@ -71,7 +71,6 @@ const essentialsConfig: PlanConfig = {
         'dashboard',
         'inspections',
         'properties',
-        'social',
         'communication',
         'applications',
         'documents',
@@ -104,7 +103,7 @@ const professionalConfig: PlanConfig = {
         analytics: true,
         activity: true,
         automations: true,
-        social: true,
+        social: false,          // Social Media Suite: Brokerage Command only
         tenantPortal: true,
         paymentProcessing: true,
         customIntegrations: false,
@@ -116,7 +115,6 @@ const professionalConfig: PlanConfig = {
         'inspections',
         'properties',
         'areas',
-        'social',
         'showings',
         'applications',
         'documents',
