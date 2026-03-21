@@ -44,9 +44,9 @@ export default function PropertiesPage() {
     // Filter Logic
     const filteredProperties = properties?.filter(property => {
         const matchesSearch =
-            property.address.toLowerCase().includes(search.toLowerCase()) ||
+            property.address?.toLowerCase().includes(search.toLowerCase()) ||
             property.neighborhood?.toLowerCase().includes(search.toLowerCase()) ||
-            property.city.toLowerCase().includes(search.toLowerCase());
+            property.city?.toLowerCase().includes(search.toLowerCase());
 
         const matchesStatus = statusFilter === 'all' || property.status === statusFilter;
 
@@ -75,8 +75,7 @@ export default function PropertiesPage() {
             off_market: 'bg-slate-50 text-slate-500 border-slate-100',
             maintenance: 'bg-rose-50 text-rose-600 border-rose-100',
         };
-        // @ts-ignore
-        const style = styles[status] || styles.off_market;
+        const style = styles[status as keyof typeof styles] || styles.off_market;
         return (
             <Badge variant="outline" className={cn("capitalize font-black text-[10px] tracking-widest rounded-xl px-3 py-1 bg-white/90 backdrop-blur-md shadow-sm", style)}>
                 {status.replace('_', ' ')}
@@ -353,13 +352,13 @@ export default function PropertiesPage() {
                                                             </h3>
                                                             <div className="flex items-center text-slate-400 font-bold text-[10px] uppercase tracking-widest">
                                                                 <MapPin className={cn("w-3 h-3 mr-1.5", colors.text)} />
-                                                                {property.city}
+                                                                {property.city || 'No city'}
                                                             </div>
                                                         </div>
                                                     </div>
 
                                                     <div className="flex items-baseline gap-1 mb-8">
-                                                        <span className="text-3xl font-black text-slate-900">${property.rent.toLocaleString()}</span>
+                                                        <span className="text-3xl font-black text-slate-900">${(property.rent ?? 0).toLocaleString()}</span>
                                                         <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">/ Month</span>
                                                     </div>
 

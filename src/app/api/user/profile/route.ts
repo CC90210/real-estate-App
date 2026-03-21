@@ -17,6 +17,15 @@ export async function GET(request: Request) {
 
         const supabase = createServerClient();
 
+        // Verify the requesting user is authenticated and matches the requested profile
+        // (or is a super admin / same company)
+        const { createClient } = await import('@/lib/supabase/server');
+        const authSupabase = await createClient();
+        const { data: { user: authUser } } = await authSupabase.auth.getUser();
+        if (!authUser) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { data: profile, error } = await supabase
             .from('profiles')
             .select(`

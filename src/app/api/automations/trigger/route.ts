@@ -53,13 +53,14 @@ export async function POST(req: Request) {
             )
         }
 
-        // Get the entity data
+        // Get the entity data (scoped to user's company)
         let entityData = null
         if (entityType === 'property' && entityId) {
             const { data } = await supabase
                 .from('properties')
                 .select('*, buildings(*), landlords(*)')
                 .eq('id', entityId)
+                .eq('company_id', profile.company_id)
                 .single()
             entityData = data
         } else if (entityType === 'application' && entityId) {
@@ -67,6 +68,7 @@ export async function POST(req: Request) {
                 .from('applications')
                 .select('*, properties(*)')
                 .eq('id', entityId)
+                .eq('company_id', profile.company_id)
                 .single()
             entityData = data
         }

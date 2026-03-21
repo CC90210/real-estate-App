@@ -26,10 +26,26 @@ export async function POST(request: Request) {
 
         const supabase = await createClient();
 
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('company_id')
+            .eq('id', user.id)
+            .single();
+
+        if (!profile?.company_id) {
+            return NextResponse.json({ error: 'No company found' }, { status: 403 });
+        }
+
         const { data: property, error } = await supabase
             .from('properties')
             .select('*, buildings(*)')
             .eq('id', propertyId)
+            .eq('company_id', profile.company_id)
             .single();
 
         if (error || !property) {

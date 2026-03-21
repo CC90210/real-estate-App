@@ -20,7 +20,13 @@ export async function POST(req: Request) {
         }
     }
 
-    const data = JSON.parse(body)
+    let data
+    try {
+        data = JSON.parse(body)
+    } catch {
+        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+
     const supabase = await createClient()
 
     // Update the automation log

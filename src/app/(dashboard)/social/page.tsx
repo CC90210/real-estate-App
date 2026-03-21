@@ -241,6 +241,9 @@ export default function SocialPage() {
         }
     }
 
+    // ─── Derived: active accounts (must be before toggleSelectAll) ─
+    const activeAccounts = accounts.filter(a => a.status === 'active')
+
     // ─── Select All / Deselect All Accounts ───────────────────────
     function toggleSelectAll() {
         if (selectedAccounts.length === activeAccounts.length) {
@@ -316,7 +319,6 @@ export default function SocialPage() {
         }
     }
 
-    const activeAccounts = accounts.filter(a => a.status === 'active')
     const charCount = postContent.length
     const allSelected = selectedAccounts.length === activeAccounts.length && activeAccounts.length > 0
 

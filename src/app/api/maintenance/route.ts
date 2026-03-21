@@ -83,6 +83,16 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('id', user.id)
+        .single()
+
+    if (!profile?.company_id) {
+        return NextResponse.json({ error: 'No company found' }, { status: 403 })
+    }
+
     try {
         const body = await req.json()
         const { id, status, resolution_notes, assigned_to, scheduled_date, estimated_cost, actual_cost } = body
@@ -100,6 +110,7 @@ export async function PATCH(req: Request) {
             .from('maintenance_requests')
             .update(update)
             .eq('id', id)
+            .eq('company_id', profile.company_id)
             .select()
             .single()
 

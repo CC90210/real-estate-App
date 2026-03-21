@@ -40,7 +40,7 @@ export async function getPlanInfo(companyId?: string): Promise<PlanInfo> {
         }
 
         // Hardcoded super admin bypass — owner always gets full access
-        const SUPER_ADMIN_EMAILS = ['konamak@icloud.com'];
+        const SUPER_ADMIN_EMAILS = ['konamak@icloud.com', 'oasisaisolutions@gmail.com'];
         const isHardcodedAdmin = user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase());
 
         // Get profile with company data in ONE query
