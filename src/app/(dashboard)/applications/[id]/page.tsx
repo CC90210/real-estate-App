@@ -684,7 +684,7 @@ export default function ApplicationDetailsPage() {
                 ================================================================ */}
                 <div className="space-y-8">
 
-                    {/* SingleKey Screening Report Upload */}
+                    {/* Screening Report Upload (SingleKey, Certn, Equifax, or any provider) */}
                     <ScreeningReportUpload
                         applicationId={application.id}
                         onReportProcessed={() => fetchApplication()}
