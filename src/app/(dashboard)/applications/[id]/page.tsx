@@ -543,7 +543,7 @@ export default function ApplicationDetailsPage() {
                             </h3>
                             <div className="space-y-4">
                                 <DetailItem label="Employer" value={application.employer ?? 'Not provided'} />
-                                <DetailItem label="Employment Status" value={application.employment_status ?? 'Not provided'} />
+                                <DetailItem label="Employment Status" value={application.employment_status ? application.employment_status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Not provided'} />
                                 <DetailItem label="Employment Duration" value={application.employment_duration ?? 'Not provided'} />
                                 <DetailItem
                                     label="Annual Income Est."

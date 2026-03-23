@@ -142,11 +142,12 @@ export function NewApplicationModal({ propertyId }: { propertyId: string }) {
             ? (property.rent / effectiveIncome) * 100
             : null;
 
-    // DTI: monthly debt payments as a percentage of gross monthly income
+    // DTI: total outstanding debt as a percentage of gross annual income
     const totalDebtNum = parseFloat(formData.total_debt) || 0;
+    const annualIncome = effectiveIncome * 12;
     const dtiRatio =
-        effectiveIncome > 0 && totalDebtNum > 0
-            ? (totalDebtNum / effectiveIncome) * 100
+        annualIncome > 0 && totalDebtNum > 0
+            ? (totalDebtNum / annualIncome) * 100
             : null;
 
     const handleSubmit = async () => {
@@ -169,7 +170,7 @@ export function NewApplicationModal({ propertyId }: { propertyId: string }) {
 
                     // Employment & Income
                     employment_status: formData.employment_status || undefined,
-                    employer_name: formData.employer_name || undefined,
+                    employer: formData.employer_name || undefined,
                     employment_duration: formData.employment_duration || undefined,
                     monthly_income: parseFloat(formData.monthly_income) || undefined,
                     combined_household_income: parseFloat(formData.combined_household_income) || undefined,

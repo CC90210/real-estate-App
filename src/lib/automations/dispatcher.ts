@@ -1,5 +1,3 @@
-import crypto from 'crypto';
-
 export type AutomationEventType =
     | 'APPLICATION_SUBMITTED'
     | 'APPLICATION_STATUS_CHANGED'
@@ -24,7 +22,7 @@ export async function triggerAutomation(
     try {
         // 1. Construct Standardized Envelope
         const envelope = {
-            id: crypto.randomUUID(),
+            id: globalThis.crypto.randomUUID(),
             timestamp: new Date().toISOString(),
             event: event,
             environment: process.env.NODE_ENV || 'development',
@@ -40,12 +38,17 @@ export async function triggerAutomation(
             'Content-Type': 'application/json'
         };
 
-        if (webhookSecret) {
-            const signature = crypto
-                .createHmac('sha256', webhookSecret)
-                .update(bodyString)
-                .digest('hex');
-            headers['X-PropFlow-Signature'] = signature;
+        if (webhookSecret && typeof globalThis.process !== 'undefined') {
+            // HMAC signing only works server-side (Node.js crypto)
+            try {
+                const { createHmac } = await import('crypto');
+                const signature = createHmac('sha256', webhookSecret)
+                    .update(bodyString)
+                    .digest('hex');
+                headers['X-PropFlow-Signature'] = signature;
+            } catch {
+                // Browser context — skip HMAC signing
+            }
         }
 
         // 3. Dispatch to n8n (or other IPaaS)

@@ -50,7 +50,7 @@ export default function NewApplicationPage() {
         return (
             <div className="text-center py-20">
                 <h2 className="text-xl font-semibold mb-4">No Property Selected</h2>
-                <Button onClick={() => router.push('/areas')}>Select a Property First</Button>
+                <Button onClick={() => router.push('/properties')}>Select a Property First</Button>
             </div>
         );
     }
