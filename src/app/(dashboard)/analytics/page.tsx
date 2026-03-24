@@ -125,7 +125,7 @@ export default function AnalyticsPage() {
     const { isLoading: authLoading, company } = useAuth();
     const resolvedCompanyId = company?.id;
     const { colors } = useAccentColor()
-    const { data: centralizedStats, isLoading: analyticsLoading } = useQuery({
+    const { data: centralizedStats, isLoading: analyticsLoading, error, refetch } = useQuery({
         queryKey: ['analytics-direct', resolvedCompanyId],
         queryFn: async () => {
             if (!resolvedCompanyId) return null
@@ -143,7 +143,7 @@ export default function AnalyticsPage() {
                 supabase.from('applications').select('status, created_at').eq('company_id', id),
                 supabase.from('invoices').select('total, updated_at, created_at, paid_date').eq('company_id', id).eq('status', 'paid'),
                 supabase.from('maintenance_requests').select('id', { count: 'exact', head: true }).eq('company_id', id).in('status', ['open', 'in_progress']),
-                supabase.from('showings').select('id', { count: 'exact', head: true }).eq('company_id', id).gte('showing_date', new Date().toISOString()),
+                supabase.from('showings').select('id', { count: 'exact', head: true }).eq('company_id', id).gte('scheduled_date', new Date().toISOString()),
                 supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('company_id', id)
             ])
 
@@ -221,6 +221,13 @@ export default function AnalyticsPage() {
             </div>
         );
     }
+
+    if (error) return (
+        <div className="p-6 text-center">
+            <p className="text-red-500 mb-4">Failed to load analytics data</p>
+            <Button onClick={() => refetch()} variant="outline">Try Again</Button>
+        </div>
+    )
 
     if (analyticsLoading || !centralizedStats) {
         return (

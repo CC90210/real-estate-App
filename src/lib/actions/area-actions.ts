@@ -8,8 +8,6 @@ export async function deleteAreaAction(areaId: string) {
     const supabase = await createClient();
 
     try {
-        console.log(`[deleteAreaAction] Deleting Area: ${areaId}`);
-
         // The database handles cascading deletes (Buildings -> Properties -> Apps -> Logs)
         const { error } = await supabase
             .from('areas')

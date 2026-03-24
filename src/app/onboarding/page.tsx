@@ -31,7 +31,7 @@ export default function OnboardingPage() {
                 if (userError) {
                     // Handle specific abort/network errors gracefully
                     if (userError.message.includes('aborted')) {
-                        console.log('User check aborted, retrying...')
+                        console.warn('User check aborted, retrying...')
                         checkInProgress.current = false
                         return
                     }

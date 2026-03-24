@@ -1,11 +1,16 @@
 
 import { createServerClient } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 /**
  * API Profiles Batch Proxy - Bypasses RLS using Service Role Key
  */
 export async function POST(request: Request) {
+    const authClient = await createClient()
+    const { data: { user } } = await authClient.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
     try {
         const { userIds } = await request.json();
 

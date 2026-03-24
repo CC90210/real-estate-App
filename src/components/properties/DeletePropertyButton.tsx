@@ -30,8 +30,6 @@ export function DeletePropertyButton({ propertyId, propertyName, redirectTo = '/
     const handleDelete = () => {
         startTransition(async () => {
             try {
-                console.log("[DeletePropertyButton] Initiating delete for:", propertyId);
-
                 const result = await deletePropertyAction(propertyId);
 
                 if (!result.success) {

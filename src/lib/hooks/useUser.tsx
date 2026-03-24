@@ -108,7 +108,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
                         const proxyRes = await fetch(`/api/user/profile?userId=${userId}`);
                         if (proxyRes.ok) {
                             const proxyData = await proxyRes.json();
-                            console.log('[RECOVERY] Successfully recovered profile via proxy.');
+                            console.warn('[RECOVERY] Successfully recovered profile via proxy.');
                             return proxyData;
                         }
                     } catch (proxyErr) {

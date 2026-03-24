@@ -1,13 +1,22 @@
 import { createServerClient } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
+    const authClient = await createClient()
+    const { data: { user } } = await authClient.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
     try {
         const body = await request.json();
         const { userId, email, fullName, role, companyName } = body;
 
         if (!userId || !email) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+        }
+
+        if (user.id !== userId) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
         }
 
         const supabase = createServerClient();

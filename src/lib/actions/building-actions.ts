@@ -7,8 +7,6 @@ export async function deleteBuildingAction(buildingId: string) {
     const supabase = await createClient();
 
     try {
-        console.log(`[deleteBuildingAction] Deleting Building: ${buildingId}`);
-
         // Database CASCADE handles properties -> apps -> logs
         const { error } = await supabase
             .from('buildings')
