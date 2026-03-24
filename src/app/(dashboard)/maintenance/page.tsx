@@ -71,19 +71,23 @@ export default function MaintenancePage() {
 
             if (!error) return data || []
 
-            // If profiles JOIN fails (RLS recursion), retry without profile JOINs
-            if (error.message?.includes('recursion') || error.message?.includes('policy')) {
-                console.warn('[Maintenance] Profile JOIN failed, retrying without:', error.message)
-                const { data: fallback, error: fallbackErr } = await supabase
+            // If JOIN fails (missing FK, RLS recursion, etc.), retry without profile JOINs
+            console.warn('[Maintenance] Join query failed, retrying without profile joins:', error.message)
+            const { data: fallback, error: fallbackErr } = await supabase
+                .from('maintenance_requests')
+                .select('*, properties(address, unit_number)')
+                .eq('company_id', resolvedCompanyId)
+                .order('created_at', { ascending: false })
+            if (fallbackErr) {
+                // Even basic join failed — try plain select
+                const { data: plain } = await supabase
                     .from('maintenance_requests')
-                    .select('*, properties(address, unit_number)')
+                    .select('*')
                     .eq('company_id', resolvedCompanyId)
                     .order('created_at', { ascending: false })
-                if (fallbackErr) throw fallbackErr
-                return fallback || []
+                return plain || []
             }
-
-            throw error
+            return fallback || []
         },
         enabled: !!resolvedCompanyId,
         retry: 1,
