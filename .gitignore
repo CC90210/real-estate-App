@@ -33,6 +33,10 @@ __pycache__/
 # playwright
 .playwright-mcp/
 test-results/
+audit-*.png
+
+# test files
+test-*.pdf
 
 # debug
 npm-debug.log*
