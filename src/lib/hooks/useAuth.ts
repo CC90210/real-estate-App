@@ -78,41 +78,12 @@ export function useAuth() {
                     fetchingRef.current = false;
                 });
         } else {
-            // No company_id on profile — auto-resolve first available company
-            // This handles super admins and accounts whose company link was lost
-            console.log('[useAuth] No company_id on profile. Auto-resolving first company...');
-            supabase
-                .from('companies')
-                .select('*')
-                .limit(1)
-                .single()
-                .then(({ data, error }) => {
-                    if (data) {
-                        console.log('[useAuth] Auto-resolved company:', data.name || data.id);
-                        setFallbackCompany(data);
-                        // Also patch the profile so this is permanent
-                        if (profile?.id) {
-                            supabase
-                                .from('profiles')
-                                .update({ company_id: data.id })
-                                .eq('id', profile.id)
-                                .then(({ error: updateErr }) => {
-                                    if (updateErr) {
-                                        console.warn('[useAuth] Could not auto-link profile to company:', updateErr.message);
-                                    } else {
-                                        console.log('[useAuth] Profile permanently linked to company:', data.id);
-                                    }
-                                });
-                        }
-                    } else if (error) {
-                        console.warn('[useAuth] No companies found:', error.message);
-                    }
-                })
-                .catch(() => {})
-                .finally(() => {
-                    setFallbackDone(true);
-                    fetchingRef.current = false;
-                });
+            // No company_id on profile — user has no company assigned.
+            // Do NOT auto-resolve to a random company — that's a cross-tenant data leak.
+            // The UI will show a "no workspace" state and prompt user to refresh or contact support.
+            console.warn('[useAuth] No company_id on profile. User needs company assignment.');
+            setFallbackDone(true);
+            fetchingRef.current = false;
         }
     }, [profile?.company_id, profile?.id, company, fallbackDone, isAuthenticated, userLoading]);
 

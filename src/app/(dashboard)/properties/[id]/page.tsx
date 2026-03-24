@@ -21,11 +21,15 @@ export default async function PropertyDetailsPage({ params }: { params: { id: st
 
     // Auth check first — before any data queries
     const { data: { user } } = await supabase.auth.getUser();
-    const { data: userProfile } = user ? await supabase
+    if (!user) return <div className="p-8">Please sign in to view this property.</div>;
+
+    const { data: userProfile } = await supabase
         .from('profiles')
-        .select('role')
+        .select('role, company_id')
         .eq('id', user.id)
-        .single() : { data: null };
+        .single();
+
+    if (!userProfile?.company_id) return <div className="p-8">No workspace found. Please contact support.</div>;
 
     const { data: property } = await supabase
         .from('properties')
@@ -37,6 +41,7 @@ export default async function PropertyDetailsPage({ params }: { params: { id: st
             )
         `)
         .eq('id', id)
+        .eq('company_id', userProfile.company_id)
         .single();
 
     if (!property) return <div className="p-8">Property not found</div>;

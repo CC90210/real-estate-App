@@ -134,12 +134,13 @@ export async function POST(request: Request) {
             currency: currency
         };
 
-        // Fetch property data if provided
+        // Fetch property data if provided (scoped to user's company)
         if (propertyId) {
             const { data: property } = await supabase
                 .from('properties')
                 .select('*, buildings(name, address)')
                 .eq('id', propertyId)
+                .eq('company_id', companyId)
                 .single();
 
             if (property) {
@@ -147,12 +148,13 @@ export async function POST(request: Request) {
             }
         }
 
-        // Fetch application data if provided
+        // Fetch application data if provided (scoped to user's company)
         if (applicantId && applicantId !== 'none') {
             const { data: application } = await supabase
                 .from('applications')
                 .select('*')
                 .eq('id', applicantId)
+                .eq('company_id', companyId)
                 .single();
 
             if (application) {

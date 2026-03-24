@@ -15,7 +15,7 @@ interface GenerateInvoicePDFParams {
 
 export async function generateInvoicePDF({ companyId, invoiceId }: GenerateInvoicePDFParams) {
     try {
-        // 1. Fetch invoice data (Admin mode - no company_id filter to avoid mismatches)
+        // 1. Fetch invoice data scoped to company for defense-in-depth
         const { data: invoice, error: invoiceError } = await supabaseAdmin
             .from('invoices')
             .select(`
@@ -33,6 +33,7 @@ export async function generateInvoicePDF({ companyId, invoiceId }: GenerateInvoi
                 )
             `)
             .eq('id', invoiceId)
+            .eq('company_id', companyId)
             .single()
 
         if (invoiceError || !invoice) {
@@ -132,6 +133,7 @@ export async function generateInvoicePDF({ companyId, invoiceId }: GenerateInvoi
                 pdf_generated_at: new Date().toISOString()
             })
             .eq('id', invoiceId)
+            .eq('company_id', companyId)
 
         return {
             pdfBuffer,

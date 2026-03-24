@@ -135,7 +135,7 @@ export async function checkPlanLimits(companyId: string): Promise<{
 
     // Get counts
     const [propertiesRes, teamRes] = await Promise.all([
-        supabase.from('properties').select('id', { count: 'exact', head: true }),
+        supabase.from('properties').select('id', { count: 'exact', head: true }).eq('company_id', companyId),
         supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('company_id', companyId),
     ])
 

@@ -6,9 +6,29 @@ import { revalidatePath } from 'next/cache';
 export async function deletePropertyAction(propertyId: string) {
     const supabase = await createClient();
 
-    try {
-        console.log(`[deletePropertyAction] Starting cascade deletion for: ${propertyId}`);
+    // Auth + company scope check
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
 
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+
+    if (!profile?.company_id) throw new Error('No workspace found');
+
+    // Verify property belongs to user's company
+    const { data: property } = await supabase
+        .from('properties')
+        .select('id')
+        .eq('id', propertyId)
+        .eq('company_id', profile.company_id)
+        .single();
+
+    if (!property) return { success: false, error: 'Property not found or access denied' };
+
+    try {
         // 1. Delete related showings
         const { error: showingsError } = await supabase
             .from('showings')
@@ -52,7 +72,6 @@ export async function deletePropertyAction(propertyId: string) {
             await supabase.from('activity_log').delete().in('entity_id', appIds).eq('entity_type', 'application');
             // 6. Cascade Delete: Applications
             await supabase.from('applications').delete().in('id', appIds);
-            console.log(`[deletePropertyAction] Deleted ${appIds.length} related applications`);
         }
 
         // 7. Cascade Delete: Activity logs for Property
@@ -68,8 +87,6 @@ export async function deletePropertyAction(propertyId: string) {
             console.error('[deletePropertyAction] Error deleting property:', error);
             throw new Error(error.message);
         }
-
-        console.log('[deletePropertyAction] Cascade deletion successful.');
 
         // 9. Purge Cache - all relevant paths
         revalidatePath('/dashboard');
@@ -91,9 +108,29 @@ export async function deletePropertyAction(propertyId: string) {
 export async function updatePropertyAction(propertyId: string, formData: any) {
     const supabase = await createClient();
 
-    try {
-        console.log(`[updatePropertyAction] Updating: ${propertyId}`, formData);
+    // Auth + company scope check
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
 
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+
+    if (!profile?.company_id) throw new Error('No workspace found');
+
+    // Verify property belongs to user's company
+    const { data: property } = await supabase
+        .from('properties')
+        .select('id')
+        .eq('id', propertyId)
+        .eq('company_id', profile.company_id)
+        .single();
+
+    if (!property) return { success: false, error: 'Property not found or access denied' };
+
+    try {
         // Clean up the formData - ensure proper types
         const cleanData = {
             ...formData,
