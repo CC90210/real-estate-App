@@ -7,38 +7,56 @@ export const applicationSchema = z.object({
     property_id: z.string().uuid('Invalid property ID'),
 
     // Employment & Income
-    monthly_income: z.number().positive('Income must be positive').optional(),
-    combined_household_income: z.number().positive().optional(),
-    employment_status: z.string().optional(),
-    employment_duration: z.string().optional(),
-    employer: z.string().optional(),
-    employer_name: z.string().optional(),
+    monthly_income: z.number().positive('Income must be positive').optional().nullable(),
+    combined_household_income: z.number().positive().optional().nullable(),
+    employment_status: z.string().optional().nullable(),
+    employment_duration: z.string().optional().nullable(),
+    employer: z.string().optional().nullable(),
+    employer_name: z.string().optional().nullable(),
+    income_verified: z.boolean().optional().nullable(),
 
     // Living situation
-    current_address: z.string().optional(),
-    current_rent: z.number().min(0).optional(),
-    current_landlord_name: z.string().optional(),
-    current_landlord_phone: z.string().optional(),
+    current_address: z.string().optional().nullable(),
+    current_rent: z.number().min(0).optional().nullable(),
+    current_landlord_name: z.string().optional().nullable(),
+    current_landlord_phone: z.string().optional().nullable(),
+    previous_addresses: z.string().optional().nullable(),
 
     // Financial
-    credit_score: z.number().int().min(300).max(900).optional(),
-    total_debt: z.number().min(0).optional(),
+    credit_score: z.number().int().min(300).max(900).optional().nullable(),
+    total_debt: z.number().min(0).optional().nullable(),
+    dti_ratio: z.number().min(0).optional().nullable(),
+    income_to_rent_ratio: z.number().optional().nullable(),
+    yearly_rent_cost: z.number().optional().nullable(),
+
+    // Screening
+    screening_status: z.string().optional().nullable(),
+    criminal_check_passed: z.boolean().optional().nullable(),
+    public_records_clear: z.boolean().optional().nullable(),
+    background_check_passed: z.boolean().optional().nullable(),
+    government_id_verified: z.boolean().optional().nullable(),
+    screening_completed_at: z.string().optional().nullable(),
+    singlekey_report_url: z.string().optional().nullable(),
 
     // Personal
-    move_in_date: z.string().optional(),
+    move_in_date: z.string().optional().nullable(),
     num_occupants: z.number().int().min(1).default(1),
     has_pets: z.boolean().default(false),
-    pet_details: z.string().optional(),
-    num_vehicles: z.number().int().min(0).optional(),
-    is_smoker: z.boolean().optional(),
+    pet_details: z.string().optional().nullable(),
+    num_vehicles: z.number().int().min(0).optional().nullable(),
+    is_smoker: z.boolean().optional().nullable(),
 
-    // Notes
-    notes: z.string().max(2000).optional(),
-    additional_notes: z.string().max(2000).optional(),
+    // Notes & workflow
+    notes: z.string().max(2000).optional().nullable(),
+    additional_notes: z.string().max(2000).optional().nullable(),
+    status: z.enum(['new', 'screening', 'approved', 'denied', 'withdrawn']).optional(),
+    denial_reason: z.string().optional().nullable(),
+    reviewed_at: z.string().optional().nullable(),
+    reviewed_by: z.string().optional().nullable(),
 
     // Internal
-    agent_id: z.string().uuid().optional(),
-    created_by: z.string().uuid().optional(),
+    agent_id: z.string().uuid().optional().nullable(),
+    created_by: z.string().uuid().optional().nullable(),
 });
 
 export const applicationStatusSchema = z.object({
