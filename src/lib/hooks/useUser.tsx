@@ -6,12 +6,15 @@ import { Profile, UserRole } from '@/types/database';
 import { User } from '@supabase/supabase-js';
 import { PLANS, PlanId } from '@/lib/plans';
 
-// ─── Hardcoded super admin emails ───────────────────────────────
+// ─── Super admin emails ───────────────────────────────
 // These ALWAYS get full enterprise access regardless of database state
-const SUPER_ADMIN_EMAILS = ['konamak@icloud.com', 'oasisaisolutions@gmail.com'];
+// Loaded from env var (NEXT_PUBLIC_SUPER_ADMIN_EMAILS) to avoid exposing in source
+const SUPER_ADMIN_EMAILS: string[] = (
+    process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAILS || ''
+).split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 
 function isSuperAdminEmail(email?: string | null): boolean {
-    if (!email) return false;
+    if (!email || SUPER_ADMIN_EMAILS.length === 0) return false;
     return SUPER_ADMIN_EMAILS.includes(email.toLowerCase().trim());
 }
 
@@ -112,12 +115,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
                         console.error('[RECOVERY FAILED]:', proxyErr);
                     }
 
-                    // If proxy also fails, return minimum safe profile
+                    // If proxy also fails, return minimum safe profile with least-privilege role
                     return {
                         id: userId,
                         email: user?.email || null,
                         company_id: null,
-                        role: 'admin',
+                        role: 'agent',
                     } as any;
                 }
                 console.warn('Profile sync issue:', profileError.message);

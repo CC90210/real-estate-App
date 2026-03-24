@@ -3,10 +3,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
-// Allow large screening report uploads (up to 50MB)
+// Enterprise document handling — supports large multi-page screening reports (up to 250MB)
 export const runtime = 'nodejs'
-export const maxDuration = 120 // 2 minutes for AI processing
+export const maxDuration = 300 // 5 minutes for AI processing of 20+ page reports
 export const dynamic = 'force-dynamic'
+
+const MAX_FILE_SIZE = 250 * 1024 * 1024 // 250MB — matches storage bucket limit
 
 const GEMINI_EXTRACTION_PROMPT = `You are an expert tenant screening report analyzer. You will receive a PDF document that may be from ANY screening provider (SingleKey, Certn, Equifax, TransUnion, Naborly, FrontLobby, or custom reports). Extract ALL available information into the JSON structure below. For any field not found in the document, use null (for strings/numbers/booleans) or 0 (for counts) or [] (for arrays).
 
@@ -265,7 +267,9 @@ function transformReport(row: Record<string, unknown>) {
             ai_summary: row.extracted_summary ?? null,
             overall_recommendation: raw.overall_recommendation ?? null,
         } : null,
-        error_message: row.processing_status === 'failed' ? 'AI extraction failed — report uploaded successfully' : null,
+        error_message: row.processing_status === 'failed'
+            ? (row.error_message as string) || 'AI extraction failed — report uploaded successfully'
+            : null,
     }
 }
 
@@ -306,7 +310,20 @@ async function parseScreeningReportWithGemini(
     }
 
     const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+
+    // Use Gemini 1.5 Pro for large documents (>5MB) — better at complex multi-page analysis
+    // Use Flash for smaller reports — faster and cheaper
+    const fileSizeMB = fileBuffer.byteLength / (1024 * 1024)
+    const modelName = fileSizeMB > 5 ? 'gemini-1.5-pro' : 'gemini-1.5-flash'
+    const model = genAI.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+            temperature: 0.1,      // Low temp for structured extraction accuracy
+            maxOutputTokens: 8192, // Enough for full JSON response with all 60+ fields
+        },
+    })
+
+    console.log(`[Screening AI] Using ${modelName} for ${fileSizeMB.toFixed(1)}MB document`)
 
     const base64Data = Buffer.from(fileBuffer).toString('base64')
 
@@ -322,13 +339,26 @@ async function parseScreeningReportWithGemini(
 
     const responseText = result.response.text().trim()
 
-    // Strip markdown code fences if Gemini wrapped the response despite instructions
-    const cleaned = responseText
-        .replace(/^```(?:json)?\s*/i, '')
-        .replace(/\s*```$/i, '')
-        .trim()
+    // Robust JSON extraction — handles markdown fences, nested fences, and whitespace
+    let cleaned = responseText
+    // Strip all markdown code fences (handles ```json, ``` , and nested cases)
+    cleaned = cleaned.replace(/^```[\w]*\n?/gm, '').replace(/\n?```$/gm, '').trim()
 
-    return JSON.parse(cleaned) as GeminiExtraction
+    // Find the JSON object boundaries as a fallback
+    const jsonStart = cleaned.indexOf('{')
+    const jsonEnd = cleaned.lastIndexOf('}')
+    if (jsonStart === -1 || jsonEnd === -1) {
+        throw new Error(`Gemini returned non-JSON response: ${cleaned.substring(0, 200)}...`)
+    }
+    cleaned = cleaned.substring(jsonStart, jsonEnd + 1)
+
+    try {
+        return JSON.parse(cleaned) as GeminiExtraction
+    } catch (parseError) {
+        // Log the raw response for debugging
+        console.error('[Screening AI] JSON parse failed. Raw response:', responseText.substring(0, 500))
+        throw new Error(`Failed to parse Gemini JSON response: ${(parseError as Error).message}`)
+    }
 }
 
 export async function POST(
@@ -366,6 +396,13 @@ export async function POST(
 
     if (file.type !== 'application/pdf') {
         return NextResponse.json({ error: 'Only PDF files are accepted' }, { status: 400 })
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+        return NextResponse.json(
+            { error: `File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum is 250MB.` },
+            { status: 413 }
+        )
     }
 
     // Upload PDF to Supabase Storage
@@ -406,18 +443,23 @@ export async function POST(
     // Attempt AI extraction — failure must not block the response, only change status
     let extraction: GeminiExtraction | null = null
     let processingStatus: 'completed' | 'failed' = 'failed'
+    let processingError: string | null = null
 
     try {
         extraction = await parseScreeningReportWithGemini(fileBuffer, 'application/pdf')
         processingStatus = 'completed'
-    } catch {
-        // Intentional: AI parse failure is non-fatal. Record is saved with status 'failed'.
+        console.log(`[Screening AI] Successfully extracted data from ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`)
+    } catch (aiError) {
+        processingError = (aiError as Error).message || 'Unknown AI extraction error'
+        console.error(`[Screening AI] Extraction failed for ${file.name}:`, processingError)
+        // Non-fatal: record is saved with status 'failed' but the PDF upload succeeded
     }
 
     // Build the update payload using CORRECT database column names (extracted_* prefix)
     const reportUpdate: Record<string, unknown> = {
         processing_status: processingStatus,
         processed_at: new Date().toISOString(),
+        ...(processingError && { error_message: processingError }),
     }
 
     if (extraction) {

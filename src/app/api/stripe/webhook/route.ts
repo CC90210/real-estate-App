@@ -13,16 +13,19 @@ const supabaseAdmin = createClient(
 export async function POST(req: Request) {
     const body = await req.text()
     const headersList = await headers()
-    const signature = headersList.get('stripe-signature')!
+    const signature = headersList.get('stripe-signature')
+
+    if (!signature) {
+        return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 400 })
+    }
 
     let event: Stripe.Event
 
     try {
-        // ✅ USING THE CORRECT VARIABLE NAME FROM VERCEL
         event = stripe.webhooks.constructEvent(
             body,
             signature,
-            process.env.STRIPE_WEBHOOK_SIGNING_SECRET!  // Matches your Vercel setup
+            process.env.STRIPE_WEBHOOK_SIGNING_SECRET!
         )
     } catch (error) {
         console.error('Webhook signature verification failed:', error)

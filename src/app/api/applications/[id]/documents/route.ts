@@ -21,7 +21,7 @@ const ALLOWED_MIME_TYPES = [
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ]
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
+const MAX_FILE_SIZE = 250 * 1024 * 1024 // 250 MB — enterprise document support
 
 export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
     const params = await props.params
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     }
 
     if (file.size > MAX_FILE_SIZE) {
-        return NextResponse.json({ error: `File too large. Maximum size is 50 MB.` }, { status: 400 })
+        return NextResponse.json({ error: `File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum is 250MB.` }, { status: 413 })
     }
 
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {

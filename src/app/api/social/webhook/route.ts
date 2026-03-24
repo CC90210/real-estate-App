@@ -34,7 +34,13 @@ export async function POST(req: Request) {
             }
         }
 
-        const body = JSON.parse(rawBody)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let body: any
+        try {
+            body = JSON.parse(rawBody)
+        } catch {
+            return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 })
+        }
         const event = body.event
 
         console.log('[Social Webhook] Event:', event, '| Timestamp:', body.timestamp)
