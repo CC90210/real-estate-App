@@ -3,7 +3,8 @@ Email delivery service for the PropFlow Automation Framework.
 
 Delivery strategy (in priority order):
   1. Company's own SMTP credentials (loaded per-request from Supabase)
-  2. Resend API (PropFlow's fallback, used when no SMTP is configured)
+  2. Company's Gmail OAuth (uses the Next.js /api/gmail/send endpoint)
+  3. Resend API (PropFlow's fallback, used when no SMTP or Gmail is configured)
 
 Rate limiting: max 50 emails per hour per company, enforced via
 automation_logs counts in Supabase so the limit survives restarts.
@@ -23,6 +24,7 @@ from email.mime.text import MIMEText
 from typing import Optional
 
 import aiosmtplib
+import httpx
 from jinja2 import Environment, PackageLoader, select_autoescape, DictLoader
 
 from config import get_settings
@@ -229,6 +231,11 @@ class EmailService:
             credentials = credentials.model_copy(update={"smtp_password": decrypted_pw})
             return await self._send_via_smtp(credentials, message)
 
+        # Try Gmail OAuth if the company has connected a Gmail account
+        gmail_result = await self._send_via_gmail(company_id, message)
+        if gmail_result[0]:
+            return gmail_result
+
         return await self._send_via_resend(message)
 
     # ------------------------------------------------------------------
@@ -329,6 +336,59 @@ class EmailService:
             )
             return False
         return True
+
+    async def _send_via_gmail(
+        self,
+        company_id: str,
+        message: EmailMessage,
+    ) -> tuple[bool, str]:
+        """
+        Send via the company's connected Gmail OAuth account by calling
+        the Next.js /api/gmail/send endpoint.
+        """
+        try:
+            # Check if company has a Gmail token
+            gmail_token = self._svc.get_gmail_token(company_id)
+            if not gmail_token:
+                return False, "No Gmail account connected"
+
+            app_url = self._settings.app_url
+            payload: dict[str, object] = {
+                "to": message.to,
+                "subject": message.subject,
+                "body": message.subject,  # plain text fallback
+                "html": message.html,
+            }
+
+            if message.attachments:
+                import base64 as _b64
+                payload["attachments"] = [
+                    {
+                        "filename": filename,
+                        "mimeType": mime_type,
+                        "data": _b64.b64encode(content_bytes).decode("ascii"),
+                    }
+                    for content_bytes, filename, mime_type in message.attachments
+                ]
+
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    f"{app_url}/api/gmail/send",
+                    json=payload,
+                    headers={"Content-Type": "application/json"},
+                )
+
+            if resp.status_code == 200:
+                data = resp.json()
+                return True, f"Sent via Gmail messageId={data.get('messageId')}"
+            else:
+                detail = resp.json().get("error", resp.text[:200])
+                logger.warning("Gmail send failed (%s): %s", resp.status_code, detail)
+                return False, f"Gmail error: {detail}"
+
+        except Exception as exc:
+            logger.warning("Gmail send error for company=%s: %s", company_id, exc)
+            return False, f"Gmail error: {exc}"
 
     async def _send_via_smtp(
         self,

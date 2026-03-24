@@ -60,23 +60,10 @@ def get_settings() -> Settings:
     Raises ValueError immediately at startup if required variables are absent,
     so misconfiguration is caught before the server accepts traffic.
     """
-    missing: list[str] = []
-
-    def require(name: str) -> str:
-        value = os.getenv(name, "").strip()
-        if not value:
-            missing.append(name)
-        return value
-
     def optional(name: str) -> Optional[str]:
         value = os.getenv(name, "").strip()
         return value if value else None
 
-    supabase_url = require("SUPABASE_URL") or require("NEXT_PUBLIC_SUPABASE_URL")
-    supabase_service_key = require("SUPABASE_SERVICE_KEY") or require("SUPABASE_SERVICE_ROLE_KEY")
-    webhook_secret = require("WEBHOOK_SECRET")
-
-    # Collect both attempts — if still empty it was truly missing
     supabase_url = (
         os.getenv("SUPABASE_URL", "").strip()
         or os.getenv("NEXT_PUBLIC_SUPABASE_URL", "").strip()
@@ -87,17 +74,17 @@ def get_settings() -> Settings:
     )
     webhook_secret = os.getenv("WEBHOOK_SECRET", "").strip()
 
-    real_missing: list[str] = []
+    missing: list[str] = []
     if not supabase_url:
-        real_missing.append("SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL)")
+        missing.append("SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL)")
     if not supabase_service_key:
-        real_missing.append("SUPABASE_SERVICE_KEY (or SUPABASE_SERVICE_ROLE_KEY)")
+        missing.append("SUPABASE_SERVICE_KEY (or SUPABASE_SERVICE_ROLE_KEY)")
     if not webhook_secret:
-        real_missing.append("WEBHOOK_SECRET")
+        missing.append("WEBHOOK_SECRET")
 
-    if real_missing:
+    if missing:
         raise ValueError(
-            f"Missing required environment variables: {', '.join(real_missing)}"
+            f"Missing required environment variables: {', '.join(missing)}"
         )
 
     return Settings(

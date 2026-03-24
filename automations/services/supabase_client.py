@@ -428,3 +428,28 @@ class SupabaseService:
                 "Failed to count hourly emails for company_id=%s", company_id
             )
             return 0
+
+    # ------------------------------------------------------------------
+    # Gmail OAuth token lookup
+    # ------------------------------------------------------------------
+
+    def get_gmail_token(self, company_id: str) -> Optional[dict]:
+        """
+        Check if a company has a connected Gmail OAuth account.
+        Returns the primary token row or None.
+        """
+        try:
+            result = (
+                self._db.table("gmail_oauth_tokens")
+                .select("id, email, is_primary")
+                .eq("company_id", company_id)
+                .eq("is_primary", True)
+                .maybe_single()
+                .execute()
+            )
+            return result.data
+        except Exception:
+            logger.debug(
+                "No Gmail token found for company_id=%s", company_id
+            )
+            return None
