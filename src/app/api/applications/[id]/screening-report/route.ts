@@ -3,6 +3,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
+// Allow large screening report uploads (up to 50MB)
+export const runtime = 'nodejs'
+export const maxDuration = 120 // 2 minutes for AI processing
+export const dynamic = 'force-dynamic'
+
 const GEMINI_EXTRACTION_PROMPT = `You are an expert tenant screening report analyzer. You will receive a PDF document that may be from ANY screening provider (SingleKey, Certn, Equifax, TransUnion, Naborly, FrontLobby, or custom reports). Extract ALL available information into the JSON structure below. For any field not found in the document, use null (for strings/numbers/booleans) or 0 (for counts) or [] (for arrays).
 
 IMPORTANT: Be thorough. These reports can be 10-20+ pages and contain detailed financial, criminal, credit, employment, identity, and rental history data. Scan EVERY page carefully.

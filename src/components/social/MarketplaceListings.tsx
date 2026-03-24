@@ -154,16 +154,25 @@ export function MarketplaceListings({ companyId }: MarketplaceListingsProps) {
     const fetchProperties = useCallback(async () => {
         setLoadingProps(true)
         try {
-            const { data, error } = await supabase
-                .from('properties')
-                .select('id, address, city, rent, bedrooms, bathrooms, square_feet, description, photos, video_walkthrough_url, amenities, status')
-                .eq('company_id', companyId)
-                .order('created_at', { ascending: false })
-
-            if (error) throw error
+            // Use API route to bypass potential RLS issues with client-side queries
+            const res = await fetch('/api/properties')
+            if (!res.ok) throw new Error('Failed to fetch properties')
+            const data = await res.json()
             setProperties(data ?? [])
         } catch {
-            toast.error('Failed to load properties')
+            // Fallback to direct Supabase query
+            try {
+                const { data, error } = await supabase
+                    .from('properties')
+                    .select('id, address, city, rent, bedrooms, bathrooms, square_feet, description, photos, video_walkthrough_url, amenities, status')
+                    .eq('company_id', companyId)
+                    .order('created_at', { ascending: false })
+
+                if (error) throw error
+                setProperties(data ?? [])
+            } catch {
+                toast.error('Failed to load properties')
+            }
         } finally {
             setLoadingProps(false)
         }

@@ -284,7 +284,7 @@ export function ApplicationDocuments({ applicationId }: ApplicationDocumentsProp
                                             <span className={cn('underline underline-offset-2', colors.text)}>click to upload</span>
                                         </p>
                                         <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">
-                                            PDF, Images, Word · max 25 MB
+                                            PDF, Images, Word · max 50 MB
                                         </p>
                                     </div>
                                 </>

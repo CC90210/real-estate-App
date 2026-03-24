@@ -2,6 +2,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+// Allow large document uploads (screening reports can be 40MB+)
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
 // Allowed document types — matches the CHECK constraint + passport
 const VALID_FILE_TYPES = ['id', 'passport', 'pay_stub', 'bank_statement', 'employment', 'reference', 'screening_report', 'other'] as const
 
@@ -17,7 +21,7 @@ const ALLOWED_MIME_TYPES = [
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ]
 
-const MAX_FILE_SIZE = 25 * 1024 * 1024 // 25 MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
 
 export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
     const params = await props.params
@@ -60,7 +64,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     }
 
     if (file.size > MAX_FILE_SIZE) {
-        return NextResponse.json({ error: `File too large. Maximum size is 25 MB.` }, { status: 400 })
+        return NextResponse.json({ error: `File too large. Maximum size is 50 MB.` }, { status: 400 })
     }
 
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {

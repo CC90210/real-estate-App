@@ -153,7 +153,7 @@ interface ScreeningReportUploadProps {
 // Constants
 // ---------------------------------------------------------------------------
 
-const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
 const ACCEPTED_MIME = 'application/pdf';
 
 // ---------------------------------------------------------------------------
@@ -483,7 +483,7 @@ export function ScreeningReportUpload({ applicationId, onReportProcessed }: Scre
                                         <span className={cn('underline underline-offset-2', colors.text)}>click to upload</span>
                                     </p>
                                     <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">
-                                        PDF only · max 25 MB · any provider
+                                        PDF only · max 50 MB · any provider
                                     </p>
                                 </div>
                                 {selectedFile && uploadStatus === 'failed' && (

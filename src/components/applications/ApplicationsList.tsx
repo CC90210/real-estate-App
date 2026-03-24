@@ -167,7 +167,7 @@ export function ApplicationList({ applications: initialApplications }: { applica
                                                     "text-[9px] font-black uppercase tracking-tighter opacity-80",
                                                     (app.property.rent / app.monthly_income) > 0.35 ? "text-red-500" : "text-emerald-600"
                                                 )}>
-                                                    {Math.round((app.property.rent / app.monthly_income) * 100)}% DTI
+                                                    {Math.round((app.property.rent / app.monthly_income) * 100)}% Rent-to-Income
                                                 </span>
                                             )}
                                         </div>
