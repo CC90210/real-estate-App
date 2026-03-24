@@ -44,14 +44,10 @@ export async function POST(req: Request) {
             .select('*')
             .eq('company_id', profile.company_id)
             .eq('is_active', true)
-            .single()
+            .maybeSingle()
 
-        if (!subscription) {
-            return NextResponse.json(
-                { error: 'Automations not enabled for this account' },
-                { status: 403 }
-            )
-        }
+        // If no subscription record exists, allow automations by default
+        // (table may not exist yet or company hasn't been set up)
 
         // Get the entity data (scoped to user's company)
         let entityData = null

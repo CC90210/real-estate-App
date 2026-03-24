@@ -119,7 +119,7 @@ export default function AutomationSettingsPage() {
                 .from('automation_settings')
                 .select('*')
                 .eq('company_id', profile?.company_id)
-                .single()
+                .maybeSingle()
 
             if (!data && profile?.company_id) {
                 const { data: newSettings } = await supabase

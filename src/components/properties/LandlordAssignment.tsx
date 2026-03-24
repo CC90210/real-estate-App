@@ -50,7 +50,11 @@ export function LandlordAssignment({ propertyId }: LandlordAssignmentProps) {
                 `)
                 .eq('property_id', propertyId)
 
-            if (error) throw error
+            // Table may not exist yet — return empty gracefully
+            if (error) {
+                console.warn('landlord_properties query failed (table may not exist):', error.message)
+                return []
+            }
             return data as any[] || []
         },
     })

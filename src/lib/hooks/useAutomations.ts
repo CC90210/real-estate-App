@@ -40,12 +40,10 @@ export function useAutomationSubscription() {
                 .from('automation_subscriptions')
                 .select('*')
                 .eq('company_id', companyId)
-                .single();
+                .maybeSingle();
 
-            if (error) {
-                // Return null if not found (not active) is safer than throwing for UI logic
-                return null;
-            }
+            // Table may not exist yet or no subscription — return null gracefully
+            if (error || !data) return null;
             return data as AutomationSubscription;
         },
         enabled: !!companyId,
