@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
     FileText,
@@ -11,8 +11,8 @@ import {
     Users,
     Check,
     Loader2,
-    Sparkles,
-    ArrowRight
+    ArrowRight,
+    Gift,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -22,12 +22,13 @@ interface AutomationProduct {
     type: string
     name: string
     description: string
-    icon: any
+    icon: React.ElementType
     implementationFee: number
     monthlyFee: number
     features: string[]
     popular?: boolean
     color: string
+    includedInPlan?: boolean
 }
 
 const AUTOMATION_PRODUCTS: AutomationProduct[] = [
@@ -48,6 +49,7 @@ const AUTOMATION_PRODUCTS: AutomationProduct[] = [
             'Native E-signature bridge',
         ],
         popular: true,
+        includedInPlan: true,
     },
     {
         id: 'invoice_sender',
@@ -66,6 +68,7 @@ const AUTOMATION_PRODUCTS: AutomationProduct[] = [
             'Payment link synthesis',
         ],
         popular: true,
+        includedInPlan: true,
     },
     {
         id: 'email_agent',
@@ -137,12 +140,16 @@ const AUTOMATION_PRODUCTS: AutomationProduct[] = [
     },
 ]
 
+const PRO_PLANS = ['agent_pro', 'agency_growth', 'brokerage_command', 'enterprise']
+
 interface AutomationStoreProps {
-    existingAutomations: any[]
+    existingAutomations: { type: string; status: string }[]
+    companyPlan?: string | null
     onPurchase: () => void
 }
 
-export function AutomationStore({ existingAutomations, onPurchase }: AutomationStoreProps) {
+export function AutomationStore({ existingAutomations, companyPlan, onPurchase }: AutomationStoreProps) {
+    const hasPlanAccess = PRO_PLANS.includes(companyPlan || '')
     const [purchasing, setPurchasing] = useState<string | null>(null)
 
     const isOwned = (type: string) =>
@@ -253,24 +260,54 @@ export function AutomationStore({ existingAutomations, onPurchase }: AutomationS
                         </div>
 
                         {/* Pricing */}
-                        <div className="bg-slate-50/50 rounded-2xl p-5 mb-6 border border-slate-100/50">
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Setup Investment</span>
-                                <span className="font-bold text-slate-900">{formatPrice(product.implementationFee)}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Monthly Ops</span>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-2xl font-black text-blue-600">{formatPrice(product.monthlyFee)}</span>
-                                    <span className="text-xs font-bold text-slate-400">/mo</span>
+                        {product.includedInPlan && hasPlanAccess ? (
+                            <div className="bg-blue-50/60 rounded-2xl p-5 mb-6 border border-blue-100/80 flex items-center gap-3">
+                                <Gift className="h-5 w-5 text-blue-500 flex-shrink-0" />
+                                <div>
+                                    <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Included with your plan</p>
+                                    <p className="text-sm font-bold text-blue-700 mt-0.5">No extra charge</p>
                                 </div>
                             </div>
-                        </div>
+                        ) : (
+                            <div className="bg-slate-50/50 rounded-2xl p-5 mb-6 border border-slate-100/50">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Setup Investment</span>
+                                    <span className="font-bold text-slate-900">{formatPrice(product.implementationFee)}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Monthly Ops</span>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-2xl font-black text-blue-600">{formatPrice(product.monthlyFee)}</span>
+                                        <span className="text-xs font-bold text-slate-400">/mo</span>
+                                    </div>
+                                </div>
+                                {product.includedInPlan && (
+                                    <p className="text-[10px] text-slate-400 font-semibold mt-2">
+                                        Included free with Agent Pro+
+                                    </p>
+                                )}
+                            </div>
+                        )}
 
                         {/* Action */}
                         {owned ? (
                             <Button variant="outline" className="w-full h-14 rounded-2xl font-black uppercase tracking-widest border-slate-200 text-slate-400 group-hover:bg-slate-50 transition-all" disabled>
                                 Ecosystem Integrated
+                            </Button>
+                        ) : product.includedInPlan && hasPlanAccess ? (
+                            <Button
+                                className="w-full h-14 rounded-2xl font-black uppercase tracking-widest bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all flex items-center justify-center gap-2 group/btn"
+                                onClick={() => handlePurchase(product)}
+                                disabled={purchasing === product.id}
+                            >
+                                {purchasing === product.id ? (
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                ) : (
+                                    <>
+                                        Activate
+                                        <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
+                                    </>
+                                )}
                             </Button>
                         ) : (
                             <Button

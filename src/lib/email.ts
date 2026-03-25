@@ -355,3 +355,56 @@ export async function sendLeaseExpiryEmail({
         html,
     })
 }
+
+export async function sendDocumentDeliveryEmail({
+    email,
+    recipientName,
+    documentTitle,
+    documentType,
+    propertyAddress,
+    agentName,
+    companyName,
+    viewUrl,
+    message,
+}: {
+    email: string
+    recipientName: string
+    documentTitle: string
+    documentType: string
+    propertyAddress?: string
+    agentName?: string
+    companyName: string
+    viewUrl: string
+    message?: string
+}) {
+    const typeLabels: Record<string, string> = {
+        lease_proposal: 'Lease Proposal',
+        property_summary: 'Property Summary',
+        showing_sheet: 'Showing Sheet',
+        application_summary: 'Application Summary',
+        invoice: 'Invoice',
+    }
+
+    const html = baseTemplate(`
+        <h2>${typeLabels[documentType] || 'Document'} Ready</h2>
+        <p>Hi ${recipientName},</p>
+        <p>${agentName || 'Your agent'} has prepared a document for your review:</p>
+        <div class="highlight-box">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 8px 0; color: #94a3b8; font-size: 13px; font-weight: 600;">Document</td><td style="padding: 8px 0; text-align: right; font-weight: 700;">${documentTitle}</td></tr>
+                ${propertyAddress ? `<tr><td style="padding: 8px 0; color: #94a3b8; font-size: 13px; font-weight: 600;">Property</td><td style="padding: 8px 0; text-align: right; font-weight: 700;">${propertyAddress}</td></tr>` : ''}
+            </table>
+        </div>
+        ${message ? `<p style="font-style: italic; color: #64748b;">"${message}"</p>` : ''}
+        <div style="text-align: center; margin: 32px 0;">
+            <a href="${viewUrl}" class="btn btn-primary">View Document</a>
+        </div>
+        <p style="font-size: 13px; color: #94a3b8;">If you have questions, please contact your agent directly.</p>
+    `, companyName)
+
+    return sendEmail({
+        to: email,
+        subject: `${documentTitle} — Please Review`,
+        html,
+    })
+}

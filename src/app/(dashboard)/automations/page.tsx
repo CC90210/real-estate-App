@@ -17,7 +17,7 @@ export default function AutomationsPage() {
     const [activeTab, setActiveTab] = useState('store')
 
     const { profile } = useUser()
-    const { isLoading: authLoading, company } = useAuth();
+    const { isLoading: authLoading, company, plan } = useAuth();
     const resolvedCompanyId = company?.id;
     const isSuperAdmin = !!profile?.is_super_admin
     const { colors } = useAccentColor()
@@ -112,6 +112,7 @@ export default function AutomationsPage() {
                     ) : (
                         <AutomationStore
                             existingAutomations={automations || []}
+                            companyPlan={plan}
                             onPurchase={() => setActiveTab('metrics')}
                         />
                     )}
