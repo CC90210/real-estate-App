@@ -104,7 +104,7 @@ async function handleSubscriptionCheckout(session: Stripe.Checkout.Session) {
         return
     }
 
-    console.log(`Processing subscription for user ${userId}, plan: ${plan}`)
+    console.log('[Subscription] Processing checkout completion')
 
     const subscriptionId = session.subscription as string
     const subscription = await stripe.subscriptions.retrieve(subscriptionId)
@@ -138,7 +138,7 @@ async function handleSubscriptionCheckout(session: Stripe.Checkout.Session) {
         })
         .eq('id', profile.company_id)
 
-    console.log(`Updated company ${profile.company_id} with subscription: ${subscription.status}`)
+    console.log('[Subscription] Company subscription updated')
 }
 
 // Handle subscription updates
@@ -202,5 +202,5 @@ async function handleConnectPayment(session: Stripe.Checkout.Session) {
         })
         .eq('stripe_checkout_session_id', session.id)
 
-    console.log(`Payment completed for company ${companyId}`)
+    console.log('[Payment] Tenant payment completed')
 }

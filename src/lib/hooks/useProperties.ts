@@ -278,9 +278,11 @@ export function useLandlords() {
     return useQuery({
         queryKey: ['landlords', resolvedCompanyId],
         queryFn: async () => {
+            if (!resolvedCompanyId) return [];
             const { data, error } = await supabase
                 .from('landlords')
                 .select('*')
+                .eq('company_id', resolvedCompanyId)
                 .order('name');
 
             if (error) {

@@ -47,10 +47,11 @@ export async function POST(request: Request) {
             .eq('id', user.id)
             .single();
 
-        const companyId = profile?.company_id || data.company_id;
+        // SECURITY: Always use company_id from authenticated user's profile — never from request body
+        const companyId = profile?.company_id;
 
         if (!companyId) {
-            return NextResponse.json({ error: 'Company ID required for automation dispatches' }, { status: 400 });
+            return NextResponse.json({ error: 'No company found for your account' }, { status: 400 });
         }
 
         // 5. Forward to Dispatch Engine for Signed Delivery & Logging

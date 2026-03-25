@@ -137,13 +137,15 @@ export function useCreateDocument() {
 export function useDeleteDocument() {
     const queryClient = useQueryClient();
     const supabase = createClient();
+    const { companyId } = useCompanyId();
 
     return useMutation({
         mutationFn: async (documentId: string) => {
             const { error } = await supabase
                 .from('documents')
                 .delete()
-                .eq('id', documentId);
+                .eq('id', documentId)
+                .eq('company_id', companyId);
 
             if (error) throw error;
             return documentId;

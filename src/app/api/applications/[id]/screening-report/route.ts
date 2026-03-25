@@ -563,6 +563,7 @@ export async function POST(
                 .from('applications')
                 .update(applicationUpdate)
                 .eq('id', applicationId)
+                .eq('company_id', profile.company_id)
         }
     }
 

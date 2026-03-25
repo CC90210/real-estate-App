@@ -76,10 +76,14 @@ export async function POST(req: Request) {
         }
 
         // 3. Check if email already has an account
-        const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers()
-        const existingUser = existingUsers?.users?.find(
-            u => u.email?.toLowerCase() === invitation.email.toLowerCase()
-        )
+        // First check profiles table (fast, indexed) before falling back to auth admin API
+        const { data: existingProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('id')
+            .eq('email', invitation.email.toLowerCase())
+            .maybeSingle()
+
+        let existingUser: { id: string } | null = existingProfile || null
 
         let userId: string
 
@@ -125,7 +129,7 @@ export async function POST(req: Request) {
             }
 
             userId = authData.user.id
-            console.log('Created auth user:', userId, 'for email:', invitation.email)
+            console.log('[Auth] User account created via invitation')
         }
 
         // 5. CREATE/UPSERT THE PROFILE (linked to company)
@@ -151,7 +155,7 @@ export async function POST(req: Request) {
             }, { status: 500 })
         }
 
-        console.log('Created/updated profile for user:', userId, 'in company:', invitation.company_id)
+        console.log('[Profile] Team member profile created')
 
         // 6. MARK INVITATION AS ACCEPTED
         const { error: updateError } = await supabaseAdmin

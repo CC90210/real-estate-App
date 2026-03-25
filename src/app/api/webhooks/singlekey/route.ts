@@ -32,7 +32,7 @@ export async function POST(request: Request) {
         const { application_id, report_url, score, status } = validation.data;
 
         // 1. Log incoming webhook for audit
-        console.log('SingleKey Webhook Received for Application:', application_id);
+        console.log('[SingleKey] Webhook received');
 
         const supabase = await createClient();
 

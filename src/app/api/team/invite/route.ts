@@ -137,7 +137,7 @@ export async function POST(req: Request) {
             inviteUrl,
         })
 
-        console.log('[Invite] Invitation created for:', normalizedEmail)
+        console.log('[Invite] Invitation created successfully')
 
         return NextResponse.json({
             success: true,

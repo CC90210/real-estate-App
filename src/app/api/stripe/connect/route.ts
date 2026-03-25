@@ -53,11 +53,12 @@ export async function GET() {
     }
 }
 
-// POST - Start or continue Connect setup (redirects to onboard)
+// POST - Start or continue Connect setup
+// Clients should call /api/stripe/connect/onboard directly.
+// This endpoint is kept for backward compatibility and redirects.
 export async function POST() {
-    // Forward to onboard route
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/stripe/connect/onboard`, {
-        method: 'POST',
-    })
-    return response
+    return NextResponse.json(
+        { error: 'Use /api/stripe/connect/onboard directly' },
+        { status: 308, headers: { Location: '/api/stripe/connect/onboard' } }
+    )
 }

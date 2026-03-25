@@ -43,7 +43,7 @@ export async function POST(req: Request) {
         }
         const event = body.event
 
-        console.log('[Social Webhook] Event:', event, '| Timestamp:', body.timestamp)
+        console.log('[Social Webhook] Event received:', event)
 
         switch (event) {
             // ─── Post published successfully ─────────────────────
@@ -173,7 +173,7 @@ export async function POST(req: Request) {
                         })
                         .eq('late_account_id', account.id)
 
-                    console.log('[Social Webhook] Account disconnected:', account.id)
+                    console.log('[Social Webhook] Account disconnected')
                 }
                 break
             }

@@ -26,6 +26,13 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        // Fetch the requesting user's profile to get their company_id
+        const { data: authProfile } = await supabase
+            .from('profiles')
+            .select('company_id, is_super_admin')
+            .eq('id', authUser.id)
+            .single();
+
         const { data: profile, error } = await supabase
             .from('profiles')
             .select(`
@@ -37,6 +44,15 @@ export async function GET(request: Request) {
 
         if (error) {
             return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 });
+        }
+
+        // SECURITY: Only allow fetching own profile, same company, or super admin
+        const isSelf = authUser.id === userId;
+        const isSameCompany = authProfile?.company_id && profile?.company_id && authProfile.company_id === profile.company_id;
+        const isSuperAdmin = authProfile?.is_super_admin === true;
+
+        if (!isSelf && !isSameCompany && !isSuperAdmin) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         return NextResponse.json(profile);

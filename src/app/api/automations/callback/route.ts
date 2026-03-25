@@ -7,17 +7,25 @@ export async function POST(req: Request) {
     const logId = req.headers.get('X-PropFlow-Log-Id')
     const body = await req.text()
 
-    // Verify signature
+    // Verify signature — REQUIRED in production
     const secret = process.env.N8N_WEBHOOK_SECRET
-    if (secret) {
-        const expectedSignature = crypto
-            .createHmac('sha256', secret)
-            .update(body)
-            .digest('hex')
+    if (!secret) {
+        console.error('N8N_WEBHOOK_SECRET not configured — callback endpoint disabled')
+        return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 })
+    }
 
-        if (signature !== expectedSignature) {
-            return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
-        }
+    const expectedSignature = crypto
+        .createHmac('sha256', secret)
+        .update(body)
+        .digest('hex')
+
+    const isValid = signature && crypto.timingSafeEqual(
+        Buffer.from(signature),
+        Buffer.from(expectedSignature)
+    )
+
+    if (!isValid) {
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
 
     let data

@@ -74,13 +74,15 @@ export function useCreateArea() {
 export function useDeleteArea() {
     const queryClient = useQueryClient();
     const supabase = createClient();
+    const { companyId } = useCompanyId();
 
     return useMutation({
         mutationFn: async (areaId: string) => {
             const { error } = await supabase
                 .from('areas')
                 .delete()
-                .eq('id', areaId);
+                .eq('id', areaId)
+                .eq('company_id', companyId);
 
             if (error) throw error;
             return areaId;

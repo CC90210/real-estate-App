@@ -42,6 +42,7 @@ export function useApplications() {
 export function useDeleteApplication() {
     const queryClient = useQueryClient();
     const supabase = createClient();
+    const { companyId } = useCompanyId();
 
     return useMutation({
         mutationFn: async (applicationId: string) => {
@@ -52,11 +53,12 @@ export function useDeleteApplication() {
                 .eq('entity_id', applicationId)
                 .eq('entity_type', 'application');
 
-            // Then delete the application
+            // Then delete the application (scoped to company)
             const { error } = await supabase
                 .from('applications')
                 .delete()
-                .eq('id', applicationId);
+                .eq('id', applicationId)
+                .eq('company_id', companyId);
 
             if (error) throw error;
             return applicationId;
@@ -87,6 +89,7 @@ export function useDeleteApplication() {
 export function useUpdateApplication() {
     const queryClient = useQueryClient();
     const supabase = createClient();
+    const { companyId } = useCompanyId();
 
     return useMutation({
         mutationFn: async ({ id, data }: { id: string; data: Partial<ApplicationInput> }) => {
@@ -94,6 +97,7 @@ export function useUpdateApplication() {
                 .from('applications')
                 .update({ ...data, updated_at: new Date().toISOString() })
                 .eq('id', id)
+                .eq('company_id', companyId)
                 .select()
                 .single();
 
@@ -121,6 +125,7 @@ export function useUpdateApplicationStatus() {
                 .from('applications')
                 .update({ status, updated_at: new Date().toISOString() })
                 .eq('id', id)
+                .eq('company_id', companyId)
                 .select()
                 .single();
 
