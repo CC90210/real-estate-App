@@ -71,8 +71,7 @@ export default function MaintenancePage() {
 
             if (!error) return data || []
 
-            // If JOIN fails (missing FK, RLS recursion, etc.), retry without profile JOINs
-            console.warn('[Maintenance] Join query failed, retrying without profile joins:', error.message)
+            // If JOIN fails (missing FK, RLS recursion, etc.), retry without profile JOINs — silent fallback
             const { data: fallback, error: fallbackErr } = await supabase
                 .from('maintenance_requests')
                 .select('*, properties(address, unit_number)')

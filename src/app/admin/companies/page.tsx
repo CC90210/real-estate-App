@@ -20,7 +20,6 @@ export default function AdminCompaniesPage() {
                 .select(`
           id, name, slug, email, phone,
           subscription_plan, subscription_status, plan_override, plan_override_reason,
-          property_count, team_member_count, social_account_count,
           created_at
         `)
                 .order('created_at', { ascending: false })
@@ -79,7 +78,7 @@ export default function AdminCompaniesPage() {
                             <tr className="bg-gray-50/80 border-b border-gray-100 uppercase tracking-widest text-[10px] font-black text-gray-400">
                                 <th className="px-6 py-4">Company</th>
                                 <th className="px-6 py-4">Effective Plan</th>
-                                <th className="px-6 py-4">Usage Limits</th>
+                                <th className="px-6 py-4">Stripe Plan</th>
                                 <th className="px-6 py-4">Created</th>
                                 <th className="px-6 py-4 text-right">Actions</th>
                             </tr>
@@ -115,7 +114,7 @@ export default function AdminCompaniesPage() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-xs font-bold text-gray-500 tracking-wide">
-                                            {company.property_count} Props • {company.team_member_count} Team
+                                            {company.subscription_plan || 'Free'}
                                         </td>
                                         <td className="px-6 py-4 text-xs text-gray-500 font-medium">
                                             {new Date(company.created_at).toLocaleDateString()}
