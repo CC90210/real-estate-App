@@ -59,6 +59,7 @@ export default function LeasesPage() {
                 .select('*, properties(address, unit_number)')
                 .eq('company_id', resolvedCompanyId)
                 .order('created_at', { ascending: false })
+                .limit(500)
             if (error) throw error
             return data || []
         },

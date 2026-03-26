@@ -1,11 +1,20 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { rateLimit } from '@/lib/rate-limit'
+
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 })
 
 export async function POST(req: Request) {
     try {
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+        try {
+            await limiter.check(5, user.id)
+        } catch {
+            return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+        }
 
         const { platform } = await req.json()
 

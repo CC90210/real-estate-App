@@ -68,6 +68,7 @@ export default function MaintenancePage() {
                 .select('*, properties(address, unit_number), profiles:submitted_by(full_name, email), assigned:assigned_to(full_name)')
                 .eq('company_id', resolvedCompanyId)
                 .order('created_at', { ascending: false })
+                .limit(500)
 
             if (!error) return data || []
 
@@ -77,6 +78,7 @@ export default function MaintenancePage() {
                 .select('*, properties(address, unit_number)')
                 .eq('company_id', resolvedCompanyId)
                 .order('created_at', { ascending: false })
+                .limit(500)
             if (fallbackErr) {
                 // Even basic join failed — try plain select
                 const { data: plain } = await supabase
@@ -84,6 +86,7 @@ export default function MaintenancePage() {
                     .select('*')
                     .eq('company_id', resolvedCompanyId)
                     .order('created_at', { ascending: false })
+                    .limit(500)
                 return plain || []
             }
             return fallback || []

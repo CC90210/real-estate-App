@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createClient } from '@/lib/supabase/server'
+import { rateLimit } from '@/lib/rate-limit'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'placeholder')
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 })
 
 export async function POST(req: Request) {
     const supabase = await createClient()
@@ -10,7 +12,14 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     try {
+        await limiter.check(10, user.id)
+    } catch {
+        return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+    }
+
+    try {
         const { topic, platform, count = 15 } = await req.json()
+        const safeCount = Math.min(Math.max(1, Number(count) || 15), 30)
 
         if (!topic) {
             return NextResponse.json({ error: 'Topic is required' }, { status: 400 })
@@ -29,7 +38,7 @@ export async function POST(req: Request) {
 
         const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
 
-        const prompt = `Generate ${count} relevant hashtags for a real estate social media post about: "${topic}"
+        const prompt = `Generate ${safeCount} relevant hashtags for a real estate social media post about: "${topic}"
     
     Requirements:
     - Mix of high-volume (broad) and niche (specific) hashtags

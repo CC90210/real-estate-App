@@ -34,6 +34,7 @@ export default function InvoicesPage() {
                 `)
                 .eq('company_id', companyId)
                 .order('created_at', { ascending: false })
+                .limit(500)
 
             if (error) {
                 const { data: rawData, error: rawError } = await supabase
@@ -41,6 +42,7 @@ export default function InvoicesPage() {
                     .select(`*, property:properties(address)`)
                     .eq('company_id', companyId)
                     .order('created_at', { ascending: false })
+                    .limit(500)
 
                 if (rawError) throw rawError;
                 return rawData || [];
