@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import Image from 'next/image'
+import { useCompanyId } from '@/lib/hooks/useCompanyId'
 
 interface PhotoUploadProps {
     value: string[]
@@ -17,6 +18,7 @@ interface PhotoUploadProps {
 export function PhotoUpload({ value, onChange, maxPhotos = 10, folder = 'general' }: PhotoUploadProps) {
     const [uploading, setUploading] = useState(false)
     const supabase = createClient()
+    const { companyId } = useCompanyId()
 
     const handleUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         try {
@@ -39,7 +41,7 @@ export function PhotoUpload({ value, onChange, maxPhotos = 10, folder = 'general
                 // Create a unique file name
                 const fileExt = file.name.split('.').pop()
                 const fileName = `${Math.random().toString(36).substring(2)}${Date.now()}.${fileExt}`
-                const filePath = `${folder}/${fileName}`
+                const filePath = companyId ? `${companyId}/${folder}/${fileName}` : `${folder}/${fileName}`
 
                 // Upload to Supabase Storage
                 const { error: uploadError, data } = await supabase.storage

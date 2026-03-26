@@ -274,7 +274,7 @@ export default function SocialPage() {
             const uploadedUrls: string[] = []
             for (const media of mediaFiles) {
                 const ext = media.file.name.split('.').pop()
-                const path = `social/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+                const path = `${resolvedCompanyId}/social/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
                 const { data: uploadData, error: uploadError } = await supabase.storage
                     .from('media')
                     .upload(path, media.file)
