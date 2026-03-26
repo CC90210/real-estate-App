@@ -66,7 +66,7 @@ export async function POST(req: Request) {
 
             case 'customer.subscription.created':
             case 'customer.subscription.updated': {
-                const subscription = event.data.object as Stripe.Subscription
+                const subscription = event.data.object as Stripe.Subscription & { current_period_end: number }
                 await handleSubscriptionUpdate(subscription)
                 break
             }
@@ -79,7 +79,23 @@ export async function POST(req: Request) {
 
             case 'invoice.payment_succeeded': {
                 const invoice = event.data.object as Stripe.Invoice
-                console.log('Payment succeeded for invoice:', invoice.id)
+                const subscriptionId = (invoice as unknown as { subscription: string | null }).subscription
+                if (subscriptionId) {
+                    const { data: company } = await supabaseAdmin
+                        .from('companies')
+                        .select('id, subscription_status')
+                        .eq('stripe_subscription_id', subscriptionId)
+                        .single()
+                    if (company && company.subscription_status === 'past_due') {
+                        await supabaseAdmin
+                            .from('companies')
+                            .update({ subscription_status: 'active', updated_at: new Date().toISOString() })
+                            .eq('id', company.id)
+                        console.log('[Invoice] Restored subscription to active for company:', company.id)
+                    } else {
+                        console.log('[Invoice] Payment succeeded for subscription:', subscriptionId)
+                    }
+                }
                 break
             }
 
@@ -131,7 +147,7 @@ async function handleSubscriptionCheckout(session: Stripe.Checkout.Session) {
     console.log('[Subscription] Processing checkout completion')
 
     const subscriptionId = session.subscription as string
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId) as unknown as Stripe.Subscription & { current_period_end: number }
 
     // Get user's company
     const { data: profile } = await supabaseAdmin
@@ -158,7 +174,7 @@ async function handleSubscriptionCheckout(session: Stripe.Checkout.Session) {
             subscription_status: subscription.status,
             subscription_plan: plan,
             stripe_subscription_id: subscriptionId,
-            subscription_current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+            subscription_current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
         })
         .eq('id', profile.company_id)
 
@@ -166,7 +182,7 @@ async function handleSubscriptionCheckout(session: Stripe.Checkout.Session) {
 }
 
 // Handle subscription updates
-async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
+async function handleSubscriptionUpdate(subscription: Stripe.Subscription & { current_period_end: number }) {
     const planId = subscription.metadata?.plan
     const { data: company } = await supabaseAdmin
         .from('companies')
@@ -177,7 +193,7 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     if (company) {
         const updateData: any = {
             subscription_status: subscription.status,
-            subscription_current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+            subscription_current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
             updated_at: new Date().toISOString(),
         }
         if (planId) {

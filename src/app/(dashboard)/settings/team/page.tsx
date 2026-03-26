@@ -204,7 +204,7 @@ export default function TeamPage() {
     }
 
     // Only admins and super admins can access this page
-    if (profile?.role !== 'admin' && !(profile as any)?.is_super_admin) {
+    if (profile?.role !== 'admin' && !profile?.is_super_admin) {
         return (
             <div className="p-6">
                 <div className="text-center py-12">

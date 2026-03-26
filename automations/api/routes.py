@@ -143,7 +143,7 @@ async def require_bearer(
     if len(token) < 20:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authorization header with Bearer token is required.",
+            detail="Invalid authorization token format.",
         )
     return token
 
@@ -324,7 +324,7 @@ def _verify_company_ownership(token: str, company_id: str) -> None:
         # embed an `aud` claim on service-role tokens by default.
         claims = jose_jwt.decode(
             token,
-            settings.supabase_service_key,
+            settings.supabase_jwt_secret,
             algorithms=["HS256"],
             options={"verify_aud": False},
         )
@@ -417,4 +417,7 @@ def _encrypt_smtp_password(credentials: "CompanyCredentials") -> "CompanyCredent
         return credentials.model_copy(update={"smtp_password": encrypted})
     except Exception:
         logger.exception("Failed to encrypt SMTP password")
-        raise ValueError("SMTP password encryption failed")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to secure credentials. Please try again.",
+        )

@@ -50,7 +50,8 @@ export async function POST(req: Request) {
             )
         }
 
-        const company = profile?.companies as any
+        const companies = profile?.companies as unknown as { stripe_subscription_id: string | null; subscription_plan: string | null; plan_override: string | null }[] | null
+        const company = Array.isArray(companies) ? companies[0] ?? null : null
 
         // If they have a plan_override (enterprise deal), they can't self-upgrade via Stripe
         if (company?.plan_override) {

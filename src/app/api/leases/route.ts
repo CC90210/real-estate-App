@@ -37,7 +37,7 @@ export async function POST(req: Request) {
             .single()
 
         if (!profile?.company_id) {
-            return NextResponse.json({ error: 'No company found' }, { status: 400 })
+            return NextResponse.json({ error: 'No company found' }, { status: 403 })
         }
 
         // Verify property belongs to this company before creating lease
@@ -109,7 +109,7 @@ export async function GET(req: Request) {
         .single()
 
     if (!profile?.company_id) {
-        return NextResponse.json({ error: 'No company found' }, { status: 400 })
+        return NextResponse.json({ error: 'No company found' }, { status: 403 })
     }
 
     const { data, error } = await supabase

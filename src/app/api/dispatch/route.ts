@@ -20,7 +20,7 @@ export async function POST(req: Request) {
             .single()
 
         if (!profile?.company_id) {
-            return NextResponse.json({ error: 'No company found' }, { status: 400 })
+            return NextResponse.json({ error: 'No company found' }, { status: 403 })
         }
 
         const body = await req.json()

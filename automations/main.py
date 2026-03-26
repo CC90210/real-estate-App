@@ -96,14 +96,17 @@ app = FastAPI(
 # CORS — allow PropFlow's Next.js app origin
 # ---------------------------------------------------------------------------
 
+_origins = [
+    settings.app_url,
+    "https://propflow.pro",
+    "https://www.propflow.pro",
+]
+if settings.debug:
+    _origins.append("http://localhost:3000")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        settings.app_url,
-        "http://localhost:3000",
-        "https://propflow.pro",
-        "https://www.propflow.pro",
-    ],
+    allow_origins=_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],

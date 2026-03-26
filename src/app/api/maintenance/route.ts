@@ -39,7 +39,7 @@ export async function POST(req: Request) {
         const companyId = profile?.company_id
 
         if (!companyId) {
-            return NextResponse.json({ error: 'No company context found' }, { status: 400 })
+            return NextResponse.json({ error: 'No company context found' }, { status: 403 })
         }
 
         // Verify the property belongs to the user's company

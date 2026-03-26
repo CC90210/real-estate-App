@@ -28,6 +28,7 @@ class Settings:
     # Supabase
     supabase_url: str
     supabase_service_key: str
+    supabase_jwt_secret: str
 
     # Email fallback (Resend)
     resend_api_key: Optional[str]
@@ -82,6 +83,10 @@ def get_settings() -> Settings:
     if not webhook_secret:
         missing.append("WEBHOOK_SECRET")
 
+    supabase_jwt_secret = os.getenv("SUPABASE_JWT_SECRET", "").strip()
+    if not supabase_jwt_secret:
+        missing.append("SUPABASE_JWT_SECRET")
+
     if missing:
         raise ValueError(
             f"Missing required environment variables: {', '.join(missing)}"
@@ -90,6 +95,7 @@ def get_settings() -> Settings:
     return Settings(
         supabase_url=supabase_url,
         supabase_service_key=supabase_service_key,
+        supabase_jwt_secret=supabase_jwt_secret,
         resend_api_key=optional("RESEND_API_KEY"),
         gemini_api_key=optional("GEMINI_API_KEY"),
         webhook_secret=webhook_secret,

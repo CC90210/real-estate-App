@@ -10,11 +10,11 @@ export async function GET() {
     // Check if super admin
     const { data: profile } = await supabase
         .from('profiles')
-        .select('is_super_admin')
+        .select('role')
         .eq('id', user.id)
         .single()
 
-    if (!profile?.is_super_admin) {
+    if (profile?.role !== 'super_admin') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

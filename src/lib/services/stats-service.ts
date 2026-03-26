@@ -58,10 +58,10 @@ export class StatsService {
             maintenanceRes, showingsRes, teamRes,
             areasRes, buildingsRes, leasesRes, activityRes
         ] = await Promise.all([
-            safe(() => this.supabase.from('properties').select('status, rent').eq('company_id', companyId)),
-            safe(() => this.supabase.from('applications').select('status').eq('company_id', companyId)),
-            safe(() => this.supabase.from('invoices').select('total, paid_at, paid_date, updated_at, created_at').eq('company_id', companyId).eq('status', 'paid')),
-            safe(() => this.supabase.from('invoices').select('total').eq('company_id', companyId).eq('status', 'paid')),
+            safe(() => this.supabase.from('properties').select('status, rent').eq('company_id', companyId).limit(1000)),
+            safe(() => this.supabase.from('applications').select('status').eq('company_id', companyId).limit(1000)),
+            safe(() => this.supabase.from('invoices').select('total, paid_at, paid_date, updated_at, created_at').eq('company_id', companyId).eq('status', 'paid').limit(1000)),
+            safe(() => this.supabase.from('invoices').select('total').eq('company_id', companyId).eq('status', 'paid').limit(1000)),
             safe(() => this.supabase.from('maintenance_requests').select('id', { count: 'exact', head: true }).eq('company_id', companyId).in('status', ['open', 'in_progress'])),
             safe(() => this.supabase.from('showings').select('id', { count: 'exact', head: true }).eq('company_id', companyId).gte('scheduled_date', new Date().toISOString().split('T')[0])),
             safe(() => this.supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('company_id', companyId)),

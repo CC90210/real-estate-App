@@ -68,6 +68,10 @@ export async function PATCH(req: Request) {
     }
 
     if (ids && Array.isArray(ids)) {
+        if (ids.length > 200) {
+            return NextResponse.json({ error: 'Too many IDs in single request' }, { status: 400 })
+        }
+
         const { error } = await supabase
             .from('notifications')
             .update({ read: true, read_at: new Date().toISOString() })
