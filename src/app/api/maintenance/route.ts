@@ -42,6 +42,33 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'No company context found' }, { status: 400 })
         }
 
+        // Verify the property belongs to the user's company
+        const { data: property } = await supabase
+            .from('properties')
+            .select('id')
+            .eq('id', property_id)
+            .eq('company_id', companyId)
+            .maybeSingle()
+
+        if (!property) {
+            return NextResponse.json({ error: 'Property not found or does not belong to your company' }, { status: 403 })
+        }
+
+        // If tenant role, verify they have an active lease on this property
+        if (profile.role === 'tenant') {
+            const { data: activeLease } = await supabase
+                .from('leases')
+                .select('id')
+                .eq('tenant_id', user.id)
+                .eq('property_id', property_id)
+                .eq('status', 'active')
+                .maybeSingle()
+
+            if (!activeLease) {
+                return NextResponse.json({ error: 'You do not have an active lease on this property' }, { status: 403 })
+            }
+        }
+
         const { data: request, error } = await supabase
             .from('maintenance_requests')
             .insert({

@@ -29,9 +29,11 @@ import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { Lease, MaintenanceRequest } from '@/types/database'
+import { useState } from 'react'
 
 export default function TenantDashboard() {
     const supabase = createClient()
+    const [isPaymentLoading, setIsPaymentLoading] = useState(false)
 
     // 1. Fetch Tenant Lease & Property
     const { data: lease, isLoading: isLoadingLease } = useQuery({
@@ -73,7 +75,8 @@ export default function TenantDashboard() {
     })
 
     const handlePayRent = async () => {
-        if (!lease) return
+        if (!lease || isPaymentLoading) return
+        setIsPaymentLoading(true)
 
         try {
             const res = await fetch('/api/stripe/checkout/rent', {
@@ -90,6 +93,7 @@ export default function TenantDashboard() {
             }
         } catch (error: any) {
             toast.error(error.message)
+            setIsPaymentLoading(false)
         }
     }
 
@@ -141,9 +145,11 @@ export default function TenantDashboard() {
                         <div className="flex flex-col sm:flex-row gap-4">
                             <Button
                                 onClick={handlePayRent}
-                                className="flex-1 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl h-14 text-lg font-black shadow-lg shadow-blue-600/20"
+                                disabled={isPaymentLoading}
+                                className="flex-1 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl h-14 text-lg font-black shadow-lg shadow-blue-600/20 disabled:opacity-50"
                             >
-                                <CreditCard className="w-5 h-5 mr-3" /> Pay Rent Online
+                                {isPaymentLoading ? <Loader2 className="w-5 h-5 mr-3 animate-spin" /> : <CreditCard className="w-5 h-5 mr-3" />}
+                                {isPaymentLoading ? 'Processing...' : 'Pay Rent Online'}
                             </Button>
                             <Button variant="ghost" className="flex-1 text-white hover:bg-white/10 rounded-2xl h-14 font-bold border border-white/20">
                                 View History
