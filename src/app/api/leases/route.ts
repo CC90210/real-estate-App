@@ -26,6 +26,20 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'No company found' }, { status: 400 })
         }
 
+        // Verify property belongs to this company before creating lease
+        if (property_id) {
+            const { data: propertyCheck } = await supabase
+                .from('properties')
+                .select('id')
+                .eq('id', property_id)
+                .eq('company_id', profile.company_id)
+                .single()
+
+            if (!propertyCheck) {
+                return NextResponse.json({ error: 'Property not found' }, { status: 404 })
+            }
+        }
+
         const { data: lease, error } = await supabase
             .from('leases')
             .insert({

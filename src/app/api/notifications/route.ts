@@ -10,7 +10,7 @@ export async function GET(req: Request) {
     }
 
     const url = new URL(req.url)
-    const limit = parseInt(url.searchParams.get('limit') || '20')
+    const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '20') || 20, 1), 100)
     const unreadOnly = url.searchParams.get('unread') === 'true'
 
     let query = supabase

@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/services/activity-logger'
+import { rateLimit } from '@/lib/rate-limit'
+
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 100 })
 
 export async function GET(req: Request) {
     const supabase = await createClient()
@@ -23,6 +26,13 @@ export async function GET(req: Request) {
 
     if (!['admin', 'agent'].includes(profile.role)) {
         return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    }
+
+    // Rate limit: 10 exports per minute per user
+    try {
+        await limiter.check(10, user.id)
+    } catch {
+        return NextResponse.json({ error: 'Too many export requests. Please wait.' }, { status: 429 })
     }
 
     const url = new URL(req.url)

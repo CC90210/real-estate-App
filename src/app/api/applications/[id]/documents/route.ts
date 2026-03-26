@@ -199,11 +199,13 @@ export async function DELETE(req: NextRequest, props: { params: Promise<{ id: st
             .remove([doc.storage_path])
     }
 
-    // Delete from database
+    // Delete from database (scoped to application AND company)
     const { error: deleteError } = await supabase
         .from('application_documents')
         .delete()
         .eq('id', documentId)
+        .eq('application_id', params.id)
+        .eq('company_id', profile.company_id)
 
     if (deleteError) {
         return NextResponse.json({ error: 'Failed to delete document' }, { status: 500 })

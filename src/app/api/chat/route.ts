@@ -19,7 +19,7 @@ const chatSchema = z.object({
     history: z.array(z.object({
         role: z.enum(['user', 'assistant']),
         content: z.string().max(5000)
-    })).optional()
+    })).max(20).optional()
 });
 
 export async function POST(request: Request) {

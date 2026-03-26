@@ -24,14 +24,17 @@ export async function POST(req: Request) {
     try {
         const rawBody = await req.text()
 
-        // Verify webhook signature when secret is configured
+        // Verify webhook signature — required in production
         const webhookSecret = process.env.WEBHOOK_SECRET
-        if (webhookSecret && webhookSecret !== 'replace_with_your_secret') {
-            const signature = req.headers.get('x-webhook-signature') || req.headers.get('x-late-signature')
-            if (!verifyWebhookSignature(rawBody, signature, webhookSecret)) {
-                console.error('[Social Webhook] Invalid signature')
-                return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
-            }
+        if (!webhookSecret || webhookSecret === 'replace_with_your_secret') {
+            console.error('[Social Webhook] WEBHOOK_SECRET not configured — endpoint disabled')
+            return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 })
+        }
+
+        const signature = req.headers.get('x-webhook-signature') || req.headers.get('x-late-signature')
+        if (!verifyWebhookSignature(rawBody, signature, webhookSecret)) {
+            console.error('[Social Webhook] Invalid signature')
+            return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
         }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
