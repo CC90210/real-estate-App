@@ -1,10 +1,15 @@
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 import { logActivity } from '@/lib/services/activity-logger';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-// Point 2: Define strict validation schema
+// Admin client for webhook (bypasses RLS — webhooks have no user session)
+const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
 const singleKeySchema = z.object({
     application_id: z.string().uuid(),
     report_url: z.string().url(),
@@ -14,16 +19,15 @@ const singleKeySchema = z.object({
 
 export async function POST(request: Request) {
     try {
-        // Point 9: Validate secret token (Strictly required for production)
+        // Validate secret token
         const secret = request.headers.get('x-singlekey-secret');
         if (!secret || secret !== process.env.SINGLEKEY_WEBHOOK_SECRET) {
-            console.error('Unauthorized SingleKey Webhook attempt');
+            console.error('[SingleKey] Unauthorized webhook attempt');
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         const body = await request.json();
 
-        // Point 2: Validate Input
         const validation = singleKeySchema.safeParse(body);
         if (!validation.success) {
             return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
@@ -31,33 +35,30 @@ export async function POST(request: Request) {
 
         const { application_id, report_url, score, status } = validation.data;
 
-        // 1. Log incoming webhook for audit
         console.log('[SingleKey] Webhook received');
 
-        const supabase = await createClient();
-
-        // 3. Update application in database
-        const { data: application, error: updateError } = await supabase
+        // Use admin client — webhooks come from SingleKey servers (no user cookies)
+        const { data: application, error: updateError } = await supabaseAdmin
             .from('applications')
             .update({
                 singlekey_report_url: report_url,
                 credit_score: score,
                 background_status: status || 'completed',
-                status: 'screening' // Move to screening status once results are in
+                status: 'screening'
             })
             .eq('id', application_id)
             .select('*, property:properties(owner_id, address)')
             .single();
 
         if (updateError) {
-            console.error('Database Update Failed:', updateError);
+            console.error('[SingleKey] Database update failed:', updateError);
             return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
         }
 
-        // 4. TRIGGER NOTIFICATION (Notify Landlord)
+        // Notify the landlord
         const landlordId = application.property?.owner_id;
         if (landlordId) {
-            await logActivity(supabase, {
+            await logActivity(supabaseAdmin, {
                 companyId: application.company_id,
                 userId: landlordId,
                 action: 'SCREEN_READY',
@@ -71,8 +72,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: true });
 
     } catch (error: unknown) {
-        // Point 6: Generic Error
-        console.error('Webhook Endpoint Failure:', error);
+        console.error('[SingleKey] Webhook failure:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

@@ -414,7 +414,8 @@ export async function POST(
         .upload(storagePath, fileBuffer, { contentType: 'application/pdf', upsert: false })
 
     if (uploadError) {
-        return NextResponse.json({ error: 'File upload failed: ' + uploadError.message }, { status: 500 })
+        console.error('[Screening] Upload failed:', uploadError.message)
+        return NextResponse.json({ error: 'File upload failed' }, { status: 500 })
     }
 
     const { data: urlData } = supabase.storage
