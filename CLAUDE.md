@@ -174,6 +174,18 @@ Every feature follows this exact order — never skip steps:
 5. **UI** — Page with loading skeleton, error state, empty state, feature gate
 6. **VERIFY** — `npm run build`, Playwright E2E, check console for errors
 
+## Security Hardening (2026-03-26) — PRODUCTION READY
+
+4 waves, 4 commits (e28e8e1 → 617a720). Final audit: **7/7 PASS**.
+
+- **RLS:** All 10 core tables enforce `company_id = get_user_company_id()`. Zero god-mode policies.
+- **Webhooks:** Stripe signature, SingleKey HMAC (constant-time), automation callback HMAC. All use admin client (no cookie-based auth in server-to-server flows).
+- **Middleware:** All 20 dashboard route groups protected.
+- **API routes:** Every route auth-gated + company-scoped. Zod validation on all payloads.
+- **Error sanitization:** No internal DB/API details leak to client.
+- **Python backend:** CORS restricted to production (localhost only in debug), JWT uses proper secret, SMTP encryption failure raises (no plaintext fallback), bearer token length validation.
+- **Remaining:** Rate limiting is in-memory (needs Redis for multi-instance). No unit tests.
+
 ## Phase Status
 - P1 Property Onboarding: COMPLETE
 - P2 Pre-Rental Inspection: COMPLETE
