@@ -39,7 +39,7 @@ export async function updateSession(request: NextRequest) {
         '/documents', '/analytics', '/social', '/settings',
         '/areas', '/approvals', '/leases', '/maintenance',
         '/showings', '/automations', '/activity', '/inspections',
-        '/communication', '/admin'
+        '/communication', '/admin', '/tenant'
     ]
     const isProtectedRoute = protectedPaths.some(path => pathname.startsWith(path))
 
