@@ -140,7 +140,7 @@ export default function InvoicesPage() {
                         icon={Clock}
                         color="text-amber-600"
                         bg="bg-amber-50"
-                        trend="+12% from last month"
+                        trend={`${invoices?.filter(i => i.status === 'sent' || i.status === 'overdue').length || 0} pending invoices`}
                     />
                     <StatCard
                         label="Collected (Month)"
@@ -148,10 +148,10 @@ export default function InvoicesPage() {
                         icon={CheckCircle}
                         color="text-emerald-600"
                         bg="bg-emerald-50"
-                        trend="Target: $250,000"
+                        trend={`${invoices?.filter(i => i.status === 'paid').length || 0} paid total`}
                     />
                     <StatCard
-                        label="Verified Entries"
+                        label="Draft Entries"
                         value={invoices?.filter(i => i.status === 'draft').length.toString() || '0'}
                         icon={TrendingUp}
                         color="text-blue-600"

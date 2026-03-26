@@ -1,6 +1,6 @@
 'use client';
 
-import { useApplications } from '@/lib/hooks/useApplications';
+import { useApplications, useUpdateApplicationStatus } from '@/lib/hooks/useApplications';
 import { useProperties } from '@/lib/hooks/useProperties';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,11 +19,13 @@ import { Search, Filter, MoreHorizontal, User, Calendar, Home } from 'lucide-rea
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 export default function ApplicantsPage() {
     const { data: applications, isLoading } = useApplications();
     const { data: properties } = useProperties();
+    const updateStatus = useUpdateApplicationStatus();
+    const router = useRouter();
     const [statusFilter, setStatusFilter] = useState('all');
     const [search, setSearch] = useState('');
 
@@ -46,8 +48,7 @@ export default function ApplicantsPage() {
             denied: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
             withdrawn: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400',
         };
-        // @ts-ignore
-        const style = styles[status] || styles.withdrawn;
+        const style = styles[status as keyof typeof styles] || styles.withdrawn;
         return (
             <Badge variant="outline" className={`${style} capitalize font-medium rounded-full px-2.5 py-0.5 border-none shadow-none`}>
                 {status}
@@ -161,9 +162,9 @@ export default function ApplicantsPage() {
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => toast("View Details functionality mocked")}>View Details</DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => toast.success("Application Approved!")}>Approve</DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => toast.error("Application Denied")}>Deny</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => router.push(`/applications?highlight=${app.id}`)}>View Details</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => updateStatus.mutate({ id: app.id, status: 'approved' })}>Approve</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => updateStatus.mutate({ id: app.id, status: 'denied' })}>Deny</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>

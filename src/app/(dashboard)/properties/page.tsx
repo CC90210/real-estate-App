@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from 'sonner';
-import { Search, Filter, BedDouble, Bath, Plus, MapPin, User, ArrowRight, Building2, Home, TrendingUp, Sparkles, Upload, Users } from 'lucide-react';
+
+import { Search, Filter, BedDouble, Bath, Plus, MapPin, User, ArrowRight, Building2, Home, TrendingUp, Sparkles, Users } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -227,13 +227,6 @@ export default function PropertiesPage() {
                     </p>
                 </div>
                 <div className="flex items-center gap-4 animate-in fade-in slide-in-from-right duration-700">
-                    <Button
-                        onClick={() => toast.info("Bulk Import coming soon")}
-                        className={cn("h-14 px-8 rounded-2xl text-white font-bold shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl border-0", colors.bg, `hover:${colors.bgHover}`, colors.shadow)}
-                    >
-                        <Upload className="w-5 h-5 mr-3" />
-                        Tactical Import
-                    </Button>
                     <Button
                         onClick={() => setNewPropertyOpen(true)}
                         disabled={!limits?.canAddProperty}
