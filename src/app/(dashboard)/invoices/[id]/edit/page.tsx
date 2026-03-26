@@ -18,6 +18,7 @@ import {
 import { ArrowLeft, Plus, Trash2, Save, Loader2, DollarSign } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 import { CURRENCIES, getCurrencySymbol } from '@/lib/currencies'
+import { useCompanyId } from '@/lib/hooks/useCompanyId'
 
 interface LineItem {
     id: string
@@ -31,6 +32,7 @@ export default function EditInvoicePage() {
     const params = useParams()
     const id = params?.id as string
     const supabase = createClient()
+    const { companyId } = useCompanyId()
     const [isLoading, setIsLoading] = useState(false)
     const [isFetching, setIsFetching] = useState(true)
     const [company, setCompany] = useState<any>(null)
@@ -65,19 +67,21 @@ export default function EditInvoicePage() {
                     setCompany(profile.company)
                 }
 
-                // Fetch properties for dropdown
+                // Fetch properties for dropdown (scoped to user's company)
                 const { data: props } = await supabase
                     .from('properties')
                     .select('id, address, unit_number')
+                    .eq('company_id', profile.company_id)
                     .order('address')
 
                 if (props) setProperties(props)
 
-                // Fetch existing invoice
+                // Fetch existing invoice (scoped to user's company)
                 const { data: invoice, error } = await supabase
                     .from('invoices')
                     .select('*')
                     .eq('id', id)
+                    .eq('company_id', profile.company_id)
                     .single()
 
                 if (error) throw error
@@ -145,6 +149,7 @@ export default function EditInvoicePage() {
                 .from('invoices')
                 .update(invoiceData)
                 .eq('id', id)
+                .eq('company_id', companyId)
                 .select('id, invoice_number, total, recipient_name, recipient_email, due_date, currency')
                 .single()
 

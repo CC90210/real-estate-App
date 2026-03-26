@@ -18,11 +18,13 @@ import {
 import { ArrowLeft, Building2, MapPin, Home, Loader2, Plus, CheckCircle2 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useQueryClient } from '@tanstack/react-query'
+import { useCompanyId } from '@/lib/hooks/useCompanyId'
 
 export default function NewPropertyPage() {
     const router = useRouter()
     const supabase = createClient()
     const queryClient = useQueryClient()
+    const { companyId } = useCompanyId()
     const [isLoading, setIsLoading] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -49,14 +51,15 @@ export default function NewPropertyPage() {
 
     // Fetch Areas
     useEffect(() => {
+        if (!companyId) return
         const fetchAreas = async () => {
             setIsLoading(true)
-            const { data } = await supabase.from('areas').select('*').order('name')
+            const { data } = await supabase.from('areas').select('*').eq('company_id', companyId).order('name')
             if (data) setAreas(data)
             setIsLoading(false)
         }
         fetchAreas()
-    }, [])
+    }, [companyId])
 
     // Fetch Buildings when Area changes
     useEffect(() => {
