@@ -227,6 +227,7 @@ export function useCreateShowing() {
 export function useUpdateShowing() {
     const queryClient = useQueryClient();
     const supabase = createClient();
+    const { companyId } = useCompanyId();
 
     return useMutation({
         mutationFn: async ({ id, updates }: { id: string; updates: Partial<Showing> }) => {
@@ -234,6 +235,7 @@ export function useUpdateShowing() {
                 .from('showings')
                 .update(updates)
                 .eq('id', id)
+                .eq('company_id', companyId)
                 .select()
                 .single();
 
@@ -254,13 +256,15 @@ export function useUpdateShowing() {
 export function useDeleteShowing() {
     const queryClient = useQueryClient();
     const supabase = createClient();
+    const { companyId } = useCompanyId();
 
     return useMutation({
         mutationFn: async (showingId: string) => {
             const { error } = await supabase
                 .from('showings')
                 .delete()
-                .eq('id', showingId);
+                .eq('id', showingId)
+                .eq('company_id', companyId);
 
             if (error) throw error;
             return showingId;

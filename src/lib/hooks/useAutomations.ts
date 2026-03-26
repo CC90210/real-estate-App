@@ -61,7 +61,8 @@ export function useAutomationLogs(entityId?: string) {
                 .from('automation_logs')
                 .select('*')
                 .eq('company_id', companyId)
-                .order('triggered_at', { ascending: false });
+                .order('triggered_at', { ascending: false })
+                .limit(100);
 
             if (entityId) {
                 query = query.eq('entity_id', entityId);

@@ -56,8 +56,9 @@ export default function ShowingsPage() {
 
     // Fetch showings
     const { data: showings, isLoading } = useQuery({
-        queryKey: ['showings'],
+        queryKey: ['showings', companyId],
         queryFn: async () => {
+            if (!companyId) return []
             const { data, error } = await supabase
                 .from('showings')
                 .select(`
@@ -69,19 +70,23 @@ export default function ShowingsPage() {
 
             if (error) throw error
             return data || []
-        }
+        },
+        enabled: !!companyId
     })
 
     // Fetch properties for dropdown
     const { data: properties } = useQuery({
-        queryKey: ['properties-simple'],
+        queryKey: ['properties-simple', companyId],
         queryFn: async () => {
+            if (!companyId) return []
             const { data } = await supabase
                 .from('properties')
                 .select('id, address, unit_number')
+                .eq('company_id', companyId)
                 .order('address')
             return data || []
-        }
+        },
+        enabled: !!companyId
     })
 
     // Create showing
