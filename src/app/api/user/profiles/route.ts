@@ -25,12 +25,24 @@ export async function POST(request: Request) {
             return NextResponse.json([]);
         }
 
+        // Get caller's company to scope results
+        const { data: callerProfile } = await authClient
+            .from('profiles')
+            .select('company_id')
+            .eq('id', user.id)
+            .single();
+
+        if (!callerProfile?.company_id) {
+            return NextResponse.json({ error: 'No company' }, { status: 403 });
+        }
+
         const supabase = createServerClient();
 
         const { data: profiles, error } = await supabase
             .from('profiles')
             .select('id, full_name, email, avatar_url')
-            .in('id', validIds.slice(0, 100)); // Limit to 100 validated UUIDs
+            .eq('company_id', callerProfile.company_id)
+            .in('id', validIds.slice(0, 100)); // Limit to 100 validated UUIDs, scoped to company
 
         if (error) {
             console.error('[Profiles Proxy Error]:', error.message);

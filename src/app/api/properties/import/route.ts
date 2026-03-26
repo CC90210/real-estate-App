@@ -47,6 +47,13 @@ export async function POST(req: Request) {
         }, { status: 400 })
     }
 
+    // Limit import size to prevent memory exhaustion
+    if (rows.length > 5000) {
+        return NextResponse.json({
+            error: `CSV too large (${rows.length} rows). Maximum 5,000 properties per import.`
+        }, { status: 400 })
+    }
+
     // Validate and transform rows
     const properties: Record<string, any>[] = []
     const validationErrors: { row: number; error: string }[] = []
