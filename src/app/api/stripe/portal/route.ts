@@ -22,9 +22,14 @@ export async function POST(req: Request) {
 
         const { data: profile } = await supabase
             .from('profiles')
-            .select('stripe_customer_id')
+            .select('stripe_customer_id, role')
             .eq('id', user.id)
             .single()
+
+        // Only admins can access billing portal
+        if (profile?.role !== 'admin') {
+            return NextResponse.json({ error: 'Only company admins can manage billing' }, { status: 403 })
+        }
 
         if (!profile?.stripe_customer_id) {
             return NextResponse.json({ error: 'No subscription found' }, { status: 400 })

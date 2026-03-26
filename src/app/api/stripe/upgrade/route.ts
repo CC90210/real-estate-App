@@ -31,12 +31,24 @@ export async function POST(req: Request) {
             }, { status: 501 })
         }
 
-        // Get the company's current subscription
+        // Get the user's profile + company subscription info
         const { data: profile } = await supabase
             .from('profiles')
-            .select('company_id, companies(stripe_subscription_id, subscription_plan, plan_override)')
+            .select('company_id, role, companies(stripe_subscription_id, subscription_plan, plan_override)')
             .eq('id', user.id)
             .single()
+
+        if (!profile?.company_id) {
+            return NextResponse.json({ error: 'No company found' }, { status: 403 })
+        }
+
+        // Only admins can change the company's subscription plan
+        if (profile.role !== 'admin') {
+            return NextResponse.json(
+                { error: 'Only company admins can manage billing' },
+                { status: 403 }
+            )
+        }
 
         const company = profile?.companies as any
 

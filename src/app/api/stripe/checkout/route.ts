@@ -35,9 +35,14 @@ export async function POST(req: Request) {
         // Get or create Stripe customer
         const { data: profile } = await supabase
             .from('profiles')
-            .select('stripe_customer_id, company_id')
+            .select('stripe_customer_id, company_id, role')
             .eq('id', user.id)
             .single()
+
+        // Only admins can purchase subscriptions
+        if (profile?.role !== 'admin') {
+            return NextResponse.json({ error: 'Only company admins can manage billing' }, { status: 403 })
+        }
 
         let customerId = profile?.stripe_customer_id || undefined
 
