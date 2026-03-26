@@ -1,17 +1,45 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { rateLimit } from '@/lib/rate-limit'
 
 const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 })
+
 export async function POST(req: Request) {
     try {
+        // Rate limit by IP to prevent brute-force token guessing
+        const ip = req.headers.get('x-forwarded-for') || 'anonymous'
+        try {
+            await limiter.check(5, ip)
+        } catch {
+            return NextResponse.json({ error: 'Too many attempts. Please try again later.' }, { status: 429 })
+        }
+
         const { token, email, password, fullName, companyName } = await req.json()
 
         if (!token || !email || !password || !fullName || !companyName) {
             return NextResponse.json({ error: 'All fields are required' }, { status: 400 })
+        }
+
+        // Input validation
+        if (typeof email !== 'string' || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return NextResponse.json({ error: 'Invalid email address' }, { status: 400 })
+        }
+        if (typeof password !== 'string' || password.length < 8 || password.length > 128) {
+            return NextResponse.json({ error: 'Password must be 8-128 characters' }, { status: 400 })
+        }
+        if (typeof fullName !== 'string' || fullName.length > 200 || fullName.trim().length < 1) {
+            return NextResponse.json({ error: 'Invalid name' }, { status: 400 })
+        }
+        if (typeof companyName !== 'string' || companyName.length > 200 || companyName.trim().length < 1) {
+            return NextResponse.json({ error: 'Invalid company name' }, { status: 400 })
+        }
+        if (typeof token !== 'string' || token.length > 100) {
+            return NextResponse.json({ error: 'Invalid token' }, { status: 400 })
         }
 
         // 1. Validate the invitation
