@@ -81,6 +81,6 @@ export async function POST(req: Request) {
 
     } catch (err: any) {
         console.error('Rent checkout error:', err)
-        return NextResponse.json({ error: err.message }, { status: 500 })
+        return NextResponse.json({ error: 'Payment session creation failed' }, { status: 500 })
     }
 }

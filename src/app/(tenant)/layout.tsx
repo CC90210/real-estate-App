@@ -4,9 +4,12 @@ import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { TenantSidebar } from '@/components/TenantSidebar'
 import { Loader2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
 export default function TenantLayout({ children }: { children: React.ReactNode }) {
     const supabase = createClient()
+    const router = useRouter()
 
     const { data: userData, isLoading } = useQuery({
         queryKey: ['tenant-data'],
@@ -24,12 +27,22 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
         }
     })
 
+    useEffect(() => {
+        if (!isLoading && userData === null) {
+            router.push('/login')
+        }
+    }, [isLoading, userData, router])
+
     if (isLoading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
             </div>
         )
+    }
+
+    if (userData === null) {
+        return null
     }
 
     return (

@@ -76,7 +76,8 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
 
     // Upload to Supabase Storage — use arrayBuffer for reliable upload
     const fileBuffer = await file.arrayBuffer()
-    const storagePath = `${profile.company_id}/${applicationId}/${Date.now()}-${file.name}`
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const storagePath = `${profile.company_id}/${applicationId}/${Date.now()}-${safeName}`
 
     const { error: uploadError } = await supabase.storage
         .from('application-documents')

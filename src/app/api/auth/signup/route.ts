@@ -68,38 +68,15 @@ export async function POST(request: Request) {
         let user = signupResult.data.user;
         const signupError = signupResult.error;
 
-        // 2. Handle existing user (Smart Recovery)
+        // 2. Handle signup errors
         if (signupError) {
             if (signupError.message.includes('already registered') || signupError.status === 422) {
-                // User exists, let's find them
-                const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-                if (listError) throw listError;
-
-                const existingUser = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
-                if (existingUser) {
-                    // Update user
-                    const { data: { user: updatedUser }, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-                        existingUser.id,
-                        {
-                            password: password,
-                            email_confirm: true,
-                            user_metadata: {
-                                ...existingUser.user_metadata,
-                                full_name,
-                                role,
-                                company_name: companyName,
-                                job_title: job_title
-                            }
-                        }
-                    );
-                    if (updateError) throw updateError;
-                    user = updatedUser;
-                } else {
-                    throw new Error("User evaluation failed");
-                }
-            } else {
-                throw signupError;
+                return NextResponse.json(
+                    { error: 'An account with this email already exists. Please sign in or reset your password.' },
+                    { status: 409 }
+                );
             }
+            throw signupError;
         }
 
         if (!user) {
@@ -122,7 +99,7 @@ export async function POST(request: Request) {
 
         return NextResponse.json({
             success: true,
-            message: signupError ? "Account updated." : "Account created."
+            message: "Account created."
         });
 
     } catch (error: unknown) {

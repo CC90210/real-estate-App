@@ -406,7 +406,8 @@ export async function POST(
     }
 
     // Upload PDF to Supabase Storage
-    const storagePath = `${profile.company_id}/${applicationId}/${Date.now()}-${file.name}`
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const storagePath = `${profile.company_id}/${applicationId}/${Date.now()}-${safeName}`
     const fileBuffer = await file.arrayBuffer()
 
     const { error: uploadError } = await supabase.storage

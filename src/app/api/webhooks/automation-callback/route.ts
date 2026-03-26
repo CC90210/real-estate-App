@@ -81,10 +81,25 @@ export async function POST(req: NextRequest) {
 
         // 4. Update Application Status (if requested)
         if (['approved', 'denied', 'screening'].includes(status)) {
+            // Fetch the application first to verify it exists and capture its company_id
+            const { data: application, error: fetchError } = await supabase
+                .from('applications')
+                .select('id, company_id')
+                .eq('id', application_id)
+                .single();
+
+            if (fetchError || !application) {
+                return NextResponse.json(
+                    { error: 'Application not found' },
+                    { status: 404 }
+                );
+            }
+
             const { error: updateError } = await supabase
                 .from('applications')
                 .update({ status, updated_at: new Date().toISOString() })
-                .eq('id', application_id);
+                .eq('id', application_id)
+                .eq('company_id', application.company_id);
 
             if (updateError) throw updateError;
         }

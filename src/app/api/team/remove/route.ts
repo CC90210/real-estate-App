@@ -1,5 +1,12 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+
+const supabaseAdmin = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+)
 
 // POST - Remove a team member (disassociate from company, optionally delete auth user)
 export async function POST(req: Request) {
@@ -71,7 +78,7 @@ export async function POST(req: Request) {
         // Note: This requires the service_role key. If using anon key, this will fail silently.
         if (deleteAccount) {
             try {
-                const { error: deleteError } = await supabase.auth.admin.deleteUser(memberId)
+                const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(memberId)
                 if (deleteError) {
                     console.warn('[team/remove] Could not delete auth user (may need service_role):', deleteError.message)
                     // Don't fail the whole operation — profile was already unlinked

@@ -10,7 +10,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export function createServerClient() {
     return createClient(
         supabaseUrl,
-        process.env.SUPABASE_SERVICE_ROLE_KEY || 'mock-service-role-key',
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
         {
             auth: {
                 autoRefreshToken: false,

@@ -21,6 +21,11 @@ export async function GET(req: Request) {
             .eq('id', user.id)
             .single()
 
+        if (!profile?.company_id) {
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+            return NextResponse.redirect(`${appUrl}/social?error=no_company`)
+        }
+
         const company = Array.isArray(profile?.companies) ? profile.companies[0] : profile?.companies
         const lateProfileId = company?.late_profile_id
 

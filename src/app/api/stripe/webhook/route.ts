@@ -86,7 +86,20 @@ export async function POST(req: Request) {
             case 'invoice.payment_failed': {
                 const invoice = event.data.object as Stripe.Invoice
                 console.log('Payment failed for invoice:', invoice.id)
-                // Could send email notification to user here
+                const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id
+                if (customerId) {
+                    const { data: profile } = await supabaseAdmin
+                        .from('profiles')
+                        .select('company_id')
+                        .eq('stripe_customer_id', customerId)
+                        .single()
+                    if (profile?.company_id) {
+                        await supabaseAdmin
+                            .from('companies')
+                            .update({ subscription_status: 'past_due', updated_at: new Date().toISOString() })
+                            .eq('id', profile.company_id)
+                    }
+                }
                 break
             }
 
