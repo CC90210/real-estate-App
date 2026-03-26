@@ -137,7 +137,7 @@ export default function MaintenancePage() {
                 update.resolved_at = new Date().toISOString()
                 update.resolution_notes = notes
             }
-            const { error } = await supabase.from('maintenance_requests').update(update).eq('id', id)
+            const { error } = await supabase.from('maintenance_requests').update(update).eq('id', id).eq('company_id', resolvedCompanyId)
             if (error) throw error
         },
         onSuccess: () => {

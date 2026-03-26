@@ -73,7 +73,7 @@ export function TeamManagementCard() {
     }, [companyId]);
 
     const revokeInvite = async (id: string) => {
-        const { error } = await supabase.from('team_invitations').delete().eq('id', id);
+        const { error } = await supabase.from('team_invitations').delete().eq('id', id).eq('company_id', companyId);
         if (error) {
             toast.error("Failed to delete invitation");
         } else {

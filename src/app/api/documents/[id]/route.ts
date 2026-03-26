@@ -103,7 +103,8 @@ export async function DELETE(
         const { error } = await supabase
             .from('documents')
             .delete()
-            .eq('id', id);
+            .eq('id', id)
+            .eq('company_id', profile.company_id);
 
         if (error) throw error;
 

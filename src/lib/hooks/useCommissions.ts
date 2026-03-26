@@ -177,6 +177,7 @@ export function useCreateCommission() {
 export function useUpdateCommissionStatus() {
     const queryClient = useQueryClient();
     const supabase = createClient();
+    const { companyId } = useCompanyId();
 
     return useMutation({
         mutationFn: async ({ id, status, paid_date }: { id: string; status: string; paid_date?: string }) => {
@@ -191,6 +192,7 @@ export function useUpdateCommissionStatus() {
                 .from('commissions')
                 .update(updates)
                 .eq('id', id)
+                .eq('company_id', companyId)
                 .select()
                 .single();
 

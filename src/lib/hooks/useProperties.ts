@@ -112,7 +112,7 @@ export function useDeleteProperty() {
 
     return useMutation({
         mutationFn: async (propertyId: string) => {
-            const { error } = await supabase.from('properties').delete().eq('id', propertyId);
+            const { error } = await supabase.from('properties').delete().eq('id', propertyId).eq('company_id', resolvedCompanyId);
             if (error) throw error;
 
             await logActivity(supabase, {
@@ -162,6 +162,7 @@ export function useUpdateProperty() {
                 .from('properties')
                 .update(updates)
                 .eq('id', id)
+                .eq('company_id', resolvedCompanyId)
                 .select()
                 .single();
 
