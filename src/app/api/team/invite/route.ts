@@ -4,6 +4,9 @@ import { logActivity } from '@/lib/services/activity-logger'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { canAddTeamMember } from '@/lib/plan-limits'
 import { sendTeamInviteEmail } from '@/lib/email'
+import { rateLimit } from '@/lib/rate-limit'
+
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 })
 
 const supabaseAdmin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,6 +21,12 @@ export async function POST(req: Request) {
 
         if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        try {
+            await limiter.check(10, user.id)
+        } catch {
+            return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
         }
 
         // Get user's profile and verify admin role

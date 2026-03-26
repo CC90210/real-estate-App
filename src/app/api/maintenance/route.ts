@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/services/activity-logger'
 import { createNotification, notifyCompanyMembers } from '@/lib/notifications'
 import { createMaintenanceSchema, updateMaintenanceSchema, validateBody } from '@/lib/validations/api-schemas'
+import { rateLimit } from '@/lib/rate-limit'
+
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 })
 
 export async function POST(req: Request) {
     const supabase = await createClient()
@@ -10,6 +13,12 @@ export async function POST(req: Request) {
 
     if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    try {
+        await limiter.check(15, user.id)
+    } catch {
+        return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
     }
 
     try {

@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/services/activity-logger'
 import Papa from 'papaparse'
+import { rateLimit } from '@/lib/rate-limit'
+
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 })
 
 export async function POST(req: Request) {
     const supabase = await createClient()
@@ -11,6 +14,12 @@ export async function POST(req: Request) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    try {
+        await limiter.check(3, user.id) // CSV imports are heavy — 3/min max
+    } catch {
+        return NextResponse.json({ error: 'Too many import requests' }, { status: 429 })
     }
 
     const { data: profile } = await supabase
