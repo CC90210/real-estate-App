@@ -278,9 +278,9 @@ export async function POST(req: NextRequest) {
         })
 
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'An unknown error occurred'
+        console.error('[Gmail Send] Error:', error instanceof Error ? error.message : error)
         return NextResponse.json(
-            { error: `Failed to send email: ${message}` },
+            { error: 'Failed to send email' },
             { status: 500 }
         )
     }

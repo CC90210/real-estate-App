@@ -131,7 +131,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.redirect(`${appUrl}/settings/automations?gmail=connected`)
 
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'callback_failed'
-        return NextResponse.redirect(`${appUrl}/settings/automations?gmail=error&reason=${encodeURIComponent(message)}`)
+        console.error('[Gmail Callback] Error:', error instanceof Error ? error.message : error)
+        return NextResponse.redirect(`${appUrl}/settings/automations?gmail=error&reason=callback_failed`)
     }
 }

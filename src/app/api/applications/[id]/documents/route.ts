@@ -87,7 +87,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
 
     if (uploadError) {
         console.error('Upload error:', uploadError.message)
-        return NextResponse.json({ error: 'File upload failed: ' + uploadError.message }, { status: 500 })
+        return NextResponse.json({ error: 'File upload failed' }, { status: 500 })
     }
 
     // Get public URL
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
 
     if (dbError) {
         console.error('DB error:', dbError.message)
-        return NextResponse.json({ error: 'Failed to save document record: ' + dbError.message }, { status: 500 })
+        return NextResponse.json({ error: 'Failed to save document record' }, { status: 500 })
     }
 
     return NextResponse.json(doc)

@@ -62,9 +62,9 @@ export async function POST(_req: NextRequest) {
         return NextResponse.json({ authUrl })
 
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'An unknown error occurred'
+        console.error('[Gmail Connect] Error:', error instanceof Error ? error.message : error)
         return NextResponse.json(
-            { error: `Failed to initiate Gmail connection: ${message}` },
+            { error: 'Failed to initiate Gmail connection' },
             { status: 500 }
         )
     }

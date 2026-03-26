@@ -69,9 +69,9 @@ export async function DELETE(req: NextRequest) {
         return NextResponse.json({ success: true, message: 'Gmail account disconnected' })
 
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'An unknown error occurred'
+        console.error('[Gmail Disconnect] Error:', error instanceof Error ? error.message : error)
         return NextResponse.json(
-            { error: `Failed to disconnect Gmail: ${message}` },
+            { error: 'Failed to disconnect Gmail' },
             { status: 500 }
         )
     }
