@@ -100,6 +100,7 @@ export default function NewInvoicePage() {
                 const { data: props } = await supabase
                     .from('properties')
                     .select('id, address, unit_number')
+                    .eq('company_id', profileData?.company_id)
                     .order('address')
 
                 if (props) setProperties(props)
