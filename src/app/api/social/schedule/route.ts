@@ -23,19 +23,29 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        // 1. Fetch user's Late profile ID
-        const { data: profileData, error: profileError } = await supabase
-            .from('agent_social_profiles')
-            .select('late_profile_id')
-            .eq('user_id', user.id)
-            .maybeSingle();
+        // 1. Get user's company and verify account ownership
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('company_id')
+            .eq('id', user.id)
+            .single();
 
-        if (profileError) {
-            console.error('Supabase fetch error for agent profile:', profileError);
+        if (!profile?.company_id) {
+            return NextResponse.json({ error: 'No company found' }, { status: 403 });
         }
 
-        if (!profileData) {
-            return NextResponse.json({ error: 'Social profile not found. Please connect an account first.' }, { status: 404 });
+        // Verify all platformAccountIds belong to this user's company
+        const { data: validAccounts } = await supabase
+            .from('social_accounts')
+            .select('late_account_id')
+            .eq('company_id', profile.company_id)
+            .in('late_account_id', platformAccountIds);
+
+        const validIds = new Set(validAccounts?.map(a => a.late_account_id) || []);
+        const unauthorized = platformAccountIds.filter((id: string) => !validIds.has(id));
+
+        if (unauthorized.length > 0) {
+            return NextResponse.json({ error: 'One or more social accounts do not belong to your company' }, { status: 403 });
         }
 
         // 2. Format payload depending on mediaUrl presence

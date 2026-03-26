@@ -11,14 +11,15 @@ export async function POST(req: Request) {
     try {
         const { leaseId } = await req.json()
 
-        // 1. Fetch Lease and Landlord's Connect Account
+        // 1. Fetch Lease — only allow if tenant is on this lease
         const { data: lease, error: leaseError } = await supabase
             .from('leases')
             .select('*, property:properties(company_id)')
             .eq('id', leaseId)
+            .eq('tenant_id', user.id)
             .single()
 
-        if (leaseError || !lease) throw new Error('Lease not found')
+        if (leaseError || !lease) throw new Error('Lease not found or not yours')
 
         const { data: connectAccount } = await supabase
             .from('stripe_connect_accounts')
