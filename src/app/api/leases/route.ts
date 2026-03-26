@@ -117,6 +117,7 @@ export async function GET(req: Request) {
         .select('*, properties(address, unit_number)')
         .eq('company_id', profile.company_id)
         .order('created_at', { ascending: false })
+        .limit(500)
 
     if (error) {
         return NextResponse.json({ error: 'Lease operation failed' }, { status: 500 })

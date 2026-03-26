@@ -48,7 +48,7 @@ export function useProperties(buildingId?: string) {
                 }
             }
 
-            const { data, error } = await query;
+            const { data, error } = await query.limit(500);
             if (error) {
                 console.error('Properties fetch error:', error.message);
                 throw error;

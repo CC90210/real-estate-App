@@ -162,6 +162,7 @@ export async function GET(req: Request) {
         .select('*, buildings(name, address), areas(name)')
         .eq('company_id', profile.company_id)
         .order('created_at', { ascending: false })
+        .limit(500)
 
     if (error) return NextResponse.json({ error: 'Failed to fetch properties' }, { status: 500 })
     return NextResponse.json(data)

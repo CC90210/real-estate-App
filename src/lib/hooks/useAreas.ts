@@ -28,7 +28,7 @@ export function useAreas() {
                 query = query.eq('company_id', companyId);
             }
 
-            const { data, error } = await query;
+            const { data, error } = await query.limit(200);
 
             if (error) throw error;
 

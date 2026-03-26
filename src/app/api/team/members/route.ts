@@ -26,6 +26,7 @@ export async function GET(req: Request) {
             .select('id, email, full_name, role, avatar_url, created_at')
             .eq('company_id', profile.company_id)
             .order('created_at', { ascending: true })
+            .limit(200)
 
         if (error) {
             throw error
