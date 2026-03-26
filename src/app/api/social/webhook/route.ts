@@ -26,8 +26,8 @@ export async function POST(req: Request) {
 
         // Verify webhook signature — required in production
         const webhookSecret = process.env.WEBHOOK_SECRET
-        if (!webhookSecret || webhookSecret === 'replace_with_your_secret') {
-            console.error('[Social Webhook] WEBHOOK_SECRET not configured — endpoint disabled')
+        if (!webhookSecret || webhookSecret.length < 20) {
+            console.error('[Social Webhook] WEBHOOK_SECRET not configured or too short — endpoint disabled')
             return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 })
         }
 

@@ -212,7 +212,7 @@ export async function POST(request: Request) {
 
         if (saveError) {
             console.error('Database Error:', saveError);
-            return NextResponse.json({ error: 'Database Error', details: saveError.message }, { status: 500 });
+            return NextResponse.json({ error: 'Failed to save document. Please try again.' }, { status: 500 });
         }
 
         // ====================================================================

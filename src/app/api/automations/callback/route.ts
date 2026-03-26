@@ -1,6 +1,20 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
+import { z } from 'zod'
+
+// Admin client for webhook callbacks (no user session available)
+const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+const callbackSchema = z.object({
+    success: z.boolean(),
+    result: z.unknown().optional(),
+    error: z.string().max(2000).optional(),
+    company_id: z.string().uuid(),
+})
 
 export async function POST(req: Request) {
     const signature = req.headers.get('X-PropFlow-Signature')
@@ -14,61 +28,49 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 })
     }
 
+    if (!logId || !signature) {
+        return NextResponse.json({ error: 'Missing required headers' }, { status: 400 })
+    }
+
     const expectedSignature = crypto
         .createHmac('sha256', secret)
         .update(body)
         .digest('hex')
 
-    const isValid = signature && crypto.timingSafeEqual(
-        Buffer.from(signature),
-        Buffer.from(expectedSignature)
-    )
-
-    if (!isValid) {
+    const sigBuf = Buffer.from(signature)
+    const expectedBuf = Buffer.from(expectedSignature)
+    if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
         return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
 
-    let data
+    let parsed
     try {
-        data = JSON.parse(body)
+        const raw = JSON.parse(body)
+        const validation = callbackSchema.safeParse(raw)
+        if (!validation.success) {
+            return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
+        }
+        parsed = validation.data
     } catch {
         return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
-    const supabase = await createClient()
-
-    // Update the automation log
-    await supabase
+    // Update the automation log — scoped by BOTH id AND company_id
+    const { error: updateError } = await supabaseAdmin
         .from('automation_logs')
         .update({
-            status: data.success ? 'completed' : 'failed',
-            result: data.result,
-            error_message: data.error,
+            status: parsed.success ? 'completed' : 'failed',
+            result: parsed.result,
+            error_message: parsed.error,
             completed_at: new Date().toISOString()
         })
         .eq('id', logId)
+        .eq('company_id', parsed.company_id)
 
-    // Optionally create a notification for the user
-    // (Assuming notifications table exists, if not, skip)
-    /*
-    if (data.success) {
-        const { data: log } = await supabase
-            .from('automation_logs')
-            .select('user_id, company_id, action_type')
-            .eq('id', logId)
-            .single()
-        
-        if (log) {
-            await supabase.from('notifications').insert({
-                user_id: log.user_id,
-                company_id: log.company_id,
-                title: 'Automation Complete',
-                message: `Your ${log.action_type} has been completed successfully.`,
-                type: 'success'
-            })
-        }
+    if (updateError) {
+        console.error('[Callback] Update failed:', updateError)
+        return NextResponse.json({ error: 'Update failed' }, { status: 500 })
     }
-    */
 
     return NextResponse.json({ received: true })
 }

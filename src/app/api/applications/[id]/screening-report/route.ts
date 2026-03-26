@@ -560,11 +560,15 @@ export async function POST(
             applicationUpdate.screening_completed_at = new Date().toISOString()
             applicationUpdate.singlekey_report_url = urlData.publicUrl
 
-            await supabase
+            const { error: appUpdateError } = await supabase
                 .from('applications')
                 .update(applicationUpdate)
                 .eq('id', applicationId)
                 .eq('company_id', profile.company_id)
+
+            if (appUpdateError) {
+                console.error('[Screening] Application update failed:', appUpdateError)
+            }
         }
     }
 

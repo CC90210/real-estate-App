@@ -40,6 +40,16 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
+    // 5 MB file size limit to prevent memory exhaustion
+    if (file.size > 5 * 1024 * 1024) {
+        return NextResponse.json({ error: 'File too large. Maximum 5 MB.' }, { status: 400 })
+    }
+
+    // Validate file type
+    if (!file.name.toLowerCase().endsWith('.csv') && file.type !== 'text/csv') {
+        return NextResponse.json({ error: 'Only CSV files are accepted' }, { status: 400 })
+    }
+
     const text = await file.text()
 
     // Parse CSV
@@ -51,8 +61,7 @@ export async function POST(req: Request) {
 
     if (errors.length > 0) {
         return NextResponse.json({
-            error: 'CSV parsing failed',
-            details: errors
+            error: 'CSV parsing failed. Please check the file format.',
         }, { status: 400 })
     }
 
@@ -116,10 +125,9 @@ export async function POST(req: Request) {
         .select()
 
     if (insertError) {
-        // If it fails, it might be due to missing columns or constraints.
+        console.error('[Import] Insert failed:', insertError)
         return NextResponse.json({
-            error: 'Failed to import',
-            details: insertError.message
+            error: 'Failed to import properties. Please check your CSV format and try again.'
         }, { status: 500 })
     }
 

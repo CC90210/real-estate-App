@@ -2,6 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { logActivity } from '@/lib/services/activity-logger';
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { z } from 'zod';
 
 // Admin client for webhook (bypasses RLS — webhooks have no user session)
@@ -19,9 +20,12 @@ const singleKeySchema = z.object({
 
 export async function POST(request: Request) {
     try {
-        // Validate secret token
+        // Validate secret token (constant-time comparison)
         const secret = request.headers.get('x-singlekey-secret');
-        if (!secret || secret !== process.env.SINGLEKEY_WEBHOOK_SECRET) {
+        const expected = process.env.SINGLEKEY_WEBHOOK_SECRET;
+        if (!secret || !expected ||
+            secret.length !== expected.length ||
+            !crypto.timingSafeEqual(Buffer.from(secret), Buffer.from(expected))) {
             console.error('[SingleKey] Unauthorized webhook attempt');
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
@@ -35,7 +39,19 @@ export async function POST(request: Request) {
 
         const { application_id, report_url, score, status } = validation.data;
 
-        console.log('[SingleKey] Webhook received');
+        console.log('[SingleKey] Webhook received for application:', application_id);
+
+        // Idempotency: skip if this application already has a completed screening report
+        const { data: existing } = await supabaseAdmin
+            .from('applications')
+            .select('background_status, singlekey_report_url')
+            .eq('id', application_id)
+            .single();
+
+        if (existing?.singlekey_report_url && existing?.background_status === 'completed') {
+            console.log('[SingleKey] Duplicate webhook — already processed for', application_id);
+            return NextResponse.json({ success: true, cached: true });
+        }
 
         // Use admin client — webhooks come from SingleKey servers (no user cookies)
         const { data: application, error: updateError } = await supabaseAdmin

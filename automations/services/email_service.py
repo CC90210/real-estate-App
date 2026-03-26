@@ -384,11 +384,11 @@ class EmailService:
             else:
                 detail = resp.json().get("error", resp.text[:200])
                 logger.warning("Gmail send failed (%s): %s", resp.status_code, detail)
-                return False, f"Gmail error: {detail}"
+                return False, "Gmail send failed. Please verify your Gmail OAuth configuration."
 
         except Exception as exc:
-            logger.warning("Gmail send error for company=%s: %s", company_id, exc)
-            return False, f"Gmail error: {exc}"
+            logger.warning("Gmail send error for company=%s: %s", company_id, type(exc).__name__)
+            return False, "Gmail send failed. Please try again later."
 
     async def _send_via_smtp(
         self,
@@ -422,8 +422,8 @@ class EmailService:
             )
             return True, "Sent via SMTP"
         except Exception as exc:
-            logger.exception("SMTP send failed for company=%s", credentials.company_id)
-            return False, f"SMTP error: {exc}"
+            logger.error("SMTP send failed for company=%s: %s", credentials.company_id, type(exc).__name__)
+            return False, "SMTP error: Failed to send email. Please check your SMTP configuration."
 
     async def _send_via_resend(
         self,
@@ -457,5 +457,5 @@ class EmailService:
             resp = resend_sdk.Emails.send(params)
             return True, f"Sent via Resend id={resp.get('id')}"
         except Exception as exc:
-            logger.exception("Resend send failed")
-            return False, f"Resend error: {exc}"
+            logger.error("Resend send failed: %s", type(exc).__name__)
+            return False, "Email send failed. Please try again later."

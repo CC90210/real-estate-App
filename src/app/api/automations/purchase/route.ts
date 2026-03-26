@@ -1,6 +1,17 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+const VALID_AUTOMATION_TYPES = [
+    'document_delivery',
+    'application_confirmation',
+    'follow_up',
+    'screening',
+    'invoice_reminder',
+    'maintenance_notification',
+    'lease_renewal',
+    'webhook_relay',
+] as const
+
 export async function POST(request: Request) {
     try {
         const supabase = await createClient()
@@ -14,6 +25,10 @@ export async function POST(request: Request) {
 
         if (!type || !name) {
             return NextResponse.json({ error: 'Type and name are required' }, { status: 400 })
+        }
+
+        if (!VALID_AUTOMATION_TYPES.includes(type)) {
+            return NextResponse.json({ error: 'Invalid automation type' }, { status: 400 })
         }
 
         const { data: profile } = await supabase

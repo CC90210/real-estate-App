@@ -160,6 +160,27 @@ export interface ActivityLog {
   user?: Profile;
 }
 
+// Automation Settings (per-company credential storage)
+export interface AutomationSettings {
+  id: string;
+  company_id: string;
+  email_provider: 'smtp' | 'gmail' | 'resend' | null;
+  smtp_host: string | null;
+  smtp_port: number | null;
+  smtp_user: string | null;
+  from_name: string | null;
+  from_email: string | null;
+  singlekey_api_key: string | null;
+  document_email_enabled: boolean;
+  document_email_recipients: string[];
+  invoice_email_enabled: boolean;
+  webhook_secret: string;
+  webhook_url: string | null;
+  webhook_events: string[];
+  created_at: string;
+  updated_at: string;
+}
+
 // API Response Types
 export interface PaginatedResponse<T> {
   data: T[];

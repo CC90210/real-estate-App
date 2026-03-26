@@ -24,6 +24,9 @@ import {
     CheckCircle2,
     Trash2,
     ExternalLink,
+    Shield,
+    Server,
+    Key,
 } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -34,7 +37,21 @@ export default function AutomationSettingsPage() {
     const queryClient = useQueryClient()
     const searchParams = useSearchParams()
     const [showSecret, setShowSecret] = useState(false)
+    const [showApiKey, setShowApiKey] = useState(false)
+    const [showSmtpPassword, setShowSmtpPassword] = useState(false)
     const [connectingGmail, setConnectingGmail] = useState(false)
+    const [savingCredentials, setSavingCredentials] = useState(false)
+
+    const [credentialForm, setCredentialForm] = useState({
+        singlekey_api_key: '',
+        smtp_host: '',
+        smtp_port: 587,
+        smtp_user: '',
+        smtp_password: '',
+        from_name: '',
+        from_email: '',
+        email_provider: null as string | null,
+    })
 
     // Check for Gmail callback success
     useEffect(() => {
@@ -178,6 +195,72 @@ export default function AutomationSettingsPage() {
             toast.error('Failed to save', { description: error.message })
         }
     })
+
+    // Fetch existing credentials (masked)
+    const { data: credentials } = useQuery({
+        queryKey: ['automation-credentials'],
+        queryFn: async () => {
+            const res = await fetch('/api/automations/credentials')
+            if (!res.ok) return null
+            const json = await res.json()
+            return json.data
+        },
+    })
+
+    useEffect(() => {
+        if (credentials) {
+            // Only populate non-sensitive fields from API (masked fields stay empty for re-entry)
+            setCredentialForm(prev => ({
+                ...prev,
+                smtp_port: credentials.smtp_port || 587,
+                from_name: credentials.from_name || '',
+                from_email: credentials.from_email || '',
+                email_provider: credentials.email_provider || null,
+            }))
+        }
+    }, [credentials])
+
+    const saveCredentials = async () => {
+        setSavingCredentials(true)
+        try {
+            const payload: Record<string, unknown> = {}
+
+            // Only send fields that have values
+            if (credentialForm.singlekey_api_key) {
+                payload.singlekey_api_key = credentialForm.singlekey_api_key
+            }
+            if (credentialForm.smtp_host) {
+                payload.smtp_host = credentialForm.smtp_host
+                payload.smtp_port = credentialForm.smtp_port
+                payload.smtp_user = credentialForm.smtp_user
+                payload.from_name = credentialForm.from_name
+                payload.from_email = credentialForm.from_email
+                payload.email_provider = 'smtp'
+                if (credentialForm.smtp_password) {
+                    payload.smtp_password = credentialForm.smtp_password
+                }
+            }
+
+            const res = await fetch('/api/automations/credentials', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            })
+
+            if (!res.ok) {
+                const err = await res.json()
+                throw new Error(err.error || 'Failed to save')
+            }
+
+            toast.success('Credentials saved', { description: 'Your integration keys have been securely stored.' })
+            setCredentialForm(prev => ({ ...prev, singlekey_api_key: '', smtp_password: '' }))
+            queryClient.invalidateQueries({ queryKey: ['automation-credentials'] })
+        } catch (err: any) {
+            toast.error('Failed to save credentials', { description: err.message })
+        } finally {
+            setSavingCredentials(false)
+        }
+    }
 
     const copyWebhookSecret = () => {
         navigator.clipboard.writeText(settings?.webhook_secret || '')
@@ -342,6 +425,189 @@ export default function AutomationSettingsPage() {
                                     </a>.
                                 </p>
                             </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* ─── Tenant Screening (SingleKey) Card ─── */}
+                    <Card className="border-none shadow-2xl shadow-slate-200/50 bg-white rounded-[2rem] overflow-hidden group">
+                        <CardHeader className="p-8 pb-4">
+                            <CardTitle className="flex items-center gap-4 text-2xl font-black text-slate-900">
+                                <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-all duration-500 shadow-lg shadow-emerald-100">
+                                    <Shield className="h-6 w-6" />
+                                </div>
+                                Tenant Screening
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-8 pt-4 space-y-6">
+                            <p className="text-sm text-slate-500 font-medium">
+                                Connect your SingleKey account to automate credit checks, background screening, and income verification for applicants.
+                            </p>
+
+                            {credentials?.singlekey_api_key ? (
+                                <div className="flex items-center gap-3 p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+                                    <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                                    <div>
+                                        <p className="text-sm font-bold text-slate-900">SingleKey API Key Connected</p>
+                                        <p className="text-xs text-slate-500 font-mono">{credentials.singlekey_api_key}</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+                                    <Key className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                                    <p className="text-sm font-bold text-slate-400 mb-1">No screening API key configured</p>
+                                    <p className="text-xs text-slate-400">
+                                        Add your SingleKey API key to enable automated tenant screening.
+                                    </p>
+                                </div>
+                            )}
+
+                            <div className="space-y-2">
+                                <Label className="text-sm font-black uppercase tracking-wider text-slate-400 ml-1">SingleKey API Key</Label>
+                                <div className="relative">
+                                    <Input
+                                        type={showApiKey ? 'text' : 'password'}
+                                        placeholder="sk_live_..."
+                                        value={credentialForm.singlekey_api_key}
+                                        onChange={(e) => setCredentialForm({ ...credentialForm, singlekey_api_key: e.target.value })}
+                                        className="h-14 bg-slate-50 border-slate-100 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all font-mono text-sm px-6 pr-14"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => setShowApiKey(!showApiKey)}
+                                        className="absolute right-2 top-2 h-10 w-10 text-slate-400 hover:text-slate-600"
+                                    >
+                                        {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    </Button>
+                                </div>
+                                <p className="text-xs text-slate-400 ml-1">
+                                    Find your API key at your SingleKey dashboard. This key is encrypted and stored per-company.
+                                </p>
+                            </div>
+
+                            <Button
+                                onClick={saveCredentials}
+                                disabled={savingCredentials || !credentialForm.singlekey_api_key}
+                                className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold text-sm shadow-lg shadow-emerald-100 transition-all disabled:opacity-50"
+                            >
+                                {savingCredentials ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Key className="h-5 w-5 mr-2" />}
+                                Save Screening Key
+                            </Button>
+                        </CardContent>
+                    </Card>
+
+                    {/* ─── SMTP Email Configuration Card ─── */}
+                    <Card className="border-none shadow-2xl shadow-slate-200/50 bg-white rounded-[2rem] overflow-hidden group">
+                        <CardHeader className="p-8 pb-4">
+                            <CardTitle className="flex items-center gap-4 text-2xl font-black text-slate-900">
+                                <div className="h-12 w-12 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center group-hover:bg-violet-600 group-hover:text-white transition-all duration-500 shadow-lg shadow-violet-100">
+                                    <Server className="h-6 w-6" />
+                                </div>
+                                Custom Email Server
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-8 pt-4 space-y-6">
+                            <p className="text-sm text-slate-500 font-medium">
+                                Use your own SMTP server for sending automated emails (leases, documents, notifications). This overrides the default email provider.
+                            </p>
+
+                            {credentials?.smtp_host ? (
+                                <div className="flex items-center gap-3 p-4 bg-violet-50 rounded-2xl border border-violet-100">
+                                    <CheckCircle2 className="h-5 w-5 text-violet-600 shrink-0" />
+                                    <div>
+                                        <p className="text-sm font-bold text-slate-900">SMTP Connected</p>
+                                        <p className="text-xs text-slate-500">{credentials.smtp_host}:{credentials.smtp_port} &middot; {credentials.smtp_user}</p>
+                                    </div>
+                                </div>
+                            ) : null}
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-black uppercase tracking-wider text-slate-400 ml-1">SMTP Host</Label>
+                                    <Input
+                                        placeholder="smtp.gmail.com"
+                                        value={credentialForm.smtp_host}
+                                        onChange={(e) => setCredentialForm({ ...credentialForm, smtp_host: e.target.value })}
+                                        className="h-14 bg-slate-50 border-slate-100 rounded-xl focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500 transition-all text-sm px-6"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-black uppercase tracking-wider text-slate-400 ml-1">SMTP Port</Label>
+                                    <Input
+                                        type="number"
+                                        placeholder="587"
+                                        value={credentialForm.smtp_port}
+                                        onChange={(e) => setCredentialForm({ ...credentialForm, smtp_port: parseInt(e.target.value) || 587 })}
+                                        className="h-14 bg-slate-50 border-slate-100 rounded-xl focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500 transition-all text-sm px-6"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-sm font-black uppercase tracking-wider text-slate-400 ml-1">SMTP Username</Label>
+                                <Input
+                                    placeholder="you@company.com"
+                                    value={credentialForm.smtp_user}
+                                    onChange={(e) => setCredentialForm({ ...credentialForm, smtp_user: e.target.value })}
+                                    className="h-14 bg-slate-50 border-slate-100 rounded-xl focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500 transition-all text-sm px-6"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-sm font-black uppercase tracking-wider text-slate-400 ml-1">SMTP Password</Label>
+                                <div className="relative">
+                                    <Input
+                                        type={showSmtpPassword ? 'text' : 'password'}
+                                        placeholder="Enter SMTP password or app password"
+                                        value={credentialForm.smtp_password}
+                                        onChange={(e) => setCredentialForm({ ...credentialForm, smtp_password: e.target.value })}
+                                        className="h-14 bg-slate-50 border-slate-100 rounded-xl focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500 transition-all text-sm px-6 pr-14"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => setShowSmtpPassword(!showSmtpPassword)}
+                                        className="absolute right-2 top-2 h-10 w-10 text-slate-400 hover:text-slate-600"
+                                    >
+                                        {showSmtpPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    </Button>
+                                </div>
+                                <p className="text-xs text-slate-400 ml-1">
+                                    Password is encrypted with Fernet before storage. For Gmail, use an App Password.
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-black uppercase tracking-wider text-slate-400 ml-1">From Name</Label>
+                                    <Input
+                                        placeholder="PropFlow Notifications"
+                                        value={credentialForm.from_name}
+                                        onChange={(e) => setCredentialForm({ ...credentialForm, from_name: e.target.value })}
+                                        className="h-14 bg-slate-50 border-slate-100 rounded-xl focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500 transition-all text-sm px-6"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-black uppercase tracking-wider text-slate-400 ml-1">From Email</Label>
+                                    <Input
+                                        placeholder="noreply@company.com"
+                                        value={credentialForm.from_email}
+                                        onChange={(e) => setCredentialForm({ ...credentialForm, from_email: e.target.value })}
+                                        className="h-14 bg-slate-50 border-slate-100 rounded-xl focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500 transition-all text-sm px-6"
+                                    />
+                                </div>
+                            </div>
+
+                            <Button
+                                onClick={saveCredentials}
+                                disabled={savingCredentials || !credentialForm.smtp_host}
+                                className="w-full h-14 bg-violet-600 hover:bg-violet-700 text-white rounded-2xl font-bold text-sm shadow-lg shadow-violet-100 transition-all disabled:opacity-50"
+                            >
+                                {savingCredentials ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Server className="h-5 w-5 mr-2" />}
+                                Save Email Server
+                            </Button>
                         </CardContent>
                     </Card>
 

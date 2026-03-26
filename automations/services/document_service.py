@@ -65,11 +65,8 @@ class DocumentService:
                     f"document_id={document_id}",
                 )
 
-            content_type = response.headers.get("content-type", "")
-            if "pdf" not in content_type and len(response.content) < 4:
-                # Minimal sanity check: real PDFs start with %PDF
-                pass
-            elif response.content[:4] != b"%PDF":
+            # Validate PDF signature — real PDFs start with %PDF
+            if len(response.content) >= 4 and response.content[:4] != b"%PDF":
                 logger.warning(
                     "document_id=%s does not appear to be a PDF (first 4 bytes: %r)",
                     document_id,
