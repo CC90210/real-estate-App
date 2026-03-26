@@ -139,7 +139,13 @@ async def require_bearer(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authorization header with Bearer token is required.",
         )
-    return authorization.removeprefix("Bearer ").strip()
+    token = authorization.removeprefix("Bearer ").strip()
+    if len(token) < 20:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header with Bearer token is required.",
+        )
+    return token
 
 
 # ---------------------------------------------------------------------------
@@ -322,10 +328,10 @@ def _verify_company_ownership(token: str, company_id: str) -> None:
             algorithms=["HS256"],
             options={"verify_aud": False},
         )
-    except JWTError as exc:
+    except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid token: {exc}",
+            detail="Invalid authorization token",
         )
 
     # The JWT `sub` is the Supabase user UUID.  We look up their company.
@@ -410,5 +416,5 @@ def _encrypt_smtp_password(credentials: "CompanyCredentials") -> "CompanyCredent
         # We use model_copy (Pydantic v2) to avoid mutating a frozen model
         return credentials.model_copy(update={"smtp_password": encrypted})
     except Exception:
-        logger.exception("Failed to encrypt SMTP password — storing unencrypted")
-        return credentials
+        logger.exception("Failed to encrypt SMTP password")
+        raise ValueError("SMTP password encryption failed")

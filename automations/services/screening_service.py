@@ -116,16 +116,15 @@ class ScreeningService:
                 )
                 return True, f"Screening initiated. URL: {new_screening_url}"
             else:
-                error_text = response.text[:500]
                 logger.warning(
                     "SingleKey returned HTTP %d for application_id=%s: %s",
                     response.status_code,
                     application_id,
-                    error_text,
+                    response.text[:500],
                 )
                 return (
                     False,
-                    f"SingleKey error {response.status_code}: {error_text}",
+                    f"Screening service error (HTTP {response.status_code})",
                 )
 
         except httpx.TimeoutException:

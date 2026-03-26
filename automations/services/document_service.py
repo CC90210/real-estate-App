@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 from typing import Optional
+from urllib.parse import urlparse
 
 import httpx
 
@@ -53,6 +54,16 @@ class DocumentService:
         """
         if not document_url:
             return None, "document_url is empty"
+
+        # Validate URL before fetching to prevent SSRF
+        if len(document_url) > 2000:
+            return None, "document_url exceeds maximum length"
+        parsed = urlparse(document_url)
+        is_localhost = parsed.hostname in ("localhost", "127.0.0.1", "::1")
+        if parsed.scheme not in ("https", "http") or (
+            parsed.scheme == "http" and not is_localhost
+        ):
+            return None, "document_url must use HTTPS"
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
