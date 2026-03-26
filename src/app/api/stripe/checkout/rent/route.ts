@@ -1,12 +1,21 @@
 import { NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createClient } from '@/lib/supabase/server'
+import { rateLimit } from '@/lib/rate-limit'
+
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 })
 
 export async function POST(req: Request) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    try {
+        await limiter.check(3, user.id)
+    } catch {
+        return NextResponse.json({ error: 'Too many payment attempts. Please wait a moment.' }, { status: 429 })
+    }
 
     try {
         const { leaseId } = await req.json()

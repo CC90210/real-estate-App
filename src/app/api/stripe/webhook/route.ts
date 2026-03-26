@@ -3,12 +3,16 @@ import { headers } from 'next/headers'
 import { stripe } from '@/lib/stripe'
 import { createClient } from '@supabase/supabase-js'
 import Stripe from 'stripe'
+import { LRUCache } from 'lru-cache'
 
 // Admin client for webhook (bypasses RLS)
 const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+// Idempotency: track processed event IDs to prevent duplicate processing on Stripe retries
+const processedEvents = new LRUCache<string, true>({ max: 1000, ttl: 1000 * 60 * 60 }) // 1 hour TTL
 
 export async function POST(req: Request) {
     const body = await req.text()
@@ -36,6 +40,13 @@ export async function POST(req: Request) {
     }
 
     console.log('Received Stripe event:', event.type)
+
+    // Idempotency check: skip already-processed events (Stripe retries on timeout)
+    if (processedEvents.has(event.id)) {
+        console.log(`Skipping duplicate event: ${event.id}`)
+        return NextResponse.json({ received: true, duplicate: true })
+    }
+    processedEvents.set(event.id, true)
 
     try {
         switch (event.type) {
