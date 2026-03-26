@@ -124,6 +124,8 @@ export default function EditInvoicePage() {
     }
 
     const handleSubmit = async (newStatus?: string) => {
+        if (isLoading) return
+
         if (!recipientName) {
             toast.error('Recipient name is required')
             return

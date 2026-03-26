@@ -33,7 +33,7 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
 
     const handleCreateInvite = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!companyId) return;
+        if (isLoading || !companyId) return;
 
         setIsLoading(true);
         try {

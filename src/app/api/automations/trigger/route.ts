@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { executeAutomation, type AutomationEvent, type AutomationPayload } from '@/lib/automations/engine'
 import { rateLimit } from '@/lib/rate-limit'
 import { logAuditEvent } from '@/lib/audit-log'
+import { triggerAutomationSchema, validateBody } from '@/lib/validations/api-schemas'
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 })
 
@@ -22,9 +23,15 @@ export async function POST(req: Request) {
         const supabase = await createClient()
         const body = await req.json()
 
+        // Validate input schema
+        const validated = validateBody(triggerAutomationSchema, body)
+        if (!validated.success) {
+            return NextResponse.json({ error: validated.error }, { status: 400 })
+        }
+
         // Support both the old format (actionType/entityType) and new format (event_type/payload)
-        const eventType = body.event_type || body.actionType || body.event
-        const payload = body.payload || body
+        const eventType = validated.data.event_type || validated.data.actionType || validated.data.event
+        const payload = validated.data.payload || body
 
         // Get user and company
         const { data: { user } } = await supabase.auth.getUser()

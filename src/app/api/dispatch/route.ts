@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { dispatchDocumentWebhook } from '@/lib/webhooks/dispatcher'
+import { dispatchDocumentSchema, validateBody } from '@/lib/validations/api-schemas'
 
 export async function POST(req: Request) {
     try {
@@ -23,13 +24,11 @@ export async function POST(req: Request) {
         }
 
         const body = await req.json()
-        const { documentType, documentId, dispatchNotes } = body
-
-        if (!documentType || !documentId) {
-            return NextResponse.json({
-                error: 'documentType and documentId are required'
-            }, { status: 400 })
+        const validated = validateBody(dispatchDocumentSchema, body)
+        if (!validated.success) {
+            return NextResponse.json({ error: validated.error }, { status: 400 })
         }
+        const { documentType, documentId, dispatchNotes } = validated.data
 
         // Dispatch the webhook
         const result = await dispatchDocumentWebhook(

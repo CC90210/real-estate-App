@@ -77,6 +77,7 @@ export function EditPropertyModal({ property }: EditPropertyModalProps) {
     const [photos, setPhotos] = useState<string[]>(property.photos || []);
 
     const handleUpdate = async () => {
+        if (isLoading) return;
         setIsLoading(true);
         try {
             const formData = {

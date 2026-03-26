@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/services/activity-logger'
 import { createNotification, notifyCompanyMembers } from '@/lib/notifications'
+import { createMaintenanceSchema, updateMaintenanceSchema, validateBody } from '@/lib/validations/api-schemas'
 
 export async function POST(req: Request) {
     const supabase = await createClient()
@@ -13,7 +14,11 @@ export async function POST(req: Request) {
 
     try {
         const body = await req.json()
-        const { property_id, title, description, category, priority, photos } = body
+        const validated = validateBody(createMaintenanceSchema, body)
+        if (!validated.success) {
+            return NextResponse.json({ error: validated.error }, { status: 400 })
+        }
+        const { property_id, title, description, category, priority, photos } = validated.data
 
         const { data: profile } = await supabase
             .from('profiles')
@@ -95,7 +100,11 @@ export async function PATCH(req: Request) {
 
     try {
         const body = await req.json()
-        const { id, status, resolution_notes, assigned_to, scheduled_date, estimated_cost, actual_cost } = body
+        const validated = validateBody(updateMaintenanceSchema, body)
+        if (!validated.success) {
+            return NextResponse.json({ error: validated.error }, { status: 400 })
+        }
+        const { id, status, resolution_notes, assigned_to, scheduled_date, estimated_cost, actual_cost } = validated.data
 
         const update: any = {}
         if (status) update.status = status

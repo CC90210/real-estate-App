@@ -131,6 +131,8 @@ export default function NewInvoicePage() {
     }
 
     const handleSubmit = async () => {
+        if (isLoading) return
+
         if (!recipientName) {
             toast.error('Identity Verification Required', { description: 'Recipient name cannot be blank.' })
             return

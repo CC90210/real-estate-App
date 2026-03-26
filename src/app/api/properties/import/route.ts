@@ -67,29 +67,29 @@ export async function POST(req: Request) {
             continue
         }
 
+        if (row.address.length > 500) {
+            validationErrors.push({ row: i + 2, error: 'Address too long (max 500 chars)' })
+            continue
+        }
+
+        const validStatuses = ['available', 'occupied', 'maintenance', 'unavailable']
+        const status = row.status && validStatuses.includes(row.status.toLowerCase()) ? row.status.toLowerCase() : 'available'
+
+        const rent = parseFloat(row.rent)
+        const bedrooms = parseInt(row.bedrooms)
+        const bathrooms = parseFloat(row.bathrooms)
+        const sqft = parseInt(row.square_feet || row.sqft)
+
         properties.push({
             company_id: profile.company_id,
-            address: row.address,
-            unit_number: row.unit_number || row.unit || null,
-            rent: parseFloat(row.rent) || null,
-            bedrooms: parseInt(row.bedrooms) || null,
-            bathrooms: parseFloat(row.bathrooms) || null,
-            square_feet: parseInt(row.square_feet || row.sqft) || null,
-            description: row.description || null,
-            status: row.status || 'available',
-            // property_type column might not exist in the schema I saw earlier, I'll check schema.sql. 
-            // The prompt says "No new tables needed - imports into existing properties table".
-            // Checking schema.sql from previous turn: properties table has no 'property_type'.
-            // I will omit it to be safe or check if I should add it.
-            // The prompt "WHAT'S ALREADY BUILT" implies I shouldn't break existing stuff.
-            // But the code provided in the prompt includes `property_type`.
-            // I will err on the side of safety and OMIT it if it's not in the DB, OR I'll add the column if deemed necessary.
-            // Given "Build them WITHOUT breaking existing functionality", I'll stick to existing columns unless critical.
-            // The schema.sql showed: id, building_id, unit_number, bedrooms, bathrooms, square_feet, rent, deposit, status, available_date, description, amenities, utilities_included, pet_policy, parking_included, lockbox_code.
-            // I will map to these. I will exclude 'property_type' if it doesn't exist.
-            // However, the prompt code explicitly has it.
-            // I will check if I can add it safely.
-            // Actually, I'll just remove it from the insert for now to avoid error 42703 (undefined column).
+            address: row.address.slice(0, 500),
+            unit_number: (row.unit_number || row.unit || '').slice(0, 50) || null,
+            rent: (!isNaN(rent) && rent >= 0 && rent <= 10_000_000) ? rent : null,
+            bedrooms: (!isNaN(bedrooms) && bedrooms >= 0 && bedrooms <= 100) ? bedrooms : null,
+            bathrooms: (!isNaN(bathrooms) && bathrooms >= 0 && bathrooms <= 100) ? bathrooms : null,
+            square_feet: (!isNaN(sqft) && sqft >= 0 && sqft <= 1_000_000) ? sqft : null,
+            description: row.description ? row.description.slice(0, 5000) : null,
+            status,
         })
     }
 

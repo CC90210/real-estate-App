@@ -11,6 +11,7 @@ import { Loader2, Plus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { useCompanyId } from '@/lib/hooks/useCompanyId';
 
 export function AddApplicationModal() {
     const [open, setOpen] = useState(false);
@@ -18,6 +19,7 @@ export function AddApplicationModal() {
     const [properties, setProperties] = useState<any[]>([]);
     const supabase = createClient();
     const router = useRouter();
+    const { companyId } = useCompanyId();
 
     const [formData, setFormData] = useState({
         property_id: '',
@@ -35,9 +37,11 @@ export function AddApplicationModal() {
     }, [open]);
 
     const fetchProperties = async () => {
+        if (!companyId) return;
         const { data } = await supabase
             .from('properties')
             .select('id, address, unit_number, rent')
+            .eq('company_id', companyId)
             .eq('status', 'available')
             .order('address');
 
@@ -45,6 +49,8 @@ export function AddApplicationModal() {
     };
 
     const handleSubmit = async () => {
+        if (isLoading) return;
+
         if (!formData.property_id) {
             toast.error("Please select a property");
             return;
