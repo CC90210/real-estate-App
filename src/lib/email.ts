@@ -1,6 +1,6 @@
 import { Resend } from 'resend'
 
-// Lazily initialize Resend to avoid build-time errors when API key is missing
+// Lazily initialize Resend as a fallback when Gmail is unavailable
 let resendInstance: Resend | null = null
 
 function getResend() {
@@ -14,6 +14,47 @@ function getResend() {
 const FROM_EMAIL = process.env.FROM_EMAIL || 'PropFlow <noreply@propflow.app>'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
+/**
+ * The PropFlow master Gmail account (propflowpartners@gmail.com).
+ * Connected via Google Workspace / Gmail OAuth.
+ * All outbound emails route through this account, branded per-company.
+ */
+const PROPFLOW_MASTER_EMAIL = process.env.PROPFLOW_MASTER_EMAIL || 'propflowpartners@gmail.com'
+
+// ============================================
+// COMPANY BRANDING (centralized PropFlow sender)
+// ============================================
+
+export interface CompanyBranding {
+    name: string
+    logo_url?: string | null
+    primary_color?: string | null
+    email?: string | null
+    phone?: string | null
+    address?: string | null
+    email_footer_text?: string | null
+}
+
+/**
+ * Load company branding from Supabase for email templates.
+ * Uses admin client (no RLS) since this runs in server-side automation context.
+ */
+export async function loadCompanyBranding(companyId: string): Promise<CompanyBranding> {
+    try {
+        const { getSupabaseAdmin } = await import('@/lib/supabase/admin')
+        const db = getSupabaseAdmin()
+        const { data } = await db
+            .from('companies')
+            .select('name, logo_url, primary_color, email, phone, address, email_footer_text')
+            .eq('id', companyId)
+            .maybeSingle()
+
+        return data || { name: 'PropFlow' }
+    } catch {
+        return { name: 'PropFlow' }
+    }
+}
+
 // ============================================
 // CORE EMAIL SENDER
 // ============================================
@@ -22,38 +63,124 @@ export async function sendEmail({
     subject,
     html,
     text,
+    cc,
+    replyTo,
 }: {
     to: string | string[]
     subject: string
     html: string
     text?: string
+    cc?: string | string[]
+    replyTo?: string
 }) {
-    const resend = getResend()
+    // Strategy: Gmail (PropFlow master account) → Resend fallback
 
+    // 1. Try Gmail API via the internal /api/gmail/send endpoint
+    const gmailResult = await sendViaGmail({ to, subject, html, text, cc, replyTo })
+    if (gmailResult.success) {
+        return gmailResult
+    }
+
+    console.warn('[EMAIL] Gmail send failed, trying Resend fallback:', gmailResult.error)
+
+    // 2. Fallback to Resend
+    const resend = getResend()
     if (!resend) {
-        console.warn('[EMAIL] Resend not initialized (missing API key) - email not sent:', subject, 'to:', to)
-        return { success: false, error: 'Email service not configured' }
+        console.error('[EMAIL] Both Gmail and Resend unavailable - email not sent:', subject, 'to:', to)
+        return { success: false, error: gmailResult.error || 'No email provider configured' }
     }
 
     try {
-        const { data, error } = await resend.emails.send({
+        const params: Parameters<typeof resend.emails.send>[0] = {
             from: FROM_EMAIL,
             to: Array.isArray(to) ? to : [to],
             subject,
             html,
             text,
-        })
+        }
+        if (cc) params.cc = Array.isArray(cc) ? cc : [cc]
+        if (replyTo) params.replyTo = replyTo
+
+        const { data, error } = await resend.emails.send(params)
 
         if (error) {
-            console.error('[EMAIL] Send error:', error)
+            console.error('[EMAIL] Resend send error:', error)
             return { success: false, error: error.message }
         }
 
-        console.log('[EMAIL] Sent:', subject, 'to:', to, 'id:', data?.id)
+        console.log('[EMAIL] Sent via Resend:', subject, 'to:', to, 'id:', data?.id)
         return { success: true, id: data?.id }
     } catch (err: any) {
-        console.error('[EMAIL] Exception:', err)
+        console.error('[EMAIL] Resend exception:', err)
         return { success: false, error: err.message }
+    }
+}
+
+/**
+ * Send email through the PropFlow platform Gmail (propflowpartners@gmail.com).
+ * Calls the internal /api/email/send route which uses Gmail SMTP with an App Password.
+ * No OAuth, no user setup — fully pre-packaged. Just env vars.
+ *
+ * Required env vars:
+ *   PROPFLOW_MASTER_EMAIL=propflowpartners@gmail.com
+ *   PROPFLOW_GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx  (Google App Password)
+ */
+async function sendViaGmail({
+    to,
+    subject,
+    html,
+    text,
+    cc,
+    replyTo,
+}: {
+    to: string | string[]
+    subject: string
+    html?: string
+    text?: string
+    cc?: string | string[]
+    replyTo?: string
+}): Promise<{ success: boolean; id?: string; error?: string }> {
+    const gmailUser = PROPFLOW_MASTER_EMAIL
+    const gmailPassword = process.env.PROPFLOW_GMAIL_APP_PASSWORD
+
+    if (!gmailPassword) {
+        return { success: false, error: 'PROPFLOW_GMAIL_APP_PASSWORD not configured' }
+    }
+
+    try {
+        const internalSecret = process.env.AUTOMATION_INTERNAL_SECRET || process.env.WEBHOOK_SECRET
+        if (!internalSecret) {
+            return { success: false, error: 'No internal secret for platform email sends' }
+        }
+
+        const response = await fetch(`${APP_URL}/api/email/send`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-PropFlow-Internal-Secret': internalSecret,
+            },
+            body: JSON.stringify({
+                to: Array.isArray(to) ? to.join(', ') : to,
+                subject,
+                html,
+                text,
+                cc: cc ? (Array.isArray(cc) ? cc.join(', ') : cc) : undefined,
+                replyTo,
+            }),
+        })
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({ error: 'Email API error' }))
+            return { success: false, error: err.error || `Email send failed: ${response.status}` }
+        }
+
+        const data = await response.json()
+        console.log('[EMAIL] Sent via PropFlow Gmail:', subject, 'to:', to, 'messageId:', data.messageId)
+        return { success: true, id: data.messageId }
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('[EMAIL] Gmail send error:', message)
+        return { success: false, error: message }
     }
 }
 
@@ -62,7 +189,17 @@ export async function sendEmail({
 // EMAIL TEMPLATES
 // ============================================
 
-function baseTemplate(content: string, companyName?: string) {
+function baseTemplate(content: string, companyName?: string, branding?: CompanyBranding) {
+    const name = branding?.name || companyName || 'PropFlow'
+    const accent = branding?.primary_color || '#3b82f6'
+    const logoHtml = branding?.logo_url
+        ? `<img src="${branding.logo_url}" alt="${name}" style="max-height:48px;max-width:200px;margin:0 auto 8px;display:block;" />`
+        : ''
+    const footerExtra = branding?.email_footer_text
+        ? `<p style="margin-top:8px;">${branding.email_footer_text}</p>`
+        : ''
+    const contactLine = [branding?.email, branding?.phone].filter(Boolean).join(' | ')
+
     return `
 <!DOCTYPE html>
 <html>
@@ -75,16 +212,16 @@ function baseTemplate(content: string, companyName?: string) {
         .card { background: white; border-radius: 16px; padding: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
         .logo { text-align: center; margin-bottom: 32px; }
         .logo h1 { font-size: 24px; font-weight: 900; color: #1e293b; margin: 0; letter-spacing: -0.5px; }
-        .logo p { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 3px; color: #3b82f6; margin: 4px 0 0; }
+        .logo p { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 3px; color: ${accent}; margin: 4px 0 0; }
         h2 { font-size: 22px; font-weight: 800; color: #0f172a; margin: 0 0 16px; }
         p { font-size: 15px; line-height: 1.7; color: #475569; margin: 0 0 16px; }
         .btn { display: inline-block; padding: 14px 32px; background: #1e293b; color: white !important; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 14px; letter-spacing: 0.5px; }
         .btn:hover { background: #334155; }
-        .btn-primary { background: #3b82f6; }
-        .btn-primary:hover { background: #2563eb; }
+        .btn-primary { background: ${accent}; }
+        .btn-primary:hover { opacity: 0.9; }
         .footer { text-align: center; margin-top: 32px; font-size: 12px; color: #94a3b8; }
         .badge { display: inline-block; padding: 4px 12px; border-radius: 100px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-        .badge-blue { background: #eff6ff; color: #3b82f6; }
+        .badge-blue { background: #eff6ff; color: ${accent}; }
         .badge-green { background: #f0fdf4; color: #16a34a; }
         .badge-red { background: #fef2f2; color: #ef4444; }
         .badge-amber { background: #fffbeb; color: #d97706; }
@@ -99,15 +236,18 @@ function baseTemplate(content: string, companyName?: string) {
     <div class="container">
         <div class="card">
             <div class="logo">
-                <h1>${companyName || 'PropFlow'}</h1>
-                <p>Property Intelligence</p>
+                ${logoHtml}
+                <h1>${name}</h1>
+                <p>Powered by PropFlow</p>
             </div>
             ${content}
         </div>
         <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} ${companyName || 'PropFlow'}. All rights reserved.</p>
-            <p style="margin-top: 8px;">
-                <a href="${APP_URL}" style="color: #3b82f6; text-decoration: none;">Visit Dashboard</a>
+            <p>&copy; ${new Date().getFullYear()} ${name}. All rights reserved.</p>
+            ${contactLine ? `<p style="margin-top:4px;">${contactLine}</p>` : ''}
+            ${footerExtra}
+            <p style="margin-top:8px;font-size:10px;color:#cbd5e1;">
+                Sent via <a href="${APP_URL}" style="color:${accent};text-decoration:none;">PropFlow</a> rental automation
             </p>
         </div>
     </div>
@@ -202,6 +342,7 @@ export async function sendInvoiceEmail({
     dueDate,
     companyName,
     downloadUrl,
+    branding,
 }: {
     email: string
     recipientName: string
@@ -210,6 +351,7 @@ export async function sendInvoiceEmail({
     dueDate: string
     companyName: string
     downloadUrl?: string
+    branding?: CompanyBranding
 }) {
     const html = baseTemplate(`
         <h2>Invoice ${invoiceNumber}</h2>
@@ -227,7 +369,7 @@ export async function sendInvoiceEmail({
             <a href="${downloadUrl}" class="btn">Download Invoice</a>
         </div>` : ''}
         <p style="font-size: 13px; color: #94a3b8;">Please contact us if you have any questions about this invoice.</p>
-    `, companyName)
+    `, companyName, branding)
 
     return sendEmail({
         to: email,
@@ -366,6 +508,9 @@ export async function sendDocumentDeliveryEmail({
     companyName,
     viewUrl,
     message,
+    branding,
+    ccSender,
+    replyTo,
 }: {
     email: string
     recipientName: string
@@ -376,6 +521,9 @@ export async function sendDocumentDeliveryEmail({
     companyName: string
     viewUrl: string
     message?: string
+    branding?: CompanyBranding
+    ccSender?: string
+    replyTo?: string
 }) {
     const typeLabels: Record<string, string> = {
         lease_proposal: 'Lease Proposal',
@@ -400,11 +548,13 @@ export async function sendDocumentDeliveryEmail({
             <a href="${viewUrl}" class="btn btn-primary">View Document</a>
         </div>
         <p style="font-size: 13px; color: #94a3b8;">If you have questions, please contact your agent directly.</p>
-    `, companyName)
+    `, companyName, branding)
 
     return sendEmail({
         to: email,
         subject: `${documentTitle} — Please Review`,
         html,
+        cc: ccSender,
+        replyTo,
     })
 }

@@ -86,8 +86,39 @@ export async function POST(request: Request) {
             );
         }
 
+        // If webhook dispatch failed (no URL configured, delivery error, etc.),
+        // fall back to the internal automation engine which sends email directly via Resend.
         if (!result?.success) {
-            throw new Error(`Dispatch Engine rejected delivery. Check webhook_events log for company ${companyId}`);
+            const { executeAutomation } = await import('@/lib/automations/engine');
+
+            const event = type === 'document' ? 'DOCUMENT_SEND' as const : 'INVOICE_CREATED' as const;
+            const enginePayload = {
+                company_id: companyId,
+                document_id: n8nPayload.document_id,
+                document_type: n8nPayload.document_type,
+                document_url: n8nPayload.file_url,
+                recipient_email: n8nPayload.recipient_email,
+                recipient_name: n8nPayload.recipient_name,
+                property_address: n8nPayload.property_address,
+                agent_name: n8nPayload.meta?.operator,
+                message: n8nPayload.dispatch_notes,
+                invoice_number: n8nPayload.invoice_number,
+                amount: n8nPayload.amount,
+                due_date: n8nPayload.due_date,
+                sender_id: user.id,
+            };
+
+            const engineResult = await executeAutomation(event, enginePayload);
+
+            if (!engineResult.success) {
+                return apiError(engineResult.message || 'Automation failed', { status: 500 });
+            }
+
+            return NextResponse.json({
+                success: true,
+                message: engineResult.message || 'Automation completed via internal engine',
+                details: engineResult.details,
+            });
         }
 
         return NextResponse.json({

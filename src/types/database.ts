@@ -48,6 +48,8 @@ export interface Company {
   stripe_connect_enabled?: boolean;
   late_profile_id?: string | null;
   plan_override?: string | null;
+  primary_color?: string | null;
+  email_footer_text?: string | null;
   property_count?: number | null;
   team_member_count?: number | null;
   social_account_count?: number | null;
@@ -711,3 +713,44 @@ export const TENANT_VETTING_CHECKLIST = [
   { id: 'doc_parking_lease', label: 'Parking lease', category: 'documents', required: false },
   { id: 'doc_cannabis_form', label: 'Cannabis form', category: 'documents', required: true },
 ];
+
+// === E-Sign Types ===
+
+export type SigningStatus = 'pending' | 'sent' | 'viewed' | 'signed' | 'rejected' | 'expired' | 'cancelled';
+
+export interface SigningRequest {
+  id: string;
+  company_id: string;
+  document_id: string | null;
+  title: string;
+  status: SigningStatus;
+  sender_id: string;
+  recipient_email: string;
+  recipient_name: string | null;
+  message: string | null;
+  document_url: string | null;
+  signing_token: string;
+  signed_at: string | null;
+  signature_data: {
+    typed_name: string;
+    ip_address?: string;
+    user_agent?: string;
+    signed_at: string;
+  } | null;
+  signed_document_url: string | null;
+  expires_at: string | null;
+  viewed_at: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface SigningAuditLog {
+  id: string;
+  signing_request_id: string;
+  action: string;
+  actor_email: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+}

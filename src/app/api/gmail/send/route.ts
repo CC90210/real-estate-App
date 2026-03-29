@@ -19,6 +19,8 @@ interface SendEmailRequest {
     html?: string
     attachments?: Attachment[]
     tokenId?: string
+    cc?: string | string[]
+    replyTo?: string
 }
 
 interface GmailTokenRow {
@@ -37,8 +39,10 @@ function buildMimeMessage(params: {
     body: string
     html?: string
     attachments?: Attachment[]
+    cc?: string | string[]
+    replyTo?: string
 }): string {
-    const { from, to, subject, body, html, attachments } = params
+    const { from, to, subject, body, html, attachments, cc, replyTo } = params
 
     const toHeader = Array.isArray(to) ? to.join(', ') : to
     const boundary = `propflow_${Date.now()}_boundary`
@@ -49,6 +53,13 @@ function buildMimeMessage(params: {
 
     lines.push(`From: ${from}`)
     lines.push(`To: ${toHeader}`)
+    if (cc) {
+        const ccHeader = Array.isArray(cc) ? cc.join(', ') : cc
+        lines.push(`Cc: ${ccHeader}`)
+    }
+    if (replyTo) {
+        lines.push(`Reply-To: ${replyTo}`)
+    }
     lines.push(`Subject: ${subject}`)
     lines.push('MIME-Version: 1.0')
 
@@ -171,7 +182,7 @@ export async function POST(req: NextRequest) {
             return apiError('Unauthorized', { status: 401 })
         }
 
-        const { to, subject, body: textBody, html, attachments, tokenId, companyId } = body
+        const { to, subject, body: textBody, html, attachments, tokenId, companyId, cc, replyTo } = body
 
         if (!to || !subject || !textBody) {
             return apiError('Missing required fields: to, subject, body', {
@@ -257,6 +268,8 @@ export async function POST(req: NextRequest) {
             body: textBody,
             html,
             attachments,
+            cc,
+            replyTo,
         })
 
         const { data: sentMessage } = await gmail.users.messages.send({

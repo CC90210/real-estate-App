@@ -74,6 +74,6 @@ export function useAutomationLogs(entityId?: string) {
             return data as AutomationLog[];
         },
         enabled: !!companyId,
-        staleTime: 30000,
+        staleTime: 60000,
     });
 }

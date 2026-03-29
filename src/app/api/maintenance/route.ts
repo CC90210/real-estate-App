@@ -83,10 +83,14 @@ export async function POST(req: Request) {
                 photos: photos || [],
             })
             .select('*, properties(address)')
-            .single()
+            .maybeSingle()
 
         if (error) {
             return apiError('Maintenance request failed', { status: 500 })
+        }
+
+        if (!request) {
+            return apiError('Maintenance request could not be created', { status: 500 })
         }
 
         // Log activity

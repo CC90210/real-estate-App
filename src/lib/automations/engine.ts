@@ -1,4 +1,4 @@
-import { sendDocumentDeliveryEmail, sendInvoiceEmail } from '@/lib/email'
+import { sendDocumentDeliveryEmail, sendInvoiceEmail, loadCompanyBranding } from '@/lib/email'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 
 /**
@@ -25,6 +25,8 @@ export interface AutomationPayload {
     recipient_email?: string
     agent_name?: string
     message?: string
+    created_by?: string
+    sender_id?: string
     // Invoice-specific
     invoice_number?: string
     amount?: number
@@ -184,20 +186,28 @@ async function handleDocumentSend(
         }
     }
 
-    // Fetch company name for email branding
-    const { data: company } = await db
-        .from('companies')
-        .select('name')
-        .eq('id', company_id)
-        .maybeSingle()
-
-    const companyName = (company?.name as string) || 'PropFlow'
+    // Load company branding for email templates
+    const branding = await loadCompanyBranding(company_id)
+    const companyName = branding.name || 'PropFlow'
 
     // Build view URL
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://propflow.pro'
     const viewUrl = document_id ? `${appUrl}/documents/${document_id}` : appUrl
 
-    // Send the email
+    // Look up the sender's email so we can CC them on the outbound email
+    let senderEmail: string | undefined
+    if (payload.created_by || payload.sender_id) {
+        const senderId = payload.created_by || payload.sender_id
+        const { data: sender } = await db
+            .from('profiles')
+            .select('email')
+            .eq('id', senderId)
+            .maybeSingle()
+        senderEmail = (sender?.email as string) || undefined
+    }
+
+    // Send the email (centralized PropFlow sender with per-company branding)
+    // CC the agent so they have a record, reply-to goes to their email
     const result = await sendDocumentDeliveryEmail({
         email: recipient_email,
         recipientName: recipient_name || 'Valued Client',
@@ -208,6 +218,9 @@ async function handleDocumentSend(
         companyName,
         viewUrl,
         message,
+        branding,
+        ccSender: senderEmail,
+        replyTo: senderEmail,
     })
 
     // Log execution

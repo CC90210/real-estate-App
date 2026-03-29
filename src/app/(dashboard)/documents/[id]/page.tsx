@@ -16,6 +16,8 @@ import {
 import { ArrowLeft, Printer, PenLine, Check, FileSignature, ShieldCheck, Mail, User, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
+import { generatePDFBlob } from '@/lib/generatePdf'
+import { uploadAndGetLink } from '@/lib/automations'
 
 // ============================================================================
 // PRODUCTION DOCUMENT VIEWER - Renders structured template data
@@ -98,39 +100,43 @@ export default function DocumentViewPage() {
         setIsSigning(true)
 
         try {
-            toast.info('Dispatching signature request...', { duration: 1500 })
-            const response = await fetch('/api/documents/send', {
+            toast.info('Preparing document for signature...', { duration: 2000 })
+
+            // Step 1: Generate PDF from the rendered document element
+            const blob = await generatePDFBlob('document-paper')
+            if (!blob) throw new Error('Failed to generate document PDF')
+
+            // Step 2: Upload to Supabase Storage and get a signed URL
+            const storagePath = `signing/${id}/${Date.now()}.pdf`
+            const fileUrl = await uploadAndGetLink(blob, storagePath, 'documents')
+
+            // Step 3: Create the signing request via the native e-sign system
+            const response = await fetch('/api/signing', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    documentId: id,
-                    recipientEmail: trimmedEmail,
-                    recipientName: recipientName.trim() || null,
-                    selectedDocuments: ['lease_agreement'],
-                    eSignEnabled: true,
-                    eSignProvider: 'propflow',
-                    requireCounterSign: true,
+                    document_id: id,
+                    title: document.title,
+                    recipient_email: trimmedEmail,
+                    recipient_name: recipientName.trim() || null,
+                    message: null,
+                    document_url: fileUrl,
                 }),
             })
 
             const result = await response.json().catch(() => ({}))
             if (!response.ok) {
-                throw new Error(result?.details?.[0]?.message || result?.error || 'Signature dispatch failed')
+                throw new Error(result?.details?.[0]?.message || result?.error || 'Signing request failed')
             }
 
-
-            // 3. Trigger Automation — recipient_email sourced from the dialog input
-
-            toast.success('Signature Request Sent', {
-                description: result?.message || 'All parties have been notified via secure email.',
+            toast.success('Signing Request Sent', {
+                description: `A secure signing link has been emailed to ${trimmedEmail}.`,
                 icon: <FileSignature className="w-4 h-4 text-emerald-500" />
             })
 
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Unknown error'
-            toast.error('Signature Dispatch Failed', { description: message })
+            toast.error('Signing Request Failed', { description: message })
         } finally {
             setIsSigning(false)
         }

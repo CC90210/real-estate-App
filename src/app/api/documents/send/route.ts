@@ -227,6 +227,7 @@ export async function POST(req: Request) {
             recipient_email: resolvedRecipientEmail,
             agent_name: profile.full_name || company?.name || 'PropFlow',
             message: message || undefined,
+            sender_id: user.id,
         })
 
         if (!automationResult.success) {

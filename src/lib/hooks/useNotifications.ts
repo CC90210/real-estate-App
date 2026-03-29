@@ -15,7 +15,7 @@ export function useNotifications(limit = 20) {
             }>
         },
         refetchInterval: 120000, // Poll every 2 minutes (was 30s — caused performance issues)
-        staleTime: 60000, // Consider fresh for 1 minute
+        staleTime: 30000, // Consider fresh for 30 seconds
     })
 }
 
