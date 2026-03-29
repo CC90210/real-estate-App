@@ -1,15 +1,12 @@
-import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { sendDocumentDeliveryEmail, sendInvoiceEmail } from '@/lib/email'
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
 
 /**
  * Get a Supabase client with service role (bypasses RLS for automation operations).
  * Only used server-side in API routes.
  */
 function getServiceClient() {
-    return createServiceClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    return getSupabaseAdmin()
 }
 
 export type AutomationEvent =
@@ -127,7 +124,7 @@ async function checkAutomationEnabled(companyId: string, event: AutomationEvent)
         .from('companies')
         .select('subscription_plan, plan_override')
         .eq('id', companyId)
-        .single()
+        .maybeSingle()
 
     if (!company) return false
 
@@ -180,7 +177,7 @@ async function handleDocumentSend(
             .select('title, type')
             .eq('id', document_id)
             .eq('company_id', company_id)
-            .single()
+            .maybeSingle()
 
         if (doc?.title) {
             documentTitle = doc.title as string
@@ -192,7 +189,7 @@ async function handleDocumentSend(
         .from('companies')
         .select('name')
         .eq('id', company_id)
-        .single()
+        .maybeSingle()
 
     const companyName = (company?.name as string) || 'PropFlow'
 
@@ -276,7 +273,7 @@ async function handleInvoiceSend(payload: AutomationPayload): Promise<Automation
         .from('companies')
         .select('name')
         .eq('id', company_id)
-        .single()
+        .maybeSingle()
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://propflow.pro'
 

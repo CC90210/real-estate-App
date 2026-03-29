@@ -1,9 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
 
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const supabaseAdmin = getSupabaseAdmin()
 
 interface DocumentEmailData {
     documentId: string
@@ -52,11 +49,28 @@ async function sendViaGmail(
 
         // Call the internal Gmail send API
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-        const response = await fetch(`${appUrl}/api/gmail/send`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ to, subject, body, html }),
-        })
+        const internalSecret = process.env.AUTOMATION_INTERNAL_SECRET || process.env.WEBHOOK_SECRET
+        if (!internalSecret) {
+            return { success: false, error: 'Internal Gmail auth is not configured' }
+        }
+
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 30000)
+        let response: Response
+
+        try {
+            response = await fetch(`${appUrl}/api/gmail/send`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-PropFlow-Internal-Secret': internalSecret,
+                },
+                body: JSON.stringify({ companyId, to, subject, body, html }),
+                signal: controller.signal,
+            })
+        } finally {
+            clearTimeout(timeoutId)
+        }
 
         if (!response.ok) {
             const err = await response.json().catch(() => ({ error: 'Unknown error' }))
@@ -78,7 +92,7 @@ export async function sendDocumentEmail(companyId: string, data: DocumentEmailDa
             .from('automation_settings')
             .select('document_email_enabled, document_email_recipients, document_email_template')
             .eq('company_id', companyId)
-            .single()
+            .maybeSingle()
 
         if (!settings?.document_email_enabled) {
             console.log('Document email automation disabled for company:', companyId)
@@ -90,7 +104,7 @@ export async function sendDocumentEmail(companyId: string, data: DocumentEmailDa
             .from('companies')
             .select('name, email')
             .eq('id', companyId)
-            .single()
+            .maybeSingle()
 
         // Determine recipients
         const recipients: string[] = []
@@ -146,7 +160,7 @@ export async function sendInvoiceEmail(companyId: string, data: InvoiceEmailData
             .from('automation_settings')
             .select('invoice_email_enabled, invoice_email_template')
             .eq('company_id', companyId)
-            .single()
+            .maybeSingle()
 
         if (!settings?.invoice_email_enabled) {
             console.log('Invoice email automation disabled for company:', companyId)
@@ -158,7 +172,7 @@ export async function sendInvoiceEmail(companyId: string, data: InvoiceEmailData
             .from('companies')
             .select('name, email')
             .eq('id', companyId)
-            .single()
+            .maybeSingle()
 
         const companyName = company?.name || 'PropFlow'
         const subject = `Invoice #${data.invoiceNumber} — $${data.amount.toLocaleString()}`

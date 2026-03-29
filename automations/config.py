@@ -45,6 +45,7 @@ class Settings:
 
     # Webhook security — shared HMAC secret between Next.js and this service
     webhook_secret: str
+    automation_internal_secret: str
 
     # Rate limiting defaults
     max_emails_per_hour_per_company: int = 50
@@ -108,6 +109,9 @@ def get_settings() -> Settings:
         resend_api_key=optional("RESEND_API_KEY"),
         gemini_api_key=optional("GEMINI_API_KEY"),
         webhook_secret=webhook_secret,
+        automation_internal_secret=(
+            os.getenv("AUTOMATION_INTERNAL_SECRET", "").strip() or webhook_secret
+        ),
         max_emails_per_hour_per_company=int(
             os.getenv("MAX_EMAILS_PER_HOUR", "50")
         ),

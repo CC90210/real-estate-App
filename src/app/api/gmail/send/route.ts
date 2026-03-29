@@ -1,22 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { timingSafeEqual } from 'crypto'
 import { google } from 'googleapis'
 import { apiError } from '@/lib/api-response'
+import { createClient } from '@/lib/supabase/server'
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
 
 interface Attachment {
     filename: string
     mimeType: string
-    // base64-encoded file content
     data: string
 }
 
 interface SendEmailRequest {
+    companyId?: string
     to: string | string[]
     subject: string
     body: string
     html?: string
     attachments?: Attachment[]
-    // Optional: override which connected Gmail account to use (defaults to primary)
     tokenId?: string
 }
 
@@ -29,11 +30,6 @@ interface GmailTokenRow {
     email: string
 }
 
-/**
- * Builds a RFC 2822-compliant MIME message and encodes it as base64url.
- * Supports both plain-text-only and multipart/alternative (text + html) bodies,
- * with optional file attachments (multipart/mixed wrapper).
- */
 function buildMimeMessage(params: {
     from: string
     to: string | string[]
@@ -47,10 +43,8 @@ function buildMimeMessage(params: {
     const toHeader = Array.isArray(to) ? to.join(', ') : to
     const boundary = `propflow_${Date.now()}_boundary`
     const altBoundary = `propflow_${Date.now()}_alt`
-
     const hasAttachments = attachments && attachments.length > 0
     const hasHtml = Boolean(html)
-
     const lines: string[] = []
 
     lines.push(`From: ${from}`)
@@ -65,47 +59,30 @@ function buildMimeMessage(params: {
     }
 
     if (hasHtml) {
-        if (hasAttachments) {
-            lines.push(`Content-Type: multipart/alternative; boundary="${altBoundary}"`)
-            lines.push('')
-            lines.push(`--${altBoundary}`)
-        } else {
-            lines.push(`Content-Type: multipart/alternative; boundary="${altBoundary}"`)
-            lines.push('')
-            lines.push(`--${altBoundary}`)
-        }
-
-        // Plain text part
+        lines.push(`Content-Type: multipart/alternative; boundary="${altBoundary}"`)
+        lines.push('')
+        lines.push(`--${altBoundary}`)
         lines.push('Content-Type: text/plain; charset="UTF-8"')
         lines.push('Content-Transfer-Encoding: quoted-printable')
         lines.push('')
         lines.push(body)
         lines.push('')
         lines.push(`--${altBoundary}`)
-
-        // HTML part
         lines.push('Content-Type: text/html; charset="UTF-8"')
         lines.push('Content-Transfer-Encoding: quoted-printable')
         lines.push('')
-        lines.push(html!)
+        lines.push(html || '')
         lines.push('')
         lines.push(`--${altBoundary}--`)
     } else {
-        if (hasAttachments) {
-            lines.push('Content-Type: text/plain; charset="UTF-8"')
-            lines.push('Content-Transfer-Encoding: quoted-printable')
-            lines.push('')
-            lines.push(body)
-        } else {
-            lines.push('Content-Type: text/plain; charset="UTF-8"')
-            lines.push('Content-Transfer-Encoding: quoted-printable')
-            lines.push('')
-            lines.push(body)
-        }
+        lines.push('Content-Type: text/plain; charset="UTF-8"')
+        lines.push('Content-Transfer-Encoding: quoted-printable')
+        lines.push('')
+        lines.push(body)
     }
 
     if (hasAttachments) {
-        for (const attachment of attachments!) {
+        for (const attachment of attachments || []) {
             lines.push('')
             lines.push(`--${boundary}`)
             lines.push(`Content-Type: ${attachment.mimeType}; name="${attachment.filename}"`)
@@ -118,19 +95,14 @@ function buildMimeMessage(params: {
         lines.push(`--${boundary}--`)
     }
 
-    const raw = lines.join('\r\n')
-    // Gmail API requires base64url encoding (not standard base64)
-    return Buffer.from(raw).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+    return Buffer.from(lines.join('\r\n'))
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '')
 }
 
-/**
- * Refreshes an expired access token using the stored refresh_token and persists
- * the new token back to the database. Returns the fresh access token string.
- */
-async function refreshAccessToken(
-    supabase: Awaited<ReturnType<typeof createClient>>,
-    tokenRow: GmailTokenRow
-): Promise<string> {
+async function refreshAccessToken(supabaseClient: any, tokenRow: GmailTokenRow): Promise<string> {
     if (!tokenRow.refresh_token) {
         throw new Error('No refresh token stored. Please reconnect your Gmail account.')
     }
@@ -150,15 +122,13 @@ async function refreshAccessToken(
     )
 
     oauth2Client.setCredentials({ refresh_token: tokenRow.refresh_token })
-
     const { credentials } = await oauth2Client.refreshAccessToken()
 
     if (!credentials.access_token) {
         throw new Error('Google did not return a new access token. Please reconnect your Gmail account.')
     }
 
-    // Persist the refreshed token to avoid unnecessary refreshes on subsequent calls
-    await supabase
+    await supabaseClient
         .from('gmail_oauth_tokens')
         .update({
             access_token: credentials.access_token,
@@ -172,27 +142,36 @@ async function refreshAccessToken(
     return credentials.access_token
 }
 
+function matchesInternalSecret(received: string | null, expected: string | undefined) {
+    if (!received || !expected) {
+        return false
+    }
+
+    const receivedBuffer = Buffer.from(received)
+    const expectedBuffer = Buffer.from(expected)
+
+    if (receivedBuffer.length !== expectedBuffer.length) {
+        return false
+    }
+
+    return timingSafeEqual(receivedBuffer, expectedBuffer)
+}
+
 export async function POST(req: NextRequest) {
     try {
+        const body: SendEmailRequest = await req.json()
+        const internalSecret = req.headers.get('x-propflow-internal-secret')
+        const expectedInternalSecret = process.env.AUTOMATION_INTERNAL_SECRET || process.env.WEBHOOK_SECRET
+        const isInternal = matchesInternalSecret(internalSecret, expectedInternalSecret)
+
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
 
-        if (!user) {
+        if (!user && !isInternal) {
             return apiError('Unauthorized', { status: 401 })
         }
 
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('company_id')
-            .eq('id', user.id)
-            .maybeSingle()
-
-        if (!profile?.company_id) {
-            return apiError('Company profile not found', { status: 403 })
-        }
-
-        const body: SendEmailRequest = await req.json()
-        const { to, subject, body: textBody, html, attachments, tokenId } = body
+        const { to, subject, body: textBody, html, attachments, tokenId, companyId } = body
 
         if (!to || !subject || !textBody) {
             return apiError('Missing required fields: to, subject, body', {
@@ -201,17 +180,36 @@ export async function POST(req: NextRequest) {
             })
         }
 
-        // Fetch the Gmail token — use the specified tokenId or fall back to primary
-        let tokenQuery = supabase
+        const tokenClient = isInternal ? getSupabaseAdmin() : supabase
+        let resolvedCompanyId: string | null = null
+
+        if (isInternal) {
+            resolvedCompanyId = companyId?.trim() || null
+            if (!resolvedCompanyId) {
+                return apiError('companyId is required for internal Gmail sends', {
+                    status: 400,
+                    code: 'MISSING_COMPANY_ID',
+                })
+            }
+        } else {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('company_id')
+                .eq('id', user!.id)
+                .maybeSingle()
+
+            resolvedCompanyId = profile?.company_id || null
+            if (!resolvedCompanyId) {
+                return apiError('Company profile not found', { status: 403 })
+            }
+        }
+
+        let tokenQuery = tokenClient
             .from('gmail_oauth_tokens')
             .select('id, company_id, access_token, refresh_token, token_expiry, email')
-            .eq('company_id', profile.company_id)
+            .eq('company_id', resolvedCompanyId)
 
-        if (tokenId) {
-            tokenQuery = tokenQuery.eq('id', tokenId)
-        } else {
-            tokenQuery = tokenQuery.eq('is_primary', true)
-        }
+        tokenQuery = tokenId ? tokenQuery.eq('id', tokenId) : tokenQuery.eq('is_primary', true)
 
         const { data: tokenRow, error: tokenError } = await tokenQuery.maybeSingle() as {
             data: GmailTokenRow | null
@@ -225,15 +223,11 @@ export async function POST(req: NextRequest) {
             )
         }
 
-        // Check whether the stored access token is expired (with a 60-second safety buffer)
         let accessToken = tokenRow.access_token
         if (tokenRow.token_expiry) {
             const expiryMs = new Date(tokenRow.token_expiry).getTime()
-            const nowMs = Date.now()
-            const bufferMs = 60 * 1000
-
-            if (nowMs >= expiryMs - bufferMs) {
-                accessToken = await refreshAccessToken(supabase, tokenRow)
+            if (Date.now() >= expiryMs - 60 * 1000) {
+                accessToken = await refreshAccessToken(tokenClient, tokenRow)
             }
         }
 
@@ -256,7 +250,6 @@ export async function POST(req: NextRequest) {
         oauth2Client.setCredentials({ access_token: accessToken })
 
         const gmail = google.gmail({ version: 'v1', auth: oauth2Client })
-
         const rawMessage = buildMimeMessage({
             from: tokenRow.email,
             to,
@@ -277,7 +270,6 @@ export async function POST(req: NextRequest) {
             threadId: sentMessage.threadId,
             from: tokenRow.email,
         })
-
     } catch (error: unknown) {
         console.error('[Gmail Send] Error:', error instanceof Error ? error.message : error)
         return apiError('Failed to send email', { status: 500 })

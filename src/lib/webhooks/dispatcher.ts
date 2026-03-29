@@ -1,12 +1,9 @@
-import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
-
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { generateInvoicePDF } from '../documents/pdf-generator'
+
+const supabaseAdmin = getSupabaseAdmin()
+const WEBHOOK_FETCH_TIMEOUT_MS = 30000
 
 interface DispatchResult {
     success: boolean
@@ -24,146 +21,187 @@ interface WebhookPayload {
     metadata?: Record<string, any>
 }
 
+type AutomationSettings = {
+    webhook_url?: string | null
+    webhook_secret?: string | null
+    webhook_events?: string[] | null
+}
+
+async function fetchWithTimeout(input: string, init?: RequestInit) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), WEBHOOK_FETCH_TIMEOUT_MS)
+
+    try {
+        return await fetch(input, {
+            ...init,
+            signal: controller.signal,
+        })
+    } finally {
+        clearTimeout(timeoutId)
+    }
+}
+
+async function loadAutomationSettings(companyId: string) {
+    const { data } = await supabaseAdmin
+        .from('automation_settings')
+        .select('webhook_url, webhook_secret, webhook_events')
+        .eq('company_id', companyId)
+        .maybeSingle()
+
+    return (data || null) as AutomationSettings | null
+}
+
+function resolveWebhookSignatureSecret(settings: AutomationSettings | null) {
+    return settings?.webhook_secret || process.env.WEBHOOK_SECRET || process.env.SINGLEKEY_WEBHOOK_SECRET || ''
+}
+
+async function createWebhookEventLog(companyId: string, eventType: string, payload: unknown) {
+    const { data } = await supabaseAdmin
+        .from('webhook_events')
+        .insert({
+            company_id: companyId,
+            event_type: eventType,
+            payload,
+            status: 'pending',
+        })
+        .select('id')
+        .single()
+
+    return data?.id as string | undefined
+}
+
+async function markWebhookEvent(
+    eventId: string | undefined,
+    patch: Record<string, unknown>
+) {
+    if (!eventId) {
+        return
+    }
+
+    await supabaseAdmin
+        .from('webhook_events')
+        .update({
+            ...patch,
+            attempts: 1,
+            last_attempt_at: new Date().toISOString(),
+        })
+        .eq('id', eventId)
+}
+
+async function deliverWebhook(
+    webhookUrl: string,
+    eventType: string,
+    signature: string,
+    payloadTimestamp: string,
+    deliveryId: string | undefined,
+    transmissionBody: BodyInit,
+    contentType?: string
+) {
+    const headers: Record<string, string> = {
+        'X-PropFlow-Signature': signature,
+        'X-PropFlow-Event': eventType,
+        'X-PropFlow-Timestamp': payloadTimestamp,
+        'X-PropFlow-Delivery': deliveryId || '',
+    }
+
+    if (contentType) {
+        headers['Content-Type'] = contentType
+    }
+
+    return fetchWithTimeout(webhookUrl, {
+        method: 'POST',
+        headers,
+        body: transmissionBody,
+    })
+}
+
 export async function dispatchWebhook(
     companyId: string,
     eventType: string,
     data: any
 ) {
     try {
-        // 1. Get company's automation settings
-        const { data: settings } = await supabaseAdmin
-            .from('automation_settings')
-            .select('webhook_url, webhook_secret, webhook_events')
-            .eq('company_id', companyId)
-            .single()
+        const settings = await loadAutomationSettings(companyId)
+        const productionFallbackUrl = process.env.N8N_WEBHOOK_URL || ''
+        const webhookUrl = settings?.webhook_url || productionFallbackUrl
 
-        const PRODUCTION_FALLBACK_URL = process.env.N8N_WEBHOOK_URL || '';
-        const webhookUrl = settings?.webhook_url || PRODUCTION_FALLBACK_URL;
-
-        if (!webhookUrl) return;
-
-        if (settings && settings.webhook_events && !settings.webhook_events.includes(eventType)) {
-            return;
+        if (!webhookUrl) {
+            return
         }
 
-        // 2. Surgical Payload Refinement (Flat & Clean)
-        // We remove the nesting of 'data' to provide a cleaner schema for n8n
+        if (settings?.webhook_events && !settings.webhook_events.includes(eventType)) {
+            return
+        }
+
         const payload = {
             event: eventType,
             company_id: companyId,
             timestamp: new Date().toISOString(),
-            ...data // Spread the actual payload (invoice_id, amount, etc.)
-        };
+            ...data,
+        }
 
-        // 3. HMAC Signature (Based on clean payload)
         const signature = crypto
-            .createHmac('sha256', settings?.webhook_secret || process.env.SINGLEKEY_WEBHOOK_SECRET || '')
+            .createHmac('sha256', resolveWebhookSignatureSecret(settings))
             .update(JSON.stringify(payload))
             .digest('hex')
 
-        // 4. Log the Intent
-        const { data: eventLog } = await supabaseAdmin
-            .from('webhook_events')
-            .insert({
-                company_id: companyId,
-                event_type: eventType,
-                payload,
-                status: 'pending',
-            })
-            .select()
-            .single()
+        const eventLogId = await createWebhookEventLog(companyId, eventType, payload)
 
-        // 5. Binary Attachment Logic (Atomic Relay)
-        let transmissionBody: any = JSON.stringify(payload);
-        let contentType = 'application/json';
+        let transmissionBody: BodyInit = JSON.stringify(payload)
+        let contentType = 'application/json'
 
-        if (data.file_url && data.file_url !== "DATA_ONLY_DISPATCH") {
+        if (data.file_url && data.file_url !== 'DATA_ONLY_DISPATCH') {
             try {
-                // Fetch the actual document from Supabase storage using the signed URL
-                const fileResponse = await fetch(data.file_url);
+                const fileResponse = await fetchWithTimeout(data.file_url)
                 if (fileResponse.ok) {
-                    const fileBuffer = await fileResponse.arrayBuffer();
+                    const fileBuffer = await fileResponse.arrayBuffer()
+                    const formData = new FormData()
+                    formData.append('payload', JSON.stringify(payload))
 
-                    // We switch to Multipart/Form-Data to "attach" the actual file
-                    const formData = new FormData();
-                    formData.append('payload', JSON.stringify(payload));
+                    const fileName = data.invoice_number ? `${data.invoice_number}.pdf` : 'document.pdf'
+                    const fileBlob = new Blob([fileBuffer], { type: 'application/pdf' })
+                    formData.append('attachment', fileBlob, fileName)
 
-                    // Construct a file blob for the attachment field
-                    const fileName = data.invoice_number ? `${data.invoice_number}.pdf` : 'document.pdf';
-                    const fileBlob = new Blob([fileBuffer], { type: 'application/pdf' });
-                    formData.append('attachment', fileBlob, fileName);
-
-                    transmissionBody = formData;
-                    contentType = ''; // Browser/Node fetch will automatically set the boundary
+                    transmissionBody = formData
+                    contentType = ''
                 }
-            } catch (attError) {
-                console.warn("Failed to attach binary file, falling back to JSON metadata:", attError);
+            } catch (attachmentError) {
+                console.warn('Failed to attach binary file, falling back to JSON metadata:', attachmentError)
             }
         }
 
-        // 6. Signed Propagation
         try {
-            const headers: Record<string, string> = {
-                'X-PropFlow-Signature': signature,
-                'X-PropFlow-Event': eventType,
-                'X-PropFlow-Timestamp': payload.timestamp,
-            };
+            const response = await deliverWebhook(
+                webhookUrl,
+                eventType,
+                signature,
+                payload.timestamp,
+                eventLogId,
+                transmissionBody,
+                contentType || undefined
+            )
 
-            // Only set Content-Type if it's not multipart (fetch handles boundary)
-            if (contentType) {
-                headers['Content-Type'] = contentType;
-            }
-
-            const response = await fetch(webhookUrl, {
-                method: 'POST',
-                headers,
-                body: transmissionBody,
+            const responseText = await response.text()
+            await markWebhookEvent(eventLogId, {
+                status: response.ok ? 'sent' : 'failed',
+                response_code: response.status,
+                error_message: response.ok ? null : responseText.substring(0, 500),
             })
-
-            const responseText = await response.text();
-
-            // Update Ledger
-            await supabaseAdmin
-                .from('webhook_events')
-                .update({
-                    status: response.ok ? 'sent' : 'failed',
-                    attempts: 1,
-                    last_attempt_at: new Date().toISOString(),
-                    response_code: response.status,
-                    error_message: response.ok ? null : responseText.substring(0, 500),
-                })
-                .eq('id', eventLog?.id)
 
             return { success: response.ok, status: response.status }
-
         } catch (fetchError: any) {
-            await supabaseAdmin
-                .from('webhook_events')
-                .update({
-                    status: 'failed',
-                    attempts: 1,
-                    last_attempt_at: new Date().toISOString(),
-                    error_message: fetchError.message,
-                })
-                .eq('id', eventLog?.id)
-
+            await markWebhookEvent(eventLogId, {
+                status: 'failed',
+                error_message: fetchError?.message || 'Webhook delivery failed',
+            })
             throw fetchError
         }
-
     } catch (error) {
         console.error('Webhook dispatch error:', error)
         throw error
     }
 }
-/**
- * Dispatch a document/invoice to the company's configured webhook
- * 
- * This function:
- * 1. Generates a production-quality PDF
- * 2. Uploads it to storage
- * 3. Sends webhook with PDF URL and base64 data
- * 4. Logs the event for debugging
- */
+
 export async function dispatchDocumentWebhook(
     companyId: string,
     documentType: 'invoice' | 'document',
@@ -171,37 +209,28 @@ export async function dispatchDocumentWebhook(
     dispatchNotes?: string
 ): Promise<DispatchResult> {
     try {
-        // 1. Get company's webhook settings
-        const { data: settings } = await supabaseAdmin
-            .from('automation_settings')
-            .select('webhook_url, webhook_secret, webhook_events')
-            .eq('company_id', companyId)
-            .single()
-
-        const PRODUCTION_FALLBACK_URL = process.env.N8N_WEBHOOK_URL || '';
-        const webhookUrl = settings?.webhook_url || PRODUCTION_FALLBACK_URL;
+        const settings = await loadAutomationSettings(companyId)
+        const productionFallbackUrl = process.env.N8N_WEBHOOK_URL || ''
+        const webhookUrl = settings?.webhook_url || productionFallbackUrl
 
         if (!webhookUrl) {
             return { success: false, error: 'No webhook URL configured' }
         }
 
         const eventType = `${documentType}.created`
-
         if (settings?.webhook_events && !settings.webhook_events.includes(eventType)) {
             return { success: false, error: `Event ${eventType} not enabled` }
         }
 
-        // 2. Generate PDF based on document type
         let pdfData: { pdfBuffer: Buffer; pdfUrl: string; fileName: string } = {
             pdfBuffer: Buffer.from(''),
             pdfUrl: '',
-            fileName: ''
-        };
-        let pdfGenerationError: string | undefined;
+            fileName: '',
+        }
+        let pdfGenerationError: string | undefined
         let documentData: any
 
         if (documentType === 'invoice') {
-            // Fetch invoice data
             const { data: invoice } = await supabaseAdmin
                 .from('invoices')
                 .select(`
@@ -210,28 +239,26 @@ export async function dispatchDocumentWebhook(
                     items_table:invoice_items(*)
                 `)
                 .eq('id', documentId)
-                .single()
+                .eq('company_id', companyId)
+                .maybeSingle()
 
             if (!invoice) {
                 return { success: false, error: 'Invoice not found in system' }
             }
 
-            // Generate PDF (Fail Open Strategy)
             try {
-                const generated = await generateInvoicePDF({
+                pdfData = await generateInvoicePDF({
                     companyId,
                     invoiceId: documentId,
                 })
-                pdfData = generated;
-            } catch (genError: any) {
-                pdfGenerationError = genError.message || 'Unknown generation error';
-                console.error("PDF GENERATION FAILED:", pdfGenerationError);
+            } catch (generationError: any) {
+                pdfGenerationError = generationError?.message || 'Unknown generation error'
+                console.error('PDF GENERATION FAILED:', pdfGenerationError)
             }
 
-            // Build document data with robust total calculation
             const lineItems = (invoice.items_table && (invoice.items_table as any[]).length > 0)
                 ? invoice.items_table
-                : (invoice.items || []);
+                : (invoice.items || [])
 
             const totalAmount = (lineItems as any[]).reduce((sum: number, item: any) => sum + (item.amount || 0), 0) || 0
 
@@ -249,126 +276,92 @@ export async function dispatchDocumentWebhook(
                 status: invoice.status,
                 property_id: invoice.property_id,
                 invoice_notes: invoice.notes,
-                items: lineItems, // Include full line items in data
-                // Only include PDF fields if generation succeeded
+                items: lineItems,
                 pdf_url: pdfData.pdfUrl || undefined,
                 pdf_filename: pdfData.fileName || undefined,
                 pdf_base64: pdfData.pdfBuffer.length > 0 ? pdfData.pdfBuffer.toString('base64') : undefined,
                 pdf_generation_error: pdfGenerationError,
             }
         } else {
-            // Handle other document types (leases, etc.)
             const { data: document } = await supabaseAdmin
                 .from('documents')
                 .select('*')
                 .eq('id', documentId)
-                .single()
+                .eq('company_id', companyId)
+                .maybeSingle()
 
             if (!document) {
                 return { success: false, error: 'Document not found' }
             }
 
-            // TODO: Implement PDF generation for other document types
-            // For now, just return existing data
             documentData = {
                 id: document.id,
                 type: document.type,
                 document_url: document.url,
                 property_address: document.property_address || document.property?.address,
-                // Add more fields as needed
             }
         }
 
-        // 3. Build webhook payload (Elite Schema)
         const payload: WebhookPayload = {
             event: eventType,
             timestamp: new Date().toISOString(),
             company_id: companyId,
-            dispatch_notes: dispatchNotes, // Promoted to root for n8n visibility
+            dispatch_notes: dispatchNotes,
             data: documentData,
         }
 
-        // 4. Create signature for verification
         const signature = crypto
-            .createHmac('sha256', settings?.webhook_secret || process.env.SINGLEKEY_WEBHOOK_SECRET || '')
+            .createHmac('sha256', resolveWebhookSignatureSecret(settings))
             .update(JSON.stringify(payload))
             .digest('hex')
 
-        // 5. Log the webhook event (before sending)
-        const { data: webhookLog } = await supabaseAdmin
-            .from('webhook_events')
-            .insert({
-                company_id: companyId,
-                event_type: eventType,
-                payload: payload,
-                status: 'pending',
-            })
-            .select()
-            .single()
+        const webhookLogId = await createWebhookEventLog(companyId, eventType, payload)
 
-        // 6. Signed Propagation (Atomic Multipart Relay)
-        let transmissionBody: any = JSON.stringify(payload);
-        let contentType = 'application/json';
+        let transmissionBody: BodyInit = JSON.stringify(payload)
+        let contentType = 'application/json'
 
         if (pdfData.pdfBuffer.length > 0) {
             try {
-                // Switch to Multipart/Form-Data if we have a binary payload
-                const formData = new FormData();
-                formData.append('payload', JSON.stringify(payload));
+                const formData = new FormData()
+                formData.append('payload', JSON.stringify(payload))
 
-                // Construct file blob from buffer (Explicit Uint8Array conversion for Blob compatibility)
-                const fileBlob = new Blob([new Uint8Array(pdfData.pdfBuffer)], { type: 'application/pdf' });
-                const finalFileName = pdfData.fileName || `INV-${documentData.invoice_number || 'DOC'}.pdf`;
-                formData.append('attachment', fileBlob, finalFileName);
+                const fileBlob = new Blob([new Uint8Array(pdfData.pdfBuffer)], { type: 'application/pdf' })
+                const finalFileName = pdfData.fileName || `INV-${documentData.invoice_number || 'DOC'}.pdf`
+                formData.append('attachment', fileBlob, finalFileName)
 
-                transmissionBody = formData;
-                contentType = ''; // Node-fetch/Browser will auto-generate boundary
+                transmissionBody = formData
+                contentType = ''
             } catch (formError) {
-                console.warn("Multipart construction failed, falling back to JSON:", formError);
-                // Keep default JSON body
+                console.warn('Multipart construction failed, falling back to JSON:', formError)
             }
         }
 
-        const headers: Record<string, string> = {
-            'X-PropFlow-Signature': signature,
-            'X-PropFlow-Event': eventType,
-            'X-PropFlow-Timestamp': payload.timestamp,
-            'X-PropFlow-Delivery': webhookLog?.id || '',
-        };
+        const response = await deliverWebhook(
+            webhookUrl,
+            eventType,
+            signature,
+            payload.timestamp,
+            webhookLogId,
+            transmissionBody,
+            contentType || undefined
+        )
 
-        if (contentType) {
-            headers['Content-Type'] = contentType;
-        }
-
-        const response = await fetch(webhookUrl, {
-            method: 'POST',
-            headers,
-            body: transmissionBody,
+        await markWebhookEvent(webhookLogId, {
+            status: response.ok ? 'sent' : 'failed',
+            response_code: response.status,
+            error_message: response.ok ? null : await response.text().catch(() => 'Unknown error'),
         })
-
-        // 7. Update webhook log with result
-        await supabaseAdmin
-            .from('webhook_events')
-            .update({
-                status: response.ok ? 'sent' : 'failed',
-                attempts: 1,
-                last_attempt_at: new Date().toISOString(),
-                response_code: response.status,
-                error_message: response.ok ? null : await response.text().catch(() => 'Unknown error'),
-            })
-            .eq('id', webhookLog?.id)
 
         return {
             success: response.ok,
-            webhookId: webhookLog?.id,
+            webhookId: webhookLogId,
             error: response.ok ? undefined : `Webhook returned ${response.status}`,
         }
-
     } catch (error: any) {
         console.error('Webhook dispatch error:', error)
         return {
             success: false,
-            error: error.message,
+            error: error?.message || 'Unknown webhook dispatch error',
         }
     }
 }

@@ -357,6 +357,7 @@ class EmailService:
 
             app_url = self._settings.app_url
             payload: dict[str, object] = {
+                "companyId": company_id,
                 "to": message.to,
                 "subject": message.subject,
                 "body": message.subject,  # plain text fallback
@@ -378,7 +379,10 @@ class EmailService:
                 resp = await client.post(
                     f"{app_url}/api/gmail/send",
                     json=payload,
-                    headers={"Content-Type": "application/json"},
+                    headers={
+                        "Content-Type": "application/json",
+                        "X-PropFlow-Internal-Secret": self._settings.automation_internal_secret,
+                    },
                 )
 
             if resp.status_code == 200:
