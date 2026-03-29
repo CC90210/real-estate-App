@@ -6,11 +6,16 @@ import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, Printer, PenLine, Check, FileSignature, ShieldCheck, Mail, Loader2 } from 'lucide-react'
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from '@/components/ui/dialog'
+import { ArrowLeft, Printer, PenLine, Check, FileSignature, ShieldCheck, Mail, User, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
-import { generatePDFBlob } from '@/lib/generatePdf'
-import { uploadAndGetLink, triggerDocumentAutomation } from '@/lib/automations'
 
 // ============================================================================
 // PRODUCTION DOCUMENT VIEWER - Renders structured template data
@@ -31,7 +36,7 @@ export default function DocumentViewPage() {
                 .from('documents')
                 .select('*')
                 .eq('id', id)
-                .single()
+                .maybeSingle()
 
             if (error) throw error
             if (!data) return null
@@ -55,58 +60,79 @@ export default function DocumentViewPage() {
     })
 
     const [isSigning, setIsSigning] = useState(false)
+    const [showRecipientDialog, setShowRecipientDialog] = useState(false)
+    const [recipientEmail, setRecipientEmail] = useState('')
+    const [recipientName, setRecipientName] = useState('')
 
     const handlePrint = () => window.print()
 
-
+    // Opens the recipient capture dialog instead of firing immediately.
+    const handleSendForSignatureClick = () => {
+        // Pre-populate from document metadata if available (e.g. applicant email stored in content)
+        const meta = document?.content
+        const emailFromMeta: string =
+            meta?.recipient_email ||
+            meta?.content?.recipient_email ||
+            meta?.applicant_email ||
+            ''
+        const nameFromMeta: string =
+            meta?.recipient_name ||
+            meta?.content?.recipient_name ||
+            meta?.applicant_name ||
+            ''
+        setRecipientEmail(emailFromMeta)
+        setRecipientName(nameFromMeta)
+        setShowRecipientDialog(true)
+    }
 
     const handleSignatureRequest = async () => {
         if (!document) return
+
+        const trimmedEmail = recipientEmail.trim()
+        if (!trimmedEmail) {
+            toast.error('Recipient email is required')
+            return
+        }
+
+        setShowRecipientDialog(false)
         setIsSigning(true)
 
         try {
-            // 1. Generate PDF Blob
-            toast.info("Preparing encryption layers...", { duration: 1500 });
-            await new Promise(r => setTimeout(r, 500)); // UI settle
+            toast.info('Dispatching signature request...', { duration: 1500 })
+            const response = await fetch('/api/documents/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    documentId: id,
+                    recipientEmail: trimmedEmail,
+                    recipientName: recipientName.trim() || null,
+                    selectedDocuments: ['lease_agreement'],
+                    eSignEnabled: true,
+                    eSignProvider: 'propflow',
+                    requireCounterSign: true,
+                }),
+            })
 
-            const pdfBlob = await generatePDFBlob('document-paper'); // Assuming a wrapper ID or body
-            // Note: In Global styles, body has padding. We should target a specific container ID if possible.
-            // Looking at the code: <div className="print-container..." ...
-            // Let's add an ID 'document-content-container' to that div in the JSX to be safe?
-            // Actually 'generatePDFBlob' takes an ID. The existing code doesn't show an ID on the main container.
-            // I will add 'id="document-content-container"' to the main printable div in the next chunk.
+            const result = await response.json().catch(() => ({}))
+            if (!response.ok) {
+                throw new Error(result?.details?.[0]?.message || result?.error || 'Signature dispatch failed')
+            }
 
-            if (!pdfBlob) throw new Error("Failed to capture document state.");
 
-            // 2. Upload
-            toast.info("Securely uploading to vault...", { duration: 1500 });
-            const path = `${document.company_id}/doc_${id}_${Date.now()}.pdf`;
-            const fileUrl = await uploadAndGetLink(pdfBlob, path);
+            // 3. Trigger Automation — recipient_email sourced from the dialog input
 
-            // 3. Trigger Automation
-            toast.info("Dispatching signature request...", { duration: 1500 });
-            await triggerDocumentAutomation({
-                document_id: id,
-                document_type: document.type,
-                title: document.title,
-                recipient_email: '', // Logic to capture email? For now, we assume automation handles it or its in metadata
-                company_id: document.company_id,
-                created_by: document.created_by,
-                metadata: document.content,
-                file_url: fileUrl,
-                triggered_at: new Date().toISOString()
-            });
-
-            toast.success("Signature Request Sent", {
-                description: "All parties have been notified via secure email.",
+            toast.success('Signature Request Sent', {
+                description: result?.message || 'All parties have been notified via secure email.',
                 icon: <FileSignature className="w-4 h-4 text-emerald-500" />
-            });
+            })
 
-        } catch (error: any) {
-            console.error(error);
-            toast.error("Signature Dispatch Failed", { description: error.message });
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Unknown error'
+            toast.error('Signature Dispatch Failed', { description: message })
         } finally {
-            setIsSigning(false);
+            setIsSigning(false)
         }
     }
 
@@ -182,7 +208,7 @@ export default function DocumentViewPage() {
                         <div className="flex items-center gap-2 shrink-0">
                             {needsSignature && (
                                 <Button
-                                    onClick={handleSignatureRequest}
+                                    onClick={handleSendForSignatureClick}
                                     disabled={isSigning}
                                     size="sm"
                                     className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-100 text-xs md:text-sm"
@@ -319,6 +345,84 @@ export default function DocumentViewPage() {
                     )}
                 </div>
             </div>
+
+            {/* Recipient capture dialog — shown before triggering signature automation */}
+            <Dialog open={showRecipientDialog} onOpenChange={setShowRecipientDialog}>
+                <DialogContent className="max-w-sm rounded-2xl p-0 overflow-hidden border-slate-100/50 bg-white shadow-2xl gap-0">
+                    <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-100">
+                        <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-200">
+                                <FileSignature className="h-5 w-5 text-white" />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-base font-black text-slate-900">
+                                    Send for Signature
+                                </DialogTitle>
+                                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                                    Enter the recipient&apos;s details
+                                </p>
+                            </div>
+                        </div>
+                    </DialogHeader>
+
+                    <div className="px-6 py-5 space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                Full Name (optional)
+                            </label>
+                            <div className="relative">
+                                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Recipient full name"
+                                    value={recipientName}
+                                    onChange={e => setRecipientName(e.target.value)}
+                                    className="flex h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                Email Address <span className="text-red-500">*</span>
+                            </label>
+                            <div className="relative">
+                                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                <input
+                                    type="email"
+                                    placeholder="recipient@example.com"
+                                    value={recipientEmail}
+                                    onChange={e => setRecipientEmail(e.target.value)}
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter' && recipientEmail.trim()) handleSignatureRequest()
+                                    }}
+                                    className="flex h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                    autoFocus
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+                        <div className="flex items-center justify-end gap-2 w-full">
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowRecipientDialog(false)}
+                                className="rounded-xl h-10 font-bold"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={handleSignatureRequest}
+                                disabled={!recipientEmail.trim()}
+                                className="rounded-xl h-10 bg-blue-600 hover:bg-blue-700 text-white font-black shadow-lg shadow-blue-200 border-0"
+                            >
+                                <FileSignature className="h-4 w-4 mr-2" />
+                                Send
+                            </Button>
+                        </div>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     )
 }

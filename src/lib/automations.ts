@@ -43,7 +43,8 @@ export async function triggerDocumentAutomation(payload: DocumentPayload) {
         });
 
         if (!response.ok) {
-            throw new Error(`Automation Trigger Failed: ${response.statusText}`);
+            const errorBody = await response.json().catch(() => ({}));
+            throw new Error(errorBody?.details?.[0]?.message || errorBody?.error || `Automation Trigger Failed: ${response.status}`);
         }
 
         return await response.json();
@@ -67,7 +68,8 @@ export async function triggerInvoiceAutomation(payload: InvoicePayload) {
         });
 
         if (!response.ok) {
-            throw new Error(`Automation Trigger Failed: ${response.statusText}`);
+            const errorBody = await response.json().catch(() => ({}));
+            throw new Error(errorBody?.details?.[0]?.message || errorBody?.error || `Automation Trigger Failed: ${response.status}`);
         }
 
         return await response.json();
@@ -84,7 +86,7 @@ export async function triggerInvoiceAutomation(payload: InvoicePayload) {
 export async function uploadAndGetLink(
     blob: Blob,
     path: string,
-    bucket: string = 'document-attachments'
+    bucket: string = 'documents'
 ): Promise<string> {
     const supabase = createClient();
 

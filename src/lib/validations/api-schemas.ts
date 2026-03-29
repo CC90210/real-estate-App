@@ -65,6 +65,11 @@ const automationEvents = [
     'document_generated', 'document_signed',
     'showing_scheduled', 'showing_completed',
     'custom',
+    'APPLICATION_SUBMITTED', 'APPLICATION_STATUS_CHANGED',
+    'LEASE_GENERATED', 'DOCUMENT_SEND',
+    'FOLLOW_UP_DUE', 'LISTING_PUBLISHED',
+    'LEAD_CREATED', 'MAINTENANCE_REQUESTED',
+    'INVOICE_CREATED',
 ] as const
 
 export const triggerAutomationSchema = z.object({
@@ -84,6 +89,19 @@ export const dispatchDocumentSchema = z.object({
     documentType: z.enum(documentTypes),
     documentId: uuid,
     dispatchNotes: safeString(2000).optional(),
+})
+
+export const sendDocumentSchema = z.object({
+    documentId: uuid.optional(),
+    applicationId: uuid.optional(),
+    propertyId: uuid.optional(),
+    recipientEmail: z.string().email('Invalid email').max(254).trim().optional(),
+    recipientName: safeString(200).optional().nullable(),
+    selectedDocuments: z.array(safeString(100).min(1)).min(1).max(20).optional().default(['lease_agreement']),
+    message: safeString(2000).optional().nullable(),
+    eSignEnabled: z.boolean().optional().default(false),
+    eSignProvider: safeString(50).optional().nullable(),
+    requireCounterSign: z.boolean().optional().default(true),
 })
 
 // ── Helper ──────────────────────────────────────────────────────────────────
