@@ -282,13 +282,11 @@ async function handleInvoiceSend(payload: AutomationPayload): Promise<Automation
 
     const db = getServiceClient()
 
-    const { data: company } = await db
-        .from('companies')
-        .select('name')
-        .eq('id', company_id)
-        .maybeSingle()
-
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://propflow.pro'
+
+    // Load company branding for email templates
+    const branding = await loadCompanyBranding(company_id)
+    const companyName = branding.name || 'PropFlow'
 
     const result = await sendInvoiceEmail({
         email: recipient_email,
@@ -296,8 +294,9 @@ async function handleInvoiceSend(payload: AutomationPayload): Promise<Automation
         invoiceNumber: invoice_number,
         amount: amount || 0,
         dueDate: due_date || 'Upon Receipt',
-        companyName: (company?.name as string) || 'PropFlow',
+        companyName,
         downloadUrl: document_id ? `${appUrl}/invoices/${document_id}` : undefined,
+        branding,
     })
 
     await logExecution(

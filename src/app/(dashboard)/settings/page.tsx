@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -49,7 +50,9 @@ export default function SettingsPage() {
         address: '',
         phone: '',
         email: '',
-        tagline: ''
+        tagline: '',
+        primary_color: '#3b82f6',
+        email_footer_text: ''
     });
 
     const searchParams = useSearchParams();
@@ -141,7 +144,9 @@ export default function SettingsPage() {
                         address: company.address || '',
                         phone: company.phone || '',
                         email: company.email || '',
-                        tagline: company.tagline || ''
+                        tagline: company.tagline || '',
+                        primary_color: company.primary_color || '#3b82f6',
+                        email_footer_text: company.email_footer_text || ''
                     });
                 }
             }
@@ -309,6 +314,8 @@ export default function SettingsPage() {
                     phone: companyData.phone,
                     email: companyData.email,
                     tagline: companyData.tagline,
+                    primary_color: companyData.primary_color || '#3b82f6',
+                    email_footer_text: companyData.email_footer_text || null,
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', profile.company_id)
@@ -325,7 +332,9 @@ export default function SettingsPage() {
                     address: data.address || '',
                     phone: data.phone || '',
                     email: data.email || '',
-                    tagline: data.tagline || ''
+                    tagline: data.tagline || '',
+                    primary_color: data.primary_color || '#3b82f6',
+                    email_footer_text: data.email_footer_text || ''
                 });
             }
 
@@ -795,6 +804,34 @@ export default function SettingsPage() {
                                                     )}
                                                 </Button>
                                             )}
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                                        <div className="space-y-3">
+                                            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-1">Email Brand Color</Label>
+                                            <p className="text-xs text-slate-400 font-medium ml-1">Accent color used in outbound emails sent on your behalf</p>
+                                            <div className="flex items-center gap-3 h-12 md:h-14 rounded-xl md:rounded-2xl bg-white border border-blue-100 px-4">
+                                                <input
+                                                    type="color"
+                                                    value={companyData.primary_color || '#3b82f6'}
+                                                    onChange={(e) => setCompanyData({ ...companyData, primary_color: e.target.value })}
+                                                    className="w-10 h-8 rounded-lg border-0 cursor-pointer bg-transparent p-0"
+                                                />
+                                                <span className="font-mono text-sm font-bold text-slate-700 uppercase">
+                                                    {companyData.primary_color || '#3b82f6'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-3 md:col-span-2">
+                                            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-1">Email Footer</Label>
+                                            <p className="text-xs text-slate-400 font-medium ml-1">Optional legal notice or contact info appended to all outbound emails</p>
+                                            <Textarea
+                                                value={companyData.email_footer_text}
+                                                onChange={(e) => setCompanyData({ ...companyData, email_footer_text: e.target.value })}
+                                                className="rounded-xl md:rounded-2xl bg-white border-blue-100 focus:ring-4 focus:ring-blue-100 px-4 md:px-6 py-3 min-h-[80px] font-medium text-sm resize-none"
+                                                placeholder="e.g., Licensed real estate broker. RECO #12345"
+                                            />
                                         </div>
                                     </div>
 

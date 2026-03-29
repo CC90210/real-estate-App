@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/services/activity-logger'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { canAddTeamMember } from '@/lib/plan-limits'
-import { sendTeamInviteEmail } from '@/lib/email'
+import { sendTeamInviteEmail, loadCompanyBranding } from '@/lib/email'
 import { rateLimit } from '@/lib/rate-limit'
 import { apiError } from '@/lib/api-response'
 
@@ -137,12 +137,15 @@ export async function POST(req: Request) {
             .eq('id', user.id)
             .maybeSingle()
 
+        const branding = await loadCompanyBranding(profile.company_id)
+
         await sendTeamInviteEmail({
             email: normalizedEmail,
             inviterName: inviterProfile.data?.full_name || user.email || 'A colleague',
             companyName: companyData?.name || 'Your company',
             role,
             inviteUrl,
+            branding,
         })
 
         console.log('[Invite] Invitation created successfully')

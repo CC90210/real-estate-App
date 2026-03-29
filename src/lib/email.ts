@@ -266,12 +266,14 @@ export async function sendTeamInviteEmail({
     companyName,
     role,
     inviteUrl,
+    branding,
 }: {
     email: string
     inviterName: string
     companyName: string
     role: string
     inviteUrl: string
+    branding?: CompanyBranding
 }) {
     const html = baseTemplate(`
         <h2>You're Invited! 🎉</h2>
@@ -281,7 +283,7 @@ export async function sendTeamInviteEmail({
             <a href="${inviteUrl}" class="btn btn-primary">Accept Invitation</a>
         </div>
         <p style="font-size: 13px; color: #94a3b8;">This invitation expires in 7 days. If you didn't expect this, you can safely ignore it.</p>
-    `, companyName)
+    `, companyName, branding)
 
     return sendEmail({
         to: email,
@@ -297,6 +299,7 @@ export async function sendApplicationStatusEmail({
     status,
     companyName,
     notes,
+    branding,
 }: {
     email: string
     applicantName: string
@@ -304,6 +307,7 @@ export async function sendApplicationStatusEmail({
     status: 'approved' | 'denied' | 'screening'
     companyName: string
     notes?: string
+    branding?: CompanyBranding
 }) {
     const statusConfig = {
         approved: { badge: 'badge-green', label: 'Approved', emoji: '✅', message: 'Congratulations! Your application has been approved.' },
@@ -325,7 +329,7 @@ export async function sendApplicationStatusEmail({
         </div>
         ${notes ? `<p style="font-style: italic; color: #64748b;">"${notes}"</p>` : ''}
         <p>If you have questions, please contact your agent directly.</p>
-    `, companyName)
+    `, companyName, branding)
 
     return sendEmail({
         to: email,
@@ -386,6 +390,7 @@ export async function sendMaintenanceUpdateEmail({
     notes,
     companyName,
     propertyAddress,
+    branding,
 }: {
     email: string
     tenantName: string
@@ -394,6 +399,7 @@ export async function sendMaintenanceUpdateEmail({
     notes?: string
     companyName: string
     propertyAddress: string
+    branding?: CompanyBranding
 }) {
     const statusLabels: Record<string, string> = {
         open: 'Received',
@@ -416,7 +422,7 @@ export async function sendMaintenanceUpdateEmail({
             </table>
         </div>
         ${notes ? `<p><strong>Notes:</strong> ${notes}</p>` : ''}
-    `, companyName)
+    `, companyName, branding)
 
     return sendEmail({
         to: email,
@@ -433,6 +439,7 @@ export async function sendShowingReminderEmail({
     time,
     notes,
     companyName,
+    branding,
 }: {
     email: string
     agentName: string
@@ -441,6 +448,7 @@ export async function sendShowingReminderEmail({
     time: string
     notes?: string
     companyName: string
+    branding?: CompanyBranding
 }) {
     const html = baseTemplate(`
         <h2>Showing Reminder 📅</h2>
@@ -457,7 +465,7 @@ export async function sendShowingReminderEmail({
         <div style="text-align: center; margin: 24px 0;">
             <a href="${APP_URL}/showings" class="btn btn-primary">View Showings</a>
         </div>
-    `, companyName)
+    `, companyName, branding)
 
     return sendEmail({
         to: email,
@@ -473,6 +481,7 @@ export async function sendLeaseExpiryEmail({
     endDate,
     daysRemaining,
     companyName,
+    branding,
 }: {
     email: string
     tenantName: string
@@ -480,6 +489,7 @@ export async function sendLeaseExpiryEmail({
     endDate: string
     daysRemaining: number
     companyName: string
+    branding?: CompanyBranding
 }) {
     const html = baseTemplate(`
         <h2>Lease Expiry Notice ⏰</h2>
@@ -489,7 +499,7 @@ export async function sendLeaseExpiryEmail({
         <div style="text-align: center; margin: 24px 0;">
             <a href="${APP_URL}" class="btn btn-primary">Contact Us</a>
         </div>
-    `, companyName)
+    `, companyName, branding)
 
     return sendEmail({
         to: email,
