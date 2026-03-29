@@ -6,7 +6,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { logAuditEvent } from '@/lib/audit-log';
 import { apiError, zodIssuesToDetails } from '@/lib/api-response';
 
-const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 });
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, prefix: 'api:generate-document' });
 
 // ============================================================================
 // PRODUCTION DOCUMENT GENERATOR - NO EXTERNAL AI DEPENDENCIES

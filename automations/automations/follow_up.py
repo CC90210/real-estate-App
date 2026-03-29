@@ -223,7 +223,7 @@ class FollowUpAutomation(BaseAutomation):
                 self._svc._db.table("companies")
                 .select("name")
                 .eq("id", company_id)
-                .single()
+                .maybe_single()
                 .execute()
             )
             return (result.data or {}).get("name", "PropFlow")

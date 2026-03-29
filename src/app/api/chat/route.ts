@@ -3,14 +3,10 @@ import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
-import { LRUCache } from 'lru-cache';
 import { apiError, zodIssuesToDetails } from '@/lib/api-response';
+import { rateLimit } from '@/lib/rate-limit';
 
-// Point 3: Simple in-memory rate limiter for AI endpoint (10 req/min)
-const rateLimit = new LRUCache<string, number>({
-    max: 500,
-    ttl: 60 * 1000, // 1 minute
-});
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, prefix: 'api:chat' });
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -34,14 +30,14 @@ export async function POST(request: Request) {
         }
 
         // Point 3: Rate Limiting
-        const currentUsage = rateLimit.get(user.id) || 0;
-        if (currentUsage >= 10) {
+        try {
+            await limiter.check(10, user.id);
+        } catch (error) {
             return apiError('Rate limit exceeded. Please try again in a minute.', {
                 status: 429,
                 headers: { 'Retry-After': '60' }
             });
         }
-        rateLimit.set(user.id, currentUsage + 1);
 
         // Point 2: Validate JSON body
         const body = await request.json();

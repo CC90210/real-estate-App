@@ -4,7 +4,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { z } from 'zod';
 import { apiError, fieldErrorsToDetails } from '@/lib/api-response';
 
-const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 });
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, prefix: 'api:auth-signup' });
 
 // Point 2: Define strict validation schema
 const signupSchema = z.object({

@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { rateLimit } from '@/lib/rate-limit';
 import { apiError, zodIssuesToDetails } from '@/lib/api-response';
 
-const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 });
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, prefix: 'api:webhooks-trigger' });
 
 // Zod Schema for validation
 const AutomationSchema = z.object({

@@ -6,7 +6,7 @@ import { createLeaseSchema, validateBody } from '@/lib/validations/api-schemas'
 import { rateLimit } from '@/lib/rate-limit'
 import { apiError } from '@/lib/api-response'
 
-const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 })
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, prefix: 'api:leases' })
 
 export async function POST(req: Request) {
     const supabase = await createClient()

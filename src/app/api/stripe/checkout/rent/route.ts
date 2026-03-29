@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { rateLimit } from '@/lib/rate-limit'
 import { apiError } from '@/lib/api-response'
 
-const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 })
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, prefix: 'api:stripe-checkout-rent' })
 
 export async function POST(req: Request) {
     const supabase = await createClient()

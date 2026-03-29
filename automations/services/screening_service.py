@@ -186,7 +186,7 @@ class ScreeningService:
                 self._svc._db.table("automation_settings")
                 .select("singlekey_api_key")
                 .eq("company_id", company_id)
-                .single()
+                .maybe_single()
                 .execute()
             )
             per_company_key = (result.data or {}).get("singlekey_api_key")

@@ -7,7 +7,7 @@ import { sendTeamInviteEmail } from '@/lib/email'
 import { rateLimit } from '@/lib/rate-limit'
 import { apiError } from '@/lib/api-response'
 
-const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 })
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, prefix: 'api:team-invite' })
 
 const supabaseAdmin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

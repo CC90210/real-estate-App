@@ -17,9 +17,9 @@ Security:
     in the token is compared against the payload company_id.
 
 Rate limiting:
-  - In-process sliding window per (company_id + endpoint) using a simple
-    dict-based counter.  For multi-process deployments, replace with a
-    Redis-backed limiter.
+  - Database-backed sliding window per (company_id + endpoint) via Supabase
+    RPC, with a small in-process fallback if the database limiter is
+    temporarily unavailable.
 """
 
 from __future__ import annotations
@@ -52,7 +52,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # ---------------------------------------------------------------------------
-# In-process rate limiter (sliding window)
+# Local fallback rate limiter (used only if the DB-backed limiter fails)
 # ---------------------------------------------------------------------------
 
 # Structure: { "company_id:endpoint": [timestamp, ...] }
@@ -95,14 +95,37 @@ def _cleanup_rate_buckets(now: float, max_window_seconds: int) -> None:
 def _check_rate_limit(key: str, limit: int, window_seconds: int = 60) -> None:
     """
     Raise HTTP 429 if the key has exceeded `limit` requests in the last
-    `window_seconds`.  Mutates _rate_buckets in place.
+    `window_seconds`.
+
+    Primary path uses the shared Postgres-backed limiter so all instances
+    observe the same quota. If that path is unavailable, fall back to the
+    local in-process limiter to preserve availability.
     """
+    try:
+        allowed, _, _ = SupabaseService().check_rate_limit(
+            scope=key,
+            limit=limit,
+            window_seconds=window_seconds,
+        )
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Rate limit exceeded. Please wait before retrying.",
+            )
+        return
+    except HTTPException:
+        raise
+    except Exception:
+        logger.warning(
+            "Distributed rate limit unavailable for key=%s; using local fallback",
+            key,
+            exc_info=True,
+        )
+
     now = time.monotonic()
     _cleanup_rate_buckets(now, window_seconds)
     cutoff = now - window_seconds
     bucket = _rate_buckets[key]
-
-    # Evict expired entries
     _rate_buckets[key] = [t for t in bucket if t > cutoff]
 
     if len(_rate_buckets[key]) >= limit:

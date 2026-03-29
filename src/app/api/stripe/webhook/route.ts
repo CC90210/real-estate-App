@@ -1,19 +1,13 @@
 import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
+import { createHash } from 'crypto'
 import { stripe } from '@/lib/stripe'
-import { createClient } from '@supabase/supabase-js'
 import Stripe from 'stripe'
-import { LRUCache } from 'lru-cache'
 import { apiError } from '@/lib/api-response'
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
 
 // Admin client for webhook (bypasses RLS)
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
-// Idempotency: track processed event IDs to prevent duplicate processing on Stripe retries
-const processedEvents = new LRUCache<string, true>({ max: 1000, ttl: 1000 * 60 * 60 }) // 1 hour TTL
+const supabaseAdmin = getSupabaseAdmin()
 
 export async function POST(req: Request) {
     const body = await req.text()
@@ -39,12 +33,13 @@ export async function POST(req: Request) {
 
     console.log('Received Stripe event:', event.type)
 
+    const newlyRegistered = await registerStripeEvent(event.id, body)
+
     // Idempotency check: skip already-processed events (Stripe retries on timeout)
-    if (processedEvents.has(event.id)) {
+    if (!newlyRegistered) {
         console.log(`Skipping duplicate event: ${event.id}`)
         return NextResponse.json({ received: true, duplicate: true })
     }
-    processedEvents.set(event.id, true)
 
     try {
         switch (event.type) {
@@ -79,11 +74,12 @@ export async function POST(req: Request) {
                 const invoice = event.data.object as Stripe.Invoice
                 const subscriptionId = (invoice as unknown as { subscription: string | null }).subscription
                 if (subscriptionId) {
-                    const { data: company } = await supabaseAdmin
+                    const companyResult = await supabaseAdmin
                         .from('companies')
                         .select('id, subscription_status')
                         .eq('stripe_subscription_id', subscriptionId)
                         .maybeSingle()
+                    const company = companyResult.data as { id: string; subscription_status: string | null } | null
                     if (company && company.subscription_status === 'past_due') {
                         await supabaseAdmin
                             .from('companies')
@@ -102,11 +98,12 @@ export async function POST(req: Request) {
                 console.log('Payment failed for invoice:', invoice.id)
                 const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id
                 if (customerId) {
-                    const { data: profile } = await supabaseAdmin
+                    const profileResult = await supabaseAdmin
                         .from('profiles')
                         .select('company_id')
                         .eq('stripe_customer_id', customerId)
                         .maybeSingle()
+                    const profile = profileResult.data as { company_id: string | null } | null
                     if (profile?.company_id) {
                         await supabaseAdmin
                             .from('companies')
@@ -145,11 +142,12 @@ async function handleSubscriptionCheckout(session: Stripe.Checkout.Session) {
     const subscription = await stripe.subscriptions.retrieve(subscriptionId) as unknown as Stripe.Subscription & { current_period_end: number }
 
     // Get user's company
-    const { data: profile } = await supabaseAdmin
+    const profileResult = await supabaseAdmin
         .from('profiles')
         .select('company_id')
         .eq('id', userId)
         .maybeSingle()
+    const profile = profileResult.data as { company_id: string | null } | null
 
     if (!profile?.company_id) {
         console.log('No company found for user')
@@ -179,11 +177,12 @@ async function handleSubscriptionCheckout(session: Stripe.Checkout.Session) {
 // Handle subscription updates
 async function handleSubscriptionUpdate(subscription: Stripe.Subscription & { current_period_end: number }) {
     const planId = subscription.metadata?.plan
-    const { data: company } = await supabaseAdmin
+    const companyResult = await supabaseAdmin
         .from('companies')
         .select('id')
         .eq('stripe_subscription_id', subscription.id)
         .maybeSingle()
+    const company = companyResult.data as { id: string } | null
 
     if (company) {
         const updateData: any = {
@@ -203,11 +202,12 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription & { cu
 
 // Handle subscription cancellation
 async function handleSubscriptionCancelled(subscription: Stripe.Subscription) {
-    const { data: company } = await supabaseAdmin
+    const companyResult = await supabaseAdmin
         .from('companies')
         .select('id')
         .eq('stripe_subscription_id', subscription.id)
         .maybeSingle()
+    const company = companyResult.data as { id: string } | null
 
     if (company) {
         await supabaseAdmin
@@ -238,4 +238,29 @@ async function handleConnectPayment(session: Stripe.Checkout.Session) {
         .eq('stripe_checkout_session_id', session.id)
 
     console.log('[Payment] Tenant payment completed')
+}
+
+async function registerStripeEvent(eventId: string, payload: string) {
+    try {
+        const payloadHash = sha256(payload)
+        const { data, error } = await supabaseAdmin.rpc('register_incoming_webhook_event', {
+            p_provider: 'stripe',
+            p_event_id: eventId,
+            p_payload_hash: payloadHash,
+            p_ttl_seconds: 60 * 60 * 24 * 7,
+        })
+
+        if (error) {
+            throw error
+        }
+
+        return Array.isArray(data) ? Boolean(data[0]) : Boolean(data)
+    } catch (error) {
+        console.warn('Persistent Stripe webhook dedupe unavailable; continuing without durable ledger', error)
+        return true
+    }
+}
+
+function sha256(value: string) {
+    return createHash('sha256').update(value).digest('hex')
 }

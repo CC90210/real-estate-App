@@ -5,7 +5,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { apiError } from '@/lib/api-response';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 });
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, prefix: 'api:generate-ad' });
 
 export async function POST(request: Request) {
     try {

@@ -304,7 +304,7 @@ class ListingPosterAutomation(BaseAutomation):
                 self._svc._db.table("automation_settings")
                 .select("listing_platforms")
                 .eq("company_id", company_id)
-                .single()
+                .maybe_single()
                 .execute()
             )
             platforms = (result.data or {}).get("listing_platforms") or []
@@ -324,7 +324,7 @@ class ListingPosterAutomation(BaseAutomation):
                 self._svc._db.table("automation_settings")
                 .select("platform_credentials")
                 .eq("company_id", company_id)
-                .single()
+                .maybe_single()
                 .execute()
             )
             creds = (result.data or {}).get("platform_credentials") or {}

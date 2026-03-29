@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 })
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, prefix: 'api:auth-platform-signup' })
 
 export async function POST(req: Request) {
     try {

@@ -72,7 +72,7 @@ class SupabaseService:
                     "smtp_user, smtp_password, from_name, from_email"
                 )
                 .eq("company_id", company_id)
-                .single()
+                .maybe_single()
                 .execute()
             )
             if not result.data:
@@ -263,7 +263,7 @@ class SupabaseService:
                 .select("*, properties(*)")
                 .eq("id", application_id)
                 .eq("company_id", company_id)
-                .single()
+                .maybe_single()
                 .execute()
             )
             return result.data
@@ -289,7 +289,7 @@ class SupabaseService:
                 .select("*")
                 .eq("id", document_id)
                 .eq("company_id", company_id)
-                .single()
+                .maybe_single()
                 .execute()
             )
             return result.data
@@ -315,7 +315,7 @@ class SupabaseService:
                 .select("*")
                 .eq("id", lead_id)
                 .eq("company_id", company_id)
-                .single()
+                .maybe_single()
                 .execute()
             )
             return result.data
@@ -361,7 +361,7 @@ class SupabaseService:
                 .select("*, buildings(*), landlords(*)")
                 .eq("id", property_id)
                 .eq("company_id", company_id)
-                .single()
+                .maybe_single()
                 .execute()
             )
             return result.data
@@ -383,7 +383,7 @@ class SupabaseService:
                 .select("*, properties(*)")
                 .eq("id", listing_id)
                 .eq("company_id", company_id)
-                .single()
+                .maybe_single()
                 .execute()
             )
             return result.data
@@ -453,3 +453,35 @@ class SupabaseService:
                 "No Gmail token found for company_id=%s", company_id
             )
             return None
+
+    # ------------------------------------------------------------------
+    # Distributed guards
+    # ------------------------------------------------------------------
+
+    def check_rate_limit(
+        self, scope: str, limit: int, window_seconds: int = 60
+    ) -> tuple[bool, int, Optional[str]]:
+        """Check a shared rate limit bucket via Postgres RPC."""
+        result = (
+            self._db.rpc(
+                "check_rate_limit",
+                {
+                    "p_scope": scope,
+                    "p_limit": limit,
+                    "p_window_seconds": window_seconds,
+                },
+            )
+            .execute()
+        )
+
+        row: Any
+        if isinstance(result.data, list):
+            row = result.data[0] if result.data else {}
+        else:
+            row = result.data or {}
+
+        return (
+            bool(row.get("allowed")),
+            int(row.get("current_count") or 0),
+            row.get("reset_at"),
+        )

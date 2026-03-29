@@ -4,7 +4,7 @@ import { logActivity } from '@/lib/services/activity-logger'
 import { rateLimit } from '@/lib/rate-limit'
 import { apiError } from '@/lib/api-response'
 
-const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 100 })
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 100, prefix: 'api:export' })
 
 export async function GET(req: Request) {
     const supabase = await createClient()

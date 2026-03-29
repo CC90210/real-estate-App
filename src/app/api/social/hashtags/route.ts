@@ -5,7 +5,7 @@ import { rateLimit } from '@/lib/rate-limit'
 import { apiError } from '@/lib/api-response'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'placeholder')
-const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 })
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, prefix: 'api:social-hashtags' })
 
 export async function POST(req: Request) {
     const supabase = await createClient()
