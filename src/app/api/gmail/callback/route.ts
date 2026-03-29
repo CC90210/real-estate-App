@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
             .from('profiles')
             .select('company_id')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
         if (!profile?.company_id) {
             return NextResponse.redirect(`${appUrl}/settings/automations?gmail=error&reason=no_company`)

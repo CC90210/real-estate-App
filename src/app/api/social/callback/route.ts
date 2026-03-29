@@ -19,7 +19,7 @@ export async function GET(req: Request) {
             .from('profiles')
             .select('company_id, companies(late_profile_id)')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
         if (!profile?.company_id) {
             const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'

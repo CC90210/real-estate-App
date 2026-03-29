@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { checkPlanLimit } from '@/lib/plans/gate'
 import { canAccessFeature } from '@/lib/plan-limits'
+import { apiError } from '@/lib/api-response'
 
 // Guard for property creation
 export async function guardPropertyCreation() {
@@ -9,30 +9,27 @@ export async function guardPropertyCreation() {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-        return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+        return { error: apiError('Unauthorized', { status: 401 }) }
     }
 
     const { data: profile } = await supabase
         .from('profiles')
         .select('company_id')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
     if (!profile?.company_id) {
-        return { error: NextResponse.json({ error: 'No company found' }, { status: 400 }) }
+        return { error: apiError('No company found', { status: 400 }) }
     }
 
     const check = await checkPlanLimit(profile.company_id, 'properties')
 
     if (!check.allowed) {
         return {
-            error: NextResponse.json({
-                error: check.message,
+            error: apiError(check.message || 'Limit reached', {
+                status: 403,
                 code: 'LIMIT_REACHED',
-                currentUsage: check.currentCount,
-                limit: check.limit,
-                upgradeRequired: check.upgradeRequired,
-            }, { status: 403 })
+            })
         }
     }
 
@@ -45,30 +42,27 @@ export async function guardTeamInvitation() {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-        return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+        return { error: apiError('Unauthorized', { status: 401 }) }
     }
 
     const { data: profile } = await supabase
         .from('profiles')
         .select('company_id, role')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
     if (profile?.role !== 'admin') {
-        return { error: NextResponse.json({ error: 'Only admins can invite team members' }, { status: 403 }) }
+        return { error: apiError('Only admins can invite team members', { status: 403 }) }
     }
 
     const check = await checkPlanLimit(profile.company_id, 'teamMembers')
 
     if (!check.allowed) {
         return {
-            error: NextResponse.json({
-                error: check.message,
+            error: apiError(check.message || 'Limit reached', {
+                status: 403,
                 code: 'LIMIT_REACHED',
-                currentUsage: check.currentCount,
-                limit: check.limit,
-                upgradeRequired: check.upgradeRequired,
-            }, { status: 403 })
+            })
         }
     }
 
@@ -81,28 +75,27 @@ export async function guardFeature(feature: string) {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-        return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+        return { error: apiError('Unauthorized', { status: 401 }) }
     }
 
     const { data: profile } = await supabase
         .from('profiles')
         .select('company_id')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
     if (!profile?.company_id) {
-        return { error: NextResponse.json({ error: 'No company found' }, { status: 400 }) }
+        return { error: apiError('No company found', { status: 400 }) }
     }
 
     const check = await canAccessFeature(profile.company_id, feature as any)
 
     if (!check.allowed) {
         return {
-            error: NextResponse.json({
-                error: check.reason,
+            error: apiError(check.reason || 'Feature locked', {
+                status: 403,
                 code: 'FEATURE_LOCKED',
-                upgradeRequired: check.upgradeRequired,
-            }, { status: 403 })
+            })
         }
     }
 

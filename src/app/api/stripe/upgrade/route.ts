@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe'
 import { PLANS, PlanId } from '@/lib/stripe/plans'
 import { rateLimit } from '@/lib/rate-limit'
+import { apiError } from '@/lib/api-response'
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 })
 
@@ -10,25 +11,26 @@ export async function POST(req: Request) {
     try {
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        if (!user) return apiError('Unauthorized', { status: 401 })
 
         try {
             await limiter.check(5, user.id)
         } catch {
-            return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+            return apiError('Too many requests', { status: 429 })
         }
 
         const { newPlan } = await req.json() as { newPlan: PlanId }
         const planConfig = PLANS[newPlan]
 
         if (!planConfig) {
-            return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
+            return apiError('Invalid plan', { status: 400, code: 'INVALID_PLAN' })
         }
 
         if (!planConfig.stripePriceId || planConfig.stripePriceId.includes('placeholder')) {
-            return NextResponse.json({
-                error: 'Stripe products not configured. Please add real price IDs to plans.ts'
-            }, { status: 501 })
+            return apiError('Stripe products not configured. Please add real price IDs to plans.ts', {
+                status: 501,
+                code: 'STRIPE_NOT_CONFIGURED',
+            })
         }
 
         // Get the user's profile + company subscription info
@@ -36,18 +38,15 @@ export async function POST(req: Request) {
             .from('profiles')
             .select('company_id, role, companies(stripe_subscription_id, subscription_plan, plan_override)')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
         if (!profile?.company_id) {
-            return NextResponse.json({ error: 'No company found' }, { status: 403 })
+            return apiError('No company found', { status: 403 })
         }
 
         // Only admins can change the company's subscription plan
         if (profile.role !== 'admin') {
-            return NextResponse.json(
-                { error: 'Only company admins can manage billing' },
-                { status: 403 }
-            )
+            return apiError('Only company admins can manage billing', { status: 403 })
         }
 
         const companies = profile?.companies as unknown as { stripe_subscription_id: string | null; subscription_plan: string | null; plan_override: string | null }[] | null
@@ -55,9 +54,9 @@ export async function POST(req: Request) {
 
         // If they have a plan_override (enterprise deal), they can't self-upgrade via Stripe
         if (company?.plan_override) {
-            return NextResponse.json({
-                error: 'Your plan is managed by PropFlow. Contact support to change your plan.',
-            }, { status: 403 })
+            return apiError('Your plan is managed by PropFlow. Contact support to change your plan.', {
+                status: 403,
+            })
         }
 
         // If they have an existing Stripe subscription, update it (prorate)
@@ -69,12 +68,7 @@ export async function POST(req: Request) {
             const updatedSubscription = await stripe.subscriptions.update(company.stripe_subscription_id, {
                 items: [{
                     id: currentItem.id,
-                    price_data: {
-                        currency: 'usd',
-                        unit_amount: planConfig.price,
-                        recurring: { interval: 'month' },
-                        product: 'prod_placeholder', // Should probably use real product linking too
-                    } as any,
+                    price: planConfig.stripePriceId,
                 }],
                 proration_behavior: 'create_prorations',
                 metadata: {
@@ -106,7 +100,7 @@ export async function POST(req: Request) {
             .from('profiles')
             .select('stripe_customer_id')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
         let customerId = profileData?.stripe_customer_id
 
@@ -146,6 +140,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ url: session.url })
     } catch (error) {
         console.error('Upgrade error:', error)
-        return NextResponse.json({ error: 'Upgrade failed' }, { status: 500 })
+        return apiError('Upgrade failed', { status: 500 })
     }
 }

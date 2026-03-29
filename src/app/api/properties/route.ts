@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/services/activity-logger'
 import { guardPropertyCreation } from '@/lib/api-guards'
+import { apiError, fieldErrorsToDetails } from '@/lib/api-response'
 import { z } from 'zod';
 
 // Point 2: Schema to prevent mass assignment
@@ -36,10 +37,10 @@ export async function POST(req: Request) {
         const validation = propertySchema.safeParse(body);
 
         if (!validation.success) {
-            return NextResponse.json({
-                error: 'Invalid property data',
-                details: validation.error.flatten().fieldErrors
-            }, { status: 400 });
+            return apiError('Invalid property data', {
+                status: 400,
+                details: fieldErrorsToDetails(validation.error.flatten().fieldErrors),
+            });
         }
 
         const data = validation.data;
@@ -134,7 +135,7 @@ export async function POST(req: Request) {
     } catch (error: unknown) {
         // Point 6: Sanitize error response
         console.error('Property creation error:', error)
-        return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+        return apiError('Something went wrong. Please try again.', { status: 500 })
     }
 }
 
@@ -143,7 +144,7 @@ export async function GET(req: Request) {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        return apiError('Unauthorized', { status: 401 })
     }
 
     // Get user's company for scoping
@@ -151,19 +152,35 @@ export async function GET(req: Request) {
         .from('profiles')
         .select('company_id')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
     if (!profile?.company_id) {
-        return NextResponse.json({ error: 'No company found' }, { status: 403 })
+        return apiError('No company found', { status: 403 })
     }
 
     const { data, error } = await supabase
         .from('properties')
-        .select('*, buildings(name, address), areas(name)')
+        .select('*, buildings(name, address, areas(name))')
         .eq('company_id', profile.company_id)
         .order('created_at', { ascending: false })
         .limit(500)
 
-    if (error) return NextResponse.json({ error: 'Failed to fetch properties' }, { status: 500 })
-    return NextResponse.json(data)
+    if (error) {
+        console.warn('Properties GET joined query failed, retrying without nested area join:', error.message)
+
+        const { data: fallbackData, error: fallbackError } = await supabase
+            .from('properties')
+            .select('*, buildings(name, address)')
+            .eq('company_id', profile.company_id)
+            .order('created_at', { ascending: false })
+            .limit(500)
+
+        if (fallbackError) {
+            return apiError('Failed to fetch properties', { status: 500 })
+        }
+
+        return NextResponse.json(fallbackData ?? [])
+    }
+
+    return NextResponse.json(data ?? [])
 }

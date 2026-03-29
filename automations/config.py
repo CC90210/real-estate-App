@@ -12,11 +12,18 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from functools import lru_cache
+from pathlib import Path
 from typing import Optional
 
 from dotenv import load_dotenv
 
-load_dotenv()
+BASE_DIR = Path(__file__).resolve().parents[1]
+
+# Match the repo's local-development env layout so the Python service can be
+# started directly from the workspace without requiring a preloaded shell.
+load_dotenv(BASE_DIR / ".env", override=False)
+load_dotenv(BASE_DIR / ".env.local", override=True)
+load_dotenv(override=False)
 
 
 # ---------------------------------------------------------------------------
@@ -86,6 +93,8 @@ def get_settings() -> Settings:
     supabase_jwt_secret = os.getenv("SUPABASE_JWT_SECRET", "").strip()
     if not supabase_jwt_secret:
         missing.append("SUPABASE_JWT_SECRET")
+    elif len(supabase_jwt_secret) < 32:
+        raise ValueError("SUPABASE_JWT_SECRET must be at least 32 characters long")
 
     if missing:
         raise ValueError(

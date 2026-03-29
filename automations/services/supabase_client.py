@@ -19,8 +19,8 @@ from typing import Any, Optional
 
 from supabase import Client, create_client
 
-from config import get_settings
-from models.schemas import AutomationLog, AutomationStatus, CompanyCredentials
+from automations.config import get_settings
+from automations.models.schemas import AutomationLog, AutomationStatus, CompanyCredentials
 
 logger = logging.getLogger(__name__)
 

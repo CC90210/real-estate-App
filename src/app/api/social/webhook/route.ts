@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createHmac } from 'crypto'
+import { apiError } from '@/lib/api-response'
 
 // Admin client (bypasses RLS for webhook processing)
 const supabaseAdmin = createClient(
@@ -28,13 +29,13 @@ export async function POST(req: Request) {
         const webhookSecret = process.env.WEBHOOK_SECRET
         if (!webhookSecret || webhookSecret.length < 20) {
             console.error('[Social Webhook] WEBHOOK_SECRET not configured or too short — endpoint disabled')
-            return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 })
+            return apiError('Webhook not configured', { status: 503, code: 'WEBHOOK_NOT_CONFIGURED' })
         }
 
         const signature = req.headers.get('x-webhook-signature') || req.headers.get('x-late-signature')
         if (!verifyWebhookSignature(rawBody, signature, webhookSecret)) {
             console.error('[Social Webhook] Invalid signature')
-            return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+            return apiError('Invalid signature', { status: 401, code: 'INVALID_SIGNATURE' })
         }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
         try {
             body = JSON.parse(rawBody)
         } catch {
-            return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 })
+            return apiError('Invalid JSON payload', { status: 400, code: 'INVALID_JSON' })
         }
         const event = body.event
 
@@ -195,6 +196,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ received: true })
     } catch (error) {
         console.error('[Social Webhook] Error:', error)
-        return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 })
+        return apiError('Webhook processing failed', { status: 500 })
     }
 }

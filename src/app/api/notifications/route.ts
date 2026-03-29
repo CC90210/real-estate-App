@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { apiError } from '@/lib/api-response'
 
 export async function GET(req: Request) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        return apiError('Unauthorized', { status: 401 })
     }
 
     const url = new URL(req.url)
@@ -27,7 +28,7 @@ export async function GET(req: Request) {
     const { data, error, count } = await query
 
     if (error) {
-        return NextResponse.json({ error: 'Notification operation failed' }, { status: 500 })
+        return apiError('Notification operation failed', { status: 500 })
     }
 
     // Also get unread count
@@ -50,7 +51,7 @@ export async function PATCH(req: Request) {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        return apiError('Unauthorized', { status: 401 })
     }
 
     const body = await req.json()
@@ -63,13 +64,13 @@ export async function PATCH(req: Request) {
             .eq('user_id', user.id)
             .eq('read', false)
 
-        if (error) return NextResponse.json({ error: 'Notification operation failed' }, { status: 500 })
+        if (error) return apiError('Notification operation failed', { status: 500 })
         return NextResponse.json({ success: true })
     }
 
     if (ids && Array.isArray(ids)) {
         if (ids.length > 200) {
-            return NextResponse.json({ error: 'Too many IDs in single request' }, { status: 400 })
+            return apiError('Too many IDs in single request', { status: 400, code: 'TOO_MANY_IDS' })
         }
 
         const { error } = await supabase
@@ -78,9 +79,9 @@ export async function PATCH(req: Request) {
             .eq('user_id', user.id)
             .in('id', ids)
 
-        if (error) return NextResponse.json({ error: 'Notification operation failed' }, { status: 500 })
+        if (error) return apiError('Notification operation failed', { status: 500 })
         return NextResponse.json({ success: true })
     }
 
-    return NextResponse.json({ error: 'Provide ids array or markAllRead' }, { status: 400 })
+    return apiError('Provide ids array or markAllRead', { status: 400, code: 'INVALID_REQUEST' })
 }

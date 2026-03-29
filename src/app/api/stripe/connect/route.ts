@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { apiError } from '@/lib/api-response'
 
 // GET - Check Connect status
 export async function GET() {
@@ -15,7 +16,7 @@ export async function GET() {
             .from('profiles')
             .select('company_id')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
         if (!profile?.company_id) {
             return NextResponse.json({ connected: false, status: 'no_company' })
@@ -45,11 +46,7 @@ export async function GET() {
 
     } catch (error) {
         console.error('Connect status error:', error)
-        return NextResponse.json({
-            connected: false,
-            status: 'error',
-            error: 'Failed to create connect account'
-        })
+        return apiError('Failed to create connect account', { status: 500 })
     }
 }
 
@@ -57,8 +54,8 @@ export async function GET() {
 // Clients should call /api/stripe/connect/onboard directly.
 // This endpoint is kept for backward compatibility and redirects.
 export async function POST() {
-    return NextResponse.json(
-        { error: 'Use /api/stripe/connect/onboard directly' },
-        { status: 308, headers: { Location: '/api/stripe/connect/onboard' } }
-    )
+    return apiError('Use /api/stripe/connect/onboard directly', {
+        status: 308,
+        headers: { Location: '/api/stripe/connect/onboard' },
+    })
 }

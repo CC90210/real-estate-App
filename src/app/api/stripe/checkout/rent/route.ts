@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createClient } from '@/lib/supabase/server'
 import { rateLimit } from '@/lib/rate-limit'
+import { apiError } from '@/lib/api-response'
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 })
 
@@ -9,12 +10,12 @@ export async function POST(req: Request) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return apiError('Unauthorized', { status: 401 })
 
     try {
         await limiter.check(3, user.id)
     } catch {
-        return NextResponse.json({ error: 'Too many payment attempts. Please wait a moment.' }, { status: 429 })
+        return apiError('Too many payment attempts. Please wait a moment.', { status: 429 })
     }
 
     try {
@@ -23,10 +24,10 @@ export async function POST(req: Request) {
         // 1. Fetch Lease — only allow if tenant is on this lease
         const { data: lease, error: leaseError } = await supabase
             .from('leases')
-            .select('*, property:properties(company_id)')
+            .select('*, property:properties(company_id, address)')
             .eq('id', leaseId)
             .eq('tenant_id', user.id)
-            .single()
+            .maybeSingle()
 
         if (leaseError || !lease) throw new Error('Lease not found or not yours')
 
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
             .from('stripe_connect_accounts')
             .select('stripe_account_id')
             .eq('company_id', lease.company_id)
-            .single()
+            .maybeSingle()
 
         if (!connectAccount?.stripe_account_id) {
             throw new Error('Landlord has not set up payouts yet.')
@@ -81,6 +82,6 @@ export async function POST(req: Request) {
 
     } catch (err: any) {
         console.error('Rent checkout error:', err)
-        return NextResponse.json({ error: 'Payment session creation failed' }, { status: 500 })
+        return apiError('Payment session creation failed', { status: 500 })
     }
 }

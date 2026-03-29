@@ -5,6 +5,7 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { canAddTeamMember } from '@/lib/plan-limits'
 import { sendTeamInviteEmail } from '@/lib/email'
 import { rateLimit } from '@/lib/rate-limit'
+import { apiError } from '@/lib/api-response'
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 })
 
@@ -20,13 +21,13 @@ export async function POST(req: Request) {
         const { data: { user } } = await supabase.auth.getUser()
 
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+            return apiError('Unauthorized', { status: 401 })
         }
 
         try {
             await limiter.check(10, user.id)
         } catch {
-            return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+            return apiError('Too many requests', { status: 429 })
         }
 
         // Get user's profile and verify admin role
@@ -34,42 +35,40 @@ export async function POST(req: Request) {
             .from('profiles')
             .select('company_id, role, company:companies!profiles_company_id_fkey(name, subscription_plan)')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
         if (!profile?.company_id) {
-            return NextResponse.json({ error: 'No company found' }, { status: 400 })
+            return apiError('No company found', { status: 400 })
         }
 
         if (profile.role !== 'admin') {
-            return NextResponse.json({ error: 'Only admins can invite team members' }, { status: 403 })
+            return apiError('Only admins can invite team members', { status: 403 })
         }
 
         // Check plan limits
         const limitCheck = await canAddTeamMember(profile.company_id)
         if (!limitCheck.allowed) {
-            return NextResponse.json({
-                error: limitCheck.reason,
+            return apiError(limitCheck.reason || 'Team member limit reached', {
+                status: 403,
                 code: 'PLAN_LIMIT_REACHED',
-                currentUsage: limitCheck.currentUsage,
-                limit: limitCheck.limit,
-            }, { status: 403 })
+            })
         }
 
         const { email, role } = await req.json()
 
         if (!email || !role) {
-            return NextResponse.json({ error: 'Email and role are required' }, { status: 400 })
+            return apiError('Email and role are required', { status: 400 })
         }
 
         // Validate email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
         if (!emailRegex.test(email)) {
-            return NextResponse.json({ error: 'Invalid email format' }, { status: 400 })
+            return apiError('Invalid email format', { status: 400 })
         }
 
         // Validate role
         if (!['admin', 'agent', 'landlord'].includes(role)) {
-            return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
+            return apiError('Invalid role', { status: 400 })
         }
 
         const normalizedEmail = email.toLowerCase().trim()
@@ -80,10 +79,10 @@ export async function POST(req: Request) {
             .select('id')
             .eq('company_id', profile.company_id)
             .eq('email', normalizedEmail)
-            .single()
+            .maybeSingle()
 
         if (existingMember) {
-            return NextResponse.json({ error: 'User is already a team member' }, { status: 400 })
+            return apiError('User is already a team member', { status: 400 })
         }
 
         // Revoke any existing pending invitations for this email + company
@@ -110,7 +109,7 @@ export async function POST(req: Request) {
 
         if (inviteError) {
             console.error('Invitation error:', inviteError)
-            return NextResponse.json({ error: 'Failed to create invitation' }, { status: 500 })
+            return apiError('Failed to create invitation', { status: 500 })
         }
 
         // Generate invitation link
@@ -136,7 +135,7 @@ export async function POST(req: Request) {
             .from('profiles')
             .select('full_name')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
         await sendTeamInviteEmail({
             email: normalizedEmail,
@@ -161,7 +160,7 @@ export async function POST(req: Request) {
 
     } catch (error) {
         console.error('Invite error:', error)
-        return NextResponse.json({ error: 'Failed to send invite' }, { status: 500 })
+        return apiError('Failed to send invite', { status: 500 })
     }
 }
 
@@ -172,17 +171,17 @@ export async function GET(req: Request) {
         const { data: { user } } = await supabase.auth.getUser()
 
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+            return apiError('Unauthorized', { status: 401 })
         }
 
         const { data: profile } = await supabase
             .from('profiles')
             .select('company_id, role')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
         if (!profile?.company_id || profile.role !== 'admin') {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+            return apiError('Unauthorized', { status: 403 })
         }
 
         const { data: invitations } = await supabaseAdmin
@@ -194,7 +193,7 @@ export async function GET(req: Request) {
         return NextResponse.json({ invitations: invitations || [] })
 
     } catch (error) {
-        return NextResponse.json({ error: 'Failed to fetch invitations' }, { status: 500 })
+        return apiError('Failed to fetch invitations', { status: 500 })
     }
 }
 
@@ -205,24 +204,24 @@ export async function DELETE(req: Request) {
         const { data: { user } } = await supabase.auth.getUser()
 
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+            return apiError('Unauthorized', { status: 401 })
         }
 
         const { searchParams } = new URL(req.url)
         const invitationId = searchParams.get('id')
 
         if (!invitationId) {
-            return NextResponse.json({ error: 'Invitation ID required' }, { status: 400 })
+            return apiError('Invitation ID required', { status: 400 })
         }
 
         const { data: profile } = await supabase
             .from('profiles')
             .select('company_id, role')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
         if (!profile?.company_id || profile.role !== 'admin') {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+            return apiError('Unauthorized', { status: 403 })
         }
 
         const { error } = await supabaseAdmin
@@ -233,12 +232,12 @@ export async function DELETE(req: Request) {
             .eq('status', 'pending')
 
         if (error) {
-            return NextResponse.json({ error: 'Failed to revoke invitation' }, { status: 500 })
+            return apiError('Failed to revoke invitation', { status: 500 })
         }
 
         return NextResponse.json({ success: true })
 
     } catch (error) {
-        return NextResponse.json({ error: 'Failed to revoke invite' }, { status: 500 })
+        return apiError('Failed to revoke invite', { status: 500 })
     }
 }

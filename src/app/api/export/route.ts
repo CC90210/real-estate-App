@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/services/activity-logger'
 import { rateLimit } from '@/lib/rate-limit'
+import { apiError } from '@/lib/api-response'
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 100 })
 
@@ -10,7 +11,7 @@ export async function GET(req: Request) {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        return apiError('Unauthorized', { status: 401 })
     }
 
     // Get company_id from profile
@@ -18,28 +19,28 @@ export async function GET(req: Request) {
         .from('profiles')
         .select('company_id, role')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
     if (!profile?.company_id) {
-        return NextResponse.json({ error: 'No company found' }, { status: 404 })
+        return apiError('No company found', { status: 404 })
     }
 
     if (!['admin', 'agent'].includes(profile.role)) {
-        return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+        return apiError('Insufficient permissions', { status: 403 })
     }
 
     // Rate limit: 10 exports per minute per user
     try {
         await limiter.check(10, user.id)
     } catch {
-        return NextResponse.json({ error: 'Too many export requests. Please wait.' }, { status: 429 })
+        return apiError('Too many export requests. Please wait.', { status: 429 })
     }
 
     const url = new URL(req.url)
     const type = url.searchParams.get('type')
 
     if (!type) {
-        return NextResponse.json({ error: 'Missing type parameter' }, { status: 400 })
+        return apiError('Missing type parameter', { status: 400, code: 'MISSING_TYPE' })
     }
 
     try {
@@ -128,7 +129,7 @@ export async function GET(req: Request) {
             }
 
             default:
-                return NextResponse.json({ error: 'Invalid export type' }, { status: 400 })
+                return apiError('Invalid export type', { status: 400, code: 'INVALID_EXPORT_TYPE' })
         }
 
         // Log the export
@@ -148,7 +149,7 @@ export async function GET(req: Request) {
         })
     } catch (err: any) {
         console.error('[EXPORT]', err)
-        return NextResponse.json({ error: 'Export failed' }, { status: 500 })
+        return apiError('Export failed', { status: 500 })
     }
 }
 

@@ -1,22 +1,23 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { apiError } from '@/lib/api-response'
+import { isServerSuperAdmin } from '@/lib/super-admin'
 
 export async function POST(req: Request, props: { params: Promise<{ companyId: string }> }) {
     const params = await props.params;
     try {
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        if (!user) return apiError('Unauthorized', { status: 401 })
 
-        // CRITICAL: Verify super_admin
         const { data: profile } = await supabase
             .from('profiles')
-            .select('role')
+            .select('is_super_admin')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
-        if (profile?.role !== 'super_admin') {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+        if (!isServerSuperAdmin(user.email, profile?.is_super_admin === true)) {
+            return apiError('Forbidden', { status: 403 })
         }
 
         const { plan, reason } = await req.json()
@@ -24,7 +25,7 @@ export async function POST(req: Request, props: { params: Promise<{ companyId: s
         // Validate plan value
         const validPlans = ['enterprise', 'brokerage_command', 'agency_growth', 'agent_pro', null]
         if (!validPlans.includes(plan)) {
-            return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
+            return apiError('Invalid plan', { status: 400 })
         }
 
         // Update company
@@ -51,6 +52,6 @@ export async function POST(req: Request, props: { params: Promise<{ companyId: s
         return NextResponse.json({ success: true, plan })
     } catch (error) {
         console.error('Plan override error:', error)
-        return NextResponse.json({ error: 'Override failed' }, { status: 500 })
+        return apiError('Override failed', { status: 500 })
     }
 }

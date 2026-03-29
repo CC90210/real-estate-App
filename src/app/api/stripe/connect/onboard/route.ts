@@ -1,22 +1,23 @@
 import { NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createClient } from '@/lib/supabase/server'
+import { apiError } from '@/lib/api-response'
 
 export async function POST(req: Request) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return apiError('Unauthorized', { status: 401 })
 
     // 1. Get user company
     const { data: profile } = await supabase
         .from('profiles')
         .select('company_id, companies(name, email)')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
     if (!profile?.company_id) {
-        return NextResponse.json({ error: 'Company not found' }, { status: 400 })
+        return apiError('Company not found', { status: 400 })
     }
 
     try {
@@ -57,9 +58,10 @@ export async function POST(req: Request) {
             } catch (err) {
                 // HANDLE SPECIFIC PLATFORM ERROR
                 if (err instanceof Error && err.message.includes('responsibilities of managing losses')) {
-                    return NextResponse.json({
-                        error: 'Stripe Platform Profile Incomplete: Please log in to your Stripe Dashboard and complete the "Connect Platform Profile" settings to accept responsibility for managing losses.'
-                    }, { status: 400 })
+                    return apiError(
+                        'Stripe Platform Profile Incomplete: Please log in to your Stripe Dashboard and complete the "Connect Platform Profile" settings to accept responsibility for managing losses.',
+                        { status: 400 }
+                    )
                 }
                 throw err
             }
@@ -77,21 +79,21 @@ export async function POST(req: Request) {
 
     } catch (err) {
         console.error('Stripe Connect error:', err)
-        return NextResponse.json({ error: 'Stripe Connect setup failed' }, { status: 500 })
+        return apiError('Stripe Connect setup failed', { status: 500 })
     }
 }
 export async function GET(req: Request) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return apiError('Unauthorized', { status: 401 })
 
     const { data: profile } = await supabase
         .from('profiles')
         .select('company_id')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
-    if (!profile?.company_id) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!profile?.company_id) return apiError('Not found', { status: 404 })
 
     const { data: connect } = await supabase
         .from('stripe_connect_accounts')
@@ -99,7 +101,7 @@ export async function GET(req: Request) {
         .eq('company_id', profile.company_id)
         .maybeSingle()
 
-    if (!connect?.stripe_account_id) return NextResponse.json({ error: 'No account' }, { status: 404 })
+    if (!connect?.stripe_account_id) return apiError('No account', { status: 404 })
 
     try {
         const account = await stripe.accounts.retrieve(connect.stripe_account_id)
@@ -119,6 +121,6 @@ export async function GET(req: Request) {
         return NextResponse.json({ success: true, status: updateData })
     } catch (err) {
         console.error('Stripe Connect status error:', err)
-        return NextResponse.json({ error: 'Failed to check account status' }, { status: 500 })
+        return apiError('Failed to check account status', { status: 500 })
     }
 }

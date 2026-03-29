@@ -1,4 +1,4 @@
-"""
+﻿"""
 Document service for the PropFlow Automation Framework.
 
 Responsibilities:
@@ -20,7 +20,7 @@ from urllib.parse import urlparse
 
 import httpx
 
-from services.supabase_client import SupabaseService
+from automations.services.supabase_client import SupabaseService
 
 logger = logging.getLogger(__name__)
 
@@ -76,19 +76,19 @@ class DocumentService:
                     f"document_id={document_id}",
                 )
 
-            # Validate PDF signature — real PDFs start with %PDF
+            # Validate PDF signature - real PDFs start with %PDF
             if len(response.content) >= 4 and response.content[:4] != b"%PDF":
-                logger.warning(
-                    "document_id=%s does not appear to be a PDF (first 4 bytes: %r)",
-                    document_id,
-                    response.content[:4],
+                return (
+                    None,
+                    f"document_id={document_id} is not a valid PDF "
+                    f"(first 4 bytes: {response.content[:4]!r})",
                 )
 
             if len(response.content) > _MAX_INLINE_BYTES:
                 return (
                     None,
                     f"Document exceeds {_MAX_INLINE_BYTES // (1024*1024)} MB "
-                    "inline limit — send the URL instead",
+                    "inline limit - send the URL instead",
                 )
 
             return response.content, ""
@@ -139,9 +139,9 @@ class DocumentService:
         """
         Record successful delivery in automation_logs.
 
-        This is best-effort — a failure here must never block the calling flow.
+        This is best-effort - a failure here must never block the calling flow.
         """
-        from models.schemas import AutomationStatus
+        from automations.models.schemas import AutomationStatus
 
         try:
             self._svc.save_automation_log(
@@ -166,7 +166,7 @@ class DocumentService:
         reason: str,
     ) -> None:
         """Record a failed delivery attempt."""
-        from models.schemas import AutomationStatus
+        from automations.models.schemas import AutomationStatus
 
         try:
             self._svc.save_automation_log(
@@ -183,3 +183,5 @@ class DocumentService:
             logger.exception(
                 "Failed to mark failure for document_id=%s", document_id
             )
+
+

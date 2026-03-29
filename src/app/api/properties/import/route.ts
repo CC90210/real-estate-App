@@ -1,58 +1,53 @@
-
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/services/activity-logger'
 import Papa from 'papaparse'
 import { rateLimit } from '@/lib/rate-limit'
+import { apiError } from '@/lib/api-response'
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 })
 
 export async function POST(req: Request) {
     const supabase = await createClient()
 
-    // Get user and company
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        return apiError('Unauthorized', { status: 401 })
     }
 
     try {
-        await limiter.check(3, user.id) // CSV imports are heavy — 3/min max
+        await limiter.check(3, user.id)
     } catch {
-        return NextResponse.json({ error: 'Too many import requests' }, { status: 429 })
+        return apiError('Too many import requests', { status: 429 })
     }
 
     const { data: profile } = await supabase
         .from('profiles')
         .select('company_id')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
     if (!profile?.company_id) {
-        return NextResponse.json({ error: 'No company' }, { status: 400 })
+        return apiError('No company', { status: 400 })
     }
 
-    // Parse the uploaded file
     const formData = await req.formData()
     const file = formData.get('file') as File
 
     if (!file) {
-        return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+        return apiError('No file provided', { status: 400 })
     }
 
-    // 5 MB file size limit to prevent memory exhaustion
     if (file.size > 5 * 1024 * 1024) {
-        return NextResponse.json({ error: 'File too large. Maximum 5 MB.' }, { status: 400 })
+        return apiError('File too large. Maximum 5 MB.', { status: 400 })
     }
 
-    // Validate file type
     if (!file.name.toLowerCase().endsWith('.csv') && file.type !== 'text/csv') {
-        return NextResponse.json({ error: 'Only CSV files are accepted' }, { status: 400 })
+        return apiError('Only CSV files are accepted', { status: 400 })
     }
 
     const text = await file.text()
 
-    // Parse CSV
     const { data: rows, errors } = Papa.parse(text, {
         header: true,
         skipEmptyLines: true,
@@ -60,26 +55,19 @@ export async function POST(req: Request) {
     })
 
     if (errors.length > 0) {
-        return NextResponse.json({
-            error: 'CSV parsing failed. Please check the file format.',
-        }, { status: 400 })
+        return apiError('CSV parsing failed. Please check the file format.', { status: 400 })
     }
 
-    // Limit import size to prevent memory exhaustion
     if (rows.length > 5000) {
-        return NextResponse.json({
-            error: `CSV too large (${rows.length} rows). Maximum 5,000 properties per import.`
-        }, { status: 400 })
+        return apiError(`CSV too large (${rows.length} rows). Maximum 5,000 properties per import.`, { status: 400 })
     }
 
-    // Validate and transform rows
     const properties: Record<string, any>[] = []
     const validationErrors: { row: number; error: string }[] = []
 
     for (let i = 0; i < rows.length; i++) {
         const row = rows[i] as any
 
-        // Required fields
         if (!row.address) {
             validationErrors.push({ row: i + 2, error: 'Missing address' })
             continue
@@ -112,13 +100,16 @@ export async function POST(req: Request) {
     }
 
     if (properties.length === 0) {
-        return NextResponse.json({
-            error: 'No valid properties found',
-            validationErrors
-        }, { status: 400 })
+        return apiError('No valid properties found', {
+            status: 400,
+            details: validationErrors.map(({ row, error }) => ({
+                field: `row.${row}`,
+                message: error,
+                code: 'invalid',
+            })),
+        })
     }
 
-    // Insert properties
     const { data: inserted, error: insertError } = await supabase
         .from('properties')
         .insert(properties)
@@ -126,12 +117,9 @@ export async function POST(req: Request) {
 
     if (insertError) {
         console.error('[Import] Insert failed:', insertError)
-        return NextResponse.json({
-            error: 'Failed to import properties. Please check your CSV format and try again.'
-        }, { status: 500 })
+        return apiError('Failed to import properties. Please check your CSV format and try again.', { status: 500 })
     }
 
-    // Log activity
     await logActivity(supabase, {
         companyId: profile.company_id,
         userId: user.id,

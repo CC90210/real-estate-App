@@ -47,6 +47,7 @@ export function useAutomationSubscription() {
             return data as AutomationSubscription;
         },
         enabled: !!companyId,
+        staleTime: 5 * 60 * 1000,
     });
 }
 
@@ -73,5 +74,6 @@ export function useAutomationLogs(entityId?: string) {
             return data as AutomationLog[];
         },
         enabled: !!companyId,
+        staleTime: 30000,
     });
 }

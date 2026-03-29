@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/rate-limit';
 import { z } from 'zod';
+import { apiError, fieldErrorsToDetails } from '@/lib/api-response';
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 });
 
@@ -21,10 +22,10 @@ export async function POST(request: Request) {
         try {
             await limiter.check(10, ip) // 10 signups per minute per IP
         } catch (error) {
-            return NextResponse.json(
-                { error: 'Too many signup attempts. Please try again later.' },
-                { status: 429, headers: { 'Retry-After': '60' } }
-            )
+            return apiError('Too many signup attempts. Please try again later.', {
+                status: 429,
+                headers: { 'Retry-After': '60' },
+            })
         }
 
         // Point 2: Validate Input
@@ -32,10 +33,10 @@ export async function POST(request: Request) {
         const validation = signupSchema.safeParse(body);
 
         if (!validation.success) {
-            return NextResponse.json({
-                error: 'Invalid input data',
-                details: validation.error.flatten().fieldErrors
-            }, { status: 400 });
+            return apiError('Invalid input data', {
+                status: 400,
+                details: fieldErrorsToDetails(validation.error.flatten().fieldErrors),
+            });
         }
 
         const { email, password, full_name, role, job_title } = validation.data;
@@ -71,10 +72,7 @@ export async function POST(request: Request) {
         // 2. Handle signup errors
         if (signupError) {
             if (signupError.message.includes('already registered') || signupError.status === 422) {
-                return NextResponse.json(
-                    { error: 'An account with this email already exists. Please sign in or reset your password.' },
-                    { status: 409 }
-                );
+                return apiError('An account with this email already exists. Please sign in or reset your password.', { status: 409 });
             }
             throw signupError;
         }
@@ -105,6 +103,6 @@ export async function POST(request: Request) {
     } catch (error: unknown) {
         // Point 6: Generic Error in production-like responses
         console.error("Signup API Error:", error);
-        return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 });
+        return apiError('Something went wrong. Please try again.', { status: 500 });
     }
 }

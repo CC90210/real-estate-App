@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { rateLimit } from '@/lib/rate-limit'
+import { apiError } from '@/lib/api-response'
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 })
 
@@ -8,25 +9,29 @@ export async function POST(req: Request) {
     try {
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        if (!user) return apiError('Unauthorized', { status: 401 })
 
         try {
             await limiter.check(10, user.id)
         } catch {
-            return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+            return apiError('Too many requests', { status: 429 })
         }
 
         const { content, mediaUrls, hashtags, platformAccountIds, scheduledFor, publishNow } = await req.json()
 
         if (!content || !platformAccountIds?.length) {
-            return NextResponse.json({ error: 'Content and at least one platform are required' }, { status: 400 })
+            return apiError('Content and at least one platform are required', { status: 400, code: 'MISSING_FIELDS' })
         }
 
         const { data: profile } = await supabase
             .from('profiles')
             .select('company_id')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
+
+        if (!profile?.company_id) {
+            return apiError('No company found', { status: 403 })
+        }
 
         // Get the Late account IDs for the selected platforms
         const { data: accounts } = await supabase
@@ -36,7 +41,7 @@ export async function POST(req: Request) {
             .eq('company_id', profile?.company_id)
 
         if (!accounts?.length) {
-            return NextResponse.json({ error: 'No valid accounts selected' }, { status: 400 })
+            return apiError('No valid accounts selected', { status: 400 })
         }
 
         // Build the full post content with hashtags
@@ -48,7 +53,7 @@ export async function POST(req: Request) {
         // Dynamically import Late
         const Late = (await import('@getlatedev/node')).default
         const apiKey = process.env.LATE_API_KEY
-        if (!apiKey) return NextResponse.json({ error: 'Social media integration not configured' }, { status: 503 })
+        if (!apiKey) return apiError('Social media integration not configured', { status: 503, code: 'SOCIAL_NOT_CONFIGURED' })
         const late = new Late({ apiKey })
 
         // Create the post via Late API
@@ -94,6 +99,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ post: savedPost, latePost })
     } catch (error) {
         console.error('Social post error:', error)
-        return NextResponse.json({ error: 'Failed to create post' }, { status: 500 })
+        return apiError('Failed to create post', { status: 500 })
     }
 }

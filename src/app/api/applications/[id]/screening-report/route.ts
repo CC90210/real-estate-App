@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { apiError } from '@/lib/api-response'
 
 // Enterprise document handling — supports large multi-page screening reports (up to 250MB)
 export const runtime = 'nodejs'
@@ -282,7 +283,7 @@ async function getPropertyRent(
         .from('applications')
         .select('property:properties(rent)')
         .eq('id', applicationId)
-        .single()
+        .maybeSingle()
     if (!data?.property) return null
     const prop = Array.isArray(data.property) ? data.property[0] : data.property
     return (prop as { rent?: number })?.rent ?? null
@@ -374,35 +375,35 @@ export async function POST(
         data: { user },
     } = await supabase.auth.getUser()
     if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        return apiError('Unauthorized', { status: 401 })
     }
 
     const { data: profile } = await supabase
         .from('profiles')
         .select('company_id')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
     if (!profile?.company_id) {
-        return NextResponse.json({ error: 'Company profile not found' }, { status: 403 })
+        return apiError('Company profile not found', { status: 403 })
     }
 
     const formData = await req.formData()
     const file = formData.get('file') as File | null
 
     if (!file) {
-        return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+        return apiError('No file provided', { status: 400, code: 'MISSING_FILE' })
     }
 
     if (file.type !== 'application/pdf') {
-        return NextResponse.json({ error: 'Only PDF files are accepted' }, { status: 400 })
+        return apiError('Only PDF files are accepted', { status: 400, code: 'INVALID_FILE_TYPE' })
     }
 
     if (file.size > MAX_FILE_SIZE) {
-        return NextResponse.json(
-            { error: `File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum is 250MB.` },
-            { status: 413 }
-        )
+        return apiError(`File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum is 250MB.`, {
+            status: 413,
+            code: 'FILE_TOO_LARGE',
+        })
     }
 
     // Upload PDF to Supabase Storage
@@ -416,7 +417,7 @@ export async function POST(
 
     if (uploadError) {
         console.error('[Screening] Upload failed:', uploadError.message)
-        return NextResponse.json({ error: 'File upload failed' }, { status: 500 })
+        return apiError('File upload failed', { status: 500 })
     }
 
     const { data: urlData } = supabase.storage
@@ -439,7 +440,7 @@ export async function POST(
         .single()
 
     if (insertError || !reportRecord) {
-        return NextResponse.json({ error: 'Failed to create screening report record' }, { status: 500 })
+        return apiError('Failed to create screening report record', { status: 500 })
     }
 
     // Attempt AI extraction — failure must not block the response, only change status
@@ -589,17 +590,17 @@ export async function GET(
         data: { user },
     } = await supabase.auth.getUser()
     if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        return apiError('Unauthorized', { status: 401 })
     }
 
     const { data: profile } = await supabase
         .from('profiles')
         .select('company_id')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
     if (!profile?.company_id) {
-        return NextResponse.json({ error: 'Company profile not found' }, { status: 403 })
+        return apiError('Company profile not found', { status: 403 })
     }
 
     const { data, error } = await supabase
@@ -610,7 +611,7 @@ export async function GET(
         .order('created_at', { ascending: false })
 
     if (error) {
-        return NextResponse.json({ error: 'Failed to fetch screening reports' }, { status: 500 })
+        return apiError('Failed to fetch screening reports', { status: 500 })
     }
 
     // Transform each row to the format the frontend expects

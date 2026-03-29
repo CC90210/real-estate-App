@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe'
 import { PLANS, PlanId } from '@/lib/stripe/plans'
 import { rateLimit } from '@/lib/rate-limit'
+import { apiError } from '@/lib/api-response'
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 })
 
@@ -12,13 +13,13 @@ export async function POST(req: Request) {
         const { data: { user } } = await supabase.auth.getUser()
 
         if (!user) {
-            return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+            return apiError('Not authenticated', { status: 401 })
         }
 
         try {
             await limiter.check(5, user.id)
         } catch {
-            return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+            return apiError('Too many requests', { status: 429 })
         }
 
         const body = await req.json()
@@ -26,10 +27,10 @@ export async function POST(req: Request) {
 
         const plan = PLANS[planId]
         if (!plan) {
-            return NextResponse.json(
-                { error: `Invalid plan: "${planId}". Valid plans: ${Object.keys(PLANS).join(', ')}` },
-                { status: 400 }
-            )
+            return apiError(`Invalid plan: "${planId}". Valid plans: ${Object.keys(PLANS).join(', ')}`, {
+                status: 400,
+                code: 'INVALID_PLAN',
+            })
         }
 
         // Get or create Stripe customer
@@ -37,11 +38,15 @@ export async function POST(req: Request) {
             .from('profiles')
             .select('stripe_customer_id, company_id, role')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
+
+        if (!profile?.company_id) {
+            return apiError('No company found', { status: 403 })
+        }
 
         // Only admins can purchase subscriptions
         if (profile?.role !== 'admin') {
-            return NextResponse.json({ error: 'Only company admins can manage billing' }, { status: 403 })
+            return apiError('Only company admins can manage billing', { status: 403 })
         }
 
         let customerId = profile?.stripe_customer_id || undefined
@@ -103,9 +108,6 @@ export async function POST(req: Request) {
 
     } catch (error) {
         console.error('Checkout error:', error)
-        return NextResponse.json(
-            { error: 'Failed to create checkout session' },
-            { status: 500 }
-        )
+        return apiError('Failed to create checkout session', { status: 500 })
     }
 }

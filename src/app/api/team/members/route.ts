@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { apiError } from '@/lib/api-response'
 
 // GET - List team members for company
 export async function GET(req: Request) {
@@ -8,17 +9,17 @@ export async function GET(req: Request) {
         const { data: { user } } = await supabase.auth.getUser()
 
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+            return apiError('Unauthorized', { status: 401 })
         }
 
         const { data: profile } = await supabase
             .from('profiles')
             .select('company_id')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
         if (!profile?.company_id) {
-            return NextResponse.json({ error: 'No company found' }, { status: 400 })
+            return apiError('No company found', { status: 400 })
         }
 
         const { data: members, error } = await supabase
@@ -35,6 +36,6 @@ export async function GET(req: Request) {
         return NextResponse.json({ members: members || [] })
 
     } catch (error) {
-        return NextResponse.json({ error: 'Failed to fetch members' }, { status: 500 })
+        return apiError('Failed to fetch members', { status: 500 })
     }
 }

@@ -1,19 +1,21 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { apiError } from '@/lib/api-response'
+import { isServerSuperAdmin } from '@/lib/super-admin'
 
 export async function GET(req: Request) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return apiError('Unauthorized', { status: 401 })
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('role')
+        .select('is_super_admin')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
-    if (profile?.role !== 'super_admin') {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!isServerSuperAdmin(user.email, profile?.is_super_admin === true)) {
+        return apiError('Forbidden', { status: 403 })
     }
 
     const { data: invites } = await supabase
@@ -28,22 +30,22 @@ export async function POST(req: Request) {
     try {
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        if (!user) return apiError('Unauthorized', { status: 401 })
 
         const { data: profile } = await supabase
             .from('profiles')
-            .select('role')
+            .select('is_super_admin')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
-        if (profile?.role !== 'super_admin') {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+        if (!isServerSuperAdmin(user.email, profile?.is_super_admin === true)) {
+            return apiError('Forbidden', { status: 403 })
         }
 
         const { label, companyName, assignedPlan, isEnterprise, maxUses, expiresInDays } = await req.json()
 
         if (!label) {
-            return NextResponse.json({ error: 'Label is required' }, { status: 400 })
+            return apiError('Label is required', { status: 400 })
         }
 
         const { data: invite, error } = await supabase
@@ -67,6 +69,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ invite, url: inviteUrl })
     } catch (error) {
         console.error('Create invite error:', error)
-        return NextResponse.json({ error: 'Failed to process invite' }, { status: 500 })
+        return apiError('Failed to process invite', { status: 500 })
     }
 }

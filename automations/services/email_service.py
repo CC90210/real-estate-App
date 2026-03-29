@@ -1,4 +1,4 @@
-"""
+﻿"""
 Email delivery service for the PropFlow Automation Framework.
 
 Delivery strategy (in priority order):
@@ -27,9 +27,9 @@ import aiosmtplib
 import httpx
 from jinja2 import Environment, PackageLoader, select_autoescape, DictLoader
 
-from config import get_settings
-from models.schemas import CompanyCredentials, EmailProvider
-from services.supabase_client import SupabaseService
+from automations.config import get_settings
+from automations.models.schemas import CompanyCredentials, EmailProvider
+from automations.services.supabase_client import SupabaseService
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ def _decrypt_smtp_password(encrypted_password: str) -> str:
     """
     Decrypt a Fernet-encrypted SMTP password.
 
-    The encryption key is derived from WEBHOOK_SECRET — the same derivation
+    The encryption key is derived from WEBHOOK_SECRET - the same derivation
     used by _encrypt_smtp_password in api/routes.py.
     """
     import base64
@@ -57,14 +57,17 @@ def _decrypt_smtp_password(encrypted_password: str) -> str:
     try:
         return f.decrypt(encrypted_password.encode("utf-8")).decode("utf-8")
     except InvalidToken:
+        logger.warning(
+            "SMTP password decryption failed; falling back to raw stored value"
+        )
         # Password may have been stored unencrypted (pre-encryption era or
-        # encryption failure at save time) — return as-is so SMTP can attempt
+        # encryption failure at save time) - return as-is so SMTP can attempt
         # authentication with the raw value.
         return encrypted_password
 
 
 # ---------------------------------------------------------------------------
-# Jinja2 template environment (inline templates — no filesystem dependency)
+# Jinja2 template environment (inline templates - no filesystem dependency)
 # ---------------------------------------------------------------------------
 
 _BASE_CSS = """
@@ -142,7 +145,7 @@ _TEMPLATES: dict[str, str] = {
     <tr><td class="label">Reference</td><td class="value">{{ application_id }}</td></tr>
   </table>
 </div>
-<p>We aim to process applications within 2–3 business days. You will receive an email update when a decision has been made.</p>
+<p>We aim to process applications within 2-3 business days. You will receive an email update when a decision has been made.</p>
 {% endblock %}""",
 
     "agent_application_notification.html": """{% extends "base.html" %}
@@ -217,7 +220,7 @@ class EmailService:
         Send a single email.
 
         Returns (success, detail_message).
-        Never raises — all exceptions are caught and returned as failures
+        Never raises - all exceptions are caught and returned as failures
         so that callers can still log and proceed.
         """
         if not self._check_rate_limit(company_id):
@@ -409,16 +412,18 @@ class EmailService:
                 part["Content-Disposition"] = f'attachment; filename="{filename}"'
                 mime.attach(part)
 
-            use_tls = (credentials.smtp_port or 587) == 465
+            port = credentials.smtp_port or 587
+            use_tls = port == 465
+            start_tls = port == 587
 
             await aiosmtplib.send(
                 mime,
                 hostname=credentials.smtp_host,
-                port=credentials.smtp_port or 587,
+                port=port,
                 username=credentials.smtp_user,
                 password=credentials.smtp_password,
                 use_tls=use_tls,
-                start_tls=not use_tls,
+                start_tls=start_tls,
             )
             return True, "Sent via SMTP"
         except Exception as exc:
@@ -459,3 +464,5 @@ class EmailService:
         except Exception as exc:
             logger.error("Resend send failed: %s", type(exc).__name__)
             return False, "Email send failed. Please try again later."
+
+

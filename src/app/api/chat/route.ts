@@ -4,6 +4,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 import { LRUCache } from 'lru-cache';
+import { apiError, zodIssuesToDetails } from '@/lib/api-response';
 
 // Point 3: Simple in-memory rate limiter for AI endpoint (10 req/min)
 const rateLimit = new LRUCache<string, number>({
@@ -29,16 +30,16 @@ export async function POST(request: Request) {
         // Point 4: Auth Check
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return apiError('Unauthorized', { status: 401 });
         }
 
         // Point 3: Rate Limiting
         const currentUsage = rateLimit.get(user.id) || 0;
         if (currentUsage >= 10) {
-            return NextResponse.json(
-                { error: 'Rate limit exceeded. Please try again in a minute.' },
-                { status: 429, headers: { 'Retry-After': '60' } }
-            );
+            return apiError('Rate limit exceeded. Please try again in a minute.', {
+                status: 429,
+                headers: { 'Retry-After': '60' }
+            });
         }
         rateLimit.set(user.id, currentUsage + 1);
 
@@ -47,13 +48,17 @@ export async function POST(request: Request) {
         const validation = chatSchema.safeParse(body);
 
         if (!validation.success) {
-            return NextResponse.json({ error: 'Invalid input format' }, { status: 400 });
+            return apiError('Invalid input format', {
+                status: 400,
+                code: 'VALIDATION_ERROR',
+                details: zodIssuesToDetails(validation.error.issues),
+            });
         }
 
         const { message, history = [] } = validation.data;
 
         if (!process.env.GEMINI_API_KEY) {
-            return NextResponse.json({ error: 'Service Unavailable' }, { status: 503 });
+            return apiError('Service Unavailable', { status: 503, code: 'SERVICE_UNAVAILABLE' });
         }
 
 
@@ -62,10 +67,10 @@ export async function POST(request: Request) {
             .from('profiles')
             .select('company_id')
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
 
         if (!profile?.company_id) {
-            return NextResponse.json({ error: 'No company found' }, { status: 403 });
+            return apiError('No company found', { status: 403 });
         }
 
         // 1. Fetch Context: Properties (company-scoped, lockbox_code excluded for security)
@@ -149,6 +154,6 @@ export async function POST(request: Request) {
     } catch (error: unknown) {
         // Point 6: Log internal error, return generic message
         console.error('Chat API Error:', error);
-        return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 });
+        return apiError('Something went wrong. Please try again.', { status: 500 });
     }
 }

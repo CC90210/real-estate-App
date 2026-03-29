@@ -4,6 +4,7 @@ import { stripe } from '@/lib/stripe'
 import { createClient } from '@supabase/supabase-js'
 import Stripe from 'stripe'
 import { LRUCache } from 'lru-cache'
+import { apiError } from '@/lib/api-response'
 
 // Admin client for webhook (bypasses RLS)
 const supabaseAdmin = createClient(
@@ -20,7 +21,7 @@ export async function POST(req: Request) {
     const signature = headersList.get('stripe-signature')
 
     if (!signature) {
-        return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 400 })
+        return apiError('Missing stripe-signature header', { status: 400 })
     }
 
     let event: Stripe.Event
@@ -33,10 +34,7 @@ export async function POST(req: Request) {
         )
     } catch (error) {
         console.error('Webhook signature verification failed:', error)
-        return NextResponse.json(
-            { error: 'Webhook verification failed' },
-            { status: 400 }
-        )
+        return apiError('Webhook verification failed', { status: 400 })
     }
 
     console.log('Received Stripe event:', event.type)
@@ -85,7 +83,7 @@ export async function POST(req: Request) {
                         .from('companies')
                         .select('id, subscription_status')
                         .eq('stripe_subscription_id', subscriptionId)
-                        .single()
+                        .maybeSingle()
                     if (company && company.subscription_status === 'past_due') {
                         await supabaseAdmin
                             .from('companies')
@@ -108,7 +106,7 @@ export async function POST(req: Request) {
                         .from('profiles')
                         .select('company_id')
                         .eq('stripe_customer_id', customerId)
-                        .single()
+                        .maybeSingle()
                     if (profile?.company_id) {
                         await supabaseAdmin
                             .from('companies')
@@ -127,10 +125,7 @@ export async function POST(req: Request) {
 
     } catch (error) {
         console.error('Webhook handler error:', error)
-        return NextResponse.json(
-            { error: 'Webhook handler failed' },
-            { status: 500 }
-        )
+        return apiError('Webhook handler failed', { status: 500 })
     }
 }
 
@@ -154,7 +149,7 @@ async function handleSubscriptionCheckout(session: Stripe.Checkout.Session) {
         .from('profiles')
         .select('company_id')
         .eq('id', userId)
-        .single()
+        .maybeSingle()
 
     if (!profile?.company_id) {
         console.log('No company found for user')
@@ -188,7 +183,7 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription & { cu
         .from('companies')
         .select('id')
         .eq('stripe_subscription_id', subscription.id)
-        .single()
+        .maybeSingle()
 
     if (company) {
         const updateData: any = {
@@ -212,7 +207,7 @@ async function handleSubscriptionCancelled(subscription: Stripe.Subscription) {
         .from('companies')
         .select('id')
         .eq('stripe_subscription_id', subscription.id)
-        .single()
+        .maybeSingle()
 
     if (company) {
         await supabaseAdmin

@@ -41,9 +41,14 @@ export function useShowings(options?: {
     const supabase = createClient();
     const { companyId } = useCompanyId();
     const { profile } = useUser();
+    const agentId = options?.agentId ?? null;
+    const propertyId = options?.propertyId ?? null;
+    const status = options?.status ?? null;
+    const fromDate = options?.fromDate ?? null;
+    const toDate = options?.toDate ?? null;
 
     return useQuery({
-        queryKey: ['showings', companyId, options, profile?.role],
+        queryKey: ['showings', companyId, agentId, propertyId, status, fromDate, toDate, profile?.role],
         queryFn: async () => {
             let query = supabase
                 .from('showings')
@@ -59,24 +64,24 @@ export function useShowings(options?: {
                 query = query.eq('company_id', companyId);
             }
 
-            if (options?.agentId) {
-                query = query.eq('agent_id', options.agentId);
+            if (agentId) {
+                query = query.eq('agent_id', agentId);
             }
 
-            if (options?.propertyId) {
-                query = query.eq('property_id', options.propertyId);
+            if (propertyId) {
+                query = query.eq('property_id', propertyId);
             }
 
-            if (options?.status) {
-                query = query.eq('status', options.status);
+            if (status) {
+                query = query.eq('status', status);
             }
 
-            if (options?.fromDate) {
-                query = query.gte('scheduled_date', options.fromDate);
+            if (fromDate) {
+                query = query.gte('scheduled_date', fromDate);
             }
 
-            if (options?.toDate) {
-                query = query.lte('scheduled_date', options.toDate);
+            if (toDate) {
+                query = query.lte('scheduled_date', toDate);
             }
 
             if (profile?.role === 'landlord' && profile?.email) {
@@ -123,9 +128,13 @@ export function useShowingsCount(options?: {
     const supabase = createClient();
     const { companyId } = useCompanyId();
     const { profile } = useUser();
+    const agentId = options?.agentId ?? null;
+    const status = options?.status ?? null;
+    const fromDate = options?.fromDate ?? null;
+    const toDate = options?.toDate ?? null;
 
     return useQuery({
-        queryKey: ['showings_count', companyId, options, profile?.role],
+        queryKey: ['showings_count', companyId, agentId, status, fromDate, toDate, profile?.role],
         queryFn: async () => {
             let query = supabase
                 .from('showings')
@@ -135,20 +144,20 @@ export function useShowingsCount(options?: {
                 query = query.eq('company_id', companyId);
             }
 
-            if (options?.agentId) {
-                query = query.eq('agent_id', options.agentId);
+            if (agentId) {
+                query = query.eq('agent_id', agentId);
             }
 
-            if (options?.status) {
-                query = query.eq('status', options.status);
+            if (status) {
+                query = query.eq('status', status);
             }
 
-            if (options?.fromDate) {
-                query = query.gte('scheduled_date', options.fromDate);
+            if (fromDate) {
+                query = query.gte('scheduled_date', fromDate);
             }
 
-            if (options?.toDate) {
-                query = query.lte('scheduled_date', options.toDate);
+            if (toDate) {
+                query = query.lte('scheduled_date', toDate);
             }
 
             if (profile?.role === 'landlord' && profile?.email) {

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { apiError } from '@/lib/api-response'
+import { isServerSuperAdmin } from '@/lib/super-admin'
 
 const supabaseAdmin = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,7 +17,7 @@ export async function POST(req: Request) {
         const { data: { user } } = await supabase.auth.getUser()
 
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+            return apiError('Unauthorized', { status: 401 })
         }
 
         // Get caller's profile to verify admin/super admin
@@ -23,25 +25,25 @@ export async function POST(req: Request) {
             .from('profiles')
             .select('id, company_id, role, is_super_admin')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
         if (!callerProfile) {
-            return NextResponse.json({ error: 'Profile not found' }, { status: 400 })
+            return apiError('Profile not found', { status: 400 })
         }
 
-        if (callerProfile.role !== 'admin' && !callerProfile.is_super_admin) {
-            return NextResponse.json({ error: 'Only admins can remove team members' }, { status: 403 })
+        if (callerProfile.role !== 'admin' && !isServerSuperAdmin(user.email, callerProfile.is_super_admin)) {
+            return apiError('Only admins can remove team members', { status: 403 })
         }
 
         const { memberId, deleteAccount } = await req.json()
 
         if (!memberId) {
-            return NextResponse.json({ error: 'memberId is required' }, { status: 400 })
+            return apiError('memberId is required', { status: 400, code: 'MISSING_MEMBER_ID' })
         }
 
         // Cannot remove yourself
         if (memberId === user.id) {
-            return NextResponse.json({ error: 'Cannot remove yourself from the team' }, { status: 400 })
+            return apiError('Cannot remove yourself from the team', { status: 400 })
         }
 
         // Verify the target member is in the same company
@@ -49,19 +51,19 @@ export async function POST(req: Request) {
             .from('profiles')
             .select('id, company_id, email, full_name, is_super_admin')
             .eq('id', memberId)
-            .single()
+            .maybeSingle()
 
         if (!targetProfile) {
-            return NextResponse.json({ error: 'Member not found' }, { status: 404 })
+            return apiError('Member not found', { status: 404 })
         }
 
         if (targetProfile.company_id !== callerProfile.company_id) {
-            return NextResponse.json({ error: 'Member is not in your company' }, { status: 403 })
+            return apiError('Member is not in your company', { status: 403 })
         }
 
         // Cannot remove a super admin
-        if (targetProfile.is_super_admin) {
-            return NextResponse.json({ error: 'Cannot remove a super admin' }, { status: 403 })
+        if (isServerSuperAdmin(targetProfile.email, targetProfile.is_super_admin)) {
+            return apiError('Cannot remove a super admin', { status: 403 })
         }
 
         // Step 1: Always disassociate from company
@@ -114,6 +116,6 @@ export async function POST(req: Request) {
 
     } catch (error) {
         console.error('[team/remove] Error:', error)
-        return NextResponse.json({ error: 'Failed to remove member' }, { status: 500 })
+        return apiError('Failed to remove member', { status: 500 })
     }
 }

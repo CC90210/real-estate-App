@@ -22,11 +22,11 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from automations.base import BaseAutomation
-from models.schemas import AutomationResult, AutomationTrigger
-from services.email_service import EmailMessage, EmailService
-from services.screening_service import ScreeningService
-from services.supabase_client import SupabaseService
+from automations.automations.base import BaseAutomation
+from automations.models.schemas import AutomationResult, AutomationTrigger
+from automations.services.email_service import EmailMessage, EmailService
+from automations.services.screening_service import ScreeningService
+from automations.services.supabase_client import SupabaseService
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +178,7 @@ class ApplicationProcessorAutomation(BaseAutomation):
                 self._svc._db.table("companies")
                 .select("name")
                 .eq("id", company_id)
-                .single()
+                .maybe_single()
                 .execute()
             )
             return (result.data or {}).get("name", "PropFlow")
@@ -202,7 +202,7 @@ class ApplicationProcessorAutomation(BaseAutomation):
                     self._svc._db.table("profiles")
                     .select("email")
                     .eq("id", agent_id)
-                    .single()
+                    .maybe_single()
                     .execute()
                 )
                 email = (result.data or {}).get("email")
@@ -217,7 +217,7 @@ class ApplicationProcessorAutomation(BaseAutomation):
                 self._svc._db.table("companies")
                 .select("email")
                 .eq("id", company_id)
-                .single()
+                .maybe_single()
                 .execute()
             )
             return (result.data or {}).get("email")

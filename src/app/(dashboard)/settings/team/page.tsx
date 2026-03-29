@@ -105,7 +105,7 @@ export default function TeamPage() {
             if (!res.ok) {
                 // Handle specific error codes
                 if (data.code === 'PLAN_LIMIT_REACHED') {
-                    throw new Error(`${data.error} (${data.currentUsage}/${data.limit} members)`)
+                    throw new Error(data.error || 'Team member limit reached')
                 }
                 throw new Error(data.error || 'Failed to create invitation')
             }

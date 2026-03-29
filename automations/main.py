@@ -5,10 +5,10 @@ This service replaces n8n as the automation backend for PropFlow.
 It runs as a separate Python process alongside the Next.js application.
 
 Start with:
-  uvicorn main:app --host 0.0.0.0 --port 8001
+  uvicorn automations.main:app --host 0.0.0.0 --port 8001
 
 Or in development:
-  uvicorn main:app --reload --port 8001
+  uvicorn automations.main:app --reload --port 8001
 
 Environment variables required (see config.py for full list):
   SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL)
@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 try:
-    from config import get_settings
+    from automations.config import get_settings
     settings = get_settings()
     logger.info("Configuration loaded. Supabase URL: %s", settings.supabase_url[:30] + "...")
 except ValueError as exc:
@@ -55,8 +55,8 @@ except ValueError as exc:
 # Import the router (after settings are validated)
 # ---------------------------------------------------------------------------
 
-from api.routes import router
-from automations import get_registry
+from automations.api.routes import router
+from automations.automations import get_registry
 
 
 # ---------------------------------------------------------------------------
@@ -109,7 +109,7 @@ app.add_middleware(
     allow_origins=_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST"],
-    allow_headers=["*"],
+    allow_headers=["Content-Type", "X-PropFlow-Signature", "Authorization"],
 )
 
 
@@ -141,7 +141,7 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(
-        "main:app",
+        "automations.main:app",
         host=settings.host,
         port=settings.port,
         reload=settings.debug,

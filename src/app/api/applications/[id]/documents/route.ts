@@ -1,6 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { apiError } from '@/lib/api-response'
 
 // Allow large document uploads (screening reports can be 40MB+)
 export const runtime = 'nodejs'
@@ -30,17 +31,17 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        return apiError('Unauthorized', { status: 401 })
     }
 
     const { data: profile } = await supabase
         .from('profiles')
         .select('company_id')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
     if (!profile?.company_id) {
-        return NextResponse.json({ error: 'Company profile not found' }, { status: 403 })
+        return apiError('Company profile not found', { status: 403 })
     }
 
     // Verify the application belongs to this company
@@ -49,10 +50,10 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
         .select('id')
         .eq('id', applicationId)
         .eq('company_id', profile.company_id)
-        .single()
+        .maybeSingle()
 
     if (!appCheck) {
-        return NextResponse.json({ error: 'Application not found' }, { status: 404 })
+        return apiError('Application not found', { status: 404 })
     }
 
     const formData = await req.formData()
@@ -60,15 +61,21 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     const fileType = (formData.get('fileType') as string) || 'other'
 
     if (!file) {
-        return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+        return apiError('No file provided', { status: 400, code: 'MISSING_FILE' })
     }
 
     if (file.size > MAX_FILE_SIZE) {
-        return NextResponse.json({ error: `File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum is 250MB.` }, { status: 413 })
+        return apiError(`File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum is 250MB.`, {
+            status: 413,
+            code: 'FILE_TOO_LARGE',
+        })
     }
 
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-        return NextResponse.json({ error: 'File type not supported. Upload PDF, images (JPG/PNG/WebP/HEIC), or Word documents.' }, { status: 400 })
+        return apiError('File type not supported. Upload PDF, images (JPG/PNG/WebP/HEIC), or Word documents.', {
+            status: 400,
+            code: 'UNSUPPORTED_FILE_TYPE',
+        })
     }
 
     // Normalize file type — map 'passport' to 'id' for DB constraint, keep original as metadata
@@ -88,7 +95,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
 
     if (uploadError) {
         console.error('Upload error:', uploadError.message)
-        return NextResponse.json({ error: 'File upload failed' }, { status: 500 })
+        return apiError('File upload failed', { status: 500 })
     }
 
     // Get public URL
@@ -116,7 +123,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
 
     if (dbError) {
         console.error('DB error:', dbError.message)
-        return NextResponse.json({ error: 'Failed to save document record' }, { status: 500 })
+        return apiError('Failed to save document record', { status: 500 })
     }
 
     return NextResponse.json(doc)
@@ -128,17 +135,17 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        return apiError('Unauthorized', { status: 401 })
     }
 
     const { data: profile } = await supabase
         .from('profiles')
         .select('company_id')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
     if (!profile?.company_id) {
-        return NextResponse.json({ error: 'Company profile not found' }, { status: 403 })
+        return apiError('Company profile not found', { status: 403 })
     }
 
     const { data, error } = await supabase
@@ -149,7 +156,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
         .order('created_at', { ascending: false })
 
     if (error) {
-        return NextResponse.json({ error: 'Failed to fetch documents' }, { status: 500 })
+        return apiError('Failed to fetch documents', { status: 500 })
     }
 
     return NextResponse.json(data)
@@ -161,24 +168,24 @@ export async function DELETE(req: NextRequest, props: { params: Promise<{ id: st
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        return apiError('Unauthorized', { status: 401 })
     }
 
     const { data: profile } = await supabase
         .from('profiles')
         .select('company_id')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
     if (!profile?.company_id) {
-        return NextResponse.json({ error: 'Company profile not found' }, { status: 403 })
+        return apiError('Company profile not found', { status: 403 })
     }
 
     const { searchParams } = new URL(req.url)
     const documentId = searchParams.get('documentId')
 
     if (!documentId) {
-        return NextResponse.json({ error: 'documentId query parameter required' }, { status: 400 })
+        return apiError('documentId query parameter required', { status: 400, code: 'MISSING_DOCUMENT_ID' })
     }
 
     // Fetch the document to get storage path for cleanup
@@ -187,10 +194,10 @@ export async function DELETE(req: NextRequest, props: { params: Promise<{ id: st
         .select('*')
         .eq('id', documentId)
         .eq('company_id', profile.company_id)
-        .single()
+        .maybeSingle()
 
     if (!doc) {
-        return NextResponse.json({ error: 'Document not found' }, { status: 404 })
+        return apiError('Document not found', { status: 404 })
     }
 
     // Delete from storage if we have the path
@@ -209,7 +216,7 @@ export async function DELETE(req: NextRequest, props: { params: Promise<{ id: st
         .eq('company_id', profile.company_id)
 
     if (deleteError) {
-        return NextResponse.json({ error: 'Failed to delete document' }, { status: 500 })
+        return apiError('Failed to delete document', { status: 500 })
     }
 
     return NextResponse.json({ success: true })

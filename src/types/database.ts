@@ -1,10 +1,30 @@
 // PropFlow Database Types
 
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: JsonValue }
+  | JsonValue[];
+
 export type UserRole = 'admin' | 'agent' | 'landlord' | 'tenant';
 
 export type PropertyStatus = 'available' | 'pending' | 'rented' | 'maintenance';
 
-export type ApplicationStatus = 'new' | 'screening' | 'approved' | 'denied' | 'withdrawn';
+export type ApplicationStatus =
+  | 'new'
+  | 'submitted'
+  | 'pending'
+  | 'screening'
+  | 'reviewing'
+  | 'pending_landlord'
+  | 'approved'
+  | 'denied'
+  | 'rejected'
+  | 'withdrawn'
+  | 'archived'
+  | 'cancelled';
 
 export type ScreeningStatus = 'pending' | 'submitted' | 'completed' | 'rejected';
 
@@ -23,6 +43,14 @@ export interface Company {
   feature_flags?: Record<string, boolean>;
   stripe_customer_id?: string | null;
   stripe_subscription_id?: string | null;
+  subscription_current_period_end?: string | null;
+  stripe_connect_id?: string | null;
+  stripe_connect_enabled?: boolean;
+  late_profile_id?: string | null;
+  plan_override?: string | null;
+  property_count?: number | null;
+  team_member_count?: number | null;
+  social_account_count?: number | null;
   subscription_started_at?: string | null;
   subscription_ends_at?: string | null;
   trial_ends_at?: string | null;
@@ -41,6 +69,8 @@ export interface Profile {
   partner_type?: 'referral' | 'agency' | 'enterprise';
   company_id: string | null;
   phone: string | null;
+  job_title?: string | null;
+  stripe_customer_id?: string | null;
   created_at: string;
   updated_at?: string;
 }
@@ -107,7 +137,7 @@ export interface Application {
   combined_household_income: number | null;    // Total income of all applicants on lease
   employment_status: string | null;            // full-time, part-time, self-employed, retired, unemployed
   employment_duration: string | null;          // How long at current employer
-  previous_addresses: string | null;           // JSON array of previous addresses (last 3)
+  previous_addresses: JsonValue | null;        // JSON array of previous addresses (last 3)
   current_rent: number | null;                 // What they currently pay in rent
   current_landlord_name: string | null;        // Reference: current landlord
   current_landlord_phone: string | null;       // Reference: landlord phone
@@ -123,6 +153,7 @@ export interface Application {
   criminal_check_passed: boolean | null;       // Criminal record check result
   public_records_clear: boolean | null;        // No bankruptcies, collections, legal cases
   income_verified: boolean | null;
+  screening_url?: string | null;
   screening_report_url: string | null;
   singlekey_report_url: string | null;         // SingleKey PDF report URL
   screening_completed_at: string | null;
@@ -168,15 +199,142 @@ export interface AutomationSettings {
   smtp_host: string | null;
   smtp_port: number | null;
   smtp_user: string | null;
+  smtp_password: string | null;
   from_name: string | null;
   from_email: string | null;
   singlekey_api_key: string | null;
   document_email_enabled: boolean;
   document_email_recipients: string[];
+  document_email_template: string | null;
   invoice_email_enabled: boolean;
+  invoice_email_recipients: string[];
+  invoice_email_template: string | null;
   webhook_secret: string;
   webhook_url: string | null;
   webhook_events: string[];
+  platform_credentials: Record<string, JsonValue> | null;
+  listing_platforms: string[];
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ScreeningReportType = 'singlekey' | 'credit_report' | 'background_check' | 'custom';
+export type ScreeningReportProcessingStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+export interface ApplicationScreeningReport {
+  id: string;
+  application_id: string;
+  company_id: string;
+  file_url: string;
+  file_name: string;
+  file_size: number | null;
+  report_type: ScreeningReportType;
+  extracted_credit_score: number | null;
+  extracted_income: number | null;
+  extracted_criminal_clear: boolean | null;
+  extracted_public_records_clear: boolean | null;
+  extracted_bankruptcies: number | null;
+  extracted_collections: number | null;
+  extracted_legal_cases: number | null;
+  extracted_summary: string | null;
+  extracted_risk_flags: JsonValue | null;
+  raw_extracted_data: JsonValue | null;
+  processing_status: ScreeningReportProcessingStatus;
+  processed_at: string | null;
+  uploaded_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type AutomationConfigStatus = 'active' | 'inactive' | 'pending' | 'error';
+
+export interface AutomationConfig {
+  id: string;
+  company_id: string;
+  type: string;
+  name: string | null;
+  status: AutomationConfigStatus;
+  purchased_at: string | null;
+  implementation_fee_paid: boolean | null;
+  config: JsonValue | null;
+  total_executions: number | null;
+  successful_executions: number | null;
+  last_execution_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type AutomationExecutionStatus = 'pending' | 'running' | 'success' | 'failed';
+
+export interface AutomationExecution {
+  id: string;
+  automation_id: string;
+  status: AutomationExecutionStatus;
+  started_at: string;
+  completed_at: string | null;
+  duration_ms: number | null;
+  error_message: string | null;
+  input_payload: JsonValue | null;
+  output_payload: JsonValue | null;
+  created_at: string;
+}
+
+export type WebhookEventStatus = 'pending' | 'sent' | 'failed' | 'retrying';
+
+export interface WebhookEvent {
+  id: string;
+  company_id: string;
+  event_type: string;
+  payload: JsonValue;
+  status: WebhookEventStatus;
+  attempts: number | null;
+  last_attempt_at: string | null;
+  error_message: string | null;
+  response_code: number | null;
+  created_at: string;
+}
+
+export interface InvoiceItem {
+  id: string;
+  invoice_id: string;
+  description: string | null;
+  reference: string | null;
+  quantity: number | null;
+  rate: number | null;
+  amount: number | null;
+  created_at: string;
+}
+
+export type TenantPaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
+
+export interface TenantPayment {
+  id: string;
+  company_id: string;
+  property_id: string | null;
+  tenant_name: string;
+  tenant_email: string | null;
+  amount: number;
+  description: string | null;
+  status: TenantPaymentStatus;
+  stripe_payment_intent_id: string | null;
+  stripe_checkout_session_id: string | null;
+  paid_at: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface LandlordProperty {
+  id: string;
+  landlord_id: string;
+  property_id: string;
+  created_at: string;
+}
+
+export interface AgentSocialProfile {
+  id: string;
+  user_id: string;
+  late_profile_id: string;
   created_at: string;
   updated_at: string;
 }
@@ -191,9 +349,13 @@ export interface PaginatedResponse<T> {
 }
 
 export interface ApiError {
-  message: string;
+  error: string;
   code?: string;
-  details?: Record<string, unknown>;
+  details?: Array<{
+    field?: string;
+    message: string;
+    code?: string;
+  }>;
 }
 
 // Form Types

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { logActivity } from '@/lib/services/activity-logger'
+import { apiError } from '@/lib/api-response'
 
 // MUST use admin client for creating users - this was the critical bug
 const supabaseAdmin = createClient(
@@ -19,16 +20,18 @@ export async function POST(req: Request) {
         const { token, password, fullName } = await req.json()
 
         if (!token || !password || !fullName) {
-            return NextResponse.json({
-                error: 'Token, password, and full name are required'
-            }, { status: 400 })
+            return apiError('Token, password, and full name are required', {
+                status: 400,
+                code: 'MISSING_FIELDS',
+            })
         }
 
         // Validate password strength
         if (password.length < 8) {
-            return NextResponse.json({
-                error: 'Password must be at least 8 characters'
-            }, { status: 400 })
+            return apiError('Password must be at least 8 characters', {
+                status: 400,
+                code: 'INVALID_PASSWORD',
+            })
         }
 
         // 1. Fetch and validate the invitation using admin client (bypasses RLS)
@@ -47,20 +50,16 @@ export async function POST(req: Request) {
                 )
             `)
             .eq('token', token)
-            .single()
+            .maybeSingle()
 
         if (inviteError || !invitation) {
             console.error('Invitation lookup error:', inviteError)
-            return NextResponse.json({
-                error: 'Invalid invitation token'
-            }, { status: 400 })
+            return apiError('Invalid invitation token', { status: 400 })
         }
 
         // 2. Verify invitation is still valid
         if (invitation.status !== 'pending') {
-            return NextResponse.json({
-                error: `This invitation has already been ${invitation.status}`
-            }, { status: 400 })
+            return apiError(`This invitation has already been ${invitation.status}`, { status: 400 })
         }
 
         if (new Date(invitation.expires_at) < new Date()) {
@@ -70,9 +69,7 @@ export async function POST(req: Request) {
                 .update({ status: 'expired' })
                 .eq('id', invitation.id)
 
-            return NextResponse.json({
-                error: 'This invitation has expired. Please request a new one.'
-            }, { status: 400 })
+            return apiError('This invitation has expired. Please request a new one.', { status: 400 })
         }
 
         // 3. Check if email already has an account
@@ -97,12 +94,10 @@ export async function POST(req: Request) {
                 .select('id')
                 .eq('id', userId)
                 .eq('company_id', invitation.company_id)
-                .single()
+                .maybeSingle()
 
             if (existingProfile) {
-                return NextResponse.json({
-                    error: 'You are already a member of this company'
-                }, { status: 400 })
+                return apiError('You are already a member of this company', { status: 400 })
             }
         } else {
             // 4. CREATE THE USER IN SUPABASE AUTH using admin API
@@ -123,9 +118,7 @@ export async function POST(req: Request) {
 
             if (authError || !authData.user) {
                 console.error('Auth user creation error:', authError)
-                return NextResponse.json({
-                    error: authError?.message || 'Failed to create account'
-                }, { status: 500 })
+                return apiError(authError?.message || 'Failed to create account', { status: 500 })
             }
 
             userId = authData.user.id
@@ -150,9 +143,7 @@ export async function POST(req: Request) {
 
         if (profileError) {
             console.error('Profile creation error:', profileError)
-            return NextResponse.json({
-                error: 'Failed to create user profile. Please contact support.'
-            }, { status: 500 })
+            return apiError('Failed to create user profile. Please contact support.', { status: 500 })
         }
 
         console.log('[Profile] Team member profile created')
@@ -201,8 +192,6 @@ export async function POST(req: Request) {
 
     } catch (error) {
         console.error('Accept invitation error:', error)
-        return NextResponse.json({
-            error: 'Failed to accept invitation'
-        }, { status: 500 })
+        return apiError('Failed to accept invitation', { status: 500 })
     }
 }

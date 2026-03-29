@@ -29,13 +29,14 @@ import hmac
 import logging
 import time
 from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 
-from automations import get_registry
-from config import get_settings
-from models.schemas import (
+from automations.automations import get_registry
+from automations.config import get_settings
+from automations.models.schemas import (
     AutomationLog,
     AutomationStatus,
     AutomationTrigger,
@@ -44,7 +45,7 @@ from models.schemas import (
     StatusResponse,
     TriggerResponse,
 )
-from services.supabase_client import SupabaseService
+from automations.services.supabase_client import SupabaseService
 
 logger = logging.getLogger(__name__)
 
@@ -54,11 +55,41 @@ router = APIRouter()
 # In-process rate limiter (sliding window)
 # ---------------------------------------------------------------------------
 
-# Structure: { "company_id:endpoint": [(timestamp, count), ...] }
+# Structure: { "company_id:endpoint": [timestamp, ...] }
 _rate_buckets: dict[str, list[float]] = defaultdict(list)
 _TRIGGER_LIMIT = 60        # requests per minute
 _CONNECT_LIMIT = 10        # requests per minute
 _STATUS_LIMIT = 120        # requests per minute
+_last_rate_limit_cleanup = 0.0
+
+
+def _cleanup_rate_buckets(now: float, max_window_seconds: int) -> None:
+    """
+    Periodically evict expired timestamps and empty buckets.
+
+    This keeps the in-process limiter from growing without bound, but it is
+    still only safe for single-process deployments. Multi-instance production
+    deployments should replace this with Redis or another shared backend.
+    """
+    global _last_rate_limit_cleanup
+
+    if now - _last_rate_limit_cleanup < max_window_seconds:
+        return
+
+    cutoff = now - max_window_seconds
+    empty_keys: list[str] = []
+
+    for key, bucket in _rate_buckets.items():
+        fresh = [t for t in bucket if t > cutoff]
+        if fresh:
+            _rate_buckets[key] = fresh
+        else:
+            empty_keys.append(key)
+
+    for key in empty_keys:
+        _rate_buckets.pop(key, None)
+
+    _last_rate_limit_cleanup = now
 
 
 def _check_rate_limit(key: str, limit: int, window_seconds: int = 60) -> None:
@@ -67,6 +98,7 @@ def _check_rate_limit(key: str, limit: int, window_seconds: int = 60) -> None:
     `window_seconds`.  Mutates _rate_buckets in place.
     """
     now = time.monotonic()
+    _cleanup_rate_buckets(now, window_seconds)
     cutoff = now - window_seconds
     bucket = _rate_buckets[key]
 
@@ -140,7 +172,7 @@ async def require_bearer(
             detail="Authorization header with Bearer token is required.",
         )
     token = authorization.removeprefix("Bearer ").strip()
-    if len(token) < 20:
+    if len(token) < 32 or token.count(".") != 2:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authorization token format.",
@@ -348,11 +380,17 @@ def _verify_company_ownership(token: str, company_id: str) -> None:
             svc._db.table("profiles")
             .select("company_id")
             .eq("id", user_id)
-            .single()
+            .maybe_single()
             .execute()
         )
         token_company_id: str = (result.data or {}).get("company_id", "")
     except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not resolve company for token.",
+        )
+
+    if not token_company_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not resolve company for token.",
@@ -373,11 +411,15 @@ def _check_idempotency(
     otherwise return None.
     """
     try:
+        thirty_minutes_ago = (
+            datetime.now(timezone.utc) - timedelta(minutes=30)
+        ).isoformat()
         result = (
             svc._db.table("automation_logs")
             .select("id")
             .eq("company_id", company_id)
             .contains("details", {"idempotency_key": idempotency_key})
+            .gte("created_at", thirty_minutes_ago)
             .limit(1)
             .execute()
         )

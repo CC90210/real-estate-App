@@ -4,6 +4,7 @@ import { logActivity } from '@/lib/services/activity-logger'
 import { createNotification, notifyCompanyMembers } from '@/lib/notifications'
 import { createMaintenanceSchema, updateMaintenanceSchema, validateBody } from '@/lib/validations/api-schemas'
 import { rateLimit } from '@/lib/rate-limit'
+import { apiError } from '@/lib/api-response'
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 })
 
@@ -12,20 +13,20 @@ export async function POST(req: Request) {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        return apiError('Unauthorized', { status: 401 })
     }
 
     try {
         await limiter.check(15, user.id)
     } catch {
-        return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+        return apiError('Too many requests', { status: 429 })
     }
 
     try {
         const body = await req.json()
         const validated = validateBody(createMaintenanceSchema, body)
         if (!validated.success) {
-            return NextResponse.json({ error: validated.error }, { status: 400 })
+            return apiError(validated.error, { status: 400 })
         }
         const { property_id, title, description, category, priority, photos } = validated.data
 
@@ -33,13 +34,13 @@ export async function POST(req: Request) {
             .from('profiles')
             .select('company_id, full_name, role')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
         // Company must come from authenticated user's profile — never from request body
         const companyId = profile?.company_id
 
         if (!companyId) {
-            return NextResponse.json({ error: 'No company context found' }, { status: 403 })
+            return apiError('No company context found', { status: 403 })
         }
 
         // Verify the property belongs to the user's company
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
             .maybeSingle()
 
         if (!property) {
-            return NextResponse.json({ error: 'Property not found or does not belong to your company' }, { status: 403 })
+            return apiError('Property not found or does not belong to your company', { status: 403 })
         }
 
         // If tenant role, verify they have an active lease on this property
@@ -65,7 +66,7 @@ export async function POST(req: Request) {
                 .maybeSingle()
 
             if (!activeLease) {
-                return NextResponse.json({ error: 'You do not have an active lease on this property' }, { status: 403 })
+                return apiError('You do not have an active lease on this property', { status: 403 })
             }
         }
 
@@ -85,7 +86,7 @@ export async function POST(req: Request) {
             .single()
 
         if (error) {
-            return NextResponse.json({ error: 'Maintenance request failed' }, { status: 500 })
+            return apiError('Maintenance request failed', { status: 500 })
         }
 
         // Log activity
@@ -112,7 +113,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json(request)
     } catch (err) {
-        return NextResponse.json({ error: 'Maintenance request failed' }, { status: 500 })
+        return apiError('Maintenance request failed', { status: 500 })
     }
 }
 
@@ -121,24 +122,24 @@ export async function PATCH(req: Request) {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        return apiError('Unauthorized', { status: 401 })
     }
 
     const { data: profile } = await supabase
         .from('profiles')
         .select('company_id')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
     if (!profile?.company_id) {
-        return NextResponse.json({ error: 'No company found' }, { status: 403 })
+        return apiError('No company found', { status: 403 })
     }
 
     try {
         const body = await req.json()
         const validated = validateBody(updateMaintenanceSchema, body)
         if (!validated.success) {
-            return NextResponse.json({ error: validated.error }, { status: 400 })
+            return apiError(validated.error, { status: 400 })
         }
         const { id, status, resolution_notes, assigned_to, scheduled_date, estimated_cost, actual_cost } = validated.data
 
@@ -157,14 +158,18 @@ export async function PATCH(req: Request) {
             .eq('id', id)
             .eq('company_id', profile.company_id)
             .select()
-            .single()
+            .maybeSingle()
 
         if (error) {
-            return NextResponse.json({ error: 'Maintenance request failed' }, { status: 500 })
+            return apiError('Maintenance request failed', { status: 500 })
+        }
+
+        if (!data) {
+            return apiError('Maintenance request not found', { status: 404 })
         }
 
         return NextResponse.json(data)
     } catch (err) {
-        return NextResponse.json({ error: 'Maintenance request failed' }, { status: 500 })
+        return apiError('Maintenance request failed', { status: 500 })
     }
 }

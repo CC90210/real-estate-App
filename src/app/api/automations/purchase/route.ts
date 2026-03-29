@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { apiError } from '@/lib/api-response'
+import { isServerSuperAdmin } from '@/lib/super-admin'
 
 const VALID_AUTOMATION_TYPES = [
     'document_delivery',
@@ -18,30 +20,30 @@ export async function POST(request: Request) {
         const { data: { user } } = await supabase.auth.getUser()
 
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+            return apiError('Unauthorized', { status: 401 })
         }
 
         const { type, name } = await request.json()
 
         if (!type || !name) {
-            return NextResponse.json({ error: 'Type and name are required' }, { status: 400 })
+            return apiError('Type and name are required', { status: 400, code: 'MISSING_FIELDS' })
         }
 
         if (!VALID_AUTOMATION_TYPES.includes(type)) {
-            return NextResponse.json({ error: 'Invalid automation type' }, { status: 400 })
+            return apiError('Invalid automation type', { status: 400, code: 'INVALID_AUTOMATION_TYPE' })
         }
 
         const { data: profile } = await supabase
             .from('profiles')
             .select('company_id, is_super_admin, is_partner, role')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
         if (!profile?.company_id) {
-            return NextResponse.json({ error: 'No company found' }, { status: 404 })
+            return apiError('No company found', { status: 404 })
         }
 
-        const isSuperAdmin = profile.is_super_admin || profile.role === 'super_admin';
+        const isSuperAdmin = isServerSuperAdmin(user.email, profile.is_super_admin)
 
         // For Super Admins/Partners, we just activate it immediately for free
         if (isSuperAdmin || profile.is_partner) {
@@ -68,6 +70,6 @@ export async function POST(request: Request) {
 
     } catch (error) {
         console.error('Automation purchase error:', error)
-        return NextResponse.json({ error: 'Purchase failed' }, { status: 500 })
+        return apiError('Purchase failed', { status: 500 })
     }
 }

@@ -4,6 +4,7 @@ import { logActivity } from '@/lib/services/activity-logger';
 import { generateDocumentSchema } from '@/lib/schemas/document-schema';
 import { rateLimit } from '@/lib/rate-limit';
 import { logAuditEvent } from '@/lib/audit-log';
+import { apiError, zodIssuesToDetails } from '@/lib/api-response';
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 });
 
@@ -19,10 +20,7 @@ export async function POST(request: Request) {
         try {
             await limiter.check(20, ip) // 20 documents per minute per IP
         } catch (error) {
-            return NextResponse.json(
-                { error: 'Too many requests. Please try again later.' },
-                { status: 429 }
-            )
+            return apiError('Too many requests. Please try again later.', { status: 429 })
         }
 
         const formData = await request.formData();
@@ -41,10 +39,10 @@ export async function POST(request: Request) {
         });
 
         if (!validationResult.success) {
-            return NextResponse.json(
-                { error: 'Validation failed', details: validationResult.error.issues },
-                { status: 400 }
-            );
+            return apiError('Validation failed', {
+                status: 400,
+                details: zodIssuesToDetails(validationResult.error.issues),
+            });
         }
 
         const supabase = await createClient();
@@ -52,7 +50,10 @@ export async function POST(request: Request) {
         // Get authenticated user and company info
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized', details: 'User not authenticated' }, { status: 401 });
+            return apiError('Unauthorized', {
+                status: 401,
+                details: [{ message: 'User not authenticated' }],
+            });
         }
 
         // Fetch user profile
@@ -60,7 +61,7 @@ export async function POST(request: Request) {
             .from('profiles')
             .select('company_id, full_name, email')
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
 
         // Self-healing: If profile doesn't exist, create it
         if (profileError || !profile) {
@@ -76,7 +77,10 @@ export async function POST(request: Request) {
 
             if (createProfileError) {
                 console.error('Failed to create profile:', createProfileError);
-                return NextResponse.json({ error: 'Profile Setup Failed', details: 'Could not create user profile. Please contact support.' }, { status: 500 });
+                return apiError('Profile Setup Failed', {
+                    status: 500,
+                    details: [{ message: 'Could not create user profile. Please contact support.' }],
+                });
             }
             profile = newProfile;
         }
@@ -93,7 +97,10 @@ export async function POST(request: Request) {
 
             if (companyError || !newCompany) {
                 console.error('Failed to create company:', companyError);
-                return NextResponse.json({ error: 'Company Setup Failed', details: 'Could not create company. Please contact support.' }, { status: 500 });
+                return apiError('Company Setup Failed', {
+                    status: 500,
+                    details: [{ message: 'Could not create company. Please contact support.' }],
+                });
             }
 
             // Link the company to the profile
@@ -114,7 +121,7 @@ export async function POST(request: Request) {
             .from('companies')
             .select('id, name, logo_url, address, phone, email')
             .eq('id', companyId)
-            .single();
+            .maybeSingle();
 
         if (companyFetchError) {
             console.error('Failed to fetch company details:', companyFetchError);
@@ -141,7 +148,7 @@ export async function POST(request: Request) {
                 .select('*, buildings(name, address)')
                 .eq('id', propertyId)
                 .eq('company_id', companyId)
-                .single();
+                .maybeSingle();
 
             if (property) {
                 documentData.property = property;
@@ -155,7 +162,7 @@ export async function POST(request: Request) {
                 .select('*')
                 .eq('id', applicantId)
                 .eq('company_id', companyId)
-                .single();
+                .maybeSingle();
 
             if (application) {
                 documentData.application = application;
@@ -212,7 +219,7 @@ export async function POST(request: Request) {
 
         if (saveError) {
             console.error('Database Error:', saveError);
-            return NextResponse.json({ error: 'Failed to save document. Please try again.' }, { status: 500 });
+            return apiError('Failed to save document. Please try again.', { status: 500 });
         }
 
         // ====================================================================
@@ -283,9 +290,7 @@ export async function POST(request: Request) {
 
     } catch (error) {
         console.error('Document Generation Critical Failure:', error);
-        return NextResponse.json({
-            error: 'Document generation failed'
-        }, { status: 500 });
+        return apiError('Document generation failed', { status: 500 });
     }
 }
 

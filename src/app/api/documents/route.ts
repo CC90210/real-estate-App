@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createDocumentSchema } from '@/lib/schemas/document-schema';
+import { apiError, zodIssuesToDetails } from '@/lib/api-response';
 
 // GET /api/documents - List documents
 export async function GET(req: NextRequest) {
@@ -9,7 +10,7 @@ export async function GET(req: NextRequest) {
 
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return apiError('Unauthorized', { status: 401 });
         }
 
         // Get user's company_id
@@ -17,10 +18,10 @@ export async function GET(req: NextRequest) {
             .from('profiles')
             .select('company_id')
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
 
         if (!profile?.company_id) {
-            return NextResponse.json({ error: 'No company associated' }, { status: 403 });
+            return apiError('No company associated', { status: 403 });
         }
 
         // Parse query params
@@ -56,10 +57,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ success: true, documents: data });
     } catch (error) {
         console.error('Documents GET Error:', error);
-        return NextResponse.json(
-            { error: 'Failed to fetch documents' },
-            { status: 500 }
-        );
+        return apiError('Failed to fetch documents', { status: 500 });
     }
 }
 
@@ -70,7 +68,7 @@ export async function POST(req: NextRequest) {
 
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return apiError('Unauthorized', { status: 401 });
         }
 
         // Get user's company_id
@@ -78,10 +76,10 @@ export async function POST(req: NextRequest) {
             .from('profiles')
             .select('company_id')
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
 
         if (!profile?.company_id) {
-            return NextResponse.json({ error: 'No company associated' }, { status: 403 });
+            return apiError('No company associated', { status: 403 });
         }
 
         const body = await req.json();
@@ -89,10 +87,10 @@ export async function POST(req: NextRequest) {
         // Validate input
         const validationResult = createDocumentSchema.safeParse(body);
         if (!validationResult.success) {
-            return NextResponse.json(
-                { error: 'Validation failed', details: validationResult.error.issues },
-                { status: 400 }
-            );
+            return apiError('Validation failed', {
+                status: 400,
+                details: zodIssuesToDetails(validationResult.error.issues),
+            });
         }
 
         const { data, error } = await supabase
@@ -110,9 +108,6 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true, document: data }, { status: 201 });
     } catch (error) {
         console.error('Documents POST Error:', error);
-        return NextResponse.json(
-            { error: 'Failed to create document' },
-            { status: 500 }
-        );
+        return apiError('Failed to create document', { status: 500 });
     }
 }

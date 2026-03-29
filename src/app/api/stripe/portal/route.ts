@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe'
 import { rateLimit } from '@/lib/rate-limit'
+import { apiError } from '@/lib/api-response'
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 })
 
@@ -11,28 +12,28 @@ export async function POST(req: Request) {
         const { data: { user } } = await supabase.auth.getUser()
 
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+            return apiError('Unauthorized', { status: 401 })
         }
 
         try {
             await limiter.check(5, user.id)
         } catch {
-            return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+            return apiError('Too many requests', { status: 429 })
         }
 
         const { data: profile } = await supabase
             .from('profiles')
             .select('stripe_customer_id, role')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
         // Only admins can access billing portal
         if (profile?.role !== 'admin') {
-            return NextResponse.json({ error: 'Only company admins can manage billing' }, { status: 403 })
+            return apiError('Only company admins can manage billing', { status: 403 })
         }
 
         if (!profile?.stripe_customer_id) {
-            return NextResponse.json({ error: 'No subscription found' }, { status: 400 })
+            return apiError('No subscription found', { status: 400 })
         }
 
         const session = await stripe.billingPortal.sessions.create({
@@ -43,6 +44,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ url: session.url })
 
     } catch (error) {
-        return NextResponse.json({ error: 'Failed to create portal session' }, { status: 500 })
+        return apiError('Failed to create portal session', { status: 500 })
     }
 }

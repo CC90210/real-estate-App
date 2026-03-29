@@ -23,7 +23,7 @@ from typing import Any, Optional
 
 import httpx
 
-from services.supabase_client import SupabaseService
+from automations.services.supabase_client import SupabaseService
 
 logger = logging.getLogger(__name__)
 
@@ -214,7 +214,7 @@ class ScreeningService:
                 "Could not update screening_url on application_id=%s", application_id
             )
 
-        from models.schemas import AutomationStatus
+        from automations.models.schemas import AutomationStatus
 
         self._svc.save_automation_log(
             company_id=company_id,

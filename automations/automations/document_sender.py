@@ -26,11 +26,11 @@ from __future__ import annotations
 
 import logging
 
-from automations.base import BaseAutomation
-from models.schemas import AutomationResult, AutomationTrigger
-from services.document_service import DocumentService
-from services.email_service import EmailMessage, EmailService
-from services.supabase_client import SupabaseService
+from automations.automations.base import BaseAutomation
+from automations.models.schemas import AutomationResult, AutomationTrigger
+from automations.services.document_service import DocumentService
+from automations.services.email_service import EmailMessage, EmailService
+from automations.services.supabase_client import SupabaseService
 
 logger = logging.getLogger(__name__)
 

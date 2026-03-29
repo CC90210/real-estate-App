@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
+import { apiError, zodIssuesToDetails } from '@/lib/api-response';
 
 const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL;
 
@@ -16,7 +17,7 @@ export async function POST(req: Request) {
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return apiError('Unauthorized', { status: 401 });
         }
 
         // Point 2: Validate Input
@@ -24,7 +25,11 @@ export async function POST(req: Request) {
         const validation = schema.safeParse(body);
 
         if (!validation.success) {
-            return NextResponse.json({ error: 'Invalid application ID' }, { status: 400 });
+            return apiError('Invalid application ID', {
+                status: 400,
+                code: 'VALIDATION_ERROR',
+                details: zodIssuesToDetails(validation.error.issues),
+            });
         }
 
         const { applicationId } = validation.data;
@@ -42,10 +47,10 @@ export async function POST(req: Request) {
                 agent:profiles(*)
             `)
             .eq('id', applicationId)
-            .single();
+            .maybeSingle();
 
         if (error || !application) {
-            return NextResponse.json({ error: 'Not Found' }, { status: 404 });
+            return apiError('Not Found', { status: 404 });
         }
 
         // Additional Authorization: Check if user belongs to the application's company
@@ -53,10 +58,10 @@ export async function POST(req: Request) {
             .from('profiles')
             .select('company_id')
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
 
         if (profile?.company_id !== application.company_id) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            return apiError('Forbidden', { status: 403 });
         }
 
         // 2. Send to n8n if URL is configured
@@ -98,6 +103,6 @@ export async function POST(req: Request) {
     } catch (error) {
         // Point 6: Generic Error
         console.error('Webhook API Error:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        return apiError('Internal Server Error', { status: 500 });
     }
 }

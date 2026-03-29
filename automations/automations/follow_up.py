@@ -25,11 +25,11 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta, timezone
 
-from automations.base import BaseAutomation
-from config import get_settings
-from models.schemas import AutomationResult, AutomationTrigger
-from services.email_service import EmailMessage, EmailService
-from services.supabase_client import SupabaseService
+from automations.automations.base import BaseAutomation
+from automations.config import get_settings
+from automations.models.schemas import AutomationResult, AutomationTrigger
+from automations.services.email_service import EmailMessage, EmailService
+from automations.services.supabase_client import SupabaseService
 
 logger = logging.getLogger(__name__)
 
@@ -196,7 +196,7 @@ class FollowUpAutomation(BaseAutomation):
         for this lead, preventing double-sends within the same day.
         """
         try:
-            from models.schemas import AutomationStatus
+            from automations.models.schemas import AutomationStatus
 
             today = datetime.now(timezone.utc).date().isoformat()
             result = (

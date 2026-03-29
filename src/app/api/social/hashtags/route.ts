@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createClient } from '@/lib/supabase/server'
 import { rateLimit } from '@/lib/rate-limit'
+import { apiError } from '@/lib/api-response'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'placeholder')
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 })
@@ -9,12 +10,12 @@ const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 })
 export async function POST(req: Request) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return apiError('Unauthorized', { status: 401 })
 
     try {
         await limiter.check(10, user.id)
     } catch {
-        return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+        return apiError('Too many requests', { status: 429 })
     }
 
     try {
@@ -22,7 +23,7 @@ export async function POST(req: Request) {
         const safeCount = Math.min(Math.max(1, Number(count) || 15), 30)
 
         if (!topic) {
-            return NextResponse.json({ error: 'Topic is required' }, { status: 400 })
+            return apiError('Topic is required', { status: 400, code: 'MISSING_TOPIC' })
         }
 
         if (!process.env.GEMINI_API_KEY) {

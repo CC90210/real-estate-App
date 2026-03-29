@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { rateLimit } from '@/lib/rate-limit'
+import { apiError } from '@/lib/api-response'
 
 const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,30 +17,30 @@ export async function POST(req: Request) {
         try {
             await limiter.check(5, ip)
         } catch {
-            return NextResponse.json({ error: 'Too many attempts. Please try again later.' }, { status: 429 })
+            return apiError('Too many attempts. Please try again later.', { status: 429 })
         }
 
         const { token, email, password, fullName, companyName } = await req.json()
 
         if (!token || !email || !password || !fullName || !companyName) {
-            return NextResponse.json({ error: 'All fields are required' }, { status: 400 })
+            return apiError('All fields are required', { status: 400, code: 'MISSING_FIELDS' })
         }
 
         // Input validation
         if (typeof email !== 'string' || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            return NextResponse.json({ error: 'Invalid email address' }, { status: 400 })
+            return apiError('Invalid email address', { status: 400, code: 'INVALID_EMAIL' })
         }
         if (typeof password !== 'string' || password.length < 8 || password.length > 128) {
-            return NextResponse.json({ error: 'Password must be 8-128 characters' }, { status: 400 })
+            return apiError('Password must be 8-128 characters', { status: 400, code: 'INVALID_PASSWORD' })
         }
         if (typeof fullName !== 'string' || fullName.length > 200 || fullName.trim().length < 1) {
-            return NextResponse.json({ error: 'Invalid name' }, { status: 400 })
+            return apiError('Invalid name', { status: 400, code: 'INVALID_NAME' })
         }
         if (typeof companyName !== 'string' || companyName.length > 200 || companyName.trim().length < 1) {
-            return NextResponse.json({ error: 'Invalid company name' }, { status: 400 })
+            return apiError('Invalid company name', { status: 400, code: 'INVALID_COMPANY_NAME' })
         }
         if (typeof token !== 'string' || token.length > 100) {
-            return NextResponse.json({ error: 'Invalid token' }, { status: 400 })
+            return apiError('Invalid token', { status: 400, code: 'INVALID_TOKEN' })
         }
 
         // 1. Validate the invitation
@@ -47,22 +48,22 @@ export async function POST(req: Request) {
             .from('platform_invitations')
             .select('*')
             .eq('token', token)
-            .single()
+            .maybeSingle()
 
         if (inviteError || !invite) {
-            return NextResponse.json({ error: 'Invalid invitation link' }, { status: 400 })
+            return apiError('Invalid invitation link', { status: 400, code: 'INVALID_INVITATION' })
         }
 
         if (invite.status !== 'active') {
-            return NextResponse.json({ error: 'This invitation has already been used or revoked' }, { status: 400 })
+            return apiError('This invitation has already been used or revoked', { status: 400 })
         }
 
         if (new Date(invite.expires_at) < new Date()) {
-            return NextResponse.json({ error: 'This invitation has expired' }, { status: 400 })
+            return apiError('This invitation has expired', { status: 400 })
         }
 
         if (invite.use_count >= invite.max_uses) {
-            return NextResponse.json({ error: 'This invitation has reached its maximum uses' }, { status: 400 })
+            return apiError('This invitation has reached its maximum uses', { status: 400 })
         }
 
         // 2. Create the auth user
@@ -74,7 +75,7 @@ export async function POST(req: Request) {
 
         if (authError) {
             if (authError.message.includes('already registered')) {
-                return NextResponse.json({ error: 'An account with this email already exists. Please login instead.' }, { status: 400 })
+                return apiError('An account with this email already exists. Please login instead.', { status: 400 })
             }
             throw authError
         }
@@ -152,6 +153,6 @@ export async function POST(req: Request) {
         })
     } catch (error) {
         console.error('Platform signup error:', error)
-        return NextResponse.json({ error: 'Signup failed' }, { status: 500 })
+        return apiError('Signup failed', { status: 500 })
     }
 }

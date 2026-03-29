@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { apiError } from '@/lib/api-response'
 
 const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,7 +13,7 @@ export async function GET(req: Request) {
         const token = searchParams.get('token')
 
         if (!token) {
-            return NextResponse.json({ error: 'Token required' }, { status: 400 })
+            return apiError('Token required', { status: 400, code: 'MISSING_TOKEN' })
         }
 
         // Fetch invitation with company details using admin client
@@ -31,7 +32,7 @@ export async function GET(req: Request) {
                 )
             `)
             .eq('token', token)
-            .single()
+            .maybeSingle()
 
         if (error || !invitation) {
             return NextResponse.json({
@@ -73,6 +74,6 @@ export async function GET(req: Request) {
 
     } catch (error) {
         console.error('Validate invitation error:', error)
-        return NextResponse.json({ error: 'Validation failed' }, { status: 500 })
+        return apiError('Validation failed', { status: 500 })
     }
 }

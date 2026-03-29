@@ -1,6 +1,8 @@
 
 import { createServerClient } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
+import { apiError } from '@/lib/api-response'
+import { isServerSuperAdmin } from '@/lib/super-admin'
 
 /**
  * API Profile Proxy - Bypasses RLS using Service Role Key
@@ -12,7 +14,7 @@ export async function GET(request: Request) {
         const userId = searchParams.get('userId');
 
         if (!userId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
-            return NextResponse.json({ error: 'Valid User ID required' }, { status: 400 });
+            return apiError('Valid User ID required', { status: 400 });
         }
 
         const supabase = createServerClient();
@@ -23,7 +25,7 @@ export async function GET(request: Request) {
         const authSupabase = await createClient();
         const { data: { user: authUser } } = await authSupabase.auth.getUser();
         if (!authUser) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return apiError('Unauthorized', { status: 401 });
         }
 
         // Fetch the requesting user's profile to get their company_id
@@ -31,7 +33,7 @@ export async function GET(request: Request) {
             .from('profiles')
             .select('company_id, is_super_admin')
             .eq('id', authUser.id)
-            .single();
+            .maybeSingle();
 
         const { data: profile, error } = await supabase
             .from('profiles')
@@ -40,23 +42,27 @@ export async function GET(request: Request) {
                 company:companies(id, name, subscription_plan, subscription_status, is_lifetime_access, late_profile_id)
             `)
             .eq('id', userId)
-            .single();
+            .maybeSingle();
 
         if (error) {
-            return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 });
+            return apiError('Failed to fetch profile', { status: 500 });
+        }
+
+        if (!profile) {
+            return apiError('Profile not found', { status: 404, code: 'PROFILE_NOT_FOUND' });
         }
 
         // SECURITY: Only allow fetching own profile, same company, or super admin
         const isSelf = authUser.id === userId;
         const isSameCompany = authProfile?.company_id && profile?.company_id && authProfile.company_id === profile.company_id;
-        const isSuperAdmin = authProfile?.is_super_admin === true;
+        const isSuperAdmin = isServerSuperAdmin(authUser.email, authProfile?.is_super_admin === true);
 
         if (!isSelf && !isSameCompany && !isSuperAdmin) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            return apiError('Forbidden', { status: 403 });
         }
 
         return NextResponse.json(profile);
     } catch {
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return apiError('Internal server error', { status: 500 });
     }
 }

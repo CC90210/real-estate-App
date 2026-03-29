@@ -26,9 +26,9 @@ from typing import Any
 
 import httpx
 
-from automations.base import BaseAutomation
-from models.schemas import AutomationResult, AutomationTrigger
-from services.supabase_client import SupabaseService
+from automations.automations.base import BaseAutomation
+from automations.models.schemas import AutomationResult, AutomationTrigger
+from automations.services.supabase_client import SupabaseService
 
 logger = logging.getLogger(__name__)
 

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { google } from 'googleapis'
 import crypto from 'crypto'
+import { apiError } from '@/lib/api-response'
 
 export async function POST(_req: NextRequest) {
     try {
@@ -10,7 +11,7 @@ export async function POST(_req: NextRequest) {
         const { data: { user } } = await supabase.auth.getUser()
 
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+            return apiError('Unauthorized', { status: 401 })
         }
 
         const clientId = process.env.GOOGLE_CLIENT_ID
@@ -18,17 +19,17 @@ export async function POST(_req: NextRequest) {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL
 
         if (!clientId || !clientSecret) {
-            return NextResponse.json(
-                { error: 'Gmail integration is not configured. Please add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to your environment variables.' },
-                { status: 503 }
+            return apiError(
+                'Gmail integration is not configured. Please add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to your environment variables.',
+                { status: 503, code: 'GMAIL_NOT_CONFIGURED' }
             )
         }
 
         if (!appUrl) {
-            return NextResponse.json(
-                { error: 'NEXT_PUBLIC_APP_URL environment variable is not set.' },
-                { status: 503 }
-            )
+            return apiError('NEXT_PUBLIC_APP_URL environment variable is not set.', {
+                status: 503,
+                code: 'APP_URL_NOT_CONFIGURED',
+            })
         }
 
         const redirectUri = `${appUrl}/api/gmail/callback`
@@ -63,9 +64,6 @@ export async function POST(_req: NextRequest) {
 
     } catch (error: unknown) {
         console.error('[Gmail Connect] Error:', error instanceof Error ? error.message : error)
-        return NextResponse.json(
-            { error: 'Failed to initiate Gmail connection' },
-            { status: 500 }
-        )
+        return apiError('Failed to initiate Gmail connection', { status: 500 })
     }
 }

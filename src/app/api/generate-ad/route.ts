@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@/lib/supabase/server';
 import { rateLimit } from '@/lib/rate-limit';
+import { apiError } from '@/lib/api-response';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 });
@@ -13,32 +14,29 @@ export async function POST(request: Request) {
         try {
             await limiter.check(10, ip) // 10 generations per minute per IP
         } catch (error) {
-            return NextResponse.json(
-                { error: 'Too many requests. Please try again later.' },
-                { status: 429 }
-            )
+            return apiError('Too many requests. Please try again later.', { status: 429 })
         }
         const { propertyId, notes } = await request.json();
 
         if (!process.env.GEMINI_API_KEY) {
-            return NextResponse.json({ error: 'Gemini API key not configured' }, { status: 500 });
+            return apiError('Gemini API key not configured', { status: 500 });
         }
 
         const supabase = await createClient();
 
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return apiError('Unauthorized', { status: 401 });
         }
 
         const { data: profile } = await supabase
             .from('profiles')
             .select('company_id')
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
 
         if (!profile?.company_id) {
-            return NextResponse.json({ error: 'No company found' }, { status: 403 });
+            return apiError('No company found', { status: 403 });
         }
 
         const { data: property, error } = await supabase
@@ -46,10 +44,10 @@ export async function POST(request: Request) {
             .select('*, buildings(*)')
             .eq('id', propertyId)
             .eq('company_id', profile.company_id)
-            .single();
+            .maybeSingle();
 
         if (error || !property) {
-            return NextResponse.json({ error: 'Property not found' }, { status: 404 });
+            return apiError('Property not found', { status: 404 });
         }
 
         const propertyDetails = `
@@ -111,10 +109,11 @@ RESPONSE FORMAT:
             payload = JSON.parse(cleanJson);
         } catch (e) {
             console.error("JSON Parse Error. Raw response:", responseText);
-            return NextResponse.json({
-                error: 'Failed to parse AI response',
-                raw: responseText.substring(0, 100) + '...'
-            }, { status: 500 });
+            return apiError('Failed to parse AI response', {
+                status: 500,
+                code: 'AI_RESPONSE_PARSE_ERROR',
+                details: [{ message: responseText.substring(0, 100) + '...' }],
+            });
         }
 
         // Validate keys
@@ -135,8 +134,6 @@ RESPONSE FORMAT:
 
     } catch (error) {
         console.error('Gemini API Error:', error);
-        return NextResponse.json({
-            error: 'Generation failed'
-        }, { status: 500 });
+        return apiError('Generation failed', { status: 500 });
     }
 }

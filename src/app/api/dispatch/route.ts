@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { dispatchDocumentWebhook } from '@/lib/webhooks/dispatcher'
 import { dispatchDocumentSchema, validateBody } from '@/lib/validations/api-schemas'
+import { apiError } from '@/lib/api-response'
 
 export async function POST(req: Request) {
     try {
@@ -10,23 +11,23 @@ export async function POST(req: Request) {
         const { data: { user } } = await supabase.auth.getUser()
 
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+            return apiError('Unauthorized', { status: 401 })
         }
 
         const { data: profile } = await supabase
             .from('profiles')
             .select('company_id, role')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
         if (!profile?.company_id) {
-            return NextResponse.json({ error: 'No company found' }, { status: 403 })
+            return apiError('No company found', { status: 403 })
         }
 
         const body = await req.json()
         const validated = validateBody(dispatchDocumentSchema, body)
         if (!validated.success) {
-            return NextResponse.json({ error: validated.error }, { status: 400 })
+            return apiError(validated.error, { status: 400, code: 'VALIDATION_ERROR' })
         }
         const { documentType, documentId, dispatchNotes } = validated.data
 
@@ -39,10 +40,7 @@ export async function POST(req: Request) {
         )
 
         if (!result.success) {
-            return NextResponse.json({
-                success: false,
-                error: result.error,
-            }, { status: 400 })
+            return apiError(result.error || 'Dispatch failed', { status: 400 })
         }
 
         return NextResponse.json({
@@ -53,8 +51,6 @@ export async function POST(req: Request) {
 
     } catch (error) {
         console.error('Dispatch API error:', error)
-        return NextResponse.json({
-            error: 'Dispatch failed'
-        }, { status: 500 })
+        return apiError('Dispatch failed', { status: 500 })
     }
 }

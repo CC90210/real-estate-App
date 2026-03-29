@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { rateLimit } from '@/lib/rate-limit';
+import { apiError } from '@/lib/api-response';
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 });
 
@@ -8,7 +9,7 @@ export async function POST(request: Request) {
     try {
         const Late = (await import('@getlatedev/node')).default;
         const apiKey = process.env.LATE_API_KEY;
-        if (!apiKey) return NextResponse.json({ error: 'Social media integration not configured' }, { status: 503 });
+        if (!apiKey) return apiError('Social media integration not configured', { status: 503, code: 'SOCIAL_NOT_CONFIGURED' });
         const late = new Late({ apiKey });
 
         const supabase = await createClient();
@@ -16,20 +17,20 @@ export async function POST(request: Request) {
         // Ensure user is authenticated
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return apiError('Unauthorized', { status: 401 });
         }
 
         try {
             await limiter.check(10, user.id);
         } catch {
-            return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+            return apiError('Too many requests', { status: 429 });
         }
 
         const body = await request.json();
         const { content, mediaUrl, scheduledFor, platformAccountIds } = body;
 
         if (!content || !scheduledFor || !platformAccountIds || platformAccountIds.length === 0) {
-            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+            return apiError('Missing required fields', { status: 400, code: 'MISSING_FIELDS' });
         }
 
         // 1. Get user's company and verify account ownership
@@ -37,10 +38,10 @@ export async function POST(request: Request) {
             .from('profiles')
             .select('company_id')
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
 
         if (!profile?.company_id) {
-            return NextResponse.json({ error: 'No company found' }, { status: 403 });
+            return apiError('No company found', { status: 403 });
         }
 
         // Verify all platformAccountIds belong to this user's company
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
         const unauthorized = platformAccountIds.filter((id: string) => !validIds.has(id));
 
         if (unauthorized.length > 0) {
-            return NextResponse.json({ error: 'One or more social accounts do not belong to your company' }, { status: 403 });
+            return apiError('One or more social accounts do not belong to your company', { status: 403 });
         }
 
         // 2. Format payload depending on mediaUrl presence
@@ -72,12 +73,13 @@ export async function POST(request: Request) {
         }
 
         // 3. Dispatch to Late to schedule the post across connected platforms
-        const { post } = await late.posts.createPost(postPayload);
+        const result = await late.posts.createPost({ body: postPayload });
+        const post = result?.data?.post || result?.post;
 
         return NextResponse.json({ success: true, postId: post._id });
 
     } catch (error) {
         console.error('Social Schedule API Error:', error);
-        return NextResponse.json({ error: 'Failed to schedule post via Late API' }, { status: 500 });
+        return apiError('Failed to schedule post via Late API', { status: 500 });
     }
 }

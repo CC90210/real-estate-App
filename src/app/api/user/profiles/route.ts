@@ -2,6 +2,7 @@
 import { createServerClient } from '@/lib/supabase';
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { apiError } from '@/lib/api-response';
 
 /**
  * API Profiles Batch Proxy - Bypasses RLS using Service Role Key
@@ -9,7 +10,7 @@ import { NextResponse } from 'next/server';
 export async function POST(request: Request) {
     const authClient = await createClient()
     const { data: { user } } = await authClient.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return apiError('Unauthorized', { status: 401 })
 
     try {
         const { userIds } = await request.json();
@@ -30,10 +31,10 @@ export async function POST(request: Request) {
             .from('profiles')
             .select('company_id')
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
 
         if (!callerProfile?.company_id) {
-            return NextResponse.json({ error: 'No company' }, { status: 403 });
+            return apiError('No company', { status: 403 });
         }
 
         const supabase = createServerClient();
@@ -46,11 +47,11 @@ export async function POST(request: Request) {
 
         if (error) {
             console.error('[Profiles Proxy Error]:', error.message);
-            return NextResponse.json({ error: 'Failed to fetch profiles' }, { status: 500 });
+            return apiError('Failed to fetch profiles', { status: 500 });
         }
 
         return NextResponse.json(profiles);
     } catch (err) {
-        return NextResponse.json({ error: 'Failed to fetch profiles' }, { status: 500 });
+        return apiError('Failed to fetch profiles', { status: 500 });
     }
 }

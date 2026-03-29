@@ -4,21 +4,22 @@ import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { resolveCompanyPlan, CompanyPlanInfo } from '@/lib/plans/resolve'
 import { GateableResource } from '@/lib/plans/gate'
+import { useUser } from './useUser'
 
 export function useFeatureGate() {
     const supabase = createClient()
+    const { user } = useUser()
 
     const { data: planInfo, isLoading } = useQuery({
-        queryKey: ['company-plan'],
+        queryKey: ['company-plan', user?.id],
         queryFn: async (): Promise<CompanyPlanInfo & { counts: Record<string, number> }> => {
-            const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error('Not authenticated')
 
             const { data: profile } = await supabase
                 .from('profiles')
                 .select('company_id')
                 .eq('id', user.id)
-                .single()
+                .maybeSingle()
 
             if (!profile?.company_id) throw new Error('No company')
 
@@ -26,7 +27,7 @@ export function useFeatureGate() {
                 .from('companies')
                 .select('subscription_plan, subscription_status, plan_override, property_count, team_member_count, social_account_count')
                 .eq('id', profile.company_id)
-                .single()
+                .maybeSingle()
 
             if (!company) throw new Error('Company not found')
 
@@ -40,6 +41,7 @@ export function useFeatureGate() {
                 },
             }
         },
+        enabled: !!user,
         staleTime: 5 * 60 * 1000,
     })
 

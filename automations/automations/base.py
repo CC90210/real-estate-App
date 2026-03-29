@@ -16,8 +16,8 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from typing import Type
 
-from models.schemas import AutomationResult, AutomationStatus, AutomationTrigger
-from services.supabase_client import SupabaseService
+from automations.models.schemas import AutomationResult, AutomationStatus, AutomationTrigger
+from automations.services.supabase_client import SupabaseService
 
 logger = logging.getLogger(__name__)
 

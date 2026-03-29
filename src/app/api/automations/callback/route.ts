@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
+import { createClient } from '@supabase/supabase-js'
+import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { apiError, zodIssuesToDetails } from '@/lib/api-response'
 
 // Admin client for webhook callbacks (no user session available)
 const supabaseAdmin = createClient(
@@ -21,15 +22,15 @@ export async function POST(req: Request) {
     const logId = req.headers.get('X-PropFlow-Log-Id')
     const body = await req.text()
 
-    // Verify signature — REQUIRED in production
+    // Verify signature - REQUIRED in production
     const secret = process.env.N8N_WEBHOOK_SECRET
     if (!secret) {
-        console.error('N8N_WEBHOOK_SECRET not configured — callback endpoint disabled')
-        return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 })
+        console.error('N8N_WEBHOOK_SECRET not configured - callback endpoint disabled')
+        return apiError('Webhook not configured', { status: 503, code: 'WEBHOOK_NOT_CONFIGURED' })
     }
 
     if (!logId || !signature) {
-        return NextResponse.json({ error: 'Missing required headers' }, { status: 400 })
+        return apiError('Missing required headers', { status: 400, code: 'MISSING_HEADERS' })
     }
 
     const expectedSignature = crypto
@@ -40,36 +41,40 @@ export async function POST(req: Request) {
     const sigBuf = Buffer.from(signature)
     const expectedBuf = Buffer.from(expectedSignature)
     if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
-        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+        return apiError('Invalid signature', { status: 401, code: 'INVALID_SIGNATURE' })
     }
 
-    let parsed
+    let parsed: z.infer<typeof callbackSchema>
     try {
         const raw = JSON.parse(body)
         const validation = callbackSchema.safeParse(raw)
         if (!validation.success) {
-            return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
+            return apiError('Invalid payload', {
+                status: 400,
+                code: 'VALIDATION_ERROR',
+                details: zodIssuesToDetails(validation.error.issues),
+            })
         }
         parsed = validation.data
     } catch {
-        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+        return apiError('Invalid JSON body', { status: 400, code: 'INVALID_JSON' })
     }
 
-    // Update the automation log — scoped by BOTH id AND company_id
+    // Update the automation log - scoped by BOTH id AND company_id
     const { error: updateError } = await supabaseAdmin
         .from('automation_logs')
         .update({
             status: parsed.success ? 'completed' : 'failed',
             result: parsed.result,
             error_message: parsed.error,
-            completed_at: new Date().toISOString()
+            completed_at: new Date().toISOString(),
         })
         .eq('id', logId)
         .eq('company_id', parsed.company_id)
 
     if (updateError) {
         console.error('[Callback] Update failed:', updateError)
-        return NextResponse.json({ error: 'Update failed' }, { status: 500 })
+        return apiError('Update failed', { status: 500 })
     }
 
     return NextResponse.json({ received: true })

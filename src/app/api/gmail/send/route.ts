@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { google } from 'googleapis'
+import { apiError } from '@/lib/api-response'
 
 interface Attachment {
     filename: string
@@ -177,27 +178,27 @@ export async function POST(req: NextRequest) {
         const { data: { user } } = await supabase.auth.getUser()
 
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+            return apiError('Unauthorized', { status: 401 })
         }
 
         const { data: profile } = await supabase
             .from('profiles')
             .select('company_id')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
         if (!profile?.company_id) {
-            return NextResponse.json({ error: 'Company profile not found' }, { status: 403 })
+            return apiError('Company profile not found', { status: 403 })
         }
 
         const body: SendEmailRequest = await req.json()
         const { to, subject, body: textBody, html, attachments, tokenId } = body
 
         if (!to || !subject || !textBody) {
-            return NextResponse.json(
-                { error: 'Missing required fields: to, subject, body' },
-                { status: 400 }
-            )
+            return apiError('Missing required fields: to, subject, body', {
+                status: 400,
+                code: 'MISSING_FIELDS',
+            })
         }
 
         // Fetch the Gmail token — use the specified tokenId or fall back to primary
@@ -218,8 +219,8 @@ export async function POST(req: NextRequest) {
         }
 
         if (tokenError || !tokenRow) {
-            return NextResponse.json(
-                { error: 'No Gmail account connected. Please connect a Gmail account in Settings > Automations.' },
+            return apiError(
+                'No Gmail account connected. Please connect a Gmail account in Settings > Automations.',
                 { status: 404 }
             )
         }
@@ -241,10 +242,10 @@ export async function POST(req: NextRequest) {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL
 
         if (!clientId || !clientSecret || !appUrl) {
-            return NextResponse.json(
-                { error: 'Gmail integration is not configured on this server.' },
-                { status: 503 }
-            )
+            return apiError('Gmail integration is not configured on this server.', {
+                status: 503,
+                code: 'GMAIL_NOT_CONFIGURED',
+            })
         }
 
         const oauth2Client = new google.auth.OAuth2(
@@ -279,9 +280,6 @@ export async function POST(req: NextRequest) {
 
     } catch (error: unknown) {
         console.error('[Gmail Send] Error:', error instanceof Error ? error.message : error)
-        return NextResponse.json(
-            { error: 'Failed to send email' },
-            { status: 500 }
-        )
+        return apiError('Failed to send email', { status: 500 })
     }
 }

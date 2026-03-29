@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { rateLimit } from '@/lib/rate-limit'
+import { apiError } from '@/lib/api-response'
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 })
 
@@ -8,12 +9,12 @@ export async function POST(req: Request) {
     try {
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        if (!user) return apiError('Unauthorized', { status: 401 })
 
         try {
             await limiter.check(5, user.id)
         } catch {
-            return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+            return apiError('Too many requests', { status: 429 })
         }
 
         const { platform } = await req.json()
@@ -25,15 +26,15 @@ export async function POST(req: Request) {
             'googlebusiness', 'telegram', 'snapchat'
         ]
         if (!validPlatforms.includes(platform)) {
-            return NextResponse.json({ error: `Invalid platform: ${platform}` }, { status: 400 })
+            return apiError(`Invalid platform: ${platform}`, { status: 400, code: 'INVALID_PLATFORM' })
         }
 
         // Need LATE_API_KEY
         const apiKey = process.env.LATE_API_KEY
         if (!apiKey) {
-            return NextResponse.json(
-                { error: 'Social media integration is not configured. Please add LATE_API_KEY to your environment variables.' },
-                { status: 503 }
+            return apiError(
+                'Social media integration is not configured. Please add LATE_API_KEY to your environment variables.',
+                { status: 503, code: 'SOCIAL_NOT_CONFIGURED' }
             )
         }
 
@@ -45,22 +46,22 @@ export async function POST(req: Request) {
                 company:companies!profiles_company_id_fkey(id, name, subscription_plan, late_profile_id)
             `)
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
         const companyData = profile?.company
         const company: any = Array.isArray(companyData) ? companyData[0] : companyData
 
         if (!company) {
             console.error('[SocialConnect] No company found for profile:', (profile as any)?.id, 'company_id:', (profile as any)?.company_id)
-            return NextResponse.json({ error: 'No company found. Please complete your profile setup first.' }, { status: 400 })
+            return apiError('No company found. Please complete your profile setup first.', { status: 400 })
         }
 
         // Social Media Suite is exclusive to Brokerage Command plan
         const plan = company.subscription_plan || 'agent_pro'
         const socialAllowedPlans = ['brokerage_command', 'enterprise']
         if (!socialAllowedPlans.includes(plan)) {
-            return NextResponse.json(
-                { error: 'The Social Media Suite is available exclusively on the Brokerage Command plan. Upgrade to connect social platforms.' },
+            return apiError(
+                'The Social Media Suite is available exclusively on the Brokerage Command plan. Upgrade to connect social platforms.',
                 { status: 403 }
             )
         }
@@ -109,19 +110,15 @@ export async function POST(req: Request) {
                         throw new Error(profileError?.message || 'Profile limit reached but no profiles found.')
                     }
                 } catch (fallbackError: any) {
-                    return NextResponse.json(
-                        { error: `Failed to create social profile: ${profileError?.message || 'Unknown error'}` },
-                        { status: 502 }
-                    )
+                    return apiError(`Failed to create social profile: ${profileError?.message || 'Unknown error'}`, {
+                        status: 502,
+                    })
                 }
             }
         }
 
         if (!lateProfileId) {
-            return NextResponse.json(
-                { error: 'Could not create or find a social profile to connect.' },
-                { status: 500 }
-            )
+            return apiError('Could not create or find a social profile to connect.', { status: 500 })
         }
 
         // ─── Get OAuth URL from Late ───
@@ -141,25 +138,20 @@ export async function POST(req: Request) {
             const finalAuthUrl = result?.data?.url || result?.url || result?.authUrl || result?.data?.authUrl;
 
             if (!finalAuthUrl) {
-                return NextResponse.json(
-                    { error: 'Could not get authorization URL. The platform may be temporarily unavailable.' },
-                    { status: 502 }
-                )
+                return apiError('Could not get authorization URL. The platform may be temporarily unavailable.', {
+                    status: 502,
+                })
             }
 
             return NextResponse.json({ authUrl: finalAuthUrl })
         } catch (connectError: any) {
             console.error('Late connect error:', connectError?.message || connectError)
-            return NextResponse.json(
-                { error: `Connection failed: ${connectError?.message || 'Could not reach the platform'}` },
-                { status: 502 }
-            )
+            return apiError(`Connection failed: ${connectError?.message || 'Could not reach the platform'}`, {
+                status: 502,
+            })
         }
     } catch (error: any) {
         console.error('Social connect error:', error)
-        return NextResponse.json(
-            { error: error?.message || 'Failed to connect. Please try again.' },
-            { status: 500 }
-        )
+        return apiError(error?.message || 'Failed to connect. Please try again.', { status: 500 })
     }
 }

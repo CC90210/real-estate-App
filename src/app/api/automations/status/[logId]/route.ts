@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { apiError } from '@/lib/api-response'
 
 export async function GET(req: Request, { params }: { params: Promise<{ logId: string }> }) {
     const { logId } = await params;
@@ -8,7 +9,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ logId: s
     // Auth check
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        return apiError('Unauthorized', { status: 401 })
     }
 
     // Get user's company for scoping
@@ -16,10 +17,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ logId: s
         .from('profiles')
         .select('company_id')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
     if (!profile?.company_id) {
-        return NextResponse.json({ error: 'No company found' }, { status: 403 })
+        return apiError('No company found', { status: 403 })
     }
 
     const { data, error } = await supabase
@@ -27,10 +28,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ logId: s
         .select('*')
         .eq('id', logId)
         .eq('company_id', profile.company_id)
-        .single()
+        .maybeSingle()
 
     if (error || !data) {
-        return NextResponse.json({ error: 'Log not found' }, { status: 404 })
+        return apiError('Log not found', { status: 404 })
     }
 
     return NextResponse.json(data)

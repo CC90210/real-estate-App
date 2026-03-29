@@ -4,6 +4,7 @@ import { logActivity } from '@/lib/services/activity-logger';
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { z } from 'zod';
+import { apiError, zodIssuesToDetails } from '@/lib/api-response';
 
 // Admin client for webhook (bypasses RLS — webhooks have no user session)
 const supabaseAdmin = createClient(
@@ -27,14 +28,18 @@ export async function POST(request: Request) {
             secret.length !== expected.length ||
             !crypto.timingSafeEqual(Buffer.from(secret), Buffer.from(expected))) {
             console.error('[SingleKey] Unauthorized webhook attempt');
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return apiError('Unauthorized', { status: 401 });
         }
 
         const body = await request.json();
 
         const validation = singleKeySchema.safeParse(body);
         if (!validation.success) {
-            return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+            return apiError('Invalid payload', {
+                status: 400,
+                code: 'VALIDATION_ERROR',
+                details: zodIssuesToDetails(validation.error.issues),
+            });
         }
 
         const { application_id, report_url, score, status } = validation.data;
@@ -46,7 +51,7 @@ export async function POST(request: Request) {
             .from('applications')
             .select('background_status, singlekey_report_url')
             .eq('id', application_id)
-            .single();
+            .maybeSingle();
 
         if (existing?.singlekey_report_url && existing?.background_status === 'completed') {
             console.log('[SingleKey] Duplicate webhook — already processed for', application_id);
@@ -64,11 +69,11 @@ export async function POST(request: Request) {
             })
             .eq('id', application_id)
             .select('*, property:properties(owner_id, address)')
-            .single();
+            .maybeSingle();
 
-        if (updateError) {
+        if (updateError || !application) {
             console.error('[SingleKey] Database update failed:', updateError);
-            return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
+            return apiError('Database update failed', { status: updateError ? 500 : 404 });
         }
 
         // Notify the landlord
@@ -89,6 +94,6 @@ export async function POST(request: Request) {
 
     } catch (error: unknown) {
         console.error('[SingleKey] Webhook failure:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        return apiError('Internal Server Error', { status: 500 });
     }
 }

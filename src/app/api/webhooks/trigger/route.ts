@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 import { rateLimit } from '@/lib/rate-limit';
+import { apiError, zodIssuesToDetails } from '@/lib/api-response';
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500 });
 
@@ -18,13 +19,13 @@ export async function POST(request: Request) {
         const { data: { user }, error: authError } = await supabase.auth.getUser();
 
         if (authError || !user) {
-            return NextResponse.json({ error: 'Unauthorized: Session invalid' }, { status: 401 });
+            return apiError('Unauthorized: Session invalid', { status: 401 });
         }
 
         try {
             await limiter.check(15, user.id);
         } catch {
-            return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+            return apiError('Too many requests', { status: 429 });
         }
 
         // 1. Verify Enterprise Status (Optional for now, but good practice)
@@ -35,7 +36,10 @@ export async function POST(request: Request) {
         const validation = AutomationSchema.safeParse(body);
 
         if (!validation.success) {
-            return NextResponse.json({ error: 'Invalid Payload', details: validation.error }, { status: 400 });
+            return apiError('Invalid payload', {
+                status: 400,
+                details: zodIssuesToDetails(validation.error.issues),
+            });
         }
 
         const { type, data } = validation.data;
@@ -54,13 +58,13 @@ export async function POST(request: Request) {
             .from('profiles')
             .select('company_id')
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
 
         // SECURITY: Always use company_id from authenticated user's profile — never from request body
         const companyId = profile?.company_id;
 
         if (!companyId) {
-            return NextResponse.json({ error: 'No company found for your account' }, { status: 400 });
+            return apiError('No company found for your account', { status: 400 });
         }
 
         // 5. Forward to Dispatch Engine for Signed Delivery & Logging
@@ -94,9 +98,6 @@ export async function POST(request: Request) {
     } catch (error: unknown) {
         // Point 6: Generic Error in production-like responses
         console.error('Automation Trigger API Error:', error);
-        return NextResponse.json(
-            { error: 'Something went wrong. Please try again.' },
-            { status: 500 }
-        );
+        return apiError('Something went wrong. Please try again.', { status: 500 });
     }
 }

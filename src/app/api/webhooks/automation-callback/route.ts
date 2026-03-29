@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { webhookCallbackSchema } from '@/lib/schemas/webhook-schema';
+import { apiError, zodIssuesToDetails } from '@/lib/api-response';
 
 function verifySignature(payload: string, signature: string | null): boolean {
     const webhookSecret = process.env.WEBHOOK_SECRET;
@@ -49,10 +50,7 @@ export async function POST(req: NextRequest) {
         // 2. Verify webhook signature
         if (!verifySignature(rawBody, signature)) {
             console.error('[WEBHOOK] Invalid signature');
-            return NextResponse.json(
-                { error: 'Invalid webhook signature' },
-                { status: 401 }
-            );
+            return apiError('Invalid webhook signature', { status: 401 });
         }
 
         // 3. Parse and validate payload
@@ -60,19 +58,16 @@ export async function POST(req: NextRequest) {
         try {
             payload = JSON.parse(rawBody);
         } catch {
-            return NextResponse.json(
-                { error: 'Invalid JSON payload' },
-                { status: 400 }
-            );
+            return apiError('Invalid JSON payload', { status: 400 });
         }
 
         const validationResult = webhookCallbackSchema.safeParse(payload);
         if (!validationResult.success) {
             console.error('[WEBHOOK] Validation failed:', validationResult.error.issues);
-            return NextResponse.json(
-                { error: 'Invalid payload', details: validationResult.error.issues },
-                { status: 400 }
-            );
+            return apiError('Invalid payload', {
+                status: 400,
+                details: zodIssuesToDetails(validationResult.error.issues),
+            });
         }
 
         const { application_id, status, metadata } = validationResult.data;
@@ -86,13 +81,10 @@ export async function POST(req: NextRequest) {
                 .from('applications')
                 .select('id, company_id')
                 .eq('id', application_id)
-                .single();
+                .maybeSingle();
 
             if (fetchError || !application) {
-                return NextResponse.json(
-                    { error: 'Application not found' },
-                    { status: 404 }
-                );
+                return apiError('Application not found', { status: 404 });
             }
 
             const { error: updateError } = await supabase
@@ -121,6 +113,6 @@ export async function POST(req: NextRequest) {
 
     } catch (error: any) {
         console.error('[CALLBACK ERROR]', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        return apiError('Internal Server Error', { status: 500 });
     }
 }
