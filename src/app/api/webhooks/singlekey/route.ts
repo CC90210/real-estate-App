@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { z } from 'zod';
 import { apiError, zodIssuesToDetails } from '@/lib/api-response';
+import { registerIncomingWebhookEvent } from '@/lib/webhook-idempotency';
 
 // Admin client for webhook (bypasses RLS — webhooks have no user session)
 const supabaseAdmin = createClient(
@@ -45,6 +46,22 @@ export async function POST(request: Request) {
         const { application_id, report_url, score, status } = validation.data;
 
         console.log('[SingleKey] Webhook received for application:', application_id);
+
+        try {
+            const isNewEvent = await registerIncomingWebhookEvent(
+                'singlekey',
+                `${application_id}:${report_url}`,
+                JSON.stringify(validation.data),
+                60 * 60 * 24 * 7
+            );
+
+            if (!isNewEvent) {
+                console.log('[SingleKey] Duplicate webhook skipped for', application_id);
+                return NextResponse.json({ success: true, duplicate: true });
+            }
+        } catch (dedupeError) {
+            console.warn('[SingleKey] Durable dedupe unavailable; continuing', dedupeError);
+        }
 
         // Idempotency: skip if this application already has a completed screening report
         const { data: existing } = await supabaseAdmin

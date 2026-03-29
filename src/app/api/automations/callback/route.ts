@@ -1,14 +1,12 @@
 import crypto from 'crypto'
-import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { apiError, zodIssuesToDetails } from '@/lib/api-response'
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
+import { registerIncomingWebhookEvent } from '@/lib/webhook-idempotency'
 
 // Admin client for webhook callbacks (no user session available)
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const supabaseAdmin = getSupabaseAdmin()
 
 const callbackSchema = z.object({
     success: z.boolean(),
@@ -58,6 +56,21 @@ export async function POST(req: Request) {
         parsed = validation.data
     } catch {
         return apiError('Invalid JSON body', { status: 400, code: 'INVALID_JSON' })
+    }
+
+    try {
+        const isNewEvent = await registerIncomingWebhookEvent(
+            'automation-callback',
+            logId,
+            body,
+            60 * 60 * 24 * 7
+        )
+
+        if (!isNewEvent) {
+            return NextResponse.json({ received: true, duplicate: true })
+        }
+    } catch (dedupeError) {
+        console.warn('[Callback] Durable dedupe unavailable; continuing', dedupeError)
     }
 
     // Update the automation log - scoped by BOTH id AND company_id

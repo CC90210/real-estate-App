@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { createHmac } from 'crypto'
 import { apiError } from '@/lib/api-response'
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
+import { registerIncomingWebhookEvent, sha256Hex } from '@/lib/webhook-idempotency'
 
 // Admin client (bypasses RLS for webhook processing)
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const supabaseAdmin = getSupabaseAdmin()
 
 function verifyWebhookSignature(payload: string, signature: string | null, secret: string): boolean {
     if (!signature) return false
@@ -46,6 +44,27 @@ export async function POST(req: Request) {
             return apiError('Invalid JSON payload', { status: 400, code: 'INVALID_JSON' })
         }
         const event = body.event
+        const eventId = body?.id
+            || body?.event_id
+            || body?.post?.id
+            || body?.account?.id
+            || sha256Hex(rawBody)
+
+        try {
+            const isNewEvent = await registerIncomingWebhookEvent(
+                'late-social',
+                String(eventId),
+                rawBody,
+                60 * 60 * 24 * 7
+            )
+
+            if (!isNewEvent) {
+                console.log('[Social Webhook] Duplicate event skipped:', eventId)
+                return NextResponse.json({ received: true, duplicate: true })
+            }
+        } catch (dedupeError) {
+            console.warn('[Social Webhook] Durable dedupe unavailable; continuing', dedupeError)
+        }
 
         console.log('[Social Webhook] Event received:', event)
 

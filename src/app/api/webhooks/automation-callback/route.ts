@@ -1,8 +1,9 @@
-import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { webhookCallbackSchema } from '@/lib/schemas/webhook-schema';
 import { apiError, zodIssuesToDetails } from '@/lib/api-response';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { registerIncomingWebhookEvent, sha256Hex } from '@/lib/webhook-idempotency';
 
 function verifySignature(payload: string, signature: string | null): boolean {
     const webhookSecret = process.env.WEBHOOK_SECRET;
@@ -71,8 +72,25 @@ export async function POST(req: NextRequest) {
         }
 
         const { application_id, status, metadata } = validationResult.data;
+        const supabase = getSupabaseAdmin();
+        const eventId = metadata?.tracking_id && typeof metadata.tracking_id === 'string'
+            ? metadata.tracking_id
+            : `${application_id}:${status}:${sha256Hex(rawBody).slice(0, 16)}`;
 
-        const supabase = await createClient();
+        try {
+            const isNewEvent = await registerIncomingWebhookEvent(
+                'automation-status-callback',
+                eventId,
+                rawBody,
+                60 * 60 * 24 * 7
+            );
+
+            if (!isNewEvent) {
+                return NextResponse.json({ success: true, duplicate: true });
+            }
+        } catch (dedupeError) {
+            console.warn('[WEBHOOK] Durable dedupe unavailable; continuing', dedupeError);
+        }
 
         // 4. Update Application Status (if requested)
         if (['approved', 'denied', 'screening'].includes(status)) {
@@ -101,6 +119,7 @@ export async function POST(req: NextRequest) {
             .from('activity_log')
             .insert({
                 action: 'AUTOMATION_CALLBACK',
+                company_id: metadata?.company_id || null,
                 entity_type: 'application',
                 entity_id: application_id,
                 description: `Automation Update: ${status}`,
