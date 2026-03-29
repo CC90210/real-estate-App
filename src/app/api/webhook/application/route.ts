@@ -38,6 +38,16 @@ export async function POST(req: Request) {
         // but restrict by company_id for security.
         const supabaseAdmin = createServerClient();
 
+        const { data: profile } = await supabaseAdmin
+            .from('profiles')
+            .select('company_id')
+            .eq('id', user.id)
+            .maybeSingle();
+
+        if (!profile?.company_id) {
+            return apiError('Forbidden', { status: 403 });
+        }
+
         // 1. Fetch full application details (Ensuring company isolation)
         const { data: application, error } = await supabaseAdmin
             .from('applications')
@@ -47,21 +57,11 @@ export async function POST(req: Request) {
                 agent:profiles(*)
             `)
             .eq('id', applicationId)
+            .eq('company_id', profile.company_id)
             .maybeSingle();
 
         if (error || !application) {
             return apiError('Not Found', { status: 404 });
-        }
-
-        // Additional Authorization: Check if user belongs to the application's company
-        const { data: profile } = await supabaseAdmin
-            .from('profiles')
-            .select('company_id')
-            .eq('id', user.id)
-            .maybeSingle();
-
-        if (profile?.company_id !== application.company_id) {
-            return apiError('Forbidden', { status: 403 });
         }
 
         // 2. Send to n8n if URL is configured
@@ -92,7 +92,8 @@ export async function POST(req: Request) {
                         webhook_sent: true,
                         webhook_sent_at: new Date().toISOString()
                     })
-                    .eq('id', applicationId);
+                    .eq('id', applicationId)
+                    .eq('company_id', profile.company_id);
             } catch (webhookError) {
                 console.error('Outbound Webhook failed:', webhookError);
             }

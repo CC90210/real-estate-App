@@ -1,5 +1,3 @@
-import { executeAutomation, type AutomationEvent, type AutomationPayload } from './engine'
-
 export type AutomationEventType =
     | 'APPLICATION_SUBMITTED'
     | 'APPLICATION_STATUS_CHANGED'
@@ -14,8 +12,8 @@ export type AutomationEventType =
 /**
  * Dispatch an automation event.
  *
- * V2: Executes handlers INLINE via the TypeScript engine.
- * No external Python/n8n service needed — everything runs on Vercel.
+ * Browser callers go through the authenticated API route.
+ * Server callers dynamically import the automation engine directly.
  */
 export async function triggerAutomation(
     event: AutomationEventType,
@@ -23,20 +21,54 @@ export async function triggerAutomation(
 ): Promise<{ success: boolean; id?: string; error?: string; warning?: string }> {
     console.log(`[AUTOMATION] ${event} for company ${(payload.company_id as string) || 'unknown'}`)
 
-    // Only process events that have handlers
-    const handledEvents: AutomationEvent[] = [
+    if (typeof window !== 'undefined') {
+        try {
+            const response = await fetch('/api/automations/trigger', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    event_type: event,
+                    payload,
+                }),
+            })
+
+            const result = await response.json().catch(() => ({}))
+
+            if (!response.ok) {
+                return {
+                    success: false,
+                    error: result?.error || 'Failed to trigger automation',
+                }
+            }
+
+            return {
+                success: Boolean(result?.success),
+                id: result?.logId,
+                error: result?.success ? undefined : result?.message,
+            }
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error)
+            console.error(`[AUTOMATION FAILED] ${event}:`, message)
+            return { success: false, error: message }
+        }
+    }
+
+    const handledEvents: AutomationEventType[] = [
         'DOCUMENT_SEND',
         'LEASE_GENERATED',
         'INVOICE_CREATED',
         'APPLICATION_SUBMITTED',
     ]
 
-    if (!handledEvents.includes(event as AutomationEvent)) {
+    if (!handledEvents.includes(event)) {
         return { success: true, warning: `No handler for event: ${event}` }
     }
 
     try {
-        const result = await executeAutomation(event as AutomationEvent, payload as AutomationPayload)
+        const { executeAutomation } = await import('./engine')
+        const result = await executeAutomation(event as any, payload as any)
 
         return {
             success: result.success,

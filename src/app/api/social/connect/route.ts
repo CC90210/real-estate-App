@@ -92,28 +92,10 @@ export async function POST(req: Request) {
                 }
             } catch (profileError: any) {
                 console.error('Late profile creation failed:', profileError?.message || profileError)
-
-                // Fallback: If we hit a plan limit, try to just use their first existing profile
-                try {
-                    const listResult = await late.profiles.listProfiles()
-                    const profiles = listResult?.data?.profiles || listResult?.profiles || []
-
-                    if (profiles.length > 0) {
-                        lateProfileId = profiles[0]._id || profiles[0].id
-                        if (lateProfileId) {
-                            await supabase
-                                .from('companies')
-                                .update({ late_profile_id: lateProfileId })
-                                .eq('id', company.id)
-                        }
-                    } else {
-                        throw new Error(profileError?.message || 'Profile limit reached but no profiles found.')
-                    }
-                } catch (fallbackError: any) {
-                    return apiError(`Failed to create social profile: ${profileError?.message || 'Unknown error'}`, {
-                        status: 502,
-                    })
-                }
+                return apiError(`Failed to create isolated social profile: ${profileError?.message || 'Unknown error'}`, {
+                    status: 502,
+                    code: 'SOCIAL_PROFILE_CREATE_FAILED',
+                })
             }
         }
 
