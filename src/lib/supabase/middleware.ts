@@ -34,6 +34,13 @@ export async function updateSession(request: NextRequest) {
     const { pathname } = request.nextUrl
 
     // DEFINE PROTECTION MAP
+    // PUBLIC TOKEN ROUTES (no auth required):
+    //   /sign/[token]          — tenant document signing
+    //   /join/[token]          — team invitation acceptance
+    //   /join/platform/[token] — platform signup via invite
+    //   /pricing, /login, /signup, /forgot-password, /reset-password
+    //
+    // These are NOT in protectedPaths and must NEVER be added.
     const protectedPaths = [
         '/dashboard', '/properties', '/applications', '/invoices',
         '/documents', '/analytics', '/social', '/settings',
