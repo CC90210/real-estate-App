@@ -35,7 +35,7 @@ export default function PricingPage() {
 
             if (data.error) {
                 if (res.status === 401) {
-                    window.location.href = `/join?plan=${planId}`
+                    window.location.href = `/signup?plan=${planId}`
                     return
                 }
                 throw new Error(data.error)
