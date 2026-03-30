@@ -17,7 +17,7 @@ const createSigningRequestSchema = z.object({
     recipient_email: z.string().email(),
     recipient_name: z.string().max(255).optional().nullable(),
     message: z.string().max(2000).optional().nullable(),
-    document_url: z.string().url(),
+    document_url: z.string().url().optional().nullable(),
     cc_email: z.string().email().optional().nullable(),
 });
 
@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
                 recipient_email,
                 recipient_name: recipient_name ?? null,
                 message: message ?? null,
-                document_url,
+                document_url: document_url || null,
                 signing_token,
                 status: 'pending',
                 sender_id: user.id,

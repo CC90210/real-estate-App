@@ -16,8 +16,7 @@ import {
 import { ArrowLeft, Printer, PenLine, Check, FileSignature, ShieldCheck, Mail, User, Loader2, Copy } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
-import { generatePDFBlob } from '@/lib/generatePdf'
-import { uploadAndGetLink } from '@/lib/automations'
+// PDF generation available for Print/Save: import { generatePDFBlob } from '@/lib/generatePdf'
 import { useUser } from '@/lib/hooks/useUser'
 
 // ============================================================================
@@ -104,17 +103,11 @@ export default function DocumentViewPage() {
         setIsSigning(true)
 
         try {
-            toast.info('Preparing document for signature...', { duration: 2000 })
+            // Create signing request and send email immediately — no PDF generation needed.
+            // The signing email links directly to the document view page.
+            const appUrl = window.location.origin
+            const documentViewUrl = `${appUrl}/documents/${id}`
 
-            // Step 1: Generate PDF from the rendered document element
-            const blob = await generatePDFBlob('document-paper')
-            if (!blob) throw new Error('Failed to generate document PDF')
-
-            // Step 2: Upload to Supabase Storage and get a signed URL
-            const storagePath = `signing/${id}/${Date.now()}.pdf`
-            const fileUrl = await uploadAndGetLink(blob, storagePath, 'documents')
-
-            // Step 3: Create the signing request via the native e-sign system
             const response = await fetch('/api/signing', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -124,7 +117,7 @@ export default function DocumentViewPage() {
                     recipient_email: trimmedEmail,
                     recipient_name: recipientName.trim() || null,
                     message: null,
-                    document_url: fileUrl,
+                    document_url: documentViewUrl,
                     cc_email: ccEmail.trim() || null,
                 }),
             })
