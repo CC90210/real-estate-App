@@ -14,7 +14,7 @@ export function Providers({ children }: { children: ReactNode }) {
             new QueryClient({
                 defaultOptions: {
                     queries: {
-                        staleTime: 10 * 1000,             // 10 seconds — shorter to keep data fresh across tabs
+                        staleTime: 30 * 1000,              // 30 seconds — prevents refetch storms on navigation
                         gcTime: 10 * 60 * 1000,            // 10 minutes — garbage collect after 10 min
                         retry: (failureCount, error) => {
                             // Don't retry on RLS recursion errors
@@ -30,7 +30,7 @@ export function Providers({ children }: { children: ReactNode }) {
                         retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
                         refetchOnWindowFocus: true,         // Refetch when user switches tabs to ensure fresh data
                         refetchOnReconnect: true,
-                        refetchOnMount: 'always' as const,  // Always refetch when component mounts (fixes stale data on tab navigation)
+                        refetchOnMount: true,               // Refetch on mount only if stale (not ALWAYS — prevents loading storms)
                         networkMode: 'offlineFirst' as const,
                     },
                     mutations: {

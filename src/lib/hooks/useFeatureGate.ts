@@ -12,6 +12,7 @@ export function useFeatureGate() {
 
     const { data: planInfo, isLoading } = useQuery({
         queryKey: ['company-plan', user?.id],
+        placeholderData: (prev: any) => prev,  // Keep previous data while refetching — prevents "restricted" flash
         queryFn: async (): Promise<CompanyPlanInfo & { counts: Record<string, number> }> => {
             if (!user) throw new Error('Not authenticated')
 

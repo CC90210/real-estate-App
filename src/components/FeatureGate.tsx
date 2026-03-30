@@ -29,10 +29,14 @@ export function FeatureGate({ feature, children, fallback }: FeatureGateProps) {
     if (!isAvailable) {
         const featureKey = feature;
 
-        // Find which plan unlocks this feature
-        let requiredPlan: PlanId = 'professional'
-        if (!(PLANS.professional.features as any)[featureKey]) {
-            requiredPlan = 'enterprise'
+        // Find the lowest plan that unlocks this feature
+        const planOrder: PlanId[] = ['agent_pro', 'agency_growth', 'brokerage_command']
+        let requiredPlan: PlanId = 'agency_growth'
+        for (const pid of planOrder) {
+            if (PLANS[pid] && (PLANS[pid].features as any)?.[featureKey]) {
+                requiredPlan = pid
+                break
+            }
         }
 
         if (fallback) return <>{fallback}</>

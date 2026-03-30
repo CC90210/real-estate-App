@@ -53,7 +53,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
             if (isHardcodedAdmin) {
                 return { plan: 'enterprise' as PlanId, planName: '🔑 Super Admin', features: PLANS.enterprise.features, hasFullAccess: true };
             }
-            return { plan: 'essentials' as PlanId, planName: 'Essentials', features: PLANS.essentials.features, hasFullAccess: false };
+            // No profile yet — return enterprise features temporarily to prevent "restricted" flash.
+            // The real plan will be resolved once profile loads. This prevents the UI from
+            // flashing "Feature Restricted" during momentary auth state changes (navigation, token refresh).
+            return { plan: 'enterprise' as PlanId, planName: 'Loading...', features: PLANS.enterprise.features, hasFullAccess: true };
         }
 
         const isSuperAdmin = !!profileData.is_super_admin || isHardcodedAdmin;
