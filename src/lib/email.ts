@@ -117,9 +117,9 @@ export async function sendEmail({
 }
 
 /**
- * Send email through the PropFlow platform Gmail (propflowpartners@gmail.com).
- * Calls the internal /api/email/send route which uses Gmail SMTP with an App Password.
- * No OAuth, no user setup — fully pre-packaged. Just env vars.
+ * Send email directly through Gmail SMTP (propflowpartners@gmail.com).
+ * Uses nodemailer with App Password — no HTTP self-call, no OAuth.
+ * Fully pre-packaged. Clients never configure anything.
  *
  * Required env vars:
  *   PROPFLOW_MASTER_EMAIL=propflowpartners@gmail.com
@@ -153,7 +153,10 @@ async function sendViaGmail({
             return { success: false, error: 'No internal secret for platform email sends' }
         }
 
-        const response = await fetch(`${APP_URL}/api/email/send`, {
+        // Use the production URL for the internal email API call
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://propflow.pro'
+
+        const response = await fetch(`${baseUrl}/api/email/send`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

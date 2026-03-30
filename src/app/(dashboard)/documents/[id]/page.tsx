@@ -13,11 +13,12 @@ import {
     DialogTitle,
     DialogFooter,
 } from '@/components/ui/dialog'
-import { ArrowLeft, Printer, PenLine, Check, FileSignature, ShieldCheck, Mail, User, Loader2 } from 'lucide-react'
+import { ArrowLeft, Printer, PenLine, Check, FileSignature, ShieldCheck, Mail, User, Loader2, Copy } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 import { generatePDFBlob } from '@/lib/generatePdf'
 import { uploadAndGetLink } from '@/lib/automations'
+import { useUser } from '@/lib/hooks/useUser'
 
 // ============================================================================
 // PRODUCTION DOCUMENT VIEWER - Renders structured template data
@@ -28,6 +29,7 @@ export default function DocumentViewPage() {
     const params = useParams()
     const router = useRouter()
     const supabase = createClient()
+    const { profile } = useUser()
     const id = params?.id as string
 
     const { data: document, isLoading, error } = useQuery({
@@ -65,6 +67,7 @@ export default function DocumentViewPage() {
     const [showRecipientDialog, setShowRecipientDialog] = useState(false)
     const [recipientEmail, setRecipientEmail] = useState('')
     const [recipientName, setRecipientName] = useState('')
+    const [ccEmail, setCcEmail] = useState('')
 
     const handlePrint = () => window.print()
 
@@ -84,6 +87,7 @@ export default function DocumentViewPage() {
             ''
         setRecipientEmail(emailFromMeta)
         setRecipientName(nameFromMeta)
+        setCcEmail(profile?.email || '')
         setShowRecipientDialog(true)
     }
 
@@ -121,6 +125,7 @@ export default function DocumentViewPage() {
                     recipient_name: recipientName.trim() || null,
                     message: null,
                     document_url: fileUrl,
+                    cc_email: ccEmail.trim() || null,
                 }),
             })
 
@@ -129,8 +134,18 @@ export default function DocumentViewPage() {
                 throw new Error(result?.details?.[0]?.message || result?.error || 'Signing request failed')
             }
 
+            // Warn if email delivery failed but request was created
+            if (result.warning) {
+                toast.warning('Signing request created', {
+                    description: result.warning,
+                    duration: 8000,
+                })
+                return
+            }
+
+            const ccNote = ccEmail.trim() ? ` CC: ${ccEmail.trim()}` : ''
             toast.success('Signing Request Sent', {
-                description: `A secure signing link has been emailed to ${trimmedEmail}.`,
+                description: `Signing link emailed to ${trimmedEmail}.${ccNote}`,
                 icon: <FileSignature className="w-4 h-4 text-emerald-500" />
             })
 
@@ -374,7 +389,7 @@ export default function DocumentViewPage() {
                     <div className="px-6 py-5 space-y-4">
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                Full Name (optional)
+                                Tenant / Recipient Name
                             </label>
                             <div className="relative">
                                 <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -389,13 +404,13 @@ export default function DocumentViewPage() {
                         </div>
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                Email Address <span className="text-red-500">*</span>
+                                Tenant Email <span className="text-red-500">*</span>
                             </label>
                             <div className="relative">
                                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                                 <input
                                     type="email"
-                                    placeholder="recipient@example.com"
+                                    placeholder="tenant@example.com"
                                     value={recipientEmail}
                                     onChange={e => setRecipientEmail(e.target.value)}
                                     onKeyDown={e => {
@@ -405,6 +420,22 @@ export default function DocumentViewPage() {
                                     autoFocus
                                 />
                             </div>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                CC — Your Email
+                            </label>
+                            <div className="relative">
+                                <Copy className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                <input
+                                    type="email"
+                                    placeholder="your@company.com"
+                                    value={ccEmail}
+                                    onChange={e => setCcEmail(e.target.value)}
+                                    className="flex h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                />
+                            </div>
+                            <p className="text-[10px] text-slate-400 ml-1">You will receive a copy of this email. Replies go to this address.</p>
                         </div>
                     </div>
 
