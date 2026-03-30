@@ -1,5 +1,4 @@
-import { loadCompanyBranding, buildDocumentDeliveryHtml, buildInvoiceHtml } from '@/lib/email'
-import { sendPlatformEmail } from '@/lib/email-server'
+import { loadCompanyBranding, buildDocumentDeliveryHtml, buildInvoiceHtml, sendEmail } from '@/lib/email'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 
 /**
@@ -220,7 +219,7 @@ async function handleDocumentSend(
         branding,
     })
 
-    const result = await sendPlatformEmail({
+    const result = await sendEmail({
         to: recipient_email,
         subject,
         html,
@@ -303,7 +302,7 @@ async function handleInvoiceSend(payload: AutomationPayload): Promise<Automation
         branding,
     })
 
-    const result = await sendPlatformEmail({
+    const result = await sendEmail({
         to: recipient_email,
         subject,
         html,

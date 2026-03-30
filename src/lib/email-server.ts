@@ -1,13 +1,19 @@
 /**
- * Server-only email sender that calls /api/email/send (Gmail SMTP via nodemailer).
+ * Server-only email sender — Gmail SMTP via nodemailer.
  *
- * This file does NOT import nodemailer — it calls the API route which does.
- * Safe for Turbopack bundling.
+ * IMPORTANT: Only import this file from API routes (src/app/api/**).
+ * Do NOT import from shared lib files — Turbopack will try to bundle
+ * nodemailer for the client and fail.
+ *
+ * Required env vars:
+ *   PROPFLOW_MASTER_EMAIL       — propflowpartners@gmail.com
+ *   PROPFLOW_GMAIL_APP_PASSWORD — Google App Password (16 chars)
  */
 
-const APP_URL = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+import nodemailer from 'nodemailer'
+
+const MASTER_EMAIL = process.env.PROPFLOW_MASTER_EMAIL || 'propflowpartners@gmail.com'
+const APP_PASSWORD = process.env.PROPFLOW_GMAIL_APP_PASSWORD || ''
 
 export interface PlatformEmailParams {
     to: string | string[]
@@ -25,55 +31,47 @@ export interface PlatformEmailResult {
 }
 
 /**
- * Send email via PropFlow's Gmail SMTP (propflowpartners@gmail.com).
- * Calls /api/email/send internally — that route handles nodemailer.
- *
- * Uses VERCEL_URL for correct internal routing on Vercel (avoids DNS loops).
- * Falls back to Resend if Gmail fails.
+ * Send email via PropFlow's Gmail SMTP. Direct nodemailer — no HTTP calls.
+ * Falls back to Resend if Gmail SMTP is not configured or fails.
  */
 export async function sendPlatformEmail(params: PlatformEmailParams): Promise<PlatformEmailResult> {
     const { to, subject, html, text, cc, replyTo } = params
 
-    const internalSecret = process.env.AUTOMATION_INTERNAL_SECRET || process.env.WEBHOOK_SECRET
-    if (!internalSecret) {
-        return { success: false, error: 'No WEBHOOK_SECRET configured for internal email calls' }
-    }
-
-    const gmailConfigured = !!process.env.PROPFLOW_GMAIL_APP_PASSWORD
-
-    // 1. Try Gmail SMTP via /api/email/send
-    if (gmailConfigured) {
+    // 1. Try Gmail SMTP directly
+    if (APP_PASSWORD) {
         try {
-            const response = await fetch(`${APP_URL}/api/email/send`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-PropFlow-Internal-Secret': internalSecret,
+            const transporter = nodemailer.createTransport({
+                host: 'smtp.gmail.com',
+                port: 587,
+                secure: false,
+                auth: {
+                    user: MASTER_EMAIL,
+                    pass: APP_PASSWORD,
                 },
-                body: JSON.stringify({
-                    to: Array.isArray(to) ? to.join(', ') : to,
-                    subject,
-                    html,
-                    text,
-                    cc: cc ? (Array.isArray(cc) ? cc.join(', ') : cc) : undefined,
-                    replyTo,
-                }),
             })
 
-            if (response.ok) {
-                const data = await response.json()
-                console.log('[EMAIL] Sent via Gmail SMTP:', subject, 'to:', to, 'id:', data.messageId)
-                return { success: true, id: data.messageId }
-            }
+            const toList = Array.isArray(to) ? to.join(', ') : to
+            const ccList = cc ? (Array.isArray(cc) ? cc.join(', ') : cc) : undefined
 
-            const errBody = await response.json().catch(() => ({ error: `HTTP ${response.status}` }))
-            console.warn('[EMAIL] Gmail SMTP failed:', errBody.error)
-            // Fall through to Resend
+            const info = await transporter.sendMail({
+                from: `PropFlow <${MASTER_EMAIL}>`,
+                to: toList,
+                cc: ccList || undefined,
+                replyTo: replyTo || undefined,
+                subject,
+                text: text || undefined,
+                html: html || undefined,
+            })
+
+            console.log('[EMAIL] Sent via Gmail SMTP:', subject, 'to:', toList, 'id:', info.messageId)
+            return { success: true, id: info.messageId }
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : String(err)
-            console.warn('[EMAIL] Gmail SMTP call failed:', msg)
+            const message = err instanceof Error ? err.message : String(err)
+            console.error('[EMAIL] Gmail SMTP failed:', message)
             // Fall through to Resend
         }
+    } else {
+        console.warn('[EMAIL] PROPFLOW_GMAIL_APP_PASSWORD not set — skipping Gmail')
     }
 
     // 2. Fallback: Resend
@@ -95,20 +93,22 @@ export async function sendPlatformEmail(params: PlatformEmailParams): Promise<Pl
 
             const { data, error } = await resend.emails.send(resendParams)
             if (error) {
+                console.error('[EMAIL] Resend error:', error)
                 return { success: false, error: error.message }
             }
             console.log('[EMAIL] Sent via Resend fallback:', subject, 'to:', to)
             return { success: true, id: data?.id }
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err)
+            console.error('[EMAIL] Resend failed:', msg)
             return { success: false, error: msg }
         }
     }
 
     return {
         success: false,
-        error: gmailConfigured
-            ? 'Gmail SMTP call failed and no Resend fallback configured'
-            : 'No email provider configured. Set PROPFLOW_GMAIL_APP_PASSWORD.',
+        error: APP_PASSWORD
+            ? 'Gmail SMTP failed and no RESEND_API_KEY fallback configured'
+            : 'No email provider configured. Set PROPFLOW_GMAIL_APP_PASSWORD in Vercel env vars.',
     }
 }
