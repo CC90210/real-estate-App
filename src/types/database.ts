@@ -733,6 +733,7 @@ export interface SigningRequest {
   signed_at: string | null;
   signature_data: {
     typed_name: string;
+    signature_image?: string;
     ip_address?: string;
     user_agent?: string;
     signed_at: string;
