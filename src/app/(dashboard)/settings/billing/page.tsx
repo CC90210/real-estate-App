@@ -13,7 +13,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 
 export default function BillingPage() {
-    const { company, isLoading } = useAuth()
+    const { company, profile, isLoading } = useAuth()
     const { colors } = useAccentColor()
     const [portalLoading, setPortalLoading] = useState(false)
 
@@ -36,6 +36,17 @@ export default function BillingPage() {
 
     if (isLoading) {
         return <div className="p-10">Loading subscription details...</div>
+    }
+
+    // Only company admins can access billing
+    if (profile?.role && profile.role !== 'admin') {
+        return (
+            <div className="p-10 text-center">
+                <Shield className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+                <h2 className="text-xl font-bold text-slate-900 mb-2">Admin Access Required</h2>
+                <p className="text-slate-500">Only company administrators can manage billing and subscriptions.</p>
+            </div>
+        )
     }
 
     const { effectivePlan, subscriptionStatus, isEnterprise } = resolveCompanyPlan(company || {})

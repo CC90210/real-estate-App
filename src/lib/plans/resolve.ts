@@ -72,7 +72,18 @@ export function resolveCompanyPlan(company: {
         }
     }
 
-    // 4. Default — no plan (free/limited)
+    // 4. Trialing users (signed up but haven't picked a plan yet) get Agent Pro features.
+    //    This lets new users explore the platform immediately after signup.
+    if (company.subscription_status === 'trialing') {
+        return {
+            effectivePlan: PLANS.agent_pro,
+            planSource: 'default',
+            isEnterprise: false,
+            subscriptionStatus: 'trialing',
+        }
+    }
+
+    // 5. Default — no plan, no trial (expired or never started)
     return {
         effectivePlan: {
             id: 'none' as keyof typeof PLANS,
@@ -81,9 +92,9 @@ export function resolveCompanyPlan(company: {
             price: 0,
             displayPrice: '$0',
             stripePriceId: null,
-            features: { crm: [], finance: [], social: [] },
+            features: { crm: ['Up to 3 Properties (read-only)'], finance: [], social: [] },
             limits: {
-                properties: 0,
+                properties: 3,
                 teamMembers: 1,
                 socialPlatforms: 0,
                 showings: false,
@@ -96,6 +107,6 @@ export function resolveCompanyPlan(company: {
         },
         planSource: 'default',
         isEnterprise: false,
-        subscriptionStatus: 'none',
+        subscriptionStatus: company.subscription_status || 'none',
     }
 }
