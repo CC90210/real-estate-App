@@ -341,6 +341,36 @@ export async function sendApplicationStatusEmail({
     })
 }
 
+export function buildInvoiceHtml(params: {
+    recipientName: string
+    invoiceNumber: string
+    amount: number
+    dueDate: string
+    companyName: string
+    downloadUrl?: string
+    branding?: CompanyBranding
+}): { html: string; subject: string } {
+    const { recipientName, invoiceNumber, amount, dueDate, companyName, downloadUrl, branding } = params
+    const html = baseTemplate(`
+        <h2>Invoice ${invoiceNumber}</h2>
+        <p>Hi ${recipientName},</p>
+        <p>A new invoice has been generated for you.</p>
+        <div class="highlight-box">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 8px 0; color: #94a3b8; font-size: 13px; font-weight: 600;">Invoice #</td><td style="padding: 8px 0; text-align: right; font-weight: 700;">${invoiceNumber}</td></tr>
+                <tr><td style="padding: 8px 0; color: #94a3b8; font-size: 13px; font-weight: 600;">Amount</td><td style="padding: 8px 0; text-align: right; font-weight: 900; font-size: 20px; color: #0f172a;">$${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td></tr>
+                <tr><td style="padding: 8px 0; color: #94a3b8; font-size: 13px; font-weight: 600;">Due Date</td><td style="padding: 8px 0; text-align: right; font-weight: 700;">${dueDate}</td></tr>
+            </table>
+        </div>
+        ${downloadUrl ? `
+        <div style="text-align: center; margin: 24px 0;">
+            <a href="${downloadUrl}" class="btn">Download Invoice</a>
+        </div>` : ''}
+        <p style="font-size: 13px; color: #94a3b8;">Please contact us if you have any questions about this invoice.</p>
+    `, companyName, branding)
+    return { html, subject: `Invoice ${invoiceNumber} — $${amount.toFixed(2)} Due ${dueDate}` }
+}
+
 export async function sendInvoiceEmail({
     email,
     recipientName,
@@ -509,6 +539,48 @@ export async function sendLeaseExpiryEmail({
         subject: `Lease Expiry Notice — ${daysRemaining} days remaining`,
         html,
     })
+}
+
+/**
+ * Build the HTML for a document delivery email (exported for server-side callers
+ * that use sendPlatformEmail directly instead of the client-safe sendEmail).
+ */
+export function buildDocumentDeliveryHtml(params: {
+    recipientName: string
+    documentTitle: string
+    documentType: string
+    propertyAddress?: string
+    agentName?: string
+    companyName: string
+    viewUrl: string
+    message?: string
+    branding?: CompanyBranding
+}): { html: string; subject: string } {
+    const { recipientName, documentTitle, documentType, propertyAddress, agentName, companyName, viewUrl, message, branding } = params
+    const typeLabels: Record<string, string> = {
+        lease_proposal: 'Lease Proposal',
+        property_summary: 'Property Summary',
+        showing_sheet: 'Showing Sheet',
+        application_summary: 'Application Summary',
+        invoice: 'Invoice',
+    }
+    const html = baseTemplate(`
+        <h2>${typeLabels[documentType] || 'Document'} Ready</h2>
+        <p>Hi ${recipientName},</p>
+        <p>${agentName || 'Your agent'} has prepared a document for your review:</p>
+        <div class="highlight-box">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 8px 0; color: #94a3b8; font-size: 13px; font-weight: 600;">Document</td><td style="padding: 8px 0; text-align: right; font-weight: 700;">${documentTitle}</td></tr>
+                ${propertyAddress ? `<tr><td style="padding: 8px 0; color: #94a3b8; font-size: 13px; font-weight: 600;">Property</td><td style="padding: 8px 0; text-align: right; font-weight: 700;">${propertyAddress}</td></tr>` : ''}
+            </table>
+        </div>
+        ${message ? `<p style="font-style: italic; color: #64748b;">"${message}"</p>` : ''}
+        <div style="text-align: center; margin: 32px 0;">
+            <a href="${viewUrl}" class="btn btn-primary">View Document</a>
+        </div>
+        <p style="font-size: 13px; color: #94a3b8;">If you have questions, please contact your agent directly.</p>
+    `, companyName, branding)
+    return { html, subject: `${documentTitle} — Please Review` }
 }
 
 export async function sendDocumentDeliveryEmail({

@@ -1,4 +1,5 @@
-import { sendDocumentDeliveryEmail, sendInvoiceEmail, loadCompanyBranding } from '@/lib/email'
+import { loadCompanyBranding, buildDocumentDeliveryHtml, buildInvoiceHtml } from '@/lib/email'
+import { sendPlatformEmail } from '@/lib/email-server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 
 /**
@@ -206,10 +207,8 @@ async function handleDocumentSend(
         senderEmail = (sender?.email as string) || undefined
     }
 
-    // Send the email (centralized PropFlow sender with per-company branding)
-    // CC the agent so they have a record, reply-to goes to their email
-    const result = await sendDocumentDeliveryEmail({
-        email: recipient_email,
+    // Build branded HTML and send directly via Gmail SMTP
+    const { html, subject } = buildDocumentDeliveryHtml({
         recipientName: recipient_name || 'Valued Client',
         documentTitle,
         documentType: document_type || 'document',
@@ -219,7 +218,13 @@ async function handleDocumentSend(
         viewUrl,
         message,
         branding,
-        ccSender: senderEmail,
+    })
+
+    const result = await sendPlatformEmail({
+        to: recipient_email,
+        subject,
+        html,
+        cc: senderEmail,
         replyTo: senderEmail,
     })
 
@@ -288,8 +293,7 @@ async function handleInvoiceSend(payload: AutomationPayload): Promise<Automation
     const branding = await loadCompanyBranding(company_id)
     const companyName = branding.name || 'PropFlow'
 
-    const result = await sendInvoiceEmail({
-        email: recipient_email,
+    const { html, subject } = buildInvoiceHtml({
         recipientName: recipient_name || 'Tenant',
         invoiceNumber: invoice_number,
         amount: amount || 0,
@@ -297,6 +301,12 @@ async function handleInvoiceSend(payload: AutomationPayload): Promise<Automation
         companyName,
         downloadUrl: document_id ? `${appUrl}/invoices/${document_id}` : undefined,
         branding,
+    })
+
+    const result = await sendPlatformEmail({
+        to: recipient_email,
+        subject,
+        html,
     })
 
     await logExecution(

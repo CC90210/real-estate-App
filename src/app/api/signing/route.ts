@@ -4,7 +4,8 @@ import { createClient } from '@/lib/supabase/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { apiError, zodIssuesToDetails } from '@/lib/api-response';
 import { rateLimit } from '@/lib/rate-limit';
-import { sendEmail, loadCompanyBranding } from '@/lib/email';
+import { loadCompanyBranding } from '@/lib/email';
+import { sendPlatformEmail } from '@/lib/email-server';
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, prefix: 'api:signing' });
 
@@ -183,7 +184,7 @@ export async function POST(req: NextRequest) {
 
         // CC the agent so they have a copy; use client-provided cc_email or fall back to profile
         const senderEmail = cc_email || profile.email || user.email || undefined;
-        const emailResult = await sendEmail({
+        const emailResult = await sendPlatformEmail({
             to: recipient_email,
             subject: `${senderName} (${companyName}) requests your signature — ${title}`,
             html,

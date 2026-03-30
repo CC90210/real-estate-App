@@ -3,7 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/services/activity-logger'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { canAddTeamMember } from '@/lib/plan-limits'
-import { sendTeamInviteEmail, loadCompanyBranding } from '@/lib/email'
+import { loadCompanyBranding } from '@/lib/email'
+import { sendPlatformEmail } from '@/lib/email-server'
 import { rateLimit } from '@/lib/rate-limit'
 import { apiError } from '@/lib/api-response'
 
@@ -139,13 +140,30 @@ export async function POST(req: Request) {
 
         const branding = await loadCompanyBranding(profile.company_id)
 
-        await sendTeamInviteEmail({
-            email: normalizedEmail,
-            inviterName: inviterProfile.data?.full_name || user.email || 'A colleague',
-            companyName: companyData?.name || 'Your company',
-            role,
-            inviteUrl,
-            branding,
+        const inviterName = inviterProfile.data?.full_name || user.email || 'A colleague'
+        const companyName = companyData?.name || 'Your company'
+        const accent = branding.primary_color || '#3b82f6'
+        const logoHtml = branding.logo_url
+            ? `<img src="${branding.logo_url}" alt="${companyName}" style="max-height:48px;max-width:200px;margin:0 auto 8px;display:block;" />`
+            : ''
+
+        await sendPlatformEmail({
+            to: normalizedEmail,
+            subject: `${inviterName} invited you to join ${companyName}`,
+            html: `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+                body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;padding:0;background:#f8fafc;color:#1e293b}
+                .c{max-width:600px;margin:0 auto;padding:40px 20px}.card{background:#fff;border-radius:16px;padding:40px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+                .logo{text-align:center;margin-bottom:32px}h2{font-size:22px;font-weight:800;margin:0 0 16px}p{font-size:15px;line-height:1.7;color:#475569;margin:0 0 16px}
+                .btn{display:inline-block;padding:14px 32px;background:${accent};color:#fff!important;text-decoration:none;border-radius:12px;font-weight:700;font-size:14px}
+                .footer{text-align:center;margin-top:32px;font-size:12px;color:#94a3b8}
+            </style></head><body><div class="c"><div class="card">
+                <div class="logo">${logoHtml}<h1 style="font-size:24px;font-weight:900;margin:0">${companyName}</h1><p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:3px;color:${accent};margin:4px 0 0">Powered by PropFlow</p></div>
+                <h2>You're Invited!</h2>
+                <p><strong>${inviterName}</strong> has invited you to join <strong>${companyName}</strong> as a <strong>${role}</strong>.</p>
+                <p>Click the button below to create your account and get started:</p>
+                <div style="text-align:center;margin:32px 0"><a href="${inviteUrl}" class="btn">Accept Invitation</a></div>
+                <p style="font-size:13px;color:#94a3b8">This invitation expires in 7 days.</p>
+            </div><div class="footer"><p>&copy; ${new Date().getFullYear()} ${companyName}. Powered by PropFlow.</p></div></div></body></html>`,
         })
 
         console.log('[Invite] Invitation created successfully')
