@@ -12,6 +12,7 @@ const postLimiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 200, pr
 const submitSignatureSchema = z.object({
     token: z.string().min(1),
     typed_name: z.string().min(1).max(255),
+    signature_image: z.string().max(2_000_000).optional(), // base64 PNG data URL from canvas
 });
 
 /**
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
 
         const { data: signingRequest, error } = await db
             .from('signing_requests')
-            .select('id, title, recipient_name, recipient_email, document_url, status, expires_at, viewed_at, company_id, message')
+            .select('id, title, recipient_name, recipient_email, document_url, document_id, status, expires_at, viewed_at, company_id, message')
             .eq('signing_token', token)
             .maybeSingle();
 
@@ -80,6 +81,23 @@ export async function GET(req: NextRequest) {
         // Load company branding for the signing page
         const branding = await loadCompanyBranding(signingRequest.company_id);
 
+        // Fetch linked document content if present
+        let documentPreview: { title: string; type: string; content: unknown } | null = null;
+        if (signingRequest.document_id) {
+            const { data: doc } = await db
+                .from('documents')
+                .select('type, content')
+                .eq('id', signingRequest.document_id)
+                .maybeSingle();
+            if (doc) {
+                documentPreview = {
+                    title: signingRequest.title,
+                    type: doc.type as string,
+                    content: doc.content,
+                };
+            }
+        }
+
         // Record first view
         if (!signingRequest.viewed_at) {
             const ip = getClientIp(req);
@@ -110,6 +128,7 @@ export async function GET(req: NextRequest) {
                 message: signingRequest.message,
                 expires_at: signingRequest.expires_at,
             },
+            document: documentPreview,
             branding: {
                 name: branding.name,
                 logo_url: branding.logo_url ?? null,
@@ -140,7 +159,7 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        const { token, typed_name } = validationResult.data;
+        const { token, typed_name, signature_image } = validationResult.data;
 
         // Rate limit by token to prevent brute-force
         try {
@@ -186,6 +205,7 @@ export async function POST(req: NextRequest) {
 
         const signatureData = {
             typed_name,
+            signature_image: signature_image ?? undefined,
             ip_address: ip ?? undefined,
             user_agent: userAgent ?? undefined,
             signed_at: signedAt,

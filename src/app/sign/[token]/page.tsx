@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -14,6 +14,7 @@ import {
     ShieldCheck,
     XCircle,
     Mail,
+    FileText,
 } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -36,6 +37,12 @@ interface SigningRequestInfo {
     expires_at: string | null
 }
 
+interface DocumentPreview {
+    title: string
+    type: string
+    content: unknown
+}
+
 type PageState =
     | { phase: 'loading' }
     | { phase: 'error'; message: string }
@@ -46,6 +53,7 @@ type PageState =
           phase: 'ready'
           signingRequest: SigningRequestInfo
           branding: Branding
+          document: DocumentPreview | null
       }
     | {
           phase: 'signed'
@@ -69,6 +77,180 @@ function accentTextStyle(color: string | null | undefined): React.CSSProperties 
 
 function accentBorderStyle(color: string | null | undefined): React.CSSProperties {
     return { borderColor: color || '#3b82f6' }
+}
+
+// ============================================================================
+// SIGNATURE CANVAS COMPONENT (inline — no separate file)
+// ============================================================================
+
+interface SignatureCanvasProps {
+    accentColor: string
+    onSignatureChange: (dataUrl: string | null) => void
+    disabled?: boolean
+}
+
+function SignatureCanvas({ accentColor, onSignatureChange, disabled }: SignatureCanvasProps) {
+    const canvasRef = useRef<HTMLCanvasElement>(null)
+    const isDrawingRef = useRef(false)
+    const lastPosRef = useRef<{ x: number; y: number } | null>(null)
+    const hasStrokesRef = useRef(false)
+
+    const getPos = (
+        canvas: HTMLCanvasElement,
+        clientX: number,
+        clientY: number
+    ): { x: number; y: number } => {
+        const rect = canvas.getBoundingClientRect()
+        const scaleX = canvas.width / rect.width
+        const scaleY = canvas.height / rect.height
+        return {
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY,
+        }
+    }
+
+    const startDraw = useCallback(
+        (pos: { x: number; y: number }) => {
+            if (disabled) return
+            const canvas = canvasRef.current
+            if (!canvas) return
+            const ctx = canvas.getContext('2d')
+            if (!ctx) return
+
+            isDrawingRef.current = true
+            lastPosRef.current = pos
+
+            ctx.beginPath()
+            ctx.arc(pos.x, pos.y, 1, 0, Math.PI * 2)
+            ctx.fillStyle = accentColor
+            ctx.fill()
+        },
+        [accentColor, disabled]
+    )
+
+    const draw = useCallback(
+        (pos: { x: number; y: number }) => {
+            if (!isDrawingRef.current || disabled) return
+            const canvas = canvasRef.current
+            if (!canvas) return
+            const ctx = canvas.getContext('2d')
+            if (!ctx || !lastPosRef.current) return
+
+            ctx.beginPath()
+            ctx.moveTo(lastPosRef.current.x, lastPosRef.current.y)
+            ctx.lineTo(pos.x, pos.y)
+            ctx.strokeStyle = accentColor
+            ctx.lineWidth = 2
+            ctx.lineCap = 'round'
+            ctx.lineJoin = 'round'
+            ctx.stroke()
+
+            lastPosRef.current = pos
+            hasStrokesRef.current = true
+        },
+        [accentColor, disabled]
+    )
+
+    const stopDraw = useCallback(() => {
+        if (!isDrawingRef.current) return
+        isDrawingRef.current = false
+        lastPosRef.current = null
+
+        const canvas = canvasRef.current
+        if (canvas && hasStrokesRef.current) {
+            onSignatureChange(canvas.toDataURL('image/png'))
+        }
+    }, [onSignatureChange])
+
+    const clear = useCallback(() => {
+        const canvas = canvasRef.current
+        if (!canvas) return
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        hasStrokesRef.current = false
+        onSignatureChange(null)
+    }, [onSignatureChange])
+
+    // Mouse events
+    const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        const canvas = canvasRef.current
+        if (!canvas) return
+        startDraw(getPos(canvas, e.clientX, e.clientY))
+    }
+
+    const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        const canvas = canvasRef.current
+        if (!canvas) return
+        draw(getPos(canvas, e.clientX, e.clientY))
+    }
+
+    const handleMouseUp = () => stopDraw()
+    const handleMouseLeave = () => stopDraw()
+
+    // Touch events
+    const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+        e.preventDefault()
+        const canvas = canvasRef.current
+        if (!canvas || e.touches.length === 0) return
+        const t = e.touches[0]
+        startDraw(getPos(canvas, t.clientX, t.clientY))
+    }
+
+    const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+        e.preventDefault()
+        const canvas = canvasRef.current
+        if (!canvas || e.touches.length === 0) return
+        const t = e.touches[0]
+        draw(getPos(canvas, t.clientX, t.clientY))
+    }
+
+    const handleTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
+        e.preventDefault()
+        stopDraw()
+    }
+
+    return (
+        <div className="space-y-2">
+            <div
+                className="relative rounded-xl border-2 overflow-hidden bg-white"
+                style={{ borderColor: accentColor + '40' }}
+            >
+                <canvas
+                    ref={canvasRef}
+                    width={800}
+                    height={200}
+                    className="w-full touch-none block"
+                    style={{
+                        cursor: disabled ? 'default' : 'crosshair',
+                        height: '150px',
+                    }}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseLeave}
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                />
+                <div
+                    className="absolute bottom-2 left-3 text-[10px] font-medium pointer-events-none select-none"
+                    style={{ color: accentColor + '60' }}
+                >
+                    Sign here
+                </div>
+            </div>
+            {!disabled && (
+                <button
+                    type="button"
+                    onClick={clear}
+                    className="text-xs text-slate-400 hover:text-slate-600 font-medium underline underline-offset-2 transition-colors"
+                >
+                    Clear signature
+                </button>
+            )}
+        </div>
+    )
 }
 
 // ============================================================================
@@ -240,7 +422,7 @@ function SuccessState({
                     <div>
                         <h2 className="text-xl font-black text-slate-900 mb-1">Document Signed</h2>
                         <p className="text-slate-500 text-sm">
-                            Signed on {format(new Date(signedAt), 'MMMM d, yyyy \'at\' h:mm a')}
+                            Signed on {format(new Date(signedAt), "MMMM d, yyyy 'at' h:mm a")}
                         </p>
                     </div>
 
@@ -293,6 +475,7 @@ export default function SigningPage() {
 
     const [pageState, setPageState] = useState<PageState>({ phase: 'loading' })
     const [typedName, setTypedName] = useState('')
+    const [signatureImage, setSignatureImage] = useState<string | null>(null)
     const [agreed, setAgreed] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [submitError, setSubmitError] = useState<string | null>(null)
@@ -309,12 +492,12 @@ export default function SigningPage() {
                 success?: boolean
                 already_signed?: boolean
                 signing_request?: SigningRequestInfo & { title: string; recipient_name: string | null }
+                document?: DocumentPreview | null
                 branding?: Branding
                 error?: string
             }
 
             if (res.status === 410) {
-                // Expired or cancelled
                 const msg = data.error || ''
                 if (msg.toLowerCase().includes('cancel')) {
                     setPageState({ phase: 'cancelled' })
@@ -346,6 +529,7 @@ export default function SigningPage() {
                     phase: 'ready',
                     signingRequest: data.signing_request,
                     branding: data.branding,
+                    document: data.document ?? null,
                 })
             } else {
                 setPageState({
@@ -376,7 +560,11 @@ export default function SigningPage() {
             const res = await fetch('/api/signing/verify', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token, typed_name: typedName.trim() }),
+                body: JSON.stringify({
+                    token,
+                    typed_name: typedName.trim(),
+                    signature_image: signatureImage ?? undefined,
+                }),
             })
 
             const data = await res.json() as { success?: boolean; error?: string }
@@ -435,7 +623,7 @@ export default function SigningPage() {
 
     // ---- Ready state: main signing UI ----
 
-    const { signingRequest, branding } = pageState
+    const { signingRequest, branding, document } = pageState
     const accent = branding.primary_color || '#3b82f6'
     const canSign = typedName.trim().length > 0 && agreed && !isSubmitting
 
@@ -505,8 +693,27 @@ export default function SigningPage() {
                         )}
                     </div>
 
-                    {/* Document preview link */}
-                    {signingRequest.document_url && (
+                    {/* Document preview — shown when document content exists in PropFlow */}
+                    {document ? (
+                        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                            <div
+                                className="flex items-center gap-2 px-4 py-3 border-b border-slate-100"
+                                style={{ backgroundColor: `${accent}08` }}
+                            >
+                                <FileText className="w-4 h-4 shrink-0" style={accentTextStyle(accent)} />
+                                <span className="text-xs font-black uppercase tracking-widest" style={accentTextStyle(accent)}>
+                                    Document Preview
+                                </span>
+                            </div>
+                            <div className="px-4 py-3 space-y-1">
+                                <p className="text-sm font-semibold text-slate-900">{document.title}</p>
+                                <p className="text-xs text-slate-500 leading-relaxed">
+                                    Full document attached to your email. Please review before signing.
+                                </p>
+                            </div>
+                        </div>
+                    ) : signingRequest.document_url ? (
+                        /* Fallback: external document URL link (no PropFlow login required) */
                         <a
                             href={signingRequest.document_url}
                             target="_blank"
@@ -517,10 +724,11 @@ export default function SigningPage() {
                             <FileSignature className="w-4 h-4 shrink-0" />
                             View Document
                         </a>
-                    )}
+                    ) : null}
 
                     {/* Signing form */}
-                    <form onSubmit={handleSubmit} className="space-y-4">
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        {/* Typed legal name */}
                         <div className="space-y-1.5">
                             <label
                                 htmlFor="typed-name"
@@ -546,6 +754,21 @@ export default function SigningPage() {
                                     {typedName}
                                 </p>
                             )}
+                        </div>
+
+                        {/* Drawn signature pad */}
+                        <div className="space-y-1.5">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                Draw Your Signature
+                            </p>
+                            <SignatureCanvas
+                                accentColor={accent}
+                                onSignatureChange={setSignatureImage}
+                                disabled={isSubmitting}
+                            />
+                            <p className="text-[11px] text-slate-400">
+                                Use your mouse or finger to draw your signature above.
+                            </p>
                         </div>
 
                         {/* Legal agreement checkbox */}
@@ -582,8 +805,8 @@ export default function SigningPage() {
                                 </div>
                             </div>
                             <span className="text-xs text-slate-600 leading-relaxed select-none">
-                                I agree that my typed name above constitutes a legally binding
-                                electronic signature for{' '}
+                                I agree that my typed name and drawn signature above constitute a
+                                legally binding electronic signature for{' '}
                                 <strong className="text-slate-800">{signingRequest.title}</strong>,
                                 with the same legal effect as a handwritten signature.
                             </span>
