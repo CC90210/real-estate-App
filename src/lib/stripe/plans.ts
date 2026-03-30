@@ -33,7 +33,7 @@ export const PLANS: Record<PlanId, Plan> = {
         tagline: 'Core tools for solo agents & landlords starting their journey.',
         price: 14900,   // $149/month
         displayPrice: '$149',
-        stripePriceId: 'price_placeholder_agent_pro',
+        stripePriceId: 'price_1TGoaCHAczmILpJqPViavRcJ',
         features: {
             crm: [
                 'Up to 25 Properties',
@@ -66,7 +66,7 @@ export const PLANS: Record<PlanId, Plan> = {
         tagline: 'Streamlined compliance & paperwork for growing portfolios.',
         price: 28900,   // $289/month
         displayPrice: '$289',
-        stripePriceId: 'price_placeholder_agency_growth',
+        stripePriceId: 'price_1TGobSHAczmILpJqWeifOtPT',
         popular: true,
         features: {
             crm: [
@@ -100,7 +100,7 @@ export const PLANS: Record<PlanId, Plan> = {
         tagline: 'Full operational command for large organizations.',
         price: 49900,   // $499/month
         displayPrice: '$499',
-        stripePriceId: 'price_placeholder_brokerage_command',
+        stripePriceId: 'price_1TGocOHAczmILpJqCo9rzbSY',
         features: {
             crm: [
                 'Unlimited Properties',
