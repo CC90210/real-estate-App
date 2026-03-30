@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,10 +10,29 @@ import { resolveCompanyPlan } from '@/lib/plans/resolve'
 import { cn } from '@/lib/utils'
 import { useAccentColor } from '@/lib/hooks/useAccentColor'
 import Link from 'next/link'
+import { toast } from 'sonner'
 
 export default function BillingPage() {
     const { company, isLoading } = useAuth()
     const { colors } = useAccentColor()
+    const [portalLoading, setPortalLoading] = useState(false)
+
+    async function handleManageSubscription() {
+        setPortalLoading(true)
+        try {
+            const res = await fetch('/api/stripe/portal', { method: 'POST' })
+            const data = await res.json()
+            if (!res.ok) {
+                toast.error(data.error || 'Could not open billing portal')
+                return
+            }
+            window.location.href = data.url
+        } catch {
+            toast.error('An unexpected error occurred. Please try again.')
+        } finally {
+            setPortalLoading(false)
+        }
+    }
 
     if (isLoading) {
         return <div className="p-10">Loading subscription details...</div>
@@ -67,8 +87,12 @@ export default function BillingPage() {
                         </div>
 
                         <div className="pt-6">
-                            <Button className="w-full h-12 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800">
-                                Manage Subscription
+                            <Button
+                                className="w-full h-12 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800"
+                                onClick={handleManageSubscription}
+                                disabled={portalLoading}
+                            >
+                                {portalLoading ? 'Opening Portal...' : 'Manage Subscription'}
                             </Button>
                             <p className="text-center text-xs text-slate-400 font-medium mt-3">
                                 Managed via Stripe Secure Portal

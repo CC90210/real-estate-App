@@ -58,13 +58,17 @@ export function resolveCompanyPlan(company: {
         }
     }
 
-    // 3. Check for active Stripe subscription
+    // 3. Check for active Stripe subscription (cancelled subscriptions get no access)
     if (company.subscription_plan && PLANS[company.subscription_plan as PlanId]) {
-        return {
-            effectivePlan: PLANS[company.subscription_plan as PlanId],
-            planSource: 'subscription',
-            isEnterprise: false,
-            subscriptionStatus: company.subscription_status || 'none',
+        if (company.subscription_status === 'cancelled') {
+            // Fall through to default — cancelled means no active entitlement
+        } else {
+            return {
+                effectivePlan: PLANS[company.subscription_plan as PlanId],
+                planSource: 'subscription',
+                isEnterprise: false,
+                subscriptionStatus: company.subscription_status || 'none',
+            }
         }
     }
 
