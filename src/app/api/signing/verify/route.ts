@@ -90,7 +90,7 @@ export async function GET(req: NextRequest) {
                 .update({ viewed_at: new Date().toISOString(), status: 'viewed' })
                 .eq('id', signingRequest.id);
 
-            await db.from('signing_audit_logs').insert({
+            await db.from('signing_audit_log').insert({
                 signing_request_id: signingRequest.id,
                 action: 'viewed',
                 actor_email: signingRequest.recipient_email,
@@ -202,7 +202,7 @@ export async function POST(req: NextRequest) {
 
         if (updateError) throw updateError;
 
-        await db.from('signing_audit_logs').insert({
+        await db.from('signing_audit_log').insert({
             signing_request_id: signingRequest.id,
             action: 'signed',
             actor_email: signingRequest.recipient_email,

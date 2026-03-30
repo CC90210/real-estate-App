@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { apiError, zodIssuesToDetails } from '@/lib/api-response';
 import { rateLimit } from '@/lib/rate-limit';
 import { sendEmail, loadCompanyBranding } from '@/lib/email';
@@ -149,12 +150,17 @@ export async function POST(req: NextRequest) {
 
         if (insertError) throw insertError;
 
-        // Audit log: created
-        await supabase.from('signing_audit_logs').insert({
+        // Admin client for audit log writes (no INSERT RLS policy for authenticated role)
+        const adminDb = getSupabaseAdmin();
+
+        // Audit log: created (best-effort, never blocks the request)
+        adminDb.from('signing_audit_log').insert({
             signing_request_id: signingRequest.id,
             action: 'created',
             actor_email: profile.email ?? user.email,
             metadata: { sender_id: user.id },
+        }).then(({ error: auditErr }) => {
+            if (auditErr) console.warn('[Signing] Audit log (created) failed:', auditErr.message);
         });
 
         // Send signing email
@@ -190,21 +196,25 @@ export async function POST(req: NextRequest) {
                 .update({ status: 'sent' })
                 .eq('id', signingRequest.id);
 
-            await supabase.from('signing_audit_logs').insert({
+            adminDb.from('signing_audit_log').insert({
                 signing_request_id: signingRequest.id,
                 action: 'sent',
                 actor_email: senderEmail,
                 metadata: { email_id: (emailResult as { id?: string }).id ?? null, recipient_email },
+            }).then(({ error: auditErr }) => {
+                if (auditErr) console.warn('[Signing] Audit log (sent) failed:', auditErr.message);
             });
 
             signingRequest.status = 'sent';
         } else {
             // Email failed — log it and warn the user
-            await supabase.from('signing_audit_logs').insert({
+            adminDb.from('signing_audit_log').insert({
                 signing_request_id: signingRequest.id,
                 action: 'email_failed',
                 actor_email: senderEmail,
                 metadata: { error: emailResult.error, recipient_email },
+            }).then(({ error: auditErr }) => {
+                if (auditErr) console.warn('[Signing] Audit log (email_failed) failed:', auditErr.message);
             });
 
             return NextResponse.json({

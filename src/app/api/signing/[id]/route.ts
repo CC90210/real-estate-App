@@ -148,7 +148,7 @@ export async function PATCH(
         if (updateError) throw updateError;
 
         // Audit log: cancelled
-        await supabase.from('signing_audit_logs').insert({
+        await supabase.from('signing_audit_log').insert({
             signing_request_id: id,
             action: 'cancelled',
             actor_email: profile.email ?? user.email,
@@ -216,7 +216,7 @@ export async function DELETE(
         if (deleteError) throw deleteError;
 
         // Audit log: cancelled via delete
-        await supabase.from('signing_audit_logs').insert({
+        await supabase.from('signing_audit_log').insert({
             signing_request_id: id,
             action: 'cancelled',
             actor_email: profile.email ?? user.email,
