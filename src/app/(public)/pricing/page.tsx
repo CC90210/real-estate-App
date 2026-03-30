@@ -224,7 +224,7 @@ function PricingCard({
                     <span className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">/month</span>
                 </div>
                 <p className="text-xs text-slate-400 font-bold mt-2 uppercase tracking-wide">
-                    14-day free trial included
+                    {planId === 'brokerage_command' ? '14-day free trial included' : 'Billed immediately'}
                 </p>
             </div>
 

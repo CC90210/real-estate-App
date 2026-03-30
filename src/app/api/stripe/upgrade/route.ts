@@ -26,8 +26,8 @@ export async function POST(req: Request) {
             return apiError('Invalid plan', { status: 400, code: 'INVALID_PLAN' })
         }
 
-        if (!planConfig.stripePriceId || planConfig.stripePriceId.includes('placeholder')) {
-            return apiError('Stripe products not configured. Please add real price IDs to plans.ts', {
+        if (!planConfig.stripePriceId) {
+            return apiError('Plan pricing not configured', {
                 status: 501,
                 code: 'STRIPE_NOT_CONFIGURED',
             })
@@ -117,25 +117,27 @@ export async function POST(req: Request) {
             }
         }
 
-        const session = await stripe.checkout.sessions.create({
+        // Only Brokerage Command gets a trial on first checkout
+        const isBrokerageCommand = newPlan === 'brokerage_command'
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://propflow.pro'
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sessionParams: any = {
             customer: customerId,
             payment_method_types: ['card'],
-            line_items: [{
-                price: planConfig.stripePriceId,
-                quantity: 1,
-            }],
             mode: 'subscription',
+            line_items: [{ price: planConfig.stripePriceId, quantity: 1 }],
             subscription_data: {
-                trial_period_days: 14,
-                metadata: {
-                    plan: newPlan,
-                    user_id: user.id,
-                    company_id: profile?.company_id || '',
-                },
+                metadata: { plan: newPlan, user_id: user.id, company_id: profile?.company_id || '' },
             },
-            success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard?upgraded=${newPlan}`,
-            cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/settings?tab=billing&cancelled=true`,
-        })
+            success_url: `${appUrl}/dashboard?checkout=success&plan=${newPlan}`,
+            cancel_url: `${appUrl}/pricing?checkout=cancelled`,
+        }
+        if (isBrokerageCommand) {
+            sessionParams.subscription_data.trial_period_days = 14
+        }
+
+        const session = await stripe.checkout.sessions.create(sessionParams)
 
         return NextResponse.json({ url: session.url })
     } catch (error) {
