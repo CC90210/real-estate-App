@@ -15,6 +15,7 @@ import {
     XCircle,
     Mail,
     FileText,
+    ChevronDown,
 } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -95,34 +96,50 @@ interface ParsedDocumentContent {
 function parseDocumentContent(raw: unknown): ParsedDocumentContent | null {
     if (!raw || typeof raw !== 'object') return null
 
-    // Helper: check if a value looks like a valid sections array
     const isSectionsArray = (val: unknown): val is DocumentSection[] =>
         Array.isArray(val) &&
         val.length > 0 &&
         val.every(
-            (s) =>
-                s !== null &&
-                typeof s === 'object' &&
-                'title' in (s as object) &&
-                'fields' in (s as object)
+            (s) => s !== null && typeof s === 'object' && 'title' in (s as object) && 'fields' in (s as object)
         )
 
     const candidate = raw as Record<string, unknown>
 
-    // Direct: { sections: [...] }
+    // Shape 1: { sections: [{ title, fields }] }
     if (isSectionsArray(candidate.sections)) {
         return { sections: candidate.sections, company: candidate.company as ParsedDocumentContent['company'] }
     }
 
-    // Nested: { content: { sections: [...] } }
+    // Shape 2: { content: { sections: [...] } }
     if (candidate.content && typeof candidate.content === 'object') {
         const inner = candidate.content as Record<string, unknown>
         if (isSectionsArray(inner.sections)) {
-            return { sections: inner.sections, company: inner.company as ParsedDocumentContent['company'] }
+            return { sections: inner.sections, company: (inner.company || candidate.company) as ParsedDocumentContent['company'] }
+        }
+        // Shape 3: { content: { applicant_name: "John", rent: "$2000" } } (flat nested)
+        const innerFields = extractFlatFields(inner)
+        if (innerFields.length > 0) {
+            return { sections: [{ title: 'Document Details', fields: innerFields }], company: (inner.company || candidate.company) as ParsedDocumentContent['company'] }
         }
     }
 
+    // Shape 4: flat object { applicant_name: "John", rent: "$2000" }
+    const flatFields = extractFlatFields(candidate)
+    if (flatFields.length > 0) {
+        return { sections: [{ title: 'Document Details', fields: flatFields }], company: candidate.company as ParsedDocumentContent['company'] }
+    }
+
     return null
+}
+
+function extractFlatFields(obj: Record<string, unknown>): DocumentField[] {
+    const skip = new Set(['id', 'company_id', 'company', 'created_by', 'created_at', 'updated_at', 'type', 'content', 'sections', 'metadata', 'currency'])
+    const fields: DocumentField[] = []
+    for (const [key, value] of Object.entries(obj)) {
+        if (skip.has(key) || value === null || value === undefined || value === '' || typeof value === 'object') continue
+        fields.push({ label: key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()), value: String(value) })
+    }
+    return fields
 }
 
 function accentStyle(color: string | null | undefined): React.CSSProperties {
@@ -535,6 +552,7 @@ export default function SigningPage() {
     const [typedName, setTypedName] = useState('')
     const [signatureImage, setSignatureImage] = useState<string | null>(null)
     const [agreed, setAgreed] = useState(false)
+    const [docPreviewOpen, setDocPreviewOpen] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -751,19 +769,24 @@ export default function SigningPage() {
                         )}
                     </div>
 
-                    {/* Document preview — shown when document content exists in PropFlow */}
+                    {/* Document preview — expandable to show full content */}
                     {document ? (
                         <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-                            <div
-                                className="flex items-center gap-2 px-4 py-3 border-b border-slate-100"
+                            <button
+                                type="button"
+                                onClick={() => setDocPreviewOpen(!docPreviewOpen)}
+                                className="flex items-center justify-between w-full px-4 py-3 border-b border-slate-100 hover:bg-slate-50 transition-colors"
                                 style={{ backgroundColor: `${accent}08` }}
                             >
-                                <FileText className="w-4 h-4 shrink-0" style={accentTextStyle(accent)} />
-                                <span className="text-xs font-black uppercase tracking-widest" style={accentTextStyle(accent)}>
-                                    Document Preview
-                                </span>
-                            </div>
-                            {(() => {
+                                <div className="flex items-center gap-2">
+                                    <FileText className="w-4 h-4 shrink-0" style={accentTextStyle(accent)} />
+                                    <span className="text-xs font-black uppercase tracking-widest" style={accentTextStyle(accent)}>
+                                        Document Preview
+                                    </span>
+                                </div>
+                                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${docPreviewOpen ? 'rotate-180' : ''}`} />
+                            </button>
+                            {docPreviewOpen && (() => {
                                 const parsed = parseDocumentContent(document.content)
                                 if (!parsed) {
                                     return (
