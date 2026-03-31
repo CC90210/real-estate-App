@@ -41,9 +41,11 @@ export async function GET(req: Request) {
 
             try {
                 const result = await late.accounts.listAccounts({
-                    profileId: lateProfileId,
+                    query: {
+                        profileId: lateProfileId,
+                    },
                 })
-                const accounts = result?.accounts || result?.data?.accounts || []
+                const accounts = result?.data?.accounts || (result as any)?.accounts || []
 
                 if (accounts?.length) {
                     for (const account of accounts) {
@@ -70,8 +72,8 @@ export async function GET(req: Request) {
                                     company_id: profile.company_id,
                                     late_account_id: accountId,
                                     platform: account.platform || platform || 'unknown',
-                                    account_name: account.name || account.username || account.platform || platform,
-                                    account_avatar: account.avatar || account.image || null,
+                                    account_name: account.displayName || account.username || account.platform || platform,
+                                    account_avatar: null,
                                     status: 'active',
                                 })
 
@@ -83,7 +85,7 @@ export async function GET(req: Request) {
                                 .from('social_accounts')
                                 .update({
                                     status: 'active',
-                                    account_name: account.name || account.username || account.platform || platform,
+                                    account_name: account.displayName || account.username || account.platform || platform,
                                 })
                                 .eq('late_account_id', accountId)
                                 .eq('company_id', profile.company_id)

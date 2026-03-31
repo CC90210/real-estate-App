@@ -72,7 +72,17 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     }
 
     if (!isAuthenticated) {
-        return null
+        // Never render null — always show the spinner while the redirect effect fires.
+        // Returning null here would produce a blank page with no recovery path
+        // if window.location.href = '/login' is delayed or blocked.
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-[#fcfdfe]">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
+                    <p className="text-sm text-gray-500">Redirecting...</p>
+                </div>
+            </div>
+        )
     }
 
     return (

@@ -113,7 +113,7 @@ export async function POST(req: Request) {
                 },
                 query: {
                     profileId: lateProfileId,
-                    redirectUrl,
+                    redirect_url: redirectUrl,
                 }
             })
 

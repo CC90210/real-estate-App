@@ -65,7 +65,10 @@ export function Providers({ children }: { children: ReactNode }) {
 
 function AuthListener({ children }: { children: ReactNode }) {
     const router = useRouter();
-    const supabase = createClient();
+    // Memoize the client so it is created once per mount, not on every render.
+    // Without useMemo, a new client is created each render, causing the useEffect
+    // (which depends on `supabase`) to re-subscribe to onAuthStateChange on every render.
+    const supabase = useState(() => createClient())[0];
 
     useEffect(() => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
