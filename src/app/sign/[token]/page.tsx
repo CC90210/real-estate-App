@@ -71,15 +71,11 @@ type PageState =
 interface DocumentField {
     label: string
     value: string
-}
-
-interface DocumentSection {
-    title: string
-    fields: DocumentField[]
+    status?: string
 }
 
 interface ParsedDocumentContent {
-    sections: DocumentSection[]
+    sections: any[]
     company?: { name?: string; address?: string }
 }
 
@@ -95,51 +91,142 @@ interface ParsedDocumentContent {
  */
 function parseDocumentContent(raw: unknown): ParsedDocumentContent | null {
     if (!raw || typeof raw !== 'object') return null
-
-    const isSectionsArray = (val: unknown): val is DocumentSection[] =>
-        Array.isArray(val) &&
-        val.length > 0 &&
-        val.every(
-            (s) => s !== null && typeof s === 'object' && 'title' in (s as object) && 'fields' in (s as object)
-        )
-
     const candidate = raw as Record<string, unknown>
 
-    // Shape 1: { sections: [{ title, fields }] }
-    if (isSectionsArray(candidate.sections)) {
+    // Shape 1: { sections: [...] } or { content: { sections: [...] } }
+    if (Array.isArray(candidate.sections) && candidate.sections.length > 0) {
         return { sections: candidate.sections, company: candidate.company as ParsedDocumentContent['company'] }
     }
-
-    // Shape 2: { content: { sections: [...] } }
     if (candidate.content && typeof candidate.content === 'object') {
         const inner = candidate.content as Record<string, unknown>
-        if (isSectionsArray(inner.sections)) {
+        if (Array.isArray(inner.sections) && inner.sections.length > 0) {
             return { sections: inner.sections, company: (inner.company || candidate.company) as ParsedDocumentContent['company'] }
         }
-        // Shape 3: { content: { applicant_name: "John", rent: "$2000" } } (flat nested)
-        const innerFields = extractFlatFields(inner)
-        if (innerFields.length > 0) {
-            return { sections: [{ title: 'Document Details', fields: innerFields }], company: (inner.company || candidate.company) as ParsedDocumentContent['company'] }
-        }
     }
-
-    // Shape 4: flat object { applicant_name: "John", rent: "$2000" }
-    const flatFields = extractFlatFields(candidate)
-    if (flatFields.length > 0) {
-        return { sections: [{ title: 'Document Details', fields: flatFields }], company: candidate.company as ParsedDocumentContent['company'] }
-    }
-
     return null
 }
 
-function extractFlatFields(obj: Record<string, unknown>): DocumentField[] {
-    const skip = new Set(['id', 'company_id', 'company', 'created_by', 'created_at', 'updated_at', 'type', 'content', 'sections', 'metadata', 'currency'])
-    const fields: DocumentField[] = []
-    for (const [key, value] of Object.entries(obj)) {
-        if (skip.has(key) || value === null || value === undefined || value === '' || typeof value === 'object') continue
-        fields.push({ label: key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()), value: String(value) })
+/** Render a single document section based on its type — mirrors the dashboard document viewer */
+function RenderDocSection({ section, accent }: { section: any; accent: string }) {
+    const type = section.type as string
+
+    // Skip header/footer/signatures — not relevant to signing preview
+    if (['header', 'footer', 'signatures'].includes(type)) return null
+
+    if (type === 'recommendation') {
+        const color = section.status?.includes('Approve') ? 'border-emerald-500 bg-emerald-50 text-emerald-800'
+            : section.status?.includes('Deny') ? 'border-red-500 bg-red-50 text-red-800'
+            : 'border-amber-500 bg-amber-50 text-amber-800'
+        return (
+            <div className={`p-4 rounded-lg border-l-4 ${color}`}>
+                <p className="text-[10px] font-bold uppercase tracking-wider opacity-60">Recommendation</p>
+                <p className="text-lg font-bold">{section.status}</p>
+                {section.content && <p className="mt-1 text-xs opacity-80">{section.content}</p>}
+            </div>
+        )
     }
-    return fields
+
+    if (type === 'hero') {
+        return (
+            <div>
+                <p className="text-lg font-bold text-slate-900">{section.content?.address}</p>
+                {section.content?.unit && <p className="text-sm text-slate-500">Unit {section.content.unit}</p>}
+                <div className="flex gap-4 mt-2 text-sm">
+                    {section.content?.rent && <span className="font-bold" style={{ color: accent }}>{section.content.rent}</span>}
+                    {section.content?.specs && <span className="text-slate-500">{section.content.specs}</span>}
+                </div>
+            </div>
+        )
+    }
+
+    if (['applicant_profile', 'financials', 'property_details', 'terms'].includes(type) && section.items) {
+        return (
+            <div>
+                {section.title && (
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 pb-1 mb-3">{section.title}</p>
+                )}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                    {section.items.map((item: any, i: number) => (
+                        <div key={i} className="flex justify-between text-sm py-1">
+                            <span className="text-slate-500">{item.label}</span>
+                            <span className={`font-semibold ${item.status === 'PASS' ? 'text-emerald-600' : item.status === 'FAIL' ? 'text-red-600' : 'text-slate-900'}`}>
+                                {item.value}{item.status ? ` (${item.status})` : ''}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )
+    }
+
+    if (type === 'risk_assessment') {
+        return (
+            <div>
+                {section.title && (
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 pb-1 mb-3">{section.title}</p>
+                )}
+                {section.riskFactors && (
+                    <div className="mb-2">
+                        <p className="text-[10px] uppercase text-slate-400 font-bold">Risk Factors</p>
+                        <p className="text-sm text-slate-700">{section.riskFactors}</p>
+                    </div>
+                )}
+                {section.agentNotes && (
+                    <div>
+                        <p className="text-[10px] uppercase text-slate-400 font-bold">Agent Notes</p>
+                        <p className="text-sm text-slate-700 italic">{section.agentNotes}</p>
+                    </div>
+                )}
+            </div>
+        )
+    }
+
+    if (type === 'highlights' || type === 'talking_points') {
+        return (
+            <div>
+                {section.title && (
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">{section.title}</p>
+                )}
+                <ul className="space-y-1">
+                    {section.items?.map((item: string, i: number) => (
+                        <li key={i} className="text-sm text-slate-700 pl-3 border-l-2" style={{ borderColor: accent }}>{item}</li>
+                    ))}
+                </ul>
+            </div>
+        )
+    }
+
+    if (type === 'intro' || type === 'conditions' || type === 'cta') {
+        return (
+            <div>
+                {section.title && (
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">{section.title}</p>
+                )}
+                <p className="text-sm text-slate-700 leading-relaxed">{section.content}</p>
+            </div>
+        )
+    }
+
+    if (type === 'access') {
+        return (
+            <div className="p-3 bg-amber-50 rounded-lg border border-amber-100">
+                {section.title && <p className="text-[10px] font-bold uppercase text-amber-600 mb-1">{section.title}</p>}
+                <p className="text-sm font-mono text-amber-900">{section.content}</p>
+            </div>
+        )
+    }
+
+    // Generic fallback for unknown section types
+    if (section.title || section.content) {
+        return (
+            <div>
+                {section.title && <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">{section.title}</p>}
+                {section.content && <p className="text-sm text-slate-700">{typeof section.content === 'string' ? section.content : JSON.stringify(section.content)}</p>}
+            </div>
+        )
+    }
+
+    return null
 }
 
 function accentStyle(color: string | null | undefined): React.CSSProperties {
@@ -788,7 +875,7 @@ export default function SigningPage() {
                             </button>
                             {docPreviewOpen && (() => {
                                 const parsed = parseDocumentContent(document.content)
-                                if (!parsed) {
+                                if (!parsed || parsed.sections.length === 0) {
                                     return (
                                         <div className="px-4 py-3 space-y-1">
                                             <p className="text-sm font-semibold text-slate-900">{document.title}</p>
@@ -799,7 +886,7 @@ export default function SigningPage() {
                                     )
                                 }
                                 return (
-                                    <div className="px-5 py-4 space-y-5 max-h-[480px] overflow-y-auto">
+                                    <div className="px-5 py-4 space-y-5 max-h-[600px] overflow-y-auto">
                                         <h2 className="text-base font-black text-slate-900">{document.title}</h2>
                                         {parsed.company?.name && (
                                             <p className="text-xs text-slate-400">
@@ -807,27 +894,8 @@ export default function SigningPage() {
                                                 {parsed.company.address ? ` · ${parsed.company.address}` : ''}
                                             </p>
                                         )}
-                                        {parsed.sections.map((section, sIdx) => (
-                                            <div key={sIdx} className="space-y-2">
-                                                <p
-                                                    className="text-[10px] font-black uppercase tracking-widest pb-1 border-b"
-                                                    style={{ ...accentTextStyle(accent), borderColor: `${accent}30` }}
-                                                >
-                                                    {section.title}
-                                                </p>
-                                                <div className="space-y-1.5">
-                                                    {section.fields.map((field, fIdx) => (
-                                                        <div key={fIdx} className="flex gap-2 text-sm">
-                                                            <span className="text-slate-400 font-medium shrink-0 min-w-[120px]">
-                                                                {field.label}:
-                                                            </span>
-                                                            <span className="text-slate-800 font-semibold">
-                                                                {field.value}
-                                                            </span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
+                                        {parsed.sections.map((section: any, sIdx: number) => (
+                                            <RenderDocSection key={sIdx} section={section} accent={accent} />
                                         ))}
                                     </div>
                                 )
