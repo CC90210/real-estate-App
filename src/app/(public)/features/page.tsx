@@ -2,62 +2,100 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 import {
     Building2,
-    Zap,
-    Shield,
-    Sparkles,
-    DollarSign,
-    Share2,
+    ClipboardCheck,
+    Megaphone,
+    Mail,
+    UserCheck,
+    FileSignature,
+    CreditCard,
+    KeyRound,
     ArrowRight,
-    Command,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PublicNavbar } from '@/components/layout/PublicNavbar'
 import { PublicFooter } from '@/components/layout/PublicFooter'
-import { cn } from '@/lib/utils'
 
 export const metadata: Metadata = {
-    title: 'Features',
-    description: 'Explore the powerful features of PropFlow: Portfolio Management, Smart Leasing, Automated Financials, AI Operations, Social Media Suite, and more.',
+    title: 'Features - PropFlow',
+    description: 'Every feature designed around the 8-phase rental workflow. Property onboarding, inspections, marketing, screening, e-sign, rent collection, and key handoff.',
 }
 
 const features = [
     {
-        title: "Portfolio Command Center",
-        description: "Manage every property, unit, and tenant from one dashboard. Track vacancies, lease expirations, and maintenance requests in real-time across your entire portfolio.",
+        number: '01',
         icon: Building2,
-        color: "blue"
+        title: 'Property Onboarding',
+        description: 'Import properties, assign landlords, and set rental terms. Organized by area and building so your entire portfolio stays structured.',
+        accent: 'border-blue-500',
+        iconColor: 'text-blue-500',
+        numberColor: 'text-blue-200',
     },
     {
-        title: "Smart Leasing Engine",
-        description: "Automate your leasing pipeline from application to move-in. AI-powered tenant screening, automated lease generation, and digital signatures — all in one flow.",
-        icon: Zap,
-        color: "indigo"
+        number: '02',
+        icon: ClipboardCheck,
+        title: 'Pre-Rental Inspection',
+        description: 'Template-based checklists with photo evidence. Document the exact condition of every property before a tenant moves in.',
+        accent: 'border-indigo-500',
+        iconColor: 'text-indigo-500',
+        numberColor: 'text-indigo-200',
     },
     {
-        title: "Bank-Grade Security",
-        description: "Role-based access controls, encrypted data at rest, and complete tenant data isolation. Every agency's data is completely separated — zero cross-contamination.",
-        icon: Shield,
-        color: "emerald"
+        number: '03',
+        icon: Megaphone,
+        title: 'Listing & Marketing',
+        description: 'Post to 13+ social platforms in one click. AI-generated ad copy and Facebook Marketplace integration baked in.',
+        accent: 'border-violet-500',
+        iconColor: 'text-violet-500',
+        numberColor: 'text-violet-200',
     },
     {
-        title: "AI-Powered Operations",
-        description: "Generate professional listing descriptions, marketing content, and tenant communications in seconds. Our AI understands real estate context and writes like your best agent.",
-        icon: Sparkles,
-        color: "violet"
+        number: '04',
+        icon: Mail,
+        title: 'Lead Management',
+        description: 'Gmail integration for prospect communication. Automated follow-ups and tour scheduling so no lead slips through.',
+        accent: 'border-cyan-500',
+        iconColor: 'text-cyan-500',
+        numberColor: 'text-cyan-200',
     },
     {
-        title: "Automated Financials",
-        description: "Digital rent collection, automated invoicing, expense tracking, and yield analysis. See your NOI, cap rate, and cash flow across every property at a glance.",
-        icon: DollarSign,
-        color: "rose"
+        number: '05',
+        icon: UserCheck,
+        title: 'Application & Screening',
+        description: 'Digital applications with SingleKey credit checks, income verification, and background screening. Approve with confidence.',
+        accent: 'border-emerald-500',
+        iconColor: 'text-emerald-500',
+        numberColor: 'text-emerald-200',
     },
     {
-        title: "Social Media Suite",
-        description: "Connect Instagram, LinkedIn, Facebook, TikTok, and more. Create listings, schedule posts, and track engagement across all your social channels from one tab.",
-        icon: Share2,
-        color: "cyan"
-    }
+        number: '06',
+        icon: FileSignature,
+        title: 'Documents & E-Sign',
+        description: 'Generate leases from templates. Send for signature with built-in e-sign. Full audit trail on every document.',
+        accent: 'border-amber-500',
+        iconColor: 'text-amber-500',
+        numberColor: 'text-amber-200',
+    },
+    {
+        number: '07',
+        icon: CreditCard,
+        title: 'Payment Collection',
+        description: 'Stripe-powered rent collection with automated invoicing and landlord payouts via Stripe Connect.',
+        accent: 'border-rose-500',
+        iconColor: 'text-rose-500',
+        numberColor: 'text-rose-200',
+    },
+    {
+        number: '08',
+        icon: KeyRound,
+        title: 'Key Handoff',
+        description: 'Move-in checklists, key distribution logs, and utility transfer reminders. Close the loop on every tenancy.',
+        accent: 'border-slate-500',
+        iconColor: 'text-slate-500',
+        numberColor: 'text-slate-300',
+    },
 ]
+
+const integrations = ['Stripe', 'Google Workspace', 'SingleKey', 'Late (Social)', 'Supabase']
 
 export default function FeaturesPage() {
     return (
@@ -65,66 +103,74 @@ export default function FeaturesPage() {
             <PublicNavbar />
 
             <main className="pt-32">
-                {/* Hero section */}
-                <div className="max-w-7xl mx-auto px-4 py-20">
-                    <div className="text-center space-y-8 mb-20">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100/50 text-blue-600 text-[10px] font-black uppercase tracking-[0.2em]">
-                            <Command className="h-3 w-3" />
-                            <span>What PropFlow Does</span>
-                        </div>
-                        <h1 className="text-5xl sm:text-6xl lg:text-8xl font-black text-slate-900 tracking-tight leading-[0.9]">
-                            Everything you need to run <br />
-                            <span className="text-gradient">a modern real estate business.</span>
-                        </h1>
-                        <p className="text-lg sm:text-xl text-slate-500 font-medium max-w-2xl mx-auto leading-relaxed">
-                            From your first rental to your 500th unit — PropFlow handles the paperwork,
-                            the payments, and the marketing so you can focus on growing.
-                        </p>
-                    </div>
+                {/* Hero */}
+                <section className="max-w-4xl mx-auto px-4 py-20 text-center">
+                    <h1 className="text-5xl sm:text-6xl font-black text-slate-900 tracking-tight leading-tight mb-6">
+                        Built for how you actually work.
+                    </h1>
+                    <p className="text-lg sm:text-xl text-slate-500 font-medium max-w-2xl mx-auto leading-relaxed">
+                        Every feature designed around the 8-phase rental workflow. No bloat, no learning curve.
+                    </p>
+                </section>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {features.map((feature, idx) => (
+                {/* Feature Grid */}
+                <section className="max-w-6xl mx-auto px-4 pb-24">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {features.map((feature) => (
                             <div
-                                key={idx}
-                                className="group p-8 rounded-[2.5rem] border border-slate-100 hover:border-blue-100 bg-white hover:bg-slate-50/50 transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl"
+                                key={feature.number}
+                                className={`bg-white border border-slate-100 border-l-4 ${feature.accent} rounded-2xl p-8 hover:shadow-md transition-shadow duration-200`}
                             >
-                                <div className={cn(
-                                    "h-14 w-14 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg",
-                                    feature.color === 'blue' && "bg-blue-600 shadow-blue-200",
-                                    feature.color === 'indigo' && "bg-indigo-600 shadow-indigo-200",
-                                    feature.color === 'emerald' && "bg-emerald-600 shadow-emerald-200",
-                                    feature.color === 'violet' && "bg-violet-600 shadow-violet-200",
-                                    feature.color === 'rose' && "bg-rose-600 shadow-rose-200",
-                                    feature.color === 'cyan' && "bg-cyan-600 shadow-cyan-200",
-                                )}>
-                                    <feature.icon className="h-7 w-7 text-white" />
+                                <div className="flex items-start gap-5">
+                                    <div className="flex-shrink-0">
+                                        <span className={`text-4xl font-black ${feature.numberColor} leading-none`}>
+                                            {feature.number}
+                                        </span>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <feature.icon className={`h-5 w-5 ${feature.iconColor}`} />
+                                            <h3 className="text-lg font-black text-slate-900">{feature.title}</h3>
+                                        </div>
+                                        <p className="text-slate-500 text-sm leading-relaxed">{feature.description}</p>
+                                    </div>
                                 </div>
-                                <h3 className="text-2xl font-black text-slate-900 mb-4">{feature.title}</h3>
-                                <p className="text-slate-500 font-medium leading-relaxed">{feature.description}</p>
                             </div>
                         ))}
                     </div>
-                </div>
+                </section>
 
-                {/* CTA section */}
-                <div className="bg-slate-900 py-32 overflow-hidden relative">
-                    <div className="max-w-7xl mx-auto px-4">
-                        <div className="text-center space-y-16">
-                            <h2 className="text-3xl sm:text-4xl md:text-6xl font-black text-white mb-8 tracking-tight">
-                                Ready to scale your <span className="bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">portfolio?</span>
-                            </h2>
-                            <p className="text-lg text-slate-400 font-medium mb-12 max-w-xl mx-auto">
-                                Join the network of elite property managers using PropFlow to run their operations with precision.
-                            </p>
-                            <Link href="/pricing">
-                                <Button size="lg" className="h-16 px-10 rounded-2xl bg-white text-slate-900 hover:bg-blue-50 font-black text-lg transition-transform hover:scale-105 active:scale-95 shadow-2xl shadow-blue-500/20">
-                                    View Pricing
-                                    <ArrowRight className="h-5 w-5 ml-3" />
-                                </Button>
-                            </Link>
+                {/* Integration Bar */}
+                <section className="border-y border-slate-100 bg-slate-50 py-16">
+                    <div className="max-w-4xl mx-auto px-4 text-center">
+                        <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-8">
+                            Works with your tools.
+                        </p>
+                        <div className="flex flex-wrap justify-center items-center gap-8 sm:gap-12">
+                            {integrations.map((name) => (
+                                <span key={name} className="text-slate-400 font-black text-sm sm:text-base tracking-tight">
+                                    {name}
+                                </span>
+                            ))}
                         </div>
                     </div>
-                </div>
+                </section>
+
+                {/* CTA */}
+                <section className="max-w-2xl mx-auto px-4 py-24 text-center">
+                    <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mb-4">
+                        See it in action.
+                    </h2>
+                    <p className="text-slate-500 font-medium mb-10 leading-relaxed">
+                        Start your free trial and experience the full 8-phase workflow.
+                    </p>
+                    <Link href="/signup">
+                        <Button size="lg" className="h-14 px-10 rounded-xl bg-slate-900 text-white hover:bg-slate-800 font-black text-base transition-all hover:scale-105 active:scale-95">
+                            Get Started
+                            <ArrowRight className="h-4 w-4 ml-2" />
+                        </Button>
+                    </Link>
+                </section>
             </main>
 
             <PublicFooter />

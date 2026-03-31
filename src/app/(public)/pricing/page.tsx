@@ -3,22 +3,94 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Check, Loader2, Building2, Sparkles, Zap, Shield, FileText, CheckCircle2 } from 'lucide-react'
+import { Loader2, ChevronDown } from 'lucide-react'
 import { PLANS, PlanId } from '@/lib/stripe/plans'
 import { PublicNavbar } from '@/components/layout/PublicNavbar'
 import { PublicFooter } from '@/components/layout/PublicFooter'
 import { cn } from '@/lib/utils'
-import { FuturisticBuilding } from '@/components/brand/FuturisticBuilding'
 
-const PLAN_ICONS: Record<PlanId, typeof Building2> = {
-    agent_pro: Building2,
-    agency_growth: FileText,
-    brokerage_command: Shield,
+const PLAN_HIGHLIGHTS: Record<PlanId, string[]> = {
+    agent_pro: [
+        '25 properties',
+        'Tenant screening',
+        'Document generation',
+        'Email automation',
+    ],
+    agency_growth: [
+        '100 properties',
+        '5 team members',
+        'Invoicing & analytics',
+        'Automated workflows',
+    ],
+    brokerage_command: [
+        'Unlimited everything',
+        'Social media suite',
+        '13+ platforms',
+        'Priority support',
+    ],
+}
+
+const PLAN_DESCRIPTIONS: Record<PlanId, string> = {
+    agent_pro: 'Core tools for solo agents and independent landlords.',
+    agency_growth: 'Streamlined operations for growing agencies.',
+    brokerage_command: 'Full command for large organizations.',
+}
+
+const COMPARISON_ROWS: {
+    feature: string
+    agent_pro: string | boolean
+    agency_growth: string | boolean
+    brokerage_command: string | boolean
+}[] = [
+    { feature: 'Properties', agent_pro: '25', agency_growth: '100', brokerage_command: 'Unlimited' },
+    { feature: 'Team Members', agent_pro: '1', agency_growth: '5', brokerage_command: 'Unlimited' },
+    { feature: 'Document Generation', agent_pro: true, agency_growth: true, brokerage_command: true },
+    { feature: 'E-Signatures', agent_pro: true, agency_growth: true, brokerage_command: true },
+    { feature: 'Tenant Screening', agent_pro: true, agency_growth: true, brokerage_command: true },
+    { feature: 'Showings Calendar', agent_pro: false, agency_growth: true, brokerage_command: true },
+    { feature: 'Invoicing', agent_pro: false, agency_growth: true, brokerage_command: true },
+    { feature: 'Analytics', agent_pro: false, agency_growth: true, brokerage_command: true },
+    { feature: 'Automations', agent_pro: false, agency_growth: true, brokerage_command: true },
+    { feature: 'Social Media (13 platforms)', agent_pro: false, agency_growth: false, brokerage_command: true },
+    { feature: 'Marketplace Listings', agent_pro: false, agency_growth: false, brokerage_command: true },
+    { feature: 'AI Ad Copy', agent_pro: false, agency_growth: false, brokerage_command: true },
+]
+
+const FAQS = [
+    {
+        question: 'Can I switch plans?',
+        answer: 'Yes, upgrade or downgrade anytime. We prorate automatically.',
+    },
+    {
+        question: 'Is there a free trial?',
+        answer: 'Brokerage Command includes a 14-day free trial. Agent Pro and Agency Growth are billed immediately.',
+    },
+    {
+        question: 'Can I cancel anytime?',
+        answer: 'Yes. Cancel from your billing settings. No penalties.',
+    },
+    {
+        question: 'Do you offer custom enterprise plans?',
+        answer: 'Contact us at support@propflow.pro for custom pricing and dedicated deployments.',
+    },
+]
+
+function CellValue({ value }: { value: string | boolean }) {
+    if (typeof value === 'boolean') {
+        return value ? (
+            <span className="text-blue-600 font-semibold text-sm">&#x2713;</span>
+        ) : (
+            <span className="text-slate-300 text-sm">&#x2014;</span>
+        )
+    }
+    return <span className="text-slate-700 text-sm font-medium">{value}</span>
 }
 
 export default function PricingPage() {
     const [loading, setLoading] = useState<string | null>(null)
     const [error, setError] = useState<string | null>(null)
+    const [compareOpen, setCompareOpen] = useState(false)
+    const [openFaq, setOpenFaq] = useState<number | null>(null)
 
     const handleCheckout = async (planId: PlanId) => {
         setLoading(planId)
@@ -46,213 +118,244 @@ export default function PricingPage() {
             } else {
                 throw new Error('Missing checkout URL from Stripe.')
             }
-        } catch (err: any) {
-            console.error('Checkout error:', err)
-            setError(err.message || 'Checkout failed to initialize.')
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Checkout failed to initialize.'
+            setError(message)
         } finally {
             setLoading(null)
         }
     }
 
+    const planIds = Object.keys(PLANS) as PlanId[]
+
     return (
-        <div className="min-h-screen bg-[#fdfeff] selection:bg-indigo-100 selection:text-indigo-900 relative overflow-hidden">
+        <div className="min-h-screen bg-white">
             <PublicNavbar />
 
-            {/* Background Decoration */}
-            <div className="fixed inset-0 pointer-events-none -z-10">
-                <div className="absolute top-[20%] -right-20 w-[40rem] h-[40rem] bg-indigo-50 rounded-full blur-[120px] opacity-40 animate-pulse" />
-                <div className="absolute bottom-[10%] -left-20 w-[30rem] h-[30rem] bg-blue-50 rounded-full blur-[100px] opacity-30 animate-pulse" style={{ animationDelay: '-2s' }} />
-
-                <FuturisticBuilding
-                    className="absolute -right-10 bottom-0 w-[400px] h-[800px] opacity-[0.06] scale-x-[-1]"
-                    color="indigo"
-                />
-                <FuturisticBuilding
-                    className="absolute -left-10 top-[30%] w-[300px] h-[600px] opacity-[0.04]"
-                    color="blue"
-                    delay="-3s"
-                />
-            </div>
-
-            <main className="pt-32 pb-24 relative z-10">
-                {/* Header Section */}
-                <div className="max-w-7xl mx-auto px-4 text-center mb-20">
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-50 border border-indigo-100/50 text-indigo-600 text-[10px] font-black uppercase tracking-[0.2em] mb-8 shadow-sm">
-                        <Sparkles className="h-3 w-3" />
-                        <span>Premium Plans</span>
-                    </div>
-                    <h1 className="text-5xl sm:text-7xl font-black tracking-tighter text-slate-900 mb-8 leading-[0.9]">
-                        Invest in your <br className="hidden sm:block" />
-                        <span className="bg-gradient-to-r from-indigo-500 to-violet-600 bg-clip-text text-transparent">growth engine.</span>
+            <main className="pt-28 pb-24">
+                {/* Section 1: Header */}
+                <div className="max-w-3xl mx-auto px-4 text-center mb-16">
+                    <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-slate-900 mb-4">
+                        Simple, transparent pricing.
                     </h1>
-                    <p className="text-xl text-slate-500 font-medium max-w-2xl mx-auto leading-relaxed px-4 mb-12">
-                        Choose the infrastructure that fits your current stage. Seamlessly upgrade as your portfolio and team expand.
+                    <p className="text-lg text-slate-500 leading-relaxed">
+                        Choose the plan that fits your portfolio. Upgrade anytime.
                     </p>
-
-                    {/* Trust Banner */}
-                    <div className="inline-flex items-center gap-3 bg-white border border-slate-200 text-slate-800 px-8 py-4 rounded-[2rem] shadow-xl shadow-slate-200/50">
-                        <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                        <span className="font-bold uppercase tracking-widest text-xs">Trusted by 100+ Real Estate Agencies & Brokerages</span>
-                    </div>
                 </div>
 
-                {/* Error Toast */}
+                {/* Error Banner */}
                 {error && (
-                    <div className="max-w-md mx-auto mb-8 px-4">
-                        <div className="bg-red-50 border border-red-200 text-red-800 px-6 py-4 rounded-2xl text-sm font-medium flex items-center gap-3">
-                            <span>⚠️</span>
-                            <span>{error}</span>
-                            <button onClick={() => setError(null)} className="ml-auto text-red-500 hover:text-red-700 font-bold">✕</button>
+                    <div className="max-w-lg mx-auto mb-8 px-4">
+                        <div className="bg-red-50 border border-red-200 text-red-800 px-5 py-3.5 rounded-xl text-sm font-medium flex items-center gap-3">
+                            <span className="shrink-0">Warning</span>
+                            <span className="flex-1">{error}</span>
+                            <button
+                                onClick={() => setError(null)}
+                                className="shrink-0 text-red-400 hover:text-red-600 font-bold leading-none"
+                                aria-label="Dismiss error"
+                            >
+                                x
+                            </button>
                         </div>
                     </div>
                 )}
 
-                {/* Pricing Grid */}
-                <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-3 gap-8 mb-32">
-                    {(Object.keys(PLANS) as PlanId[]).map((planId) => {
-                        const plan = PLANS[planId]
-                        return (
-                            <PricingCard
-                                key={planId}
-                                plan={plan}
-                                planId={planId}
-                                icon={PLAN_ICONS[planId]}
-                                loading={loading}
-                                onCheckout={handleCheckout}
+                {/* Section 2: Pricing Cards */}
+                <div className="max-w-6xl mx-auto px-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                        {planIds.map((planId) => {
+                            const plan = PLANS[planId]
+                            const isPopular = plan.popular === true
+                            const isBrokerage = planId === 'brokerage_command'
+
+                            return (
+                                <div
+                                    key={planId}
+                                    className={cn(
+                                        'relative flex flex-col rounded-2xl border bg-white p-8 transition-shadow',
+                                        isPopular
+                                            ? 'border-blue-600 shadow-lg shadow-blue-100 ring-1 ring-blue-600'
+                                            : 'border-slate-200 shadow-sm hover:shadow-md'
+                                    )}
+                                >
+                                    {/* Most Popular badge */}
+                                    {isPopular && (
+                                        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 bg-blue-600 text-white text-xs font-semibold rounded-full whitespace-nowrap">
+                                            Most Popular
+                                        </div>
+                                    )}
+
+                                    {/* Plan name */}
+                                    <h2 className="text-xl font-bold text-slate-900 mb-1">
+                                        {plan.name}
+                                    </h2>
+
+                                    {/* Description */}
+                                    <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+                                        {PLAN_DESCRIPTIONS[planId]}
+                                    </p>
+
+                                    {/* Price */}
+                                    <div className="flex items-baseline gap-1 mb-1">
+                                        <span className="text-5xl font-extrabold text-slate-900 tracking-tight">
+                                            {plan.displayPrice}
+                                        </span>
+                                        <span className="text-slate-400 text-sm font-medium">/month</span>
+                                    </div>
+
+                                    {/* Trial / billing note */}
+                                    {isBrokerage ? (
+                                        <span className="inline-block text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-100 rounded-full px-3 py-1 mb-6 w-fit">
+                                            14-day free trial
+                                        </span>
+                                    ) : (
+                                        <p className="text-xs text-slate-400 mb-6">Billed immediately</p>
+                                    )}
+
+                                    {/* Highlights */}
+                                    <ul className="space-y-2.5 mb-8 flex-1">
+                                        {PLAN_HIGHLIGHTS[planId].map((item) => (
+                                            <li key={item} className="flex items-center gap-2.5 text-sm text-slate-700">
+                                                <span className="w-4 h-4 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0">
+                                                    <svg width="8" height="8" viewBox="0 0 8 8" fill="none" aria-hidden="true">
+                                                        <path d="M1.5 4L3 5.5L6.5 2" stroke="#2563EB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                                    </svg>
+                                                </span>
+                                                {item}
+                                            </li>
+                                        ))}
+                                    </ul>
+
+                                    {/* CTA */}
+                                    <Button
+                                        onClick={() => handleCheckout(planId)}
+                                        disabled={loading !== null}
+                                        className={cn(
+                                            'w-full h-11 rounded-xl font-semibold text-sm transition-colors',
+                                            isPopular
+                                                ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                                : 'bg-slate-900 hover:bg-slate-800 text-white'
+                                        )}
+                                    >
+                                        {loading === planId ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                            'Get Started'
+                                        )}
+                                    </Button>
+                                </div>
+                            )
+                        })}
+                    </div>
+
+                    {/* Compare all features — expandable */}
+                    <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                        <button
+                            onClick={() => setCompareOpen((prev) => !prev)}
+                            className="w-full flex items-center justify-between px-6 py-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                            aria-expanded={compareOpen}
+                        >
+                            <span>Compare all features</span>
+                            <ChevronDown
+                                className={cn(
+                                    'h-4 w-4 text-slate-400 transition-transform duration-200',
+                                    compareOpen && 'rotate-180'
+                                )}
                             />
-                        )
-                    })}
+                        </button>
+
+                        {compareOpen && (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead>
+                                        <tr className="border-t border-slate-200 bg-slate-50">
+                                            <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-1/2">
+                                                Feature
+                                            </th>
+                                            {planIds.map((planId) => (
+                                                <th
+                                                    key={planId}
+                                                    className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-center"
+                                                >
+                                                    {PLANS[planId].name}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {COMPARISON_ROWS.map((row, i) => (
+                                            <tr
+                                                key={row.feature}
+                                                className={cn(
+                                                    'border-t border-slate-100',
+                                                    i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'
+                                                )}
+                                            >
+                                                <td className="px-6 py-3 text-sm text-slate-600">
+                                                    {row.feature}
+                                                </td>
+                                                {planIds.map((planId) => (
+                                                    <td key={planId} className="px-4 py-3 text-center">
+                                                        <CellValue value={row[planId]} />
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                {/* Automation Add-on */}
-                <div className="max-w-5xl mx-auto px-4">
-                    <div className="bg-slate-900 rounded-[3rem] p-10 md:p-20 relative overflow-hidden shadow-2xl group text-center md:text-left">
-                        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-indigo-600/30 to-purple-600/30 rounded-full blur-[100px] -mr-32 -mt-32" />
-
-                        <div className="relative z-10 flex flex-col md:flex-row gap-16 items-center">
-                            <div className="flex-1 space-y-8">
-                                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-[10px] font-black uppercase tracking-[0.2em]">
-                                    <Zap className="h-4 w-4 fill-white" />
-                                    <span>Power Add-on</span>
-                                </div>
-                                <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight">
-                                    Automation Suite
-                                </h2>
-                                <p className="text-xl text-slate-300 font-medium leading-relaxed max-w-lg">
-                                    Put your business on autopilot. Available for Agency Growth and Brokerage Command plans.
-                                </p>
+                {/* Section 3: FAQ */}
+                <div className="max-w-2xl mx-auto px-4 mt-20">
+                    <h2 className="text-2xl font-bold text-slate-900 text-center mb-8">
+                        Frequently asked questions
+                    </h2>
+                    <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden">
+                        {FAQS.map((faq, i) => (
+                            <div key={i}>
+                                <button
+                                    onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                                    className="w-full flex items-center justify-between px-6 py-4 text-sm font-semibold text-slate-800 hover:bg-slate-50 transition-colors text-left"
+                                    aria-expanded={openFaq === i}
+                                >
+                                    <span>{faq.question}</span>
+                                    <ChevronDown
+                                        className={cn(
+                                            'h-4 w-4 text-slate-400 shrink-0 ml-4 transition-transform duration-200',
+                                            openFaq === i && 'rotate-180'
+                                        )}
+                                    />
+                                </button>
+                                {openFaq === i && (
+                                    <div className="px-6 pb-4 text-sm text-slate-500 leading-relaxed">
+                                        {faq.answer}
+                                    </div>
+                                )}
                             </div>
-                            <Link href="/login?redirect=/settings/automations">
-                                <Button className="h-16 px-12 bg-white text-slate-900 hover:bg-slate-100 rounded-2xl font-black uppercase tracking-widest transition-all hover:scale-105 shadow-xl">
-                                    Learn More
-                                </Button>
-                            </Link>
-                        </div>
+                        ))}
                     </div>
+                </div>
+
+                {/* Section 4: Final CTA */}
+                <div className="max-w-xl mx-auto px-4 mt-20 text-center">
+                    <p className="text-slate-400 text-sm uppercase tracking-widest font-semibold mb-3">
+                        Still deciding?
+                    </p>
+                    <h2 className="text-3xl font-bold text-slate-900 mb-6">
+                        Start with Agent Pro.
+                    </h2>
+                    <Link href="/signup">
+                        <Button className="h-12 px-10 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm">
+                            Get Started
+                        </Button>
+                    </Link>
                 </div>
             </main>
 
             <PublicFooter />
-        </div>
-    )
-}
-
-function PricingCard({
-    plan,
-    planId,
-    icon: Icon,
-    loading,
-    onCheckout,
-}: {
-    plan: typeof PLANS[PlanId]
-    planId: PlanId
-    icon: typeof Building2
-    loading: string | null
-    onCheckout: (planId: PlanId) => void
-}) {
-    const isPopular = plan.popular
-
-    const FeatureSection = ({ title, features }: { title: string; features: string[] }) => (
-        <div className="mb-6 last:mb-0">
-            <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">{title}</h4>
-            <div className="space-y-3">
-                {features.map((feature, i) => (
-                    <div key={i} className="flex items-start gap-3">
-                        <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <Check className="w-3 h-3 stroke-[3]" />
-                        </div>
-                        <span className="text-sm font-bold text-slate-700">{feature}</span>
-                    </div>
-                ))}
-            </div>
-        </div>
-    )
-
-    return (
-        <div
-            className={cn(
-                'relative p-8 rounded-[2.5rem] border bg-white flex flex-col transition-all duration-300 group hover:-translate-y-2',
-                isPopular
-                    ? 'border-blue-200 shadow-2xl shadow-blue-100 ring-4 ring-blue-50 scale-[1.03] lg:scale-[1.05]'
-                    : 'border-slate-100 shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-slate-300/50'
-            )}
-        >
-            {isPopular && (
-                <div className="absolute -top-5 left-1/2 -translate-x-1/2 px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg">
-                    Most Popular
-                </div>
-            )}
-
-            <div className="mb-8 mt-2">
-                <div
-                    className={cn(
-                        'w-14 h-14 rounded-2xl flex items-center justify-center mb-6 shadow-sm',
-                        isPopular
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-slate-50 text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-all'
-                    )}
-                >
-                    <Icon className="w-7 h-7" />
-                </div>
-                <h3 className="text-2xl font-black text-slate-900 mb-2">{plan.name}</h3>
-                <p className="text-sm text-slate-500 font-medium leading-relaxed min-h-[40px]">{plan.tagline}</p>
-            </div>
-
-            <div className="mb-8 pb-8 border-b border-slate-100">
-                <div className="flex items-baseline gap-1">
-                    <span className="text-5xl font-black text-slate-900 tracking-tight">{plan.displayPrice}</span>
-                    <span className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">/month</span>
-                </div>
-                <p className="text-xs text-slate-400 font-bold mt-2 uppercase tracking-wide">
-                    {planId === 'brokerage_command' ? '14-day free trial included' : 'Billed immediately'}
-                </p>
-            </div>
-
-            <div className="flex-1 space-y-2 mb-8">
-                <FeatureSection title="CRM & Leasing" features={plan.features.crm} />
-                <FeatureSection title="Automated Finance" features={plan.features.finance} />
-                {plan.features.social.length > 0 ? (
-                    <FeatureSection title="Social Media Suite" features={plan.features.social} />
-                ) : (
-                    <div className="mb-6 last:mb-0">
-                        <h4 className="text-xs font-black uppercase tracking-widest text-slate-300 mb-3">Social Media Suite</h4>
-                        <p className="text-xs font-bold text-slate-400 italic">Available on Brokerage Command</p>
-                    </div>
-                )}
-            </div>
-
-            <Button
-                onClick={() => onCheckout(planId)}
-                disabled={loading !== null}
-                className={cn(
-                    'w-full h-14 rounded-xl font-black uppercase tracking-widest transition-all mt-auto border-0',
-                    isPopular
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-200'
-                        : 'bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-200'
-                )}
-            >
-                {loading === planId ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Get Started'}
-            </Button>
         </div>
     )
 }

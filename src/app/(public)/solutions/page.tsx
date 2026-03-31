@@ -1,224 +1,130 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import {
-    Users,
-    Home,
-    Building,
-    ArrowRight,
-    CheckCircle2,
-    Zap
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { CheckCircle2, ArrowRight } from 'lucide-react'
 import { PublicNavbar } from '@/components/layout/PublicNavbar'
 import { PublicFooter } from '@/components/layout/PublicFooter'
-import { FuturisticBuilding } from '@/components/brand/FuturisticBuilding'
-import { SolutionsVisual } from '@/components/brand/SolutionsVisual'
-import { DataStream } from '@/components/brand/CyberEffects'
 
 export const metadata: Metadata = {
     title: 'Solutions - PropFlow',
-    description: 'Tailored property management solutions for Leasing Agents, Property Managers, and Modern Landlords.',
+    description: 'Tailored property management solutions for independent agents, growing agencies, and large brokerages.',
 }
 
 const solutions = [
     {
-        id: 'leasing',
-        icon: Users,
-        title: 'For Leasing Agents',
-        tagline: 'Scale your leasing performance.',
-        description: 'Streamline your professional workflow from showing to signed lease. Automate the friction out of every interaction.',
+        audience: 'For Independent Agents',
+        tagline: 'You wear every hat. PropFlow handles the rest.',
+        accent: 'border-blue-500',
+        accentText: 'text-blue-600',
+        accentBg: 'bg-blue-50',
         benefits: [
-            'Automated showing scheduling',
-            'Digital application vetting pipeline',
-            'Instant legal document synthesis',
-            'Performance tracking analytics',
+            'Automate tenant screening',
+            'Generate documents in seconds',
+            'Send leases for e-signature',
+            'Collect rent automatically',
         ],
-        color: 'bg-blue-600',
-        text: 'text-blue-600',
-        gradient: 'from-blue-600 to-indigo-700'
+        cta: 'Start with Agent Pro — $149/mo',
+        href: '/pricing',
     },
     {
-        id: 'management',
-        icon: Building,
-        title: 'For Property Managers',
-        tagline: 'Absolute portfolio control.',
-        description: 'Manage your entire organizational structure from one centralized dashboard. Deep visibility into every asset.',
+        audience: 'For Growing Agencies',
+        tagline: 'Scale your team without scaling your workload.',
+        accent: 'border-indigo-500',
+        accentText: 'text-indigo-600',
+        accentBg: 'bg-indigo-50',
         benefits: [
-            'Hierarchical property organization',
-            'Real-time yield and occupancy monitoring',
-            'Automated invoice generating system',
-            'Centralized team collaboration',
+            'Manage up to 100 properties',
+            'Invite 5 team members with role-based access',
+            'Automated invoicing and analytics',
+            'Approval workflows for landlord oversight',
         ],
-        color: 'bg-indigo-600',
-        text: 'text-indigo-600',
-        gradient: 'from-indigo-600 to-indigo-800'
+        cta: 'Upgrade to Agency Growth — $289/mo',
+        href: '/pricing',
     },
     {
-        id: 'investment',
-        icon: Home,
-        title: 'For Modern Landlords',
-        tagline: 'Frictionless investment visibility.',
-        description: 'Stay informed about your investments without the administrative overhead. Real-time data at your fingertips.',
+        audience: 'For Brokerages',
+        tagline: 'Command your entire operation from one dashboard.',
+        accent: 'border-emerald-500',
+        accentText: 'text-emerald-600',
+        accentBg: 'bg-emerald-50',
         benefits: [
-            'One-click application approval',
-            'Secured document storage vault',
-            'Performance metric visualizer',
-            'Real-time event notifications',
+            'Unlimited properties and team members',
+            'Full social media suite (13 platforms)',
+            'Commission tracking and splits',
+            'Custom automations and integrations',
         ],
-        color: 'bg-slate-900',
-        text: 'text-slate-900',
-        gradient: 'from-slate-900 to-slate-800'
+        cta: 'Try Brokerage Command free for 14 days',
+        href: '/pricing',
     },
 ]
 
 export default function SolutionsPage() {
     return (
-        <div className="min-h-screen bg-[#fdfeff] relative overflow-hidden">
+        <div className="min-h-screen bg-white">
             <PublicNavbar />
 
-            {/* Background Decoration */}
-            <div className="fixed inset-0 pointer-events-none -z-10 bg-gradient-to-b from-white via-blue-50/10 to-white">
-                <div className="absolute top-[10%] -left-20 w-[40rem] h-[40rem] bg-blue-50/50 rounded-full blur-[120px] opacity-40 animate-pulse" />
-                <div className="absolute top-[40%] -right-20 w-[30rem] h-[30rem] bg-indigo-50/40 rounded-full blur-[100px] opacity-30 animate-pulse" style={{ animationDelay: '-3s' }} />
-
-                <FuturisticBuilding
-                    className="absolute -left-10 bottom-20 w-[350px] opacity-[0.1]"
-                    color="blue"
-                    height={800}
-                    opacity={0.12}
-                />
-                <FuturisticBuilding
-                    className="absolute left-[8%] top-[20%] w-[200px] opacity-[0.06]"
-                    color="emerald"
-                    height={400}
-                    opacity={0.08}
-                    delay="-2s"
-                />
-                <FuturisticBuilding
-                    className="absolute -right-10 top-40 w-[250px] opacity-[0.08] scale-x-[-1]"
-                    color="indigo"
-                    height={600}
-                    opacity={0.1}
-                    delay="-4s"
-                />
-                <FuturisticBuilding
-                    className="absolute right-[12%] bottom-[10%] w-[280px] opacity-[0.07]"
-                    color="blue"
-                    height={500}
-                    opacity={0.09}
-                    delay="-1s"
-                />
-
-                <DataStream className="left-[20%] top-0" color="blue" delay="1s" />
-                <DataStream className="right-[30%] top-[40%]" color="indigo" delay="3s" />
-            </div>
-
-            <main className="pt-32 pb-24 relative z-10">
-                {/* Hero section */}
-                <div className="max-w-7xl mx-auto px-4 text-center mb-16 lg:mb-32">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100/50 text-blue-600 text-xs font-bold mb-6">
-                        <Zap className="h-3 w-3" />
-                        <span>Vertical Solutions</span>
-                    </div>
-                    <h1 className="text-4xl sm:text-5xl lg:text-8xl font-black tracking-tight text-slate-900 mb-8 px-2">
-                        Engineered for <br className="hidden sm:block" />
-                        <span className="text-gradient">high-stakes</span> real estate.
+            <main className="pt-32">
+                {/* Hero */}
+                <section className="max-w-4xl mx-auto px-4 py-20 text-center">
+                    <h1 className="text-5xl sm:text-6xl font-black text-slate-900 tracking-tight leading-tight mb-6">
+                        Built for every role in real estate.
                     </h1>
-                    <p className="text-lg sm:text-xl text-slate-500 font-medium max-w-2xl mx-auto leading-relaxed px-4">
-                        Tailored workflows for every stakeholder in the property lifecycle.
-                        Maximum efficiency, zero compromise.
+                    <p className="text-lg sm:text-xl text-slate-500 font-medium max-w-2xl mx-auto leading-relaxed">
+                        Whether you&apos;re a solo agent, a growing agency, or a multi-office brokerage — PropFlow scales with you.
                     </p>
-                </div>
+                </section>
 
-                {/* Solutions List */}
-                <div className="max-w-7xl mx-auto px-4 space-y-24 md:space-y-40">
-                    {solutions.map((solution, index) => {
-                        const Icon = solution.icon
-                        const isReversed = index % 2 === 1
-
-                        return (
-                            <div
-                                key={solution.title}
-                                className={cn(
-                                    "flex flex-col gap-12 lg:gap-16 items-center",
-                                    isReversed ? "lg:flex-row-reverse" : "lg:flex-row"
-                                )}
-                            >
-                                {/* Content Section */}
-                                <div className="flex-1 w-full order-2 lg:order-none">
-                                    <div className={cn(
-                                        "h-14 w-14 sm:h-16 sm:w-16 rounded-2xl flex items-center justify-center mb-8 shadow-xl text-white",
-                                        solution.color
-                                    )}>
-                                        <Icon className="h-7 w-7 sm:h-8 sm:w-8" />
-                                    </div>
-                                    <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-600 mb-4">
-                                        {solution.tagline}
-                                    </h2>
-                                    <h3 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 mb-6 tracking-tight leading-tight">
-                                        {solution.title}
-                                    </h3>
-                                    <p className="text-lg sm:text-xl text-slate-500 font-medium mb-10 leading-relaxed">
-                                        {solution.description}
-                                    </p>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-12">
-                                        {solution.benefits.map((benefit) => (
-                                            <div key={benefit} className="flex items-start gap-3 p-4 rounded-2xl bg-white border border-slate-100 shadow-sm transition-transform hover:scale-[1.02]">
-                                                <CheckCircle2 className={cn("h-5 w-5 mt-0.5", solution.text)} />
-                                                <span className="text-sm font-bold text-slate-700 leading-tight">{benefit}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    <Link href="/signup" className="block sm:inline-block">
-                                        <Button className={cn(
-                                            "w-full sm:w-auto h-16 px-10 rounded-2xl font-black text-lg transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-blue-200",
-                                            solution.color
-                                        )}>
-                                            Start Your Setup
-                                            <ArrowRight className="h-5 w-5 ml-3" />
-                                        </Button>
-                                    </Link>
-                                </div>
-
-                                {/* Visual Section */}
-                                <div className="flex-1 w-full group order-1 lg:order-none">
-                                    <div className={cn(
-                                        "aspect-square sm:aspect-video lg:aspect-square rounded-[2.5rem] sm:rounded-[4rem] bg-gradient-to-br overflow-hidden relative shadow-2xl",
-                                        solution.gradient
-                                    )}>
-                                        <SolutionsVisual type={solution.id as any} className="w-full h-full" />
-
-                                        {/* Abstract Blur Elements */}
-                                        <div className="absolute -top-20 -right-20 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
-                                        <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-black/10 rounded-full blur-3xl" />
-                                    </div>
-                                </div>
+                {/* Solution Cards */}
+                <section className="max-w-4xl mx-auto px-4 pb-24 space-y-8">
+                    {solutions.map((solution) => (
+                        <div
+                            key={solution.audience}
+                            className={`bg-white border border-slate-100 border-l-4 ${solution.accent} rounded-2xl p-8 sm:p-10`}
+                        >
+                            <div className={`inline-block px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest ${solution.accentText} ${solution.accentBg} mb-4`}>
+                                {solution.audience}
                             </div>
-                        )
-                    })}
-                </div>
-
-                {/* Integration Banner */}
-                <div className="max-w-7xl mx-auto px-4 mt-40 md:mt-60 text-center">
-                    <div className="p-8 sm:p-16 rounded-[2.5rem] sm:rounded-[4rem] bg-slate-50 border border-slate-100 relative overflow-hidden">
-                        <div className="relative z-10">
-                            <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 mb-4 px-2 leading-tight">Integrate with your ecosystem.</h2>
-                            <p className="text-slate-500 font-medium mb-12 max-w-2xl mx-auto px-4">
-                                PropFlow Intelligence seamlessly bridges the gap between your legacy tools and modern infrastructure.
-                            </p>
-                            <div className="flex flex-wrap justify-center gap-6 sm:gap-12 grayscale opacity-50">
-                                <div className="font-black text-lg sm:text-2xl tracking-tighter">STRIPE</div>
-                                <div className="font-black text-lg sm:text-2xl tracking-tighter">SUPABASE</div>
-                                <div className="font-black text-lg sm:text-2xl tracking-tighter">VERCEL</div>
-                                <div className="font-black text-lg sm:text-2xl tracking-tighter">LATE</div>
-                                <div className="font-black text-lg sm:text-2xl tracking-tighter">NATIVE SMART DOCS</div>
-                            </div>
+                            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mb-6">
+                                {solution.tagline}
+                            </h2>
+                            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
+                                {solution.benefits.map((benefit) => (
+                                    <li key={benefit} className="flex items-start gap-3">
+                                        <CheckCircle2 className={`h-5 w-5 mt-0.5 flex-shrink-0 ${solution.accentText}`} />
+                                        <span className="text-slate-600 font-medium text-sm leading-snug">{benefit}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                            <Link href={solution.href}>
+                                <Button
+                                    variant="outline"
+                                    className={`h-11 px-6 rounded-xl font-black text-sm border-2 ${solution.accent} ${solution.accentText} hover:opacity-80 transition-opacity bg-white`}
+                                >
+                                    {solution.cta}
+                                    <ArrowRight className="h-4 w-4 ml-2" />
+                                </Button>
+                            </Link>
                         </div>
+                    ))}
+                </section>
+
+                {/* CTA */}
+                <section className="bg-slate-50 border-t border-slate-100 py-24">
+                    <div className="max-w-2xl mx-auto px-4 text-center">
+                        <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mb-4">
+                            Not sure which plan fits?
+                        </h2>
+                        <p className="text-slate-500 font-medium mb-10 leading-relaxed">
+                            Start with a free trial on Brokerage Command and experience every feature.
+                        </p>
+                        <Link href="/signup">
+                            <Button size="lg" className="h-14 px-10 rounded-xl bg-slate-900 text-white hover:bg-slate-800 font-black text-base transition-all hover:scale-105 active:scale-95">
+                                Start Free Trial
+                                <ArrowRight className="h-4 w-4 ml-2" />
+                            </Button>
+                        </Link>
                     </div>
-                </div>
+                </section>
             </main>
 
             <PublicFooter />
