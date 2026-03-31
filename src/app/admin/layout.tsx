@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/useAuth'
+import { Loader2 } from 'lucide-react'
 import Link from 'next/link'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -33,7 +34,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         )
     }
 
-    if (!authorized) return null
+    if (!authorized) {
+        return (
+            <div className="flex h-screen items-center justify-center">
+                <div className="text-center space-y-3">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
+                    <p className="text-sm text-slate-500">Redirecting...</p>
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">

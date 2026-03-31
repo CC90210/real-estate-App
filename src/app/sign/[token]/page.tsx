@@ -110,8 +110,24 @@ function parseDocumentContent(raw: unknown): ParsedDocumentContent | null {
 function RenderDocSection({ section, accent }: { section: any; accent: string }) {
     const type = section.type as string
 
-    // Skip header/footer/signatures — not relevant to signing preview
-    if (['header', 'footer', 'signatures'].includes(type)) return null
+    // Skip header/footer only — signatures section is shown as an agreement list
+    if (['header', 'footer'].includes(type)) return null
+
+    if (type === 'signatures') {
+        return (
+            <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 pb-1 mb-3">{section.title || 'Agreement'}</p>
+                <div className="space-y-2">
+                    {section.fields?.map((field: string, i: number) => (
+                        <div key={i} className="flex items-center gap-2 text-sm text-slate-600">
+                            <span className="w-2 h-2 rounded-full bg-slate-300 shrink-0" />
+                            {field}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )
+    }
 
     if (type === 'recommendation') {
         const color = section.status?.includes('Approve') ? 'border-emerald-500 bg-emerald-50 text-emerald-800'

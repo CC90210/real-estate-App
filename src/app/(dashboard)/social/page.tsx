@@ -100,6 +100,7 @@ export default function SocialPage() {
         }
         if (callbackError) {
             const errorMessages: Record<string, string> = {
+                no_company: 'No company found for your account. Please complete your profile setup first.',
                 no_profile: 'No social profile found. Please try connecting again.',
                 callback_failed: 'Connection callback failed. The platform may be temporarily unavailable.',
             }

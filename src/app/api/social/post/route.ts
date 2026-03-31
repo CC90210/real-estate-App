@@ -94,7 +94,7 @@ export async function POST(req: Request) {
             status: publishNow ? 'published' : scheduledFor ? 'scheduled' : 'draft',
             scheduled_for: scheduledFor || null,
             published_at: publishNow ? new Date().toISOString() : null,
-        }).select().single()
+        }).select().maybeSingle()
 
         return NextResponse.json({ post: savedPost, latePost })
     } catch (error) {

@@ -42,7 +42,14 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
     }
 
     if (userData === null) {
-        return null
+        return (
+            <div className="flex h-screen items-center justify-center">
+                <div className="text-center space-y-3">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
+                    <p className="text-sm text-slate-500">Redirecting...</p>
+                </div>
+            </div>
+        )
     }
 
     return (
