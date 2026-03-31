@@ -27,6 +27,7 @@ import {
     Shield,
     Server,
     Key,
+    Facebook,
 } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -41,6 +42,8 @@ export default function AutomationSettingsPage() {
     const [showSmtpPassword, setShowSmtpPassword] = useState(false)
     const [connectingGmail, setConnectingGmail] = useState(false)
     const [savingCredentials, setSavingCredentials] = useState(false)
+    const [savingMarketplace, setSavingMarketplace] = useState(false)
+    const [showFbToken, setShowFbToken] = useState(false)
 
     const [credentialForm, setCredentialForm] = useState({
         singlekey_api_key: '',
@@ -51,6 +54,11 @@ export default function AutomationSettingsPage() {
         from_name: '',
         from_email: '',
         email_provider: null as string | null,
+    })
+
+    const [marketplaceForm, setMarketplaceForm] = useState({
+        fb_access_token: '',
+        fb_page_id: '',
     })
 
     // Check for Gmail callback success
@@ -259,6 +267,39 @@ export default function AutomationSettingsPage() {
             toast.error('Failed to save credentials', { description: err.message })
         } finally {
             setSavingCredentials(false)
+        }
+    }
+
+    const saveMarketplaceCredentials = async () => {
+        if (!marketplaceForm.fb_access_token || !marketplaceForm.fb_page_id) {
+            toast.error('Both Page Access Token and Page ID are required.')
+            return
+        }
+        setSavingMarketplace(true)
+        try {
+            const res = await fetch('/api/automations/marketplace-credentials', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    facebook_marketplace: {
+                        access_token: marketplaceForm.fb_access_token,
+                        page_id: marketplaceForm.fb_page_id,
+                    },
+                }),
+            })
+
+            if (!res.ok) {
+                const err = await res.json()
+                throw new Error(err.error || 'Failed to save')
+            }
+
+            toast.success('Marketplace credentials saved', { description: 'Facebook Marketplace is now connected.' })
+            setMarketplaceForm({ fb_access_token: '', fb_page_id: '' })
+            queryClient.invalidateQueries({ queryKey: ['automation-credentials'] })
+        } catch (err: unknown) {
+            toast.error('Failed to save credentials', { description: err instanceof Error ? err.message : 'Unknown error' })
+        } finally {
+            setSavingMarketplace(false)
         }
     }
 
@@ -584,6 +625,85 @@ export default function AutomationSettingsPage() {
                             >
                                 {savingCredentials ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Server className="h-5 w-5 mr-2" />}
                                 Save Email Server
+                            </Button>
+                        </CardContent>
+                    </Card>
+
+                    {/* ─── Facebook Marketplace Card ─── */}
+                    <Card className="border-none shadow-2xl shadow-slate-200/50 bg-white rounded-[2rem] overflow-hidden group">
+                        <CardHeader className="p-8 pb-4">
+                            <CardTitle className="flex items-center gap-4 text-2xl font-black text-slate-900">
+                                <div className="h-12 w-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all duration-500 shadow-lg shadow-blue-100">
+                                    <Facebook className="h-6 w-6" />
+                                </div>
+                                Facebook Marketplace
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-8 pt-4 space-y-6">
+                            <p className="text-sm text-slate-500 font-medium">
+                                Connect your Facebook Business Page to post rental listings directly to Facebook Marketplace.
+                            </p>
+
+                            <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                                <p className="text-xs text-blue-800 font-medium">
+                                    Get your Page Access Token from <strong>Facebook Business Settings &gt; Business Tools &gt; System Users</strong>.
+                                    Your Page ID is visible in your Facebook Page URL (e.g. facebook.com/<strong>your-page-id</strong>).
+                                </p>
+                            </div>
+
+                            {credentials?.has_facebook_marketplace && (
+                                <div className="flex items-center gap-3 p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+                                    <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                                    <div>
+                                        <p className="text-sm font-bold text-slate-900">Facebook Marketplace Connected</p>
+                                        <p className="text-xs text-slate-500">Credentials are saved. Re-enter below to update them.</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="space-y-2">
+                                <Label className="text-sm font-black uppercase tracking-wider text-slate-400 ml-1">Page Access Token</Label>
+                                <div className="relative">
+                                    <Input
+                                        type={showFbToken ? 'text' : 'password'}
+                                        placeholder="EAAxxxxx..."
+                                        value={marketplaceForm.fb_access_token}
+                                        onChange={(e) => setMarketplaceForm({ ...marketplaceForm, fb_access_token: e.target.value })}
+                                        className="h-14 bg-slate-50 border-slate-100 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-mono text-sm px-6 pr-14"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => setShowFbToken(!showFbToken)}
+                                        className="absolute right-2 top-2 h-10 w-10 text-slate-400 hover:text-slate-600"
+                                    >
+                                        {showFbToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-sm font-black uppercase tracking-wider text-slate-400 ml-1">Page ID</Label>
+                                <Input
+                                    type="text"
+                                    placeholder="123456789012345"
+                                    value={marketplaceForm.fb_page_id}
+                                    onChange={(e) => setMarketplaceForm({ ...marketplaceForm, fb_page_id: e.target.value })}
+                                    className="h-14 bg-slate-50 border-slate-100 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm px-6"
+                                />
+                                <p className="text-xs text-slate-400 ml-1">
+                                    Your Page ID is the numeric identifier from your Facebook Page URL or Business Settings.
+                                </p>
+                            </div>
+
+                            <Button
+                                onClick={saveMarketplaceCredentials}
+                                disabled={savingMarketplace || !marketplaceForm.fb_access_token || !marketplaceForm.fb_page_id}
+                                className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-sm shadow-lg shadow-blue-100 transition-all disabled:opacity-50"
+                            >
+                                {savingMarketplace ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Facebook className="h-5 w-5 mr-2" />}
+                                Save Marketplace Settings
                             </Button>
                         </CardContent>
                     </Card>

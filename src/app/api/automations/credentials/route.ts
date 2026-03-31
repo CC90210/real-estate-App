@@ -180,7 +180,7 @@ export async function GET() {
 
         const { data, error } = await supabase
             .from('automation_settings')
-            .select('singlekey_api_key, smtp_host, smtp_port, smtp_user, from_name, from_email, email_provider')
+            .select('singlekey_api_key, smtp_host, smtp_port, smtp_user, from_name, from_email, email_provider, platform_credentials')
             .eq('company_id', profile.company_id)
             .maybeSingle()
 
@@ -188,6 +188,8 @@ export async function GET() {
             console.error('[Credentials] Fetch failed:', error)
             return apiError('Failed to load credentials', { status: 500 })
         }
+
+        const platformCreds = data?.platform_credentials as Record<string, Record<string, string>> | null
 
         const masked = data ? {
             singlekey_api_key: data.singlekey_api_key
@@ -204,6 +206,7 @@ export async function GET() {
             from_email: data.from_email,
             email_provider: data.email_provider,
             has_smtp_password: false,
+            has_facebook_marketplace: !!(platformCreds?.facebook_marketplace?.access_token),
         } : null
 
         return NextResponse.json({ data: masked })

@@ -268,31 +268,14 @@ export function MarketplaceListings({ companyId }: MarketplaceListingsProps) {
         try {
             const content = buildFacebookListingContent(selectedProperty)
 
-            // Fetch the connected Facebook account ID
-            const { data: fbAccounts } = await supabase
-                .from('social_accounts')
-                .select('id')
-                .eq('company_id', companyId)
-                .eq('platform', 'facebook')
-                .eq('status', 'active')
-                .limit(1)
-
-            if (!fbAccounts || fbAccounts.length === 0) {
-                toast.error('Facebook account not found. Please reconnect in Platforms.')
-                return
-            }
-
-            const res = await fetch('/api/social/post', {
+            const res = await fetch('/api/social/marketplace', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    property_id: selectedProperty.id,
+                    platform: 'facebook_marketplace',
                     content,
-                    hashtags: ['realestate', 'rental', 'forrent'],
-                    platformAccountIds: [fbAccounts[0].id],
-                    mediaUrls: selectedProperty.photos?.slice(0, 4) ?? [],
-                    publishNow: true,
-                    // tag so we can query it back later
-                    platforms: ['marketplace:facebook'],
+                    media_urls: selectedProperty.photos?.slice(0, 4) ?? [],
                 }),
             })
 
@@ -303,7 +286,12 @@ export function MarketplaceListings({ companyId }: MarketplaceListingsProps) {
                 return
             }
 
-            toast.success('Listing posted to Facebook Marketplace!')
+            if (data.warning) {
+                toast.warning(data.warning)
+            } else {
+                toast.success('Listing posted to Facebook Marketplace!')
+            }
+
             setSelectedPropertyId('')
             setSelectedMarketplaces([])
             fetchActiveListings()
