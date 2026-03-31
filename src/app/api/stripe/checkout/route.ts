@@ -49,6 +49,20 @@ export async function POST(req: Request) {
             return apiError('Only company admins can manage billing', { status: 403 })
         }
 
+        // Guard against duplicate subscriptions
+        const { data: existingCompany } = await supabase
+            .from('companies')
+            .select('stripe_subscription_id, subscription_status')
+            .eq('id', profile.company_id)
+            .maybeSingle()
+
+        if (existingCompany?.stripe_subscription_id && existingCompany.subscription_status !== 'cancelled') {
+            return apiError('You already have an active subscription. Use the upgrade option in Settings > Billing to change plans.', {
+                status: 409,
+                code: 'EXISTING_SUBSCRIPTION',
+            })
+        }
+
         let customerId = profile?.stripe_customer_id || undefined
 
         if (!customerId) {
@@ -67,9 +81,11 @@ export async function POST(req: Request) {
                 .eq('id', user.id)
         }
 
-        // Only Brokerage Command gets a 14-day free trial.
-        // Agent Pro and Agency Growth pay immediately — incentivizes the top tier.
+        // Only truly new Brokerage Command customers get a 14-day free trial.
+        // Existing customers who cancelled and re-subscribe, or who upgrade, pay immediately.
         const isBrokerageCommand = planId === 'brokerage_command'
+        const isNewCustomer = !existingCompany?.stripe_subscription_id
+        const shouldGiveTrial = isBrokerageCommand && isNewCustomer
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://propflow.pro'
 
         // Use the real Stripe Price IDs (linked to the products you created in Stripe Dashboard)
@@ -86,7 +102,7 @@ export async function POST(req: Request) {
             cancel_url: `${appUrl}/pricing?checkout=cancelled`,
             metadata: { plan: planId, user_id: user.id },
         }
-        if (isBrokerageCommand) {
+        if (shouldGiveTrial) {
             sessionParams.subscription_data.trial_period_days = 14
         }
 

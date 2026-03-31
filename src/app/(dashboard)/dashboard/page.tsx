@@ -10,10 +10,12 @@ import { Loader2, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 
 export default function DashboardPage() {
     const { role, isLoading, company } = useAuth()
     const router = useRouter()
+    const queryClient = useQueryClient()
     const { setOpen: setQuickFindOpen } = useQuickFind()
     const searchParams = useSearchParams()
 
@@ -27,6 +29,9 @@ export default function DashboardPage() {
                 agency_growth: 'Agency Growth',
                 brokerage_command: 'Brokerage Command',
             }
+            // Force plan-related queries to refetch so feature gates and nav reflect the new plan immediately
+            queryClient.invalidateQueries({ queryKey: ['company-plan'] })
+            queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
             toast.success(`Welcome to ${planNames[plan] || plan}!`, {
                 description: 'Your subscription is now active. All features are unlocked.',
                 duration: 8000,
@@ -36,7 +41,7 @@ export default function DashboardPage() {
             toast.info('Checkout cancelled', { description: 'You can upgrade anytime from Settings > Billing.' })
             window.history.replaceState({}, '', '/dashboard')
         }
-    }, [searchParams])
+    }, [searchParams, queryClient])
 
     if (isLoading) {
         return (

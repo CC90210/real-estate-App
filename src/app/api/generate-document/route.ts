@@ -28,7 +28,13 @@ export async function POST(request: Request) {
         const propertyId = formData.get('propertyId') as string;
         const applicantId = formData.get('applicantId') as string;
         const currency = formData.get('currency') as string || 'USD';
-        const customFields = JSON.parse(formData.get('customFields') as string || '{}');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let customFields: Record<string, any> = {};
+        try {
+            customFields = JSON.parse(formData.get('customFields') as string || '{}');
+        } catch {
+            return apiError('Invalid customFields format', { status: 400 });
+        }
 
         // Validate input
         const validationResult = generateDocumentSchema.safeParse({

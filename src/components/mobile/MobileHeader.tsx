@@ -23,9 +23,6 @@ import {
     ClipboardList,
     CheckCircle,
     Calendar,
-    FileText,
-    Receipt,
-    Users,
     Zap,
     Settings,
     LogOut,
@@ -35,35 +32,38 @@ import {
     BookOpen,
     BarChart3,
     Activity,
-    Share2,
     ClipboardCheck,
     Megaphone,
     MessageSquare,
     PenTool,
     CreditCard,
+    Lock,
 } from 'lucide-react'
+import { useUser } from '@/lib/hooks/useUser'
+import { PLANS } from '@/lib/plans'
 
-// Navigation follows stakeholder-specified order
+// Navigation follows stakeholder-specified order. Each item has an `id` that
+// matches the plan nav arrays in src/lib/plans.ts so gating works correctly.
 const navigationItems = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, section: 'Overview' },
+    { id: 'dashboard', name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, section: 'Overview' },
     // Rental Workflow
-    { name: 'Inspections', href: '/inspections', icon: ClipboardCheck, section: 'Rental Workflow' },
-    { name: 'Properties', href: '/properties', icon: Home },
-    { name: 'Areas', href: '/areas', icon: MapPin },
-    { name: 'Listings', href: '/social', icon: Megaphone },
-    { name: 'Showings', href: '/showings', icon: Calendar },
-    { name: 'Applications', href: '/applications', icon: ClipboardList },
-    { name: 'Documents', href: '/documents', icon: PenTool },
-    { name: 'Leases', href: '/leases', icon: BookOpen },
-    { name: 'Approvals', href: '/approvals', icon: CheckCircle },
-    { name: 'Payments', href: '/invoices', icon: CreditCard },
-    { name: 'Communication', href: '/communication', icon: MessageSquare },
+    { id: 'inspections', name: 'Inspections', href: '/inspections', icon: ClipboardCheck, section: 'Rental Workflow' },
+    { id: 'properties', name: 'Properties', href: '/properties', icon: Home },
+    { id: 'areas', name: 'Areas', href: '/areas', icon: MapPin },
+    { id: 'social', name: 'Listings', href: '/social', icon: Megaphone },
+    { id: 'showings', name: 'Showings', href: '/showings', icon: Calendar },
+    { id: 'applications', name: 'Applications', href: '/applications', icon: ClipboardList },
+    { id: 'documents', name: 'Documents', href: '/documents', icon: PenTool },
+    { id: 'leases', name: 'Leases', href: '/leases', icon: BookOpen },
+    { id: 'approvals', name: 'Approvals', href: '/approvals', icon: CheckCircle },
+    { id: 'invoices', name: 'Payments', href: '/invoices', icon: CreditCard },
+    { id: 'communication', name: 'Communication', href: '/communication', icon: MessageSquare },
     // Operations
-    { name: 'Maintenance', href: '/maintenance', icon: Wrench, section: 'Operations' },
-    { name: 'Analytics', href: '/analytics', icon: BarChart3 },
-    { name: 'Activity', href: '/activity', icon: Activity },
-    { name: 'Automations', href: '/automations', icon: Zap },
-    { name: 'Settings', href: '/settings', icon: Settings },
+    { id: 'maintenance', name: 'Maintenance', href: '/maintenance', icon: Wrench, section: 'Operations' },
+    { id: 'analytics', name: 'Analytics', href: '/analytics', icon: BarChart3 },
+    { id: 'activity', name: 'Activity', href: '/activity', icon: Activity },
+    { id: 'automations', name: 'Automations', href: '/automations', icon: Zap },
+    { id: 'settings', name: 'Settings', href: '/settings', icon: Settings },
 ]
 
 interface MobileHeaderProps {
@@ -77,6 +77,11 @@ export function MobileHeader({ onQuickFindOpen, companyName, userName }: MobileH
     const pathname = usePathname()
     const router = useRouter()
     const supabase = createClient()
+    const { plan, hasFullAccess } = useUser()
+
+    const planConfig = PLANS[plan] || PLANS.essentials
+    // Full access users (super admins / partners) see everything from enterprise nav
+    const allowedNav = hasFullAccess ? PLANS.enterprise.nav : planConfig.nav
 
     const handleLogout = async () => {
         await supabase.auth.signOut()
@@ -124,10 +129,12 @@ export function MobileHeader({ onQuickFindOpen, companyName, userName }: MobileH
 
                         {/* Navigation Items - Scrollable */}
                         <nav className="flex-1 overflow-y-auto py-2">
-                            {navigationItems.map((item, index) => {
+                            {navigationItems.map((item) => {
                                 const Icon = item.icon
                                 const isActive = pathname === item.href ||
                                     (pathname?.startsWith(item.href + '/') || false)
+                                // Settings is always allowed regardless of plan
+                                const isAllowed = allowedNav.includes(item.id as never) || item.id === 'settings'
 
                                 return (
                                     <div key={item.href}>
@@ -136,17 +143,28 @@ export function MobileHeader({ onQuickFindOpen, companyName, userName }: MobileH
                                                 {item.section}
                                             </div>
                                         )}
-                                        <button
-                                            onClick={() => handleNavigation(item.href)}
-                                            className={`w-full flex items-center gap-4 px-4 py-3.5 text-left transition-colors ${isActive
-                                                ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
-                                                : 'text-gray-700 hover:bg-gray-50 border-l-4 border-transparent'
-                                                }`}
-                                        >
-                                            <Icon className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
-                                            <span className="font-medium">{item.name}</span>
-                                            <ChevronRight className={`h-4 w-4 ml-auto ${isActive ? 'text-blue-400' : 'text-gray-300'}`} />
-                                        </button>
+                                        {isAllowed ? (
+                                            <button
+                                                onClick={() => handleNavigation(item.href)}
+                                                className={`w-full flex items-center gap-4 px-4 py-3.5 text-left transition-colors ${isActive
+                                                    ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                                                    : 'text-gray-700 hover:bg-gray-50 border-l-4 border-transparent'
+                                                    }`}
+                                            >
+                                                <Icon className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
+                                                <span className="font-medium">{item.name}</span>
+                                                <ChevronRight className={`h-4 w-4 ml-auto ${isActive ? 'text-blue-400' : 'text-gray-300'}`} />
+                                            </button>
+                                        ) : (
+                                            <div
+                                                className="w-full flex items-center gap-4 px-4 py-3.5 text-left opacity-40 cursor-not-allowed border-l-4 border-transparent"
+                                                title="Upgrade your plan to access this feature"
+                                            >
+                                                <Icon className="h-5 w-5 text-gray-400" />
+                                                <span className="font-medium text-gray-400">{item.name}</span>
+                                                <Lock className="h-3.5 w-3.5 ml-auto text-gray-400" />
+                                            </div>
+                                        )}
                                     </div>
                                 )
                             })}
