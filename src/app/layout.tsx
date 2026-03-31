@@ -102,12 +102,10 @@ export const metadata: Metadata = {
   // Manifest
   manifest: '/site.webmanifest',
 
-  // Verification (add your codes)
-  verification: {
-    google: 'your-google-verification-code',
-    // yandex: 'your-yandex-code',
-    // bing: 'your-bing-code',
-  },
+  // Verification — add real codes via NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION etc. when available
+  // verification: {
+  //   google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
+  // },
 
   // Alternate Languages (if applicable)
   alternates: {

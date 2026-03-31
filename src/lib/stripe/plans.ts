@@ -6,7 +6,7 @@ export interface Plan {
     tagline: string
     price: number          // Monthly in cents
     displayPrice: string   // For UI display
-    stripePriceId: string | null // TODO: Create Stripe products/prices and add IDs here
+    stripePriceId: string | null
     popular?: boolean
     features: {
         crm: string[]

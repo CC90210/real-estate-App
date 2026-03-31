@@ -140,7 +140,7 @@ export default function AreaDetailsPage() {
 
                                         <div className={cn("w-full md:w-56 h-40 bg-slate-50 rounded-[2rem] flex items-center justify-center shrink-0 transition-colors", `group-hover:${colors.bgLight}`)}>
                                             {building.image_url ? (
-                                                <img src={building.image_url} className="w-full h-full object-cover rounded-[2rem]" />
+                                                <img src={building.image_url} alt={building.name || 'Building'} className="w-full h-full object-cover rounded-[2rem]" />
                                             ) : (
                                                 <Building className={cn("w-16 h-16 text-slate-200 transition-colors", `group-hover:${colors.text}/30`)} />
                                             )}

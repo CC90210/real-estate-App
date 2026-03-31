@@ -22,6 +22,7 @@ export async function GET(req: Request) {
         .from('platform_invitations')
         .select('*')
         .order('created_at', { ascending: false })
+        .limit(200)
 
     return NextResponse.json({ invites })
 }

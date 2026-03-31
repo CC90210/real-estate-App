@@ -260,7 +260,7 @@ export default function TeamPage() {
                                                 <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                                                     <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
                                                         {member.avatar_url ? (
-                                                            <img src={member.avatar_url} className="h-10 w-10 sm:h-12 sm:w-12 rounded-full" />
+                                                            <img src={member.avatar_url} alt={member.full_name || 'Team member'} className="h-10 w-10 sm:h-12 sm:w-12 rounded-full" />
                                                         ) : (
                                                             <span className="text-base sm:text-lg font-medium">
                                                                 {member.full_name?.[0] || member.email?.[0] || '?'}
