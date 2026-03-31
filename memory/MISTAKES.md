@@ -34,3 +34,29 @@
 - File: `src/app/api/social/callback/route.ts`
 - Root cause: Code used `account.name` (nonexistent) instead of `account.displayName`, and `account.avatar || account.image` (both nonexistent on SocialAccount type).
 - Prevention: Check `SocialAccount` type in `node_modules/@getlatedev/node/dist/index.d.ts` before mapping fields.
+
+## 2026-03-30 — Full social audit (3 code bugs fixed + 1 schema migration added)
+
+### Bug 1 (CRITICAL): `mediaUrls` is not a Late API field — media silently ignored
+- Files: `src/app/api/social/post/route.ts` line 71, `src/app/api/social/schedule/route.ts` line 72
+- Root cause: Both routes set `postPayload.mediaUrls = [...]`. The Late SDK `CreatePostData` type requires `mediaItems: Array<{ type?, url? }>`. The field name `mediaUrls` does not exist in the Late API schema.
+- Fix: Changed to `postPayload.mediaItems = mediaUrls.map((url) => ({ url }))` in both routes.
+- Prevention: Always verify payload field names against SDK type definitions before writing to `postPayload`.
+
+### Bug 2 (HIGH): `schedule/route.ts` used wrong ID type for `platformAccountIds`
+- File: `src/app/api/social/schedule/route.ts`
+- Root cause: Route queried `.in('late_account_id', platformAccountIds)` but the social page always provides Supabase row UUIDs. Authorization always returned 403 and the wrong IDs would go to Late even if it passed.
+- Fix: Changed to `.in('id', platformAccountIds)` then mapped `.map(acc => ({ accountId: acc.late_account_id }))` for the Late payload.
+- Prevention: Clarify in comments what ID type `platformAccountIds` contains. Both post/schedule routes must agree.
+
+### Bug 3 (HIGH): `schedule/route.ts` crashed on `post._id` without null guard
+- File: `src/app/api/social/schedule/route.ts` line 79
+- Root cause: `return NextResponse.json({ postId: post._id })` — if `post` is undefined the TypeError crashes the request.
+- Fix: Added `const postId = post?._id || post?.id || null` before the return.
+- Prevention: Always use optional chaining when reading from external API responses.
+
+### Bug 4 (HIGH): Global unique constraint on `social_accounts.late_account_id`
+- File: `supabase/migrations/20260330_social_tables.sql` line 28-31
+- Root cause: `UNIQUE (late_account_id)` is global. If Late reuses an account ID after deletion/reconnect across profiles, the callback INSERT fails with 23505.
+- Fix: New migration `20260330_fix_social_accounts_unique.sql` drops global constraint, adds `UNIQUE (company_id, late_account_id)`.
+- Prevention: Never enforce uniqueness on third-party IDs without company scoping.

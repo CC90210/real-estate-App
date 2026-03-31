@@ -44,17 +44,15 @@ export async function POST(request: Request) {
             return apiError('No company found', { status: 403 });
         }
 
-        // Verify all platformAccountIds belong to this user's company
+        // Verify all platformAccountIds (Supabase UUIDs) belong to this company
+        // and translate them to Late account IDs for the API call
         const { data: validAccounts } = await supabase
             .from('social_accounts')
-            .select('late_account_id')
+            .select('id, late_account_id')
             .eq('company_id', profile.company_id)
-            .in('late_account_id', platformAccountIds);
+            .in('id', platformAccountIds);
 
-        const validIds = new Set(validAccounts?.map(a => a.late_account_id) || []);
-        const unauthorized = platformAccountIds.filter((id: string) => !validIds.has(id));
-
-        if (unauthorized.length > 0) {
+        if (!validAccounts?.length) {
             return apiError('One or more social accounts do not belong to your company', { status: 403 });
         }
 
@@ -63,20 +61,21 @@ export async function POST(request: Request) {
             content: content,
             scheduledFor: scheduledFor, // ISO-8601 string, e.g., '2025-05-16T12:00:00'
             timezone: 'America/New_York', // Consider fetching agent timezone dynamically if available
-            platforms: platformAccountIds.map((id: string) => ({
-                accountId: id
+            platforms: validAccounts.map((acc: any) => ({
+                accountId: acc.late_account_id
             }))
         };
 
         if (mediaUrl) {
-            postPayload.mediaUrls = [mediaUrl];
+            postPayload.mediaItems = [{ url: mediaUrl }];
         }
 
         // 3. Dispatch to Late to schedule the post across connected platforms
         const result = await late.posts.createPost({ body: postPayload });
-        const post = result?.data?.post || result?.post;
+        const post = result?.data?.post || (result as any)?.post;
+        const postId = post?._id || post?.id || null;
 
-        return NextResponse.json({ success: true, postId: post._id });
+        return NextResponse.json({ success: true, postId });
 
     } catch (error) {
         console.error('Social Schedule API Error:', error);

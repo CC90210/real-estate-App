@@ -68,7 +68,7 @@ export async function POST(req: Request) {
         }
 
         if (mediaUrls?.length) {
-            postPayload.mediaUrls = mediaUrls
+            postPayload.mediaItems = mediaUrls.map((url: string) => ({ url }))
         }
 
         if (publishNow) {
