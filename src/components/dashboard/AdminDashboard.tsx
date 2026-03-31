@@ -95,8 +95,72 @@ export default function AdminDashboard({ onQuickFind }: AdminDashboardProps) {
 
     const today = format(new Date(), 'EEEE, MMMM d, yyyy')
 
+    // Subscription status for expiration banner
+    const subStatus = (company as any)?.subscription_status as string | undefined
+    const subPlan = (company as any)?.subscription_plan as string | undefined
+    const isCancelled = subStatus === 'cancelled'
+    const isPastDue = subStatus === 'past_due'
+    const isTrialing = subStatus === 'trialing'
+    const hasNoPlan = !subPlan && !isTrialing
+
     return (
         <div className="relative p-6 lg:p-10 space-y-8">
+            {/* Subscription expiration / billing warning banners */}
+            {isCancelled && (
+                <div className="bg-red-50 border border-red-200 rounded-2xl p-5 flex items-center justify-between animate-in fade-in duration-500">
+                    <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
+                            <Wallet className="h-5 w-5 text-red-600" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-black text-red-900">Subscription Expired</p>
+                            <p className="text-xs text-red-700">Your plan has been cancelled. Upgrade to restore full access to all features.</p>
+                        </div>
+                    </div>
+                    <Link href="/pricing">
+                        <Button className="bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs h-10 px-6 shadow-lg shadow-red-100">
+                            Reactivate
+                        </Button>
+                    </Link>
+                </div>
+            )}
+            {isPastDue && (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-center justify-between animate-in fade-in duration-500">
+                    <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 bg-amber-100 rounded-xl flex items-center justify-center shrink-0">
+                            <DollarSign className="h-5 w-5 text-amber-600" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-black text-amber-900">Payment Failed</p>
+                            <p className="text-xs text-amber-700">Your last payment didn&apos;t go through. Update your payment method to avoid service interruption.</p>
+                        </div>
+                    </div>
+                    <Link href="/settings/billing">
+                        <Button className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs h-10 px-6 shadow-lg shadow-amber-100">
+                            Update Payment
+                        </Button>
+                    </Link>
+                </div>
+            )}
+            {hasNoPlan && !isCancelled && (
+                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 flex items-center justify-between animate-in fade-in duration-500">
+                    <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
+                            <Sparkles className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-black text-blue-900">Choose Your Plan</p>
+                            <p className="text-xs text-blue-700">Select a plan to unlock all PropFlow features. Brokerage Command includes a 14-day free trial.</p>
+                        </div>
+                    </div>
+                    <Link href="/pricing">
+                        <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs h-10 px-6 shadow-lg shadow-blue-100">
+                            View Plans
+                        </Button>
+                    </Link>
+                </div>
+            )}
+
             {/* Background elements */}
             <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
                 <div className="absolute top-[5%] left-[15%] w-[50rem] h-[50rem] bg-gradient-to-br from-blue-100/40 to-indigo-100/40 rounded-full blur-[120px] animate-float" />

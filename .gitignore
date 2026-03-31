@@ -44,6 +44,13 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# lint/audit output artifacts
+eslint.json
+eslint2.json
+out.json
+out.txt
+lint-output.txt
+
 # env files (can opt-in for committing if needed)
 .env*
 

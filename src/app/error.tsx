@@ -20,7 +20,7 @@ export default function GlobalError({
             <AlertTriangle className="h-16 w-16 text-red-500 mb-4" />
             <h2 className="text-2xl font-bold mb-2 text-slate-900">Something went wrong</h2>
             <p className="text-slate-500 mb-6 text-center max-w-md">
-                {error.message || 'An unexpected error occurred. Please try again.'}
+                Something went wrong. Please try again or contact support.
             </p>
             <div className="flex gap-4">
                 <Button onClick={() => reset()}>

@@ -1,5 +1,19 @@
 import { PLANS, PlanId, Plan } from '@/lib/stripe/plans'
 
+// Alias map: DB may store legacy IDs (essentials/professional/enterprise) from the old plan system.
+// Both sets resolve to the same canonical plan configs in @/lib/stripe/plans.
+const PLAN_ALIASES: Record<string, PlanId> = {
+    essentials: 'agent_pro',
+    professional: 'agency_growth',
+    enterprise: 'brokerage_command',
+}
+
+function normalizePlanId(raw: string): PlanId | undefined {
+    if (raw in PLANS) return raw as PlanId
+    if (raw in PLAN_ALIASES) return PLAN_ALIASES[raw]
+    return undefined
+}
+
 export const ENTERPRISE_PLAN: Plan = {
     id: 'enterprise' as keyof typeof PLANS, // Casting to satisfy type if needed, or we just type it as Plan
     name: 'Enterprise',
@@ -48,23 +62,27 @@ export function resolveCompanyPlan(company: {
         }
     }
 
-    // 2. Check for plan override (non-enterprise)
-    if (company.plan_override && PLANS[company.plan_override as PlanId]) {
+    // 2. Check for plan override (non-enterprise). Accepts both new IDs (agent_pro) and
+    //    legacy IDs (essentials) via normalizePlanId.
+    const overridePlanId = company.plan_override ? normalizePlanId(company.plan_override) : undefined
+    if (overridePlanId) {
         return {
-            effectivePlan: PLANS[company.plan_override as PlanId],
+            effectivePlan: PLANS[overridePlanId],
             planSource: 'override',
             isEnterprise: false,
             subscriptionStatus: 'active',
         }
     }
 
-    // 3. Check for active Stripe subscription (cancelled subscriptions get no access)
-    if (company.subscription_plan && PLANS[company.subscription_plan as PlanId]) {
+    // 3. Check for active Stripe subscription (cancelled subscriptions get no access).
+    //    Accepts both new IDs (agency_growth) and legacy IDs (professional).
+    const subscriptionPlanId = company.subscription_plan ? normalizePlanId(company.subscription_plan) : undefined
+    if (subscriptionPlanId) {
         if (company.subscription_status === 'cancelled') {
             // Fall through to default — cancelled means no active entitlement
         } else {
             return {
-                effectivePlan: PLANS[company.subscription_plan as PlanId],
+                effectivePlan: PLANS[subscriptionPlanId],
                 planSource: 'subscription',
                 isEnterprise: false,
                 subscriptionStatus: company.subscription_status || 'none',

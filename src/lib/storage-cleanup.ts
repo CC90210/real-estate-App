@@ -36,7 +36,7 @@ export function cleanupStorage() {
         }
 
         keysToRemove.forEach(key => {
-            console.info(`[Storage Cleanup] Removing oversized key: ${key} (${(localStorage.getItem(key)?.length || 0 / 1024).toFixed(1)}KB)`)
+            console.info(`[Storage Cleanup] Removing oversized key: ${key} (${((localStorage.getItem(key)?.length || 0) / 1024).toFixed(1)}KB)`)
             localStorage.removeItem(key)
         })
 
