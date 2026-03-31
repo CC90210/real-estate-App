@@ -15,6 +15,15 @@ import nodemailer from 'nodemailer'
 const MASTER_EMAIL = process.env.PROPFLOW_MASTER_EMAIL || 'propflowpartners@gmail.com'
 const APP_PASSWORD = process.env.PROPFLOW_GMAIL_APP_PASSWORD || ''
 
+/**
+ * Strip HTML tags and collapse whitespace to produce a plain-text fallback.
+ * Used to populate the `text` part of outgoing emails so providers score
+ * the message higher (multipart/alternative is expected by spam filters).
+ */
+function htmlToText(html: string): string {
+    return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
+}
+
 export interface PlatformEmailParams {
     to: string | string[]
     subject: string
@@ -59,8 +68,14 @@ export async function sendPlatformEmail(params: PlatformEmailParams): Promise<Pl
                 cc: ccList || undefined,
                 replyTo: replyTo || undefined,
                 subject,
-                text: text || undefined,
+                text: text || htmlToText(html || ''),
                 html: html || undefined,
+                headers: {
+                    'X-Mailer': 'PropFlow/1.0',
+                    'X-Priority': '3',
+                    'Precedence': 'bulk',
+                    'List-Unsubscribe': `<mailto:${MASTER_EMAIL}?subject=unsubscribe>`,
+                },
             })
 
             console.log('[EMAIL] Sent via Gmail SMTP:', subject, 'to:', toList, 'id:', info.messageId)

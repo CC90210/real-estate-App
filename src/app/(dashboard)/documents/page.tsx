@@ -40,6 +40,8 @@ import {
     Send,
     Package,
     Mail,
+    PenLine,
+    ChevronDown,
 } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -88,6 +90,47 @@ const documentTypes = [
     }
 ]
 
+// ---- Signing request types ----
+
+type SigningStatus = 'pending' | 'sent' | 'viewed' | 'signed' | 'expired' | 'cancelled'
+
+interface SignatureData {
+    typed_name?: string
+    signature_image?: string
+}
+
+interface SigningRequest {
+    id: string
+    title: string
+    recipient_email: string
+    recipient_name: string | null
+    status: SigningStatus
+    created_at: string
+    signed_at: string | null
+    signature_data: SignatureData | null
+    documents?: { id: string; title: string; type: string } | null
+}
+
+// ---- Status badge helper ----
+
+const STATUS_CONFIG: Record<SigningStatus, { label: string; className: string }> = {
+    pending: { label: 'Pending', className: 'bg-slate-100 text-slate-600' },
+    sent: { label: 'Sent', className: 'bg-blue-50 text-blue-700' },
+    viewed: { label: 'Viewed', className: 'bg-amber-50 text-amber-700' },
+    signed: { label: 'Signed', className: 'bg-emerald-50 text-emerald-700' },
+    expired: { label: 'Expired', className: 'bg-red-50 text-red-600' },
+    cancelled: { label: 'Cancelled', className: 'bg-slate-100 text-slate-500' },
+}
+
+function SigningStatusBadge({ status }: { status: string }) {
+    const cfg = STATUS_CONFIG[status as SigningStatus] ?? { label: status, className: 'bg-slate-100 text-slate-600' }
+    return (
+        <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold', cfg.className)}>
+            {cfg.label}
+        </span>
+    )
+}
+
 function DocumentsContent() {
     const router = useRouter()
     const supabase = createClient()
@@ -99,6 +142,7 @@ function DocumentsContent() {
     const [customFields, setCustomFields] = useState<any>({})
     const [isGenerating, setIsGenerating] = useState(false)
     const [quickSendOpen, setQuickSendOpen] = useState(false)
+    const [expandedSignature, setExpandedSignature] = useState<string | null>(null)
 
     // Sync search params if they change
     useEffect(() => {
@@ -187,6 +231,20 @@ function DocumentsContent() {
             }
         }
     }, [selectedApplication, applications])
+
+    // Fetch signing requests
+    const { data: signingRequests, isLoading: signingLoading } = useQuery({
+        queryKey: ['signing-requests', companyId],
+        queryFn: async (): Promise<SigningRequest[]> => {
+            if (!companyId) return []
+            const res = await fetch('/api/signing')
+            if (!res.ok) return []
+            const json = await res.json() as { signing_requests?: SigningRequest[] }
+            return json.signing_requests ?? []
+        },
+        enabled: !!companyId,
+        staleTime: 30_000,
+    })
 
     // Fetch document history
     const { data: documents, isLoading: docsLoading, error: docsError, refetch } = useQuery({
@@ -1042,6 +1100,130 @@ function DocumentsContent() {
                         </CardContent>
                     </Card>
                 )}
+
+                {/* Signatures Tracker */}
+                <Card className="rounded-[2rem] border-slate-100/50 bg-white/70 backdrop-blur-xl shadow-xl shadow-slate-200/30 overflow-hidden animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '350ms' }}>
+                    <CardHeader className="p-6 pb-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-200">
+                                    <PenLine className="h-5 w-5 text-white" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-lg font-black text-slate-900">Signatures</CardTitle>
+                                    <p className="text-sm text-slate-500">Track all e-sign requests sent from your account</p>
+                                </div>
+                            </div>
+                            <div className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                                {signingRequests?.length ?? 0} Requests
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-6 pt-0">
+                        {signingLoading ? (
+                            <div className="space-y-3">
+                                {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 rounded-2xl" />)}
+                            </div>
+                        ) : !signingRequests || signingRequests.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-12 text-center">
+                                <div className="h-16 w-16 rounded-[1.5rem] bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center mb-3">
+                                    <PenLine className="h-7 w-7 text-slate-300" />
+                                </div>
+                                <p className="font-bold text-slate-900 mb-1">No signing requests yet</p>
+                                <p className="text-sm text-slate-500 max-w-[280px]">
+                                    Send a document for e-signature using the Quick Send button above
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {signingRequests.map(req => {
+                                    const isSigned = req.status === 'signed'
+                                    const isExpanded = expandedSignature === req.id
+                                    return (
+                                        <div
+                                            key={req.id}
+                                            className="rounded-2xl border border-slate-100 bg-slate-50/50 overflow-hidden"
+                                        >
+                                            <div className="flex items-center gap-4 p-4">
+                                                <div className={cn(
+                                                    "h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0",
+                                                    isSigned
+                                                        ? "bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-100"
+                                                        : "bg-gradient-to-br from-slate-400 to-slate-500"
+                                                )}>
+                                                    <PenLine className="h-4 w-4 text-white" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-bold text-slate-900 truncate text-sm">
+                                                        {req.title}
+                                                    </p>
+                                                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                                        <span className="flex items-center gap-1 text-xs text-slate-400">
+                                                            <Mail className="h-3 w-3" />
+                                                            {req.recipient_email}
+                                                        </span>
+                                                        <span className="text-slate-300">·</span>
+                                                        <span className="flex items-center gap-1 text-xs text-slate-400">
+                                                            <Clock className="h-3 w-3" />
+                                                            {formatDistanceToNow(new Date(req.created_at), { addSuffix: true })}
+                                                        </span>
+                                                        {isSigned && req.signed_at && (
+                                                            <>
+                                                                <span className="text-slate-300">·</span>
+                                                                <span className="text-xs text-emerald-600 font-semibold">
+                                                                    Signed {format(new Date(req.signed_at), 'MMM d, yyyy')}
+                                                                </span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2 flex-shrink-0">
+                                                    <SigningStatusBadge status={req.status} />
+                                                    {isSigned && req.signature_data && (
+                                                        <button
+                                                            onClick={() => setExpandedSignature(isExpanded ? null : req.id)}
+                                                            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-violet-50 text-violet-700 text-xs font-bold border border-violet-100 hover:bg-violet-100 transition-colors"
+                                                        >
+                                                            <Eye className="h-3 w-3" />
+                                                            View
+                                                            <ChevronDown className={cn("h-3 w-3 transition-transform", isExpanded && "rotate-180")} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Expanded signature panel */}
+                                            {isExpanded && req.signature_data && (
+                                                <div className="border-t border-slate-100 bg-white px-4 py-4 space-y-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                                                    {req.signature_data.typed_name && (
+                                                        <div className="space-y-1">
+                                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Signed As</p>
+                                                            <p className="text-lg font-serif italic text-slate-900">
+                                                                {req.signature_data.typed_name}
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                    {req.signature_data.signature_image && (
+                                                        <div className="space-y-1">
+                                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Drawn Signature</p>
+                                                            <div className="inline-block rounded-xl border border-slate-100 bg-slate-50 p-2">
+                                                                <img
+                                                                    src={req.signature_data.signature_image}
+                                                                    alt={`Signature of ${req.signature_data.typed_name ?? req.recipient_email}`}
+                                                                    className="max-h-[80px] w-auto object-contain"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Quick Send dialog — opened from header button */}

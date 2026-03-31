@@ -64,8 +64,66 @@ type PageState =
       }
 
 // ============================================================================
+// DOCUMENT CONTENT TYPES
+// ============================================================================
+
+interface DocumentField {
+    label: string
+    value: string
+}
+
+interface DocumentSection {
+    title: string
+    fields: DocumentField[]
+}
+
+interface ParsedDocumentContent {
+    sections: DocumentSection[]
+    company?: { name?: string; address?: string }
+}
+
+// ============================================================================
 // HELPERS
 // ============================================================================
+
+/**
+ * Attempt to extract structured sections from the document content JSONB.
+ * The content may be stored as `{ sections: [...] }` directly, or nested
+ * under `content.content.sections` depending on how the generator saved it.
+ * Returns null when the content cannot be interpreted.
+ */
+function parseDocumentContent(raw: unknown): ParsedDocumentContent | null {
+    if (!raw || typeof raw !== 'object') return null
+
+    // Helper: check if a value looks like a valid sections array
+    const isSectionsArray = (val: unknown): val is DocumentSection[] =>
+        Array.isArray(val) &&
+        val.length > 0 &&
+        val.every(
+            (s) =>
+                s !== null &&
+                typeof s === 'object' &&
+                'title' in (s as object) &&
+                'fields' in (s as object)
+        )
+
+    const candidate = raw as Record<string, unknown>
+
+    // Direct: { sections: [...] }
+    if (isSectionsArray(candidate.sections)) {
+        return { sections: candidate.sections, company: candidate.company as ParsedDocumentContent['company'] }
+    }
+
+    // Nested: { content: { sections: [...] } }
+    if (candidate.content && typeof candidate.content === 'object') {
+        const inner = candidate.content as Record<string, unknown>
+        if (isSectionsArray(inner.sections)) {
+            return { sections: inner.sections, company: inner.company as ParsedDocumentContent['company'] }
+        }
+    }
+
+    return null
+}
 
 function accentStyle(color: string | null | undefined): React.CSSProperties {
     return { backgroundColor: color || '#3b82f6' }
@@ -705,12 +763,52 @@ export default function SigningPage() {
                                     Document Preview
                                 </span>
                             </div>
-                            <div className="px-4 py-3 space-y-1">
-                                <p className="text-sm font-semibold text-slate-900">{document.title}</p>
-                                <p className="text-xs text-slate-500 leading-relaxed">
-                                    Full document attached to your email. Please review before signing.
-                                </p>
-                            </div>
+                            {(() => {
+                                const parsed = parseDocumentContent(document.content)
+                                if (!parsed) {
+                                    return (
+                                        <div className="px-4 py-3 space-y-1">
+                                            <p className="text-sm font-semibold text-slate-900">{document.title}</p>
+                                            <p className="text-xs text-slate-500 leading-relaxed">
+                                                Please review the document carefully before signing.
+                                            </p>
+                                        </div>
+                                    )
+                                }
+                                return (
+                                    <div className="px-5 py-4 space-y-5 max-h-[480px] overflow-y-auto">
+                                        <h2 className="text-base font-black text-slate-900">{document.title}</h2>
+                                        {parsed.company?.name && (
+                                            <p className="text-xs text-slate-400">
+                                                {parsed.company.name}
+                                                {parsed.company.address ? ` · ${parsed.company.address}` : ''}
+                                            </p>
+                                        )}
+                                        {parsed.sections.map((section, sIdx) => (
+                                            <div key={sIdx} className="space-y-2">
+                                                <p
+                                                    className="text-[10px] font-black uppercase tracking-widest pb-1 border-b"
+                                                    style={{ ...accentTextStyle(accent), borderColor: `${accent}30` }}
+                                                >
+                                                    {section.title}
+                                                </p>
+                                                <div className="space-y-1.5">
+                                                    {section.fields.map((field, fIdx) => (
+                                                        <div key={fIdx} className="flex gap-2 text-sm">
+                                                            <span className="text-slate-400 font-medium shrink-0 min-w-[120px]">
+                                                                {field.label}:
+                                                            </span>
+                                                            <span className="text-slate-800 font-semibold">
+                                                                {field.value}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )
+                            })()}
                         </div>
                     ) : signingRequest.document_url ? (
                         /* Fallback: external document URL link (no PropFlow login required) */
