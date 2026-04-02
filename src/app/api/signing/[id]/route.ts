@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { apiError, zodIssuesToDetails } from '@/lib/api-response';
 import { rateLimit } from '@/lib/rate-limit';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, prefix: 'api:signing:id' });
 
@@ -148,11 +149,13 @@ export async function PATCH(
         if (updateError) throw updateError;
 
         // Audit log: cancelled
-        await supabase.from('signing_audit_log').insert({
+        getSupabaseAdmin().from('signing_audit_log').insert({
             signing_request_id: id,
             action: 'cancelled',
             actor_email: profile.email ?? user.email,
             metadata: { previous_status: existing.status },
+        }).then(({ error }) => {
+            if (error) console.warn('[Signing/:id PATCH] Audit log failed:', error.message);
         });
 
         return NextResponse.json({ success: true, signing_request: updated });
@@ -216,11 +219,13 @@ export async function DELETE(
         if (deleteError) throw deleteError;
 
         // Audit log: cancelled via delete
-        await supabase.from('signing_audit_log').insert({
+        getSupabaseAdmin().from('signing_audit_log').insert({
             signing_request_id: id,
             action: 'cancelled',
             actor_email: profile.email ?? user.email,
             metadata: { method: 'delete', previous_status: existing.status },
+        }).then(({ error }) => {
+            if (error) console.warn('[Signing/:id DELETE] Audit log failed:', error.message);
         });
 
         return NextResponse.json({ success: true, message: 'Signing request cancelled' });

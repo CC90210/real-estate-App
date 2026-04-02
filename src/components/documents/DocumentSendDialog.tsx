@@ -167,6 +167,15 @@ export function DocumentSendDialog({
                 throw new Error(result?.details?.[0]?.message || result?.error || 'Failed to send package');
             }
 
+            if (result?.warning) {
+                toast.warning(result.warning, {
+                    description: result?.email_error || result?.message,
+                    duration: 8000,
+                });
+                onOpenChange(false);
+                return;
+            }
+
             toast.success(result?.message || `Document package sent to ${recipientEmailInput}`);
             onOpenChange(false);
         } catch (err: unknown) {

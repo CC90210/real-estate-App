@@ -4,8 +4,13 @@ import { createClient } from '@/lib/supabase/server'
 import { rateLimit } from '@/lib/rate-limit'
 import { apiError } from '@/lib/api-response'
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'placeholder')
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, prefix: 'api:social-hashtags' })
+
+function getGenAI() {
+    return process.env.GEMINI_API_KEY
+        ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+        : null
+}
 
 export async function POST(req: Request) {
     const supabase = await createClient()
@@ -26,7 +31,8 @@ export async function POST(req: Request) {
             return apiError('Topic is required', { status: 400, code: 'MISSING_TOPIC' })
         }
 
-        if (!process.env.GEMINI_API_KEY) {
+        const genAI = getGenAI()
+        if (!genAI) {
             // Return basic fallback hashtags if no API key
             return NextResponse.json({
                 hashtags: [
@@ -58,7 +64,7 @@ export async function POST(req: Request) {
         const hashtags = jsonMatch ? JSON.parse(jsonMatch[0]) : []
 
         return NextResponse.json({ hashtags })
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Hashtag generation error:', error)
         // Fallback hashtags if AI fails
         return NextResponse.json({

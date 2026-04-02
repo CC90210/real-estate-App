@@ -4,13 +4,14 @@ import { apiError } from '@/lib/api-response'
 import { isServerSuperAdmin } from '@/lib/super-admin'
 
 const VALID_AUTOMATION_TYPES = [
-    'document_delivery',
-    'application_confirmation',
+    'document_sender',
+    'invoice_sender',
+    'application_processor',
     'follow_up',
-    'screening',
-    'invoice_reminder',
-    'maintenance_notification',
-    'lease_renewal',
+    'listing_poster',
+    'email_agent',
+    'voice_agent',
+    'review_agent',
     'webhook_relay',
 ] as const
 
@@ -63,9 +64,10 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: true, message: 'Automation activated via Admin/Partner bypass.' })
         }
 
-        // Return a mock checkout URL for testing purposes
         return NextResponse.json({
-            checkoutUrl: `/settings/billing?upgrade=${type}`
+            success: true,
+            checkoutUrl: `/settings/billing?automation=${type}`,
+            message: 'Continue in billing to provision this automation for your company.',
         })
 
     } catch (error) {

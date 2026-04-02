@@ -15,6 +15,12 @@ const submitSignatureSchema = z.object({
     signature_image: z.string().max(2_000_000).optional(), // base64 PNG data URL from canvas
 });
 
+function asObject(value: unknown): Record<string, unknown> {
+    return value && typeof value === 'object' && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : {};
+}
+
 /**
  * GET /api/signing/verify?token=xxx
  *
@@ -88,6 +94,7 @@ export async function GET(req: NextRequest) {
                 .from('documents')
                 .select('type, content')
                 .eq('id', signingRequest.document_id)
+                .eq('company_id', signingRequest.company_id)
                 .maybeSingle();
             if (doc) {
                 documentPreview = {
@@ -172,7 +179,7 @@ export async function POST(req: NextRequest) {
 
         const { data: signingRequest, error } = await db
             .from('signing_requests')
-            .select('id, status, expires_at, recipient_email, company_id')
+            .select('id, status, expires_at, recipient_email, company_id, document_id')
             .eq('signing_token', token)
             .maybeSingle();
 
@@ -221,6 +228,38 @@ export async function POST(req: NextRequest) {
             .eq('id', signingRequest.id);
 
         if (updateError) throw updateError;
+
+        if (signingRequest.document_id) {
+            const { data: linkedDocument } = await db
+                .from('documents')
+                .select('content')
+                .eq('id', signingRequest.document_id)
+                .eq('company_id', signingRequest.company_id)
+                .maybeSingle();
+
+            if (linkedDocument) {
+                const nextContent = {
+                    ...asObject(linkedDocument.content),
+                    signed_at: signedAt,
+                    signed_by: typed_name,
+                    signature_data: signatureData,
+                    signing_completed_at: signedAt,
+                };
+
+                const { error: documentUpdateError } = await db
+                    .from('documents')
+                    .update({
+                        content: nextContent,
+                        delivery_status: 'signed',
+                    })
+                    .eq('id', signingRequest.document_id)
+                    .eq('company_id', signingRequest.company_id);
+
+                if (documentUpdateError) {
+                    console.warn('[Signing/verify POST] Failed to sync linked document:', documentUpdateError.message);
+                }
+            }
+        }
 
         await db.from('signing_audit_log').insert({
             signing_request_id: signingRequest.id,

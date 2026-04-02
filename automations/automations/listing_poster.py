@@ -252,14 +252,14 @@ class ListingPosterAutomation(BaseAutomation):
         if not api_key:
             return False, "Kijiji credentials not configured (api_key missing)"
 
-        # Kijiji API is not publicly documented; this is a placeholder
-        # that logs the intent without making a real network call.
+        # Kijiji API is not publicly documented; do not report success for
+        # a listing that was never actually posted.
         logger.info(
-            "Kijiji post placeholder: title=%s price=%s",
+            "Kijiji posting unavailable without an approved API integration: title=%s price=%s",
             listing.get("title"),
             listing.get("price"),
         )
-        return True, "Kijiji: logged (integration pending API access)"
+        return False, "Kijiji posting is not available until a real API integration is configured"
 
     async def _post_craigslist(
         self,

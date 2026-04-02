@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { executeAutomation, type AutomationEvent } from '@/lib/automations/engine'
 import { apiError, zodIssuesToDetails } from '@/lib/api-response'
 import { sendDocumentSchema } from '@/lib/validations/api-schemas'
+import { createSigningRequestAndSendEmail } from '@/lib/signing-server'
 
 type JsonObject = Record<string, unknown>
 
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
 
         const { data: profile } = await supabase
             .from('profiles')
-            .select('company_id, full_name')
+            .select('company_id, full_name, email')
             .eq('id', user.id)
             .maybeSingle()
 
@@ -213,6 +214,36 @@ export async function POST(req: Request) {
             }
         }
 
+        if (eSignEnabled) {
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://propflow.pro'
+            const signingResult = await createSigningRequestAndSendEmail({
+                companyId,
+                senderId: user.id,
+                senderName: profile.full_name || profile.email || company?.name || 'PropFlow',
+                senderEmail: profile.email || user.email,
+                documentId: documentRecord.id,
+                title: documentRecord.title || 'Rental Document',
+                recipientEmail: resolvedRecipientEmail,
+                recipientName: resolvedRecipientName,
+                message: message || null,
+                documentUrl: `${appUrl}/documents/${documentRecord.id}`,
+                ccEmail: profile.email || user.email || null,
+            })
+
+            return NextResponse.json({
+                success: true,
+                documentId: documentRecord.id,
+                signingRequestId: signingResult.signingRequest.id,
+                message: signingResult.warning
+                    ? 'Signature request created, but email delivery needs attention.'
+                    : `Signature request sent to ${resolvedRecipientEmail}`,
+                ...(signingResult.warning ? {
+                    warning: signingResult.warning,
+                    email_error: signingResult.emailError,
+                } : {}),
+            }, { status: 201 })
+        }
+
         const eventType: AutomationEvent =
             documentRecord.type === 'lease_proposal' || selectedDocuments.includes('lease_agreement')
                 ? 'LEASE_GENERATED'
@@ -247,6 +278,9 @@ export async function POST(req: Request) {
         })
     } catch (error) {
         console.error('Document send error:', error)
+        if (error instanceof Error && error.message === 'Document not found') {
+            return apiError('Document not found', { status: 404 })
+        }
         return apiError('Failed to send document', { status: 500 })
     }
 }

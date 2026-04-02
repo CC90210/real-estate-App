@@ -1,15 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
-import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { apiError, zodIssuesToDetails } from '@/lib/api-response';
-import { rateLimit } from '@/lib/rate-limit';
-import { loadCompanyBranding } from '@/lib/email';
-import { sendPlatformEmail } from '@/lib/email-server';
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { createClient } from '@/lib/supabase/server'
+import { apiError, zodIssuesToDetails } from '@/lib/api-response'
+import { rateLimit } from '@/lib/rate-limit'
+import { createSigningRequestAndSendEmail } from '@/lib/signing-server'
 
-const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, prefix: 'api:signing' });
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, prefix: 'api:signing' })
 
 const createSigningRequestSchema = z.object({
     document_id: z.string().uuid().optional().nullable(),
@@ -19,37 +15,37 @@ const createSigningRequestSchema = z.object({
     message: z.string().max(2000).optional().nullable(),
     document_url: z.string().url().optional().nullable(),
     cc_email: z.string().email().optional().nullable(),
-});
+})
 
-// GET /api/signing — List signing requests for the authenticated company
+// GET /api/signing - List signing requests for the authenticated company
 export async function GET(req: NextRequest) {
     try {
-        const supabase = await createClient();
+        const supabase = await createClient()
 
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
-            return apiError('Unauthorized', { status: 401 });
+            return apiError('Unauthorized', { status: 401 })
         }
 
         try {
-            await limiter.check(60, user.id);
+            await limiter.check(60, user.id)
         } catch {
-            return apiError('Too many requests', { status: 429 });
+            return apiError('Too many requests', { status: 429 })
         }
 
         const { data: profile } = await supabase
             .from('profiles')
             .select('company_id')
             .eq('id', user.id)
-            .maybeSingle();
+            .maybeSingle()
 
         if (!profile?.company_id) {
-            return apiError('No company associated', { status: 403 });
+            return apiError('No company associated', { status: 403 })
         }
 
-        const { searchParams } = new URL(req.url);
-        const status = searchParams.get('status');
-        const limit = searchParams.get('limit');
+        const { searchParams } = new URL(req.url)
+        const status = searchParams.get('status')
+        const limit = searchParams.get('limit')
 
         let query = supabase
             .from('signing_requests')
@@ -58,261 +54,119 @@ export async function GET(req: NextRequest) {
                 documents (id, title, type)
             `)
             .eq('company_id', profile.company_id)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
 
         if (status) {
-            query = query.eq('status', status);
+            query = query.eq('status', status)
         }
 
         if (limit) {
-            const parsedLimit = Math.min(Math.max(parseInt(limit) || 50, 1), 200);
-            query = query.limit(parsedLimit);
+            const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200)
+            query = query.limit(parsedLimit)
         }
 
-        const { data, error } = await query;
+        const { data, error } = await query
 
         if (error) {
-            // Graceful fallback if join fails (e.g. FK not yet in place)
-            const { data: fallback, error: fallbackError } = await supabase
+            let fallbackQuery = supabase
                 .from('signing_requests')
                 .select('*')
                 .eq('company_id', profile.company_id)
-                .order('created_at', { ascending: false });
+                .order('created_at', { ascending: false })
 
-            if (fallbackError) throw fallbackError;
+            if (status) {
+                fallbackQuery = fallbackQuery.eq('status', status)
+            }
 
-            return NextResponse.json({ success: true, signing_requests: fallback });
+            if (limit) {
+                const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200)
+                fallbackQuery = fallbackQuery.limit(parsedLimit)
+            }
+
+            const { data: fallback, error: fallbackError } = await fallbackQuery
+
+            if (fallbackError) {
+                throw fallbackError
+            }
+
+            return NextResponse.json({ success: true, signing_requests: fallback })
         }
 
-        return NextResponse.json({ success: true, signing_requests: data });
+        return NextResponse.json({ success: true, signing_requests: data })
     } catch (error) {
-        console.error('[Signing GET] Error:', error);
-        return apiError('Failed to fetch signing requests', { status: 500 });
+        console.error('[Signing GET] Error:', error)
+        return apiError('Failed to fetch signing requests', { status: 500 })
     }
 }
 
-// POST /api/signing — Create a new signing request and send the signing email
+// POST /api/signing - Create a new signing request and send the signing email
 export async function POST(req: NextRequest) {
     try {
-        const supabase = await createClient();
+        const supabase = await createClient()
 
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
-            return apiError('Unauthorized', { status: 401 });
+            return apiError('Unauthorized', { status: 401 })
         }
 
         try {
-            await limiter.check(10, user.id);
+            await limiter.check(10, user.id)
         } catch {
-            return apiError('Too many requests', { status: 429 });
+            return apiError('Too many requests', { status: 429 })
         }
 
         const { data: profile } = await supabase
             .from('profiles')
             .select('company_id, full_name, email')
             .eq('id', user.id)
-            .maybeSingle();
+            .maybeSingle()
 
         if (!profile?.company_id) {
-            return apiError('No company associated', { status: 403 });
+            return apiError('No company associated', { status: 403 })
         }
 
-        const body = await req.json();
+        const body = await req.json()
+        const validationResult = createSigningRequestSchema.safeParse(body)
 
-        const validationResult = createSigningRequestSchema.safeParse(body);
         if (!validationResult.success) {
             return apiError('Validation failed', {
                 status: 400,
                 details: zodIssuesToDetails(validationResult.error.issues),
-            });
+            })
         }
 
         const { document_id, title, recipient_email, recipient_name, message, document_url, cc_email } =
-            validationResult.data;
+            validationResult.data
 
-        // Create the signing request (token generated by DB default / crypto.randomUUID fallback)
-        const signing_token = crypto.randomUUID();
-
-        const { data: signingRequest, error: insertError } = await supabase
-            .from('signing_requests')
-            .insert({
-                company_id: profile.company_id,
-                document_id: document_id ?? null,
-                title,
-                recipient_email,
-                recipient_name: recipient_name ?? null,
-                message: message ?? null,
-                document_url: document_url || null,
-                signing_token,
-                status: 'pending',
-                sender_id: user.id,
-            })
-            .select()
-            .single();
-
-        if (insertError) throw insertError;
-
-        // Admin client for audit log writes (no INSERT RLS policy for authenticated role)
-        const adminDb = getSupabaseAdmin();
-
-        // Audit log: created (best-effort, never blocks the request)
-        adminDb.from('signing_audit_log').insert({
-            signing_request_id: signingRequest.id,
-            action: 'created',
-            actor_email: profile.email ?? user.email,
-            metadata: { sender_id: user.id },
-        }).then(({ error: auditErr }) => {
-            if (auditErr) console.warn('[Signing] Audit log (created) failed:', auditErr.message);
-        });
-
-        // Send signing email
-        const branding = await loadCompanyBranding(profile.company_id);
-        const signingUrl = `${APP_URL}/sign/${signing_token}`;
-        const senderName = profile.full_name || profile.email || 'Your agent';
-        const companyName = branding.name;
-        const accent = branding.primary_color || '#3b82f6';
-
-        const html = buildSigningEmailHtml({
-            recipientName: recipient_name || recipient_email,
-            senderName,
-            documentTitle: title,
-            signingUrl,
+        const result = await createSigningRequestAndSendEmail({
+            companyId: profile.company_id,
+            senderId: user.id,
+            senderName: profile.full_name || profile.email || user.email,
+            senderEmail: profile.email || user.email,
+            documentId: document_id ?? null,
+            title,
+            recipientEmail: recipient_email,
+            recipientName: recipient_name ?? null,
             message: message ?? null,
-            branding,
-            accent,
-        });
+            documentUrl: document_url || null,
+            ccEmail: cc_email || null,
+        })
 
-        // CC the agent so they have a copy; use client-provided cc_email or fall back to profile
-        const senderEmail = cc_email || profile.email || user.email || undefined;
-        const emailResult = await sendPlatformEmail({
-            to: recipient_email,
-            subject: `${senderName} (${companyName}) requests your signature — ${title}`,
-            html,
-            cc: senderEmail,
-            replyTo: senderEmail,
-        });
-
-        if (emailResult.success) {
-            await supabase
-                .from('signing_requests')
-                .update({ status: 'sent' })
-                .eq('id', signingRequest.id);
-
-            adminDb.from('signing_audit_log').insert({
-                signing_request_id: signingRequest.id,
-                action: 'sent',
-                actor_email: senderEmail,
-                metadata: { email_id: (emailResult as { id?: string }).id ?? null, recipient_email },
-            }).then(({ error: auditErr }) => {
-                if (auditErr) console.warn('[Signing] Audit log (sent) failed:', auditErr.message);
-            });
-
-            signingRequest.status = 'sent';
-        } else {
-            // Email failed — log it and warn the user
-            adminDb.from('signing_audit_log').insert({
-                signing_request_id: signingRequest.id,
-                action: 'email_failed',
-                actor_email: senderEmail,
-                metadata: { error: emailResult.error, recipient_email },
-            }).then(({ error: auditErr }) => {
-                if (auditErr) console.warn('[Signing] Audit log (email_failed) failed:', auditErr.message);
-            });
-
+        if (result.warning) {
             return NextResponse.json({
                 success: true,
-                signing_request: signingRequest,
-                warning: 'Signing request created but email delivery failed. The recipient may need to be notified manually.',
-                email_error: emailResult.error,
-            }, { status: 201 });
+                signing_request: result.signingRequest,
+                warning: result.warning,
+                email_error: result.emailError,
+            }, { status: 201 })
         }
 
-        return NextResponse.json({ success: true, signing_request: signingRequest }, { status: 201 });
+        return NextResponse.json({ success: true, signing_request: result.signingRequest }, { status: 201 })
     } catch (error) {
-        console.error('[Signing POST] Error:', error);
-        return apiError('Failed to create signing request', { status: 500 });
+        console.error('[Signing POST] Error:', error)
+        if (error instanceof Error && error.message === 'Document not found') {
+            return apiError('Document not found', { status: 404 })
+        }
+        return apiError('Failed to create signing request', { status: 500 })
     }
-}
-
-// ---- Email template helper (kept local to this route) ----
-
-function buildSigningEmailHtml({
-    recipientName,
-    senderName,
-    documentTitle,
-    signingUrl,
-    message,
-    branding,
-    accent,
-}: {
-    recipientName: string;
-    senderName: string;
-    documentTitle: string;
-    signingUrl: string;
-    message: string | null;
-    branding: { name: string; logo_url?: string | null; email_footer_text?: string | null; email?: string | null; phone?: string | null };
-    accent: string;
-}) {
-    const name = branding.name || 'PropFlow';
-    const logoHtml = branding.logo_url
-        ? `<img src="${branding.logo_url}" alt="${name}" style="max-height:48px;max-width:200px;margin:0 auto 8px;display:block;" />`
-        : '';
-    const footerExtra = branding.email_footer_text
-        ? `<p style="margin-top:8px;">${branding.email_footer_text}</p>`
-        : '';
-    const contactLine = [branding.email, branding.phone].filter(Boolean).join(' | ');
-
-    return `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f8fafc; color: #1e293b; }
-        .container { max-width: 600px; margin: 0 auto; padding: 40px 20px; }
-        .card { background: white; border-radius: 16px; padding: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-        .logo { text-align: center; margin-bottom: 32px; }
-        .logo h1 { font-size: 24px; font-weight: 900; color: #1e293b; margin: 0; letter-spacing: -0.5px; }
-        .logo p { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 3px; color: ${accent}; margin: 4px 0 0; }
-        h2 { font-size: 22px; font-weight: 800; color: #0f172a; margin: 0 0 16px; }
-        p { font-size: 15px; line-height: 1.7; color: #475569; margin: 0 0 16px; }
-        .btn { display: inline-block; padding: 14px 32px; background: ${accent}; color: white !important; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 14px; letter-spacing: 0.5px; }
-        .highlight-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 20px 0; }
-        .footer { text-align: center; margin-top: 32px; font-size: 12px; color: #94a3b8; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="card">
-            <div class="logo">
-                ${logoHtml}
-                <h1>${name}</h1>
-                <p>Powered by PropFlow</p>
-            </div>
-            <h2>Signature Requested</h2>
-            <p>Hi ${recipientName},</p>
-            <p><strong>${senderName}</strong> from <strong>${name}</strong> has sent you a document that requires your signature.</p>
-            <div class="highlight-box">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <tr><td style="padding: 8px 0; color: #94a3b8; font-size: 13px; font-weight: 600;">Document</td><td style="padding: 8px 0; text-align: right; font-weight: 700;">${documentTitle}</td></tr>
-                    <tr><td style="padding: 8px 0; color: #94a3b8; font-size: 13px; font-weight: 600;">From</td><td style="padding: 8px 0; text-align: right; font-weight: 700;">${senderName}</td></tr>
-                </table>
-            </div>
-            ${message ? `<p style="font-style: italic; color: #64748b; border-left: 3px solid #e2e8f0; padding-left: 16px;">"${message}"</p>` : ''}
-            <div style="text-align: center; margin: 32px 0;">
-                <a href="${signingUrl}" class="btn">Review &amp; Sign Document</a>
-            </div>
-            <p style="font-size: 13px; color: #94a3b8;">If you were not expecting this request, you can safely ignore this email. The link is unique to you — do not forward it.</p>
-        </div>
-        <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} ${name}. All rights reserved.</p>
-            ${contactLine ? `<p style="margin-top:4px;">${contactLine}</p>` : ''}
-            ${footerExtra}
-            <p style="margin-top:8px;font-size:10px;color:#cbd5e1;">
-                Sent via <a href="${APP_URL}" style="color:${accent};text-decoration:none;">PropFlow</a> e-sign
-            </p>
-        </div>
-    </div>
-</body>
-</html>`;
 }
