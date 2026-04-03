@@ -5,7 +5,7 @@
 -- Creates:
 --   1. signing_requests     — tracks each document sent for signature
 --   2. signing_audit_log    — immutable compliance audit trail
---   3. RLS policies         — company-scoped + public signing token access
+--   3. RLS policies         — company-scoped authenticated access only
 --   4. companies branding   — primary_color, email_footer_text columns
 --
 -- Safe to run multiple times (all statements are idempotent).
@@ -81,16 +81,14 @@ CREATE POLICY "signing_requests_delete"
     ON public.signing_requests FOR DELETE TO authenticated
     USING (company_id = public.get_user_company_id());
 
--- Public signing page: unauthenticated recipients look up by token only.
--- No company_id check required here — the token IS the auth mechanism.
--- The application layer must never expose any data beyond the single matched row.
+-- Public signing requests are served through authenticated Next.js API routes
+-- using the service role. Do not grant anon direct table reads here.
 DO $$ BEGIN
     DROP POLICY IF EXISTS "signing_requests_public_token_access" ON public.signing_requests;
 EXCEPTION WHEN undefined_object THEN NULL;
 END $$;
-CREATE POLICY "signing_requests_public_token_access"
-    ON public.signing_requests FOR SELECT TO anon
-    USING (signing_token IS NOT NULL);
+
+REVOKE ALL ON TABLE public.signing_requests FROM anon;
 
 
 -- ============================================================================
