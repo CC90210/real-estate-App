@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/services/activity-logger'
-import { createNotification } from '@/lib/notifications'
 import { createLeaseSchema, validateBody } from '@/lib/validations/api-schemas'
 import { rateLimit } from '@/lib/rate-limit'
 import { apiError } from '@/lib/api-response'
@@ -79,23 +78,26 @@ export async function POST(req: Request) {
             return apiError('Lease operation failed', { status: 500 })
         }
 
-        // Log activity
-        await logActivity(supabase, {
-            companyId: profile.company_id,
-            userId: user.id,
-            action: 'lease_created',
-            entityType: 'lease',
-            entityId: lease.id,
-            description: `Created lease for ${tenant_name} at ${lease.properties?.address || 'property'}`,
-        })
+        try {
+            await logActivity(supabase, {
+                companyId: profile.company_id,
+                userId: user.id,
+                action: 'lease_created',
+                entityType: 'lease',
+                entityId: lease.id,
+                description: `Created lease for ${tenant_name} at ${lease.properties?.address || 'property'}`,
+            })
+        } catch (logError) {
+            console.error('Lease activity log failed (non-blocking):', logError)
+        }
 
         return NextResponse.json(lease)
-    } catch (err) {
+    } catch {
         return apiError('Lease operation failed', { status: 500 })
     }
 }
 
-export async function GET(req: Request) {
+export async function GET() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 

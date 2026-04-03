@@ -1,10 +1,7 @@
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { sendEmail } from '@/lib/email'
 
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const supabaseAdmin = getSupabaseAdmin()
 
 // ============================================
 // NOTIFICATION CREATOR (Server-side)
@@ -19,7 +16,7 @@ interface CreateNotificationInput {
     category?: 'general' | 'application' | 'maintenance' | 'lease' | 'invoice' | 'showing' | 'team' | 'system' | 'payment'
     actionUrl?: string
     actionLabel?: string
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
     sendEmailNotification?: boolean
     emailSubject?: string
     emailHtml?: string
@@ -54,7 +51,7 @@ export async function createNotification(input: CreateNotificationInput) {
                 .from('profiles')
                 .select('email')
                 .eq('id', input.userId)
-                .single()
+                .maybeSingle()
 
             if (profile?.email) {
                 const emailResult = await sendEmail({
@@ -73,9 +70,9 @@ export async function createNotification(input: CreateNotificationInput) {
         }
 
         return { success: true, notification: data }
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('[NOTIFICATION] Exception:', err)
-        return { success: false, error: err.message }
+        return { success: false, error: err instanceof Error ? err.message : 'Notification creation failed' }
     }
 }
 
@@ -98,7 +95,7 @@ export async function notifyCompanyMembers({
     category?: string
     actionUrl?: string
     actionLabel?: string
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
     excludeUserId?: string
 }) {
     const { data: members } = await supabaseAdmin

@@ -1,10 +1,47 @@
-import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/services/activity-logger'
 import { rateLimit } from '@/lib/rate-limit'
 import { apiError } from '@/lib/api-response'
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 100, prefix: 'api:export' })
+
+type NestedAddress = {
+    address?: string | null
+} | null
+
+type ApplicationExportRow = {
+    applicant_name: string | null
+    applicant_email: string | null
+    applicant_phone: string | null
+    status: string | null
+    monthly_income: number | null
+    move_in_date: string | null
+    created_at: string | null
+    properties?: NestedAddress
+}
+
+type LeaseExportRow = {
+    tenant_name: string | null
+    tenant_email: string | null
+    rent_amount: number | null
+    deposit_amount: number | null
+    start_date: string | null
+    end_date: string | null
+    status: string | null
+    properties?: NestedAddress
+}
+
+type MaintenanceExportRow = {
+    title: string | null
+    category: string | null
+    priority: string | null
+    status: string | null
+    estimated_cost: number | null
+    actual_cost: number | null
+    created_at: string | null
+    resolved_at: string | null
+    properties?: NestedAddress
+}
 
 export async function GET(req: Request) {
     const supabase = await createClient()
@@ -71,7 +108,7 @@ export async function GET(req: Request) {
                     .order('created_at', { ascending: false })
 
                 const headers = ['Name', 'Email', 'Phone', 'Status', 'Monthly Income', 'Move-in Date', 'Property', 'Applied']
-                const rows = (data || []).map((a: any) => [
+                const rows = ((data || []) as ApplicationExportRow[]).map((a) => [
                     a.applicant_name, a.applicant_email, a.applicant_phone || '', a.status,
                     a.monthly_income || '', a.move_in_date || '', a.properties?.address || '', a.created_at
                 ])
@@ -103,7 +140,7 @@ export async function GET(req: Request) {
                     .order('created_at', { ascending: false })
 
                 const headers = ['Tenant', 'Email', 'Rent', 'Deposit', 'Start', 'End', 'Status', 'Property']
-                const rows = (data || []).map((l: any) => [
+                const rows = ((data || []) as LeaseExportRow[]).map((l) => [
                     l.tenant_name, l.tenant_email, l.rent_amount, l.deposit_amount || 0,
                     l.start_date, l.end_date, l.status, l.properties?.address || ''
                 ])
@@ -119,7 +156,7 @@ export async function GET(req: Request) {
                     .order('created_at', { ascending: false })
 
                 const headers = ['Title', 'Category', 'Priority', 'Status', 'Est. Cost', 'Actual Cost', 'Submitted', 'Resolved', 'Property']
-                const rows = (data || []).map((m: any) => [
+                const rows = ((data || []) as MaintenanceExportRow[]).map((m) => [
                     m.title, m.category, m.priority, m.status,
                     m.estimated_cost || '', m.actual_cost || '',
                     m.created_at, m.resolved_at || '', m.properties?.address || ''
@@ -132,14 +169,17 @@ export async function GET(req: Request) {
                 return apiError('Invalid export type', { status: 400, code: 'INVALID_EXPORT_TYPE' })
         }
 
-        // Log the export
-        await logActivity(supabase, {
-            companyId: profile.company_id,
-            userId: user.id,
-            action: 'data_export',
-            entityType: type as string,
-            description: `Exported ${type} data to CSV`,
-        })
+        try {
+            await logActivity(supabase, {
+                companyId: profile.company_id,
+                userId: user.id,
+                action: 'data_export',
+                entityType: type as string,
+                description: `Exported ${type} data to CSV`,
+            })
+        } catch (logError) {
+            console.error('[EXPORT] Activity log failed (non-blocking):', logError)
+        }
 
         return new Response(csvContent, {
             headers: {
@@ -147,14 +187,14 @@ export async function GET(req: Request) {
                 'Content-Disposition': `attachment; filename="${type}_export_${new Date().toISOString().split('T')[0]}.csv"`,
             },
         })
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('[EXPORT]', err)
         return apiError('Export failed', { status: 500 })
     }
 }
 
-function generateCSV(headers: string[], rows: any[][]): string {
-    const escape = (val: any) => {
+function generateCSV(headers: string[], rows: ReadonlyArray<ReadonlyArray<unknown>>): string {
+    const escape = (val: unknown) => {
         let str = String(val ?? '')
         // Protect against CSV formula injection
         if (/^[=+\-@\t\r]/.test(str)) {

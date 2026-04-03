@@ -119,16 +119,19 @@ export async function POST(req: Request) {
 
         if (unitError) throw unitError;
 
-        // Log activity
-        await logActivity(supabase, {
-            companyId,
-            userId: user.id,
-            action: 'created',
-            entityType: 'property',
-            entityId: property.id,
-            description: `Created new property: ${data.address}`,
-            details: { address: data.address }
-        })
+        try {
+            await logActivity(supabase, {
+                companyId,
+                userId: user.id,
+                action: 'created',
+                entityType: 'property',
+                entityId: property.id,
+                description: `Created new property: ${data.address}`,
+                details: { address: data.address }
+            })
+        } catch (logError) {
+            console.error('Property activity log failed (non-blocking):', logError)
+        }
 
         return NextResponse.json(property)
 
@@ -139,7 +142,7 @@ export async function POST(req: Request) {
     }
 }
 
-export async function GET(req: Request) {
+export async function GET() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 

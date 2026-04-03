@@ -5,6 +5,17 @@ import { createClient } from '@/lib/supabase/client'
 import { resolveCompanyPlan, CompanyPlanInfo } from '@/lib/plans/resolve'
 import { GateableResource } from '@/lib/plans/gate'
 import { useUser } from './useUser'
+import { Company } from '@/types/database'
+
+interface CompanyUsageSnapshot {
+    property_count: number | null
+    team_member_count: number | null
+    social_account_count: number | null
+    subscription_plan?: Company['subscription_plan']
+    subscription_status?: Company['subscription_status']
+    plan_override?: string | null
+    is_lifetime_access?: boolean | null
+}
 
 export function useFeatureGate() {
     const supabase = createClient()
@@ -12,7 +23,7 @@ export function useFeatureGate() {
 
     const { data: planInfo, isLoading } = useQuery({
         queryKey: ['company-plan', user?.id],
-        placeholderData: (prev: any) => prev,  // Keep previous data while refetching — prevents "restricted" flash
+        placeholderData: (prev) => prev,
         queryFn: async (): Promise<CompanyPlanInfo & { counts: Record<string, number> }> => {
             if (!user) throw new Error('Not authenticated')
 
@@ -32,13 +43,14 @@ export function useFeatureGate() {
 
             if (!company) throw new Error('Company not found')
 
-            const resolved = resolveCompanyPlan(company as any)
+            const companySnapshot = company as CompanyUsageSnapshot
+            const resolved = resolveCompanyPlan(companySnapshot)
             return {
                 ...resolved,
                 counts: {
-                    properties: company.property_count || 0,
-                    teamMembers: company.team_member_count || 0,
-                    socialPlatforms: company.social_account_count || 0,
+                    properties: companySnapshot.property_count || 0,
+                    teamMembers: companySnapshot.team_member_count || 0,
+                    socialPlatforms: companySnapshot.social_account_count || 0,
                 },
             }
         },

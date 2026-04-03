@@ -10,6 +10,11 @@ import { apiError } from '@/lib/api-response'
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, prefix: 'api:team-invite' })
 
+type CompanyInviteSummary = {
+    name?: string | null
+    subscription_plan?: string | null
+}
+
 const supabaseAdmin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -131,7 +136,9 @@ export async function POST(req: Request) {
         }
 
         // Send invitation email
-        const companyData = profile.company as any
+        const companyData = Array.isArray(profile.company)
+            ? profile.company[0]
+            : profile.company as CompanyInviteSummary | null | undefined
         const inviterProfile = await supabaseAdmin
             .from('profiles')
             .select('full_name')
@@ -147,7 +154,7 @@ export async function POST(req: Request) {
             ? `<img src="${branding.logo_url}" alt="${companyName}" style="max-height:48px;max-width:200px;margin:0 auto 8px;display:block;" />`
             : ''
 
-        await sendPlatformEmail({
+        const emailResult = await sendPlatformEmail({
             to: normalizedEmail,
             subject: `${inviterName} invited you to join ${companyName}`,
             html: `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
@@ -177,7 +184,11 @@ export async function POST(req: Request) {
                 role: invitation.role,
                 expires_at: invitation.expires_at,
             },
-        })
+            ...(emailResult.success ? {} : {
+                warning: 'Invitation created, but email delivery failed. Share the invite link manually if needed.',
+                email_error: emailResult.error,
+            }),
+        }, { status: 201 })
 
     } catch (error) {
         console.error('Invite error:', error)
@@ -186,7 +197,7 @@ export async function POST(req: Request) {
 }
 
 // GET - List invitations for company
-export async function GET(req: Request) {
+export async function GET() {
     try {
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
@@ -213,7 +224,7 @@ export async function GET(req: Request) {
 
         return NextResponse.json({ invitations: invitations || [] })
 
-    } catch (error) {
+    } catch {
         return apiError('Failed to fetch invitations', { status: 500 })
     }
 }
@@ -258,7 +269,7 @@ export async function DELETE(req: Request) {
 
         return NextResponse.json({ success: true })
 
-    } catch (error) {
+    } catch {
         return apiError('Failed to revoke invite', { status: 500 })
     }
 }

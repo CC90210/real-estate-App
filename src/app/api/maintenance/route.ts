@@ -1,12 +1,22 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/services/activity-logger'
-import { createNotification, notifyCompanyMembers } from '@/lib/notifications'
+import { notifyCompanyMembers } from '@/lib/notifications'
 import { createMaintenanceSchema, updateMaintenanceSchema, validateBody } from '@/lib/validations/api-schemas'
 import { rateLimit } from '@/lib/rate-limit'
 import { apiError } from '@/lib/api-response'
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, prefix: 'api:maintenance' })
+
+type MaintenanceUpdate = {
+    status?: string
+    resolution_notes?: string
+    assigned_to?: string
+    scheduled_date?: string
+    estimated_cost?: number
+    actual_cost?: number
+    resolved_at?: string
+}
 
 export async function POST(req: Request) {
     const supabase = await createClient()
@@ -93,30 +103,36 @@ export async function POST(req: Request) {
             return apiError('Maintenance request could not be created', { status: 500 })
         }
 
-        // Log activity
-        await logActivity(supabase, {
-            companyId: companyId,
-            userId: user.id,
-            action: 'maintenance_created',
-            entityType: 'maintenance_request',
-            entityId: request.id,
-            description: `Submitted maintenance request: ${title}`,
-        })
+        try {
+            await logActivity(supabase, {
+                companyId: companyId,
+                userId: user.id,
+                action: 'maintenance_created',
+                entityType: 'maintenance_request',
+                entityId: request.id,
+                description: `Submitted maintenance request: ${title}`,
+            })
+        } catch (logError) {
+            console.error('Maintenance activity log failed (non-blocking):', logError)
+        }
 
-        // Notify company members about new maintenance request
-        await notifyCompanyMembers({
-            companyId: companyId,
-            title: `New Maintenance Request: ${title}`,
-            message: `${profile?.full_name || 'A user'} submitted a ${priority} priority ${category} request for ${request.properties?.address || 'a property'}.`,
-            type: priority === 'emergency' ? 'error' : 'action',
-            category: 'maintenance',
-            actionUrl: '/maintenance',
-            actionLabel: 'View Request',
-            excludeUserId: user.id,
-        })
+        try {
+            await notifyCompanyMembers({
+                companyId: companyId,
+                title: `New Maintenance Request: ${title}`,
+                message: `${profile?.full_name || 'A user'} submitted a ${priority} priority ${category} request for ${request.properties?.address || 'a property'}.`,
+                type: priority === 'emergency' ? 'error' : 'action',
+                category: 'maintenance',
+                actionUrl: '/maintenance',
+                actionLabel: 'View Request',
+                excludeUserId: user.id,
+            })
+        } catch (notifyError) {
+            console.error('Maintenance notifications failed (non-blocking):', notifyError)
+        }
 
         return NextResponse.json(request)
-    } catch (err) {
+    } catch {
         return apiError('Maintenance request failed', { status: 500 })
     }
 }
@@ -147,7 +163,7 @@ export async function PATCH(req: Request) {
         }
         const { id, status, resolution_notes, assigned_to, scheduled_date, estimated_cost, actual_cost } = validated.data
 
-        const update: any = {}
+        const update: MaintenanceUpdate = {}
         if (status) update.status = status
         if (resolution_notes) update.resolution_notes = resolution_notes
         if (assigned_to) update.assigned_to = assigned_to
@@ -173,7 +189,7 @@ export async function PATCH(req: Request) {
         }
 
         return NextResponse.json(data)
-    } catch (err) {
+    } catch {
         return apiError('Maintenance request failed', { status: 500 })
     }
 }

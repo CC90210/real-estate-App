@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 // ==============================================================================
 // ACCENT COLOR SYSTEM - Production Grade Implementation
@@ -126,22 +126,17 @@ export function getStoredAccent(): AccentColorName {
 
 // Hook to get current accent color with live updates
 export function useAccentColor() {
-    const [accent, setAccent] = useState<AccentColorName>('blue');
+    const [accent, setAccentState] = useState<AccentColorName>(() => getStoredAccent());
 
     useEffect(() => {
-        // Load initial value
-        setAccent(getStoredAccent());
-
-        // Listen for storage changes (from other tabs or settings page)
         const handleStorageChange = (e: StorageEvent) => {
             if (e.key === 'propflow_branding') {
-                setAccent(getStoredAccent());
+                setAccentState(getStoredAccent());
             }
         };
 
-        // Listen for custom event (from same tab)
         const handleBrandingChange = () => {
-            setAccent(getStoredAccent());
+            setAccentState(getStoredAccent());
         };
 
         window.addEventListener('storage', handleStorageChange);
@@ -153,14 +148,17 @@ export function useAccentColor() {
         };
     }, []);
 
+    const setAccent = useCallback((newAccent: AccentColorName) => {
+        setAccentState(newAccent);
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('brandingChange'));
+        }
+    }, []);
+
     return {
         accent,
         colors: ACCENT_COLORS[accent],
-        setAccent: (newAccent: AccentColorName) => {
-            setAccent(newAccent);
-            // Dispatch custom event for same-tab updates
-            window.dispatchEvent(new CustomEvent('brandingChange'));
-        }
+        setAccent,
     };
 }
 

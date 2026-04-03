@@ -20,7 +20,7 @@ function isSuperAdminEmail(email?: string | null): boolean {
 
 interface UserContextType {
     user: User | null;
-    profile: (Profile & { company?: any }) | null;
+    profile: UserProfile | null;
     isLoading: boolean;
     isAuthenticated: boolean;
     role: UserRole | null;
@@ -38,21 +38,34 @@ interface UserContextType {
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
+interface CompanySummary {
+    id: string;
+    name: string;
+    subscription_plan: string | null;
+    subscription_status: string | null;
+    is_lifetime_access: boolean | null;
+    late_profile_id: string | null;
+}
+
+type UserProfile = Profile & {
+    company?: CompanySummary | null;
+};
+
 export function UserProvider({ children }: { children: ReactNode }) {
     // Use the SSR-aware client (same one the rest of the app uses)
     const supabase = useMemo(() => createClient(), []);
     const [user, setUser] = useState<User | null>(null);
-    const [profile, setProfile] = useState<(Profile & { company?: any }) | null>(null);
+    const [profile, setProfile] = useState<UserProfile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    const calculatePlan = useCallback((profileData: any, userEmail?: string | null) => {
+    const calculatePlan = useCallback((profileData: UserProfile | null, userEmail?: string | null) => {
         const isHardcodedAdmin = isSuperAdminEmail(userEmail);
 
         // If no profile but is hardcoded admin → full access
         if (!profileData) {
             if (isHardcodedAdmin) {
-                return { plan: 'enterprise' as PlanId, planName: '🔑 Super Admin', features: PLANS.enterprise.features, hasFullAccess: true };
-            }
+            return { plan: 'enterprise' as PlanId, planName: '🔑 Super Admin', features: PLANS.enterprise.features, hasFullAccess: true };
+        }
             // No profile yet — return enterprise features temporarily to prevent "restricted" flash.
             // The real plan will be resolved once profile loads. This prevents the UI from
             // flashing "Feature Restricted" during momentary auth state changes (navigation, token refresh).
@@ -97,7 +110,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
                     )
                 `)
                 .eq('id', userId)
-                .single()
+                .maybeSingle()
                 .abortSignal(controller.signal);
 
             clearTimeout(timeout);
@@ -110,9 +123,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
                     try {
                         const proxyRes = await fetch(`/api/user/profile?userId=${userId}`);
                         if (proxyRes.ok) {
-                            const proxyData = await proxyRes.json();
-                            console.warn('[RECOVERY] Successfully recovered profile via proxy.');
-                            return proxyData;
+                    const proxyData = await proxyRes.json() as UserProfile;
+                    console.warn('[RECOVERY] Successfully recovered profile via proxy.');
+                    return proxyData;
                         }
                     } catch (proxyErr) {
                         console.error('[RECOVERY FAILED]:', proxyErr);
@@ -124,7 +137,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
                         email: user?.email || null,
                         company_id: null,
                         role: 'agent',
-                    } as any;
+                    } as UserProfile;
                 }
                 console.warn('Profile sync issue:', profileError.message);
                 return null;
@@ -138,26 +151,25 @@ export function UserProvider({ children }: { children: ReactNode }) {
             // Normalize company field — Supabase foreign key JOINs can return
             // an object, an array with one element, or an empty array depending
             // on the relationship cardinality and RLS policies.
-            if (profileData.company) {
-                if (Array.isArray(profileData.company)) {
-                    (profileData as any).company = profileData.company.length > 0
-                        ? profileData.company[0]
-                        : null;
-                }
-            }
+            const normalizedCompany = Array.isArray(profileData.company)
+                ? profileData.company[0] ?? null
+                : profileData.company ?? null;
 
-            return profileData;
+            return {
+                ...profileData,
+                company: normalizedCompany,
+            } as UserProfile;
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             // Handle abort (timeout)
-            if (err?.name === 'AbortError') {
+            if (err instanceof Error && err.name === 'AbortError') {
                 console.warn('Profile fetch timed out for user:', userId);
                 return null;
             }
             console.error('Profile fetch failed unexpectedly:', err);
             return null;
         }
-    }, [supabase]);
+    }, [supabase, user?.email]);
 
     const refreshProfile = useCallback(async () => {
         if (user) {
@@ -172,7 +184,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
         // Safety timeout: ALWAYS stop loading after 10 seconds no matter what
         const safetyTimeout = setTimeout(() => {
-            if (mounted && isLoading) {
+            if (mounted) {
                 console.warn('[Auth] Safety timeout: forcing isLoading=false after 10s');
                 setIsLoading(false);
                 initComplete = true;
@@ -267,8 +279,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
             const { error } = await supabase.auth.signInWithPassword({ email, password });
             return { error: error ? new Error(error.message) : null };
-        } catch (e: any) {
-            return { error: e };
+        } catch (e: unknown) {
+            return { error: e instanceof Error ? e : new Error('Signup failed') };
         }
     };
 

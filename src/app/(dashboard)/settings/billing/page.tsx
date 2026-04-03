@@ -5,17 +5,32 @@ import { useAuth } from '@/lib/hooks/useAuth'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, Shield, Zap, CreditCard, Building2, Users, FileText } from 'lucide-react'
+import { CheckCircle, Shield, Zap, CreditCard, Building2, Users, FileText, Sparkles } from 'lucide-react'
 import { resolveCompanyPlan } from '@/lib/plans/resolve'
 import { cn } from '@/lib/utils'
 import { useAccentColor } from '@/lib/hooks/useAccentColor'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { useSearchParams } from 'next/navigation'
+import type { Company } from '@/types/database'
+
+const AUTOMATION_LABELS: Record<string, string> = {
+    document_sender: 'Auto-Lease Sender',
+    invoice_sender: 'Revenue Agent',
+    application_processor: 'Application Processor',
+    follow_up: 'Follow-Up Automation',
+    listing_poster: 'Listing Poster',
+    email_agent: 'Email AI Agent',
+    voice_agent: 'Voice AI Agent',
+    review_agent: 'Reputation Agent',
+    webhook_relay: 'Webhook Relay',
+}
 
 export default function BillingPage() {
     const { company, profile, isLoading } = useAuth()
     const { colors } = useAccentColor()
     const [portalLoading, setPortalLoading] = useState(false)
+    const searchParams = useSearchParams()
 
     async function handleManageSubscription() {
         setPortalLoading(true)
@@ -49,8 +64,18 @@ export default function BillingPage() {
         )
     }
 
-    const { effectivePlan, subscriptionStatus, isEnterprise } = resolveCompanyPlan(company || {})
+    const rawCompany = company as Partial<Company> | null | undefined
+    const { effectivePlan, subscriptionStatus, isEnterprise } = resolveCompanyPlan({
+        plan_override: rawCompany?.plan_override ?? null,
+        subscription_plan: rawCompany?.subscription_plan ?? null,
+        subscription_status: rawCompany?.subscription_status ?? null,
+        is_lifetime_access: rawCompany?.is_lifetime_access ?? null,
+    })
     const automationEnabled = effectivePlan.limits.automations
+    const requestedAutomation = searchParams.get('automation')
+    const requestedAutomationLabel = requestedAutomation
+        ? (AUTOMATION_LABELS[requestedAutomation] || requestedAutomation.replace(/_/g, ' '))
+        : null
 
     return (
         <div className="p-6 lg:p-10 space-y-8 animate-in fade-in duration-500">
@@ -58,6 +83,33 @@ export default function BillingPage() {
                 <h1 className="text-3xl font-black tracking-tight text-slate-900">Billing & Subscription</h1>
                 <p className="text-slate-500 font-medium">Manage your plan and payment methods.</p>
             </div>
+
+            {requestedAutomationLabel && (
+                <Card className="border-blue-200 bg-blue-50/60">
+                    <CardContent className="p-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div className="flex items-start gap-3">
+                            <div className="h-10 w-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                                <Sparkles className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-black text-slate-900">
+                                    Requested automation: {requestedAutomationLabel}
+                                </p>
+                                <p className="text-sm text-slate-600">
+                                    {automationEnabled
+                                        ? 'Your current plan includes automation access. Return to the Automations page to activate supported workflows.'
+                                        : 'This workflow requires automation-enabled billing. Upgrade your plan or contact PropFlow support for custom provisioning.'}
+                                </p>
+                            </div>
+                        </div>
+                        <Link href="/automations">
+                            <Button className={cn("rounded-xl text-white", colors.bg, colors.bgHover)}>
+                                Back to Automations
+                            </Button>
+                        </Link>
+                    </CardContent>
+                </Card>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Current Plan Card */}

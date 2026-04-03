@@ -16,7 +16,12 @@ export function usePlanLimits() {
 
     const { data, isLoading, error, refetch } = useQuery<PlanInfo>({
         queryKey: ['plan-limits', companyId],
-        queryFn: () => getPlanInfo(companyId),
+        queryFn: () => {
+            if (!companyId) {
+                throw new Error('No company found')
+            }
+            return getPlanInfo(companyId)
+        },
         enabled: !userLoading && !!companyId,
         staleTime: 30000, // Cache for 30 seconds
         gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes

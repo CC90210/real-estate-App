@@ -7,6 +7,20 @@ import { apiError } from '@/lib/api-response'
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, prefix: 'api:properties-import' })
 
+type ImportedCsvRow = Record<string, string | undefined>
+
+type ImportedPropertyInsert = {
+    company_id: string
+    address: string
+    unit_number: string | null
+    rent: number | null
+    bedrooms: number | null
+    bathrooms: number | null
+    square_feet: number | null
+    description: string | null
+    status: string
+}
+
 export async function POST(req: Request) {
     const supabase = await createClient()
 
@@ -48,7 +62,7 @@ export async function POST(req: Request) {
 
     const text = await file.text()
 
-    const { data: rows, errors } = Papa.parse(text, {
+    const { data: rows, errors } = Papa.parse<ImportedCsvRow>(text, {
         header: true,
         skipEmptyLines: true,
         transformHeader: (header) => header.toLowerCase().trim().replace(/\s+/g, '_')
@@ -62,11 +76,11 @@ export async function POST(req: Request) {
         return apiError(`CSV too large (${rows.length} rows). Maximum 5,000 properties per import.`, { status: 400 })
     }
 
-    const properties: Record<string, any>[] = []
+    const properties: ImportedPropertyInsert[] = []
     const validationErrors: { row: number; error: string }[] = []
 
     for (let i = 0; i < rows.length; i++) {
-        const row = rows[i] as any
+        const row = rows[i]
 
         if (!row.address) {
             validationErrors.push({ row: i + 2, error: 'Missing address' })
@@ -81,10 +95,10 @@ export async function POST(req: Request) {
         const validStatuses = ['available', 'occupied', 'maintenance', 'unavailable']
         const status = row.status && validStatuses.includes(row.status.toLowerCase()) ? row.status.toLowerCase() : 'available'
 
-        const rent = parseFloat(row.rent)
-        const bedrooms = parseInt(row.bedrooms)
-        const bathrooms = parseFloat(row.bathrooms)
-        const sqft = parseInt(row.square_feet || row.sqft)
+        const rent = parseFloat(row.rent ?? '')
+        const bedrooms = parseInt(row.bedrooms ?? '', 10)
+        const bathrooms = parseFloat(row.bathrooms ?? '')
+        const sqft = parseInt(row.square_feet || row.sqft || '', 10)
 
         properties.push({
             company_id: profile.company_id,
@@ -120,14 +134,18 @@ export async function POST(req: Request) {
         return apiError('Failed to import properties. Please check your CSV format and try again.', { status: 500 })
     }
 
-    await logActivity(supabase, {
-        companyId: profile.company_id,
-        userId: user.id,
-        action: 'imported',
-        entityType: 'properties',
-        description: `Imported ${inserted.length} properties from CSV`,
-        details: { count: inserted.length }
-    })
+    try {
+        await logActivity(supabase, {
+            companyId: profile.company_id,
+            userId: user.id,
+            action: 'imported',
+            entityType: 'properties',
+            description: `Imported ${inserted.length} properties from CSV`,
+            details: { count: inserted.length }
+        })
+    } catch (logError) {
+        console.error('[Import] Activity log failed (non-blocking):', logError)
+    }
 
     return NextResponse.json({
         success: true,

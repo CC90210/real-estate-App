@@ -3,6 +3,16 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useUser } from './useUser';
+import type { Company } from '@/types/database';
+
+type CompanyRecord = Partial<Company> & {
+    id: string;
+    name?: string;
+};
+type FallbackCompanyState = {
+    userId: string | null;
+    company: CompanyRecord | null;
+};
 
 /**
  * useAuth – the single source of truth for auth + company in the client.
@@ -27,8 +37,10 @@ export function useAuth() {
         signOut
     } = useUser();
 
-    const [fallbackCompany, setFallbackCompany] = useState<any>(null);
-    const [fallbackDone, setFallbackDone] = useState(false);
+    const [fallbackState, setFallbackState] = useState<FallbackCompanyState>({
+        userId: null,
+        company: null,
+    });
     const fetchingRef = useRef(false);
 
     // Normalize company from profile
@@ -44,51 +56,52 @@ export function useAuth() {
     // Fallback: fetch company directly if profile has company_id but JOIN didn't resolve,
     // OR if the user is authenticated but has NO company_id at all (auto-resolve first company).
     useEffect(() => {
-        // Already have a resolved company from the JOIN — nothing to do
-        if (company) {
-            setFallbackDone(true);
+        if (company || !profile?.company_id || !isAuthenticated || userLoading || !user?.id) {
             return;
         }
 
-        // Not authenticated or still loading — skip
-        if (!isAuthenticated || userLoading) return;
+        if (fetchingRef.current || fallbackState.userId === user.id) {
+            return;
+        }
 
-        if (fetchingRef.current || fallbackDone) return;
         fetchingRef.current = true;
 
         const supabase = createClient();
 
-        if (profile?.company_id) {
-            // Profile has a company_id but JOIN didn't resolve — fetch directly
-            supabase
-                .from('companies')
-                .select('*')
-                .eq('id', profile.company_id)
-                .single()
-                .then(({ data, error }) => {
-                    if (data) {
-                        setFallbackCompany(data);
-                    } else if (error) {
+        supabase
+            .from('companies')
+            .select('*')
+            .eq('id', profile.company_id)
+            .maybeSingle()
+            .then(({ data, error }) => {
+                if (data) {
+                    setFallbackState({
+                        userId: user.id,
+                        company: data as CompanyRecord,
+                    });
+                } else {
+                    if (error) {
                         console.warn('[useAuth] Fallback company fetch failed:', error.message);
                     }
-                })
-                .catch(() => {})
-                .finally(() => {
-                    setFallbackDone(true);
-                    fetchingRef.current = false;
+                    setFallbackState({
+                        userId: user.id,
+                        company: null,
+                    });
+                }
+            })
+            .catch(() => {
+                setFallbackState({
+                    userId: user.id,
+                    company: null,
                 });
-        } else {
-            // No company_id on profile — user has no company assigned.
-            // Do NOT auto-resolve to a random company — that's a cross-tenant data leak.
-            // The UI will show a "no workspace" state and prompt user to refresh or contact support.
-            console.warn('[useAuth] No company_id on profile. User needs company assignment.');
-            setFallbackDone(true);
-            fetchingRef.current = false;
-        }
-    }, [profile?.company_id, profile?.id, company, fallbackDone, isAuthenticated, userLoading]);
+            })
+            .finally(() => {
+                fetchingRef.current = false;
+            });
+    }, [company, fallbackState.userId, isAuthenticated, profile?.company_id, user?.id, userLoading]);
 
-    const resolvedCompany = company || fallbackCompany;
-    const pendingCompany = isAuthenticated && !resolvedCompany && !fallbackDone;
+    const resolvedCompany = company || (fallbackState.userId === user?.id ? fallbackState.company : null);
+    const pendingCompany = isAuthenticated && !!profile?.company_id && !company && fallbackState.userId !== user?.id;
     const isLoading = userLoading || pendingCompany;
 
     return {
