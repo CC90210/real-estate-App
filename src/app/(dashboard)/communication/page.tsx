@@ -94,7 +94,7 @@ function buildInitialMessages(prospect: Prospect, botStep: number): Message[] {
     }
     if (botStep >= 2) {
         addProspect('Yes, I am interested!', 100)
-        addBot(`Here is a video walkthrough of the property: ${videoUrl}`, 99)
+        addBot(`Here is a walkthrough of the property: ${videoUrl}`, 99)
     }
     if (botStep >= 3) {
         addProspect('Looks great, I would love to see it.', 60)

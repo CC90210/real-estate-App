@@ -132,7 +132,7 @@ export function WorkflowTracker({ propertyId, currentPhase, inspectionStatus, cl
             {currentPhase === 'onboarding' && (
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-xl">
                     <p className="text-xs text-amber-700 font-medium">
-                        Complete property photos and video walkthrough to proceed to inspection.
+                        Complete property photos to proceed to inspection.
                     </p>
                 </div>
             )}

@@ -40,11 +40,11 @@ const TEMPLATES: TemplateItem[] = [
     },
     {
         id: 'video',
-        label: 'Video Tour',
+        label: 'Walkthrough',
         icon: Video,
         color: 'text-blue-600 bg-blue-50 hover:bg-blue-100 border-blue-100',
         build: ({ propertyAddress, videoUrl }) =>
-            `Great news! Here is a video walkthrough of the property at ${propertyAddress || '[address]'}: ${videoUrl || '[video link]'}`,
+            `Great news! Here is a walkthrough of the property at ${propertyAddress || '[address]'}: ${videoUrl || '[walkthrough link]'}`,
     },
     {
         id: 'interest',
