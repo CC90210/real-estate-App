@@ -1,7 +1,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
-import { ArrowLeft, Home, BedDouble, Bath, Square, Calendar, MapPin, Key, Shield, Info, Edit, FileText, Plus, Video } from 'lucide-react';
+import { ArrowLeft, Home, BedDouble, Bath, Square, Calendar, MapPin, Key, Shield, Info, Edit, FileText, Plus, Video, Box, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -123,6 +123,31 @@ export default async function PropertyDetailsPage({ params }: { params: { id: st
                             </a>
                         </div>
                     )}
+
+                    {/* 3D Walkthroughs (Gaussian Splat) */}
+                    <Link
+                        href={`/properties/${property.id}/walkthrough`}
+                        className="block group"
+                    >
+                        <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl shadow-sm border border-indigo-200 p-6 hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1 min-w-0">
+                                    <h2 className="text-lg font-bold text-slate-900 mb-1 flex items-center gap-2">
+                                        <Box className="w-5 h-5 text-indigo-600" /> 3D Walkthroughs
+                                        <Badge variant="secondary" className="ml-2 text-[10px] font-bold tracking-wider uppercase bg-indigo-100 text-indigo-700">
+                                            New
+                                        </Badge>
+                                    </h2>
+                                    <p className="text-sm text-slate-600 leading-relaxed">
+                                        Upload 30+ phone photos and generate a shareable 3D walkthrough tenants can explore in their browser.
+                                    </p>
+                                </div>
+                                <div className="shrink-0 self-center text-indigo-600 group-hover:translate-x-1 transition-transform">
+                                    <ChevronRight className="w-6 h-6" />
+                                </div>
+                            </div>
+                        </div>
+                    </Link>
 
                     {/* Description */}
                     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
