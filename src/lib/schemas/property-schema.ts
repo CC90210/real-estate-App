@@ -18,7 +18,6 @@ export const propertySchema = z.object({
     description: z.string().optional(),
     amenities: z.array(z.string()).optional(),
     available_date: z.date().optional(),
-    video_walkthrough_url: z.string().url().optional().or(z.literal('')),
     photos: z.array(z.string()).optional(),
 
     // System Status

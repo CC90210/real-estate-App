@@ -29,7 +29,6 @@ interface Property {
     square_feet: number | null
     description: string | null
     photos: string[] | null
-    video_walkthrough_url: string | null
     amenities: string[] | null
     status: string
 }
@@ -164,7 +163,7 @@ export function MarketplaceListings({ companyId }: MarketplaceListingsProps) {
             try {
                 const { data, error } = await supabase
                     .from('properties')
-                    .select('id, address, city, rent, bedrooms, bathrooms, square_feet, description, photos, video_walkthrough_url, amenities, status')
+                    .select('id, address, city, rent, bedrooms, bathrooms, square_feet, description, photos, amenities, status')
                     .eq('company_id', companyId)
                     .order('created_at', { ascending: false })
 
@@ -312,7 +311,6 @@ export function MarketplaceListings({ companyId }: MarketplaceListingsProps) {
             lines.push(`Amenities: ${p.amenities.join(', ')}`)
         }
         if (p.description) lines.push('', p.description)
-        if (p.video_walkthrough_url) lines.push('', `Video tour: ${p.video_walkthrough_url}`)
         lines.push('', 'Message us to schedule a viewing or apply online.')
         return lines.join('\n')
     }

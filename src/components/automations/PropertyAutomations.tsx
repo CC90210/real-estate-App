@@ -2,7 +2,7 @@
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { AutomationButton } from "./AutomationButton"
-import { Mail, Share2, Image, Sparkles } from "lucide-react"
+import { Mail, Share2, Sparkles } from "lucide-react"
 
 export function PropertyAutomations({ property }: { property: any }) {
     return (
@@ -29,14 +29,6 @@ export function PropertyAutomations({ property }: { property: any }) {
                         entityId={property.id}
                         label="Post to Social Media"
                         icon={<Share2 className="h-4 w-4" />}
-                    />
-
-                    <AutomationButton
-                        actionType="generate_ad"
-                        entityType="property"
-                        entityId={property.id}
-                        label="Generate Ad Creative"
-                        icon={<Image className="h-4 w-4" />}
                     />
                 </div>
             </CardContent>

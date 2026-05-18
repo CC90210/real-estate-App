@@ -1,6 +1,6 @@
 'use client'
 
-import { MapPin, BedDouble, Bath, Maximize2, Facebook, Globe, Play } from 'lucide-react'
+import { MapPin, BedDouble, Bath, Maximize2, Facebook, Globe } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface ListingPreviewProps {
@@ -12,7 +12,6 @@ interface ListingPreviewProps {
         square_feet: number | null
         description: string | null
         photos: string[] | null
-        video_walkthrough_url: string | null
         amenities: string[] | null
     }
     platform: string
@@ -90,12 +89,6 @@ export function ListingPreview({ property, platform }: ListingPreviewProps) {
                     <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-300">
                         <MapPin className="w-10 h-10" />
                         <span className="text-xs font-medium">No photo uploaded</span>
-                    </div>
-                )}
-                {property.video_walkthrough_url && (
-                    <div className="absolute bottom-2 right-2 flex items-center gap-1 bg-black/70 text-white text-[10px] font-bold px-2 py-1 rounded-full">
-                        <Play className="w-3 h-3" />
-                        Video tour
                     </div>
                 )}
             </div>

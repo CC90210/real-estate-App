@@ -1,12 +1,11 @@
 
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
-import { ArrowLeft, Home, BedDouble, Bath, Square, Calendar, MapPin, Key, Shield, Info, Edit, FileText, Plus, Video, Box, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Home, BedDouble, Bath, Square, Calendar, MapPin, Key, Shield, Info, Edit, FileText, Plus, Box, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { PropertyAutomations } from '@/components/automations/PropertyAutomations';
-import { GenerateAdButton } from '@/components/properties/GenerateAdButton';
 import { EditPropertyModal } from '@/components/properties/EditPropertyModal';
 import { DeletePropertyButton } from '@/components/properties/DeletePropertyButton';
 import { LandlordAssignment } from '@/components/properties/LandlordAssignment';
@@ -106,23 +105,6 @@ export default async function PropertyDetailsPage({ params }: { params: { id: st
                             </div>
                         </div>
                     </div>
-
-                    {/* Video Walkthrough */}
-                    {property.video_walkthrough_url && (
-                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                            <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                                <Video className="w-5 h-5 text-blue-500" /> Video Walkthrough
-                            </h2>
-                            <a
-                                href={property.video_walkthrough_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline font-medium text-sm break-all"
-                            >
-                                {property.video_walkthrough_url}
-                            </a>
-                        </div>
-                    )}
 
                     {/* 3D Walkthroughs (Gaussian Splat) */}
                     <Link
@@ -229,8 +211,6 @@ export default async function PropertyDetailsPage({ params }: { params: { id: st
                 </div>
             </div>
 
-            {/* Floating Actions */}
-            <GenerateAdButton propertyId={property.id} />
         </div>
     );
 }
