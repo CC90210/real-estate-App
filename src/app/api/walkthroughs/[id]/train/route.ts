@@ -6,6 +6,8 @@ import { checkWalkthroughAccess } from '@/lib/walkthroughs/plan-gate';
 
 export const runtime = 'nodejs';
 
+const MAX_CONCURRENT_PER_COMPANY = 3;
+
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -27,7 +29,7 @@ export async function POST(
 
   const { data: job } = await supabase
     .from('walkthrough_jobs')
-    .select('id, photo_count, status')
+    .select('id, photo_count, status, company_id')
     .eq('id', id)
     .maybeSingle();
   if (!job) return NextResponse.json({ error: 'Job not found' }, { status: 404 });
@@ -36,6 +38,27 @@ export async function POST(
     return NextResponse.json(
       { error: `Job in wrong state: ${job.status}` },
       { status: 409 },
+    );
+  }
+
+  // Concurrency cap — prevent a single company from queueing more GPU jobs
+  // than we want running simultaneously. Protects against accidental loops,
+  // bulk-upload mistakes, and runaway GPU bills.
+  const { data: activeCount } = await supabase.rpc('count_active_walkthroughs', {
+    p_company_id: job.company_id,
+  });
+  const active = typeof activeCount === 'number' ? activeCount : 0;
+  // We're about to dispatch this one — so already-in-flight must be < limit.
+  // The current row is in 'uploading' state which is counted as active, so
+  // subtract 1 to exclude the row we're about to transition out of uploading.
+  if (active - 1 >= MAX_CONCURRENT_PER_COMPANY) {
+    return NextResponse.json(
+      {
+        error: `Concurrency limit reached: ${MAX_CONCURRENT_PER_COMPANY} walkthroughs already in flight. Wait for one to finish, or contact support to raise your limit.`,
+        active_jobs: active - 1,
+        limit: MAX_CONCURRENT_PER_COMPANY,
+      },
+      { status: 429 },
     );
   }
 

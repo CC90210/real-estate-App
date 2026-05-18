@@ -10,7 +10,7 @@ import runpod
 
 from pipeline.colmap_runner import run_colmap
 from pipeline.gsplat_trainer import train
-from pipeline.r2_io import download_photos, upload_splat
+from pipeline.r2_io import delete_photos, download_photos, upload_splat
 from pipeline.webhook import post_failed, post_progress, post_success
 
 
@@ -122,6 +122,15 @@ def handler(event: Mapping[str, Any]) -> dict[str, Any]:
             post_success(job_id, input_data["splat_key"], splat_size_bytes, webhook_url, secret),
             "succeeded",
         )
+
+        # Cost control: photos are useless after the .ply is produced. Best-effort
+        # delete — failures don't fail the job since training already succeeded.
+        try:
+            prefix = input_data["photo_keys"][0]
+            deleted = delete_photos(input_data["bucket"], prefix)
+            _log(job_id, f"Cleaned up {deleted} source photos from R2")
+        except Exception as cleanup_err:
+            _log(job_id, f"Photo cleanup skipped (non-fatal): {cleanup_err}")
 
         _log(job_id, f"Completed splat training with {splat_size_bytes} bytes")
         return {

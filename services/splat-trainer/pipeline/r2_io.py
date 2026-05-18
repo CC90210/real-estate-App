@@ -73,3 +73,37 @@ def upload_splat(bucket: str, key: str, file_path: str | Path) -> int:
     extra_args: dict[str, Any] = {"ContentType": "application/octet-stream"}
     _client().upload_file(str(splat_path), bucket, key, ExtraArgs=extra_args)
     return size_bytes
+
+
+def delete_photos(bucket: str, prefix: str) -> int:
+    """Delete every R2 object under the given prefix.
+
+    Called after successful training to free storage — the .ply output is the
+    only artifact we need to keep; the source photos are no longer useful and
+    their cumulative size dominates per-job storage cost (~200 MB photos vs
+    ~150 MB splat per scene).
+
+    Returns the count of objects deleted. Best-effort: failures are logged but
+    don't raise (training succeeded, we don't want to mark the job failed for
+    a cleanup hiccup).
+    """
+    client = _client()
+    paginator = client.get_paginator("list_objects_v2")
+    deleted = 0
+
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        contents = page.get("Contents", []) or []
+        if not contents:
+            continue
+        # S3 batch-delete: up to 1000 objects per request
+        objects = [{"Key": str(item["Key"])} for item in contents if item.get("Key")]
+        for i in range(0, len(objects), 1000):
+            batch = objects[i:i + 1000]
+            try:
+                client.delete_objects(Bucket=bucket, Delete={"Objects": batch, "Quiet": True})
+                deleted += len(batch)
+            except Exception:
+                # Swallow — training succeeded, this is just cleanup
+                pass
+
+    return deleted
