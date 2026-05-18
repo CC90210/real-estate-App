@@ -23,6 +23,7 @@ export interface Plan {
         automations: boolean
         paymentProcessing: boolean
         customIntegrations: boolean
+        walkthroughs: boolean
     }
 }
 
@@ -58,6 +59,7 @@ export const PLANS: Record<PlanId, Plan> = {
             automations: false,
             paymentProcessing: false,
             customIntegrations: false,
+            walkthroughs: false,
         },
     },
     agency_growth: {
@@ -92,6 +94,7 @@ export const PLANS: Record<PlanId, Plan> = {
             automations: true,
             paymentProcessing: true,
             customIntegrations: false,
+            walkthroughs: true,
         },
     },
     brokerage_command: {
@@ -129,6 +132,7 @@ export const PLANS: Record<PlanId, Plan> = {
             automations: true,
             paymentProcessing: true,
             customIntegrations: true,
+            walkthroughs: true,
         },
     },
 }
@@ -177,4 +181,5 @@ export const FEATURE_TO_LIMIT: Record<string, keyof Plan['limits']> = {
     'documents': 'invoices',       // documents available at same tier as invoices
     'approvals': 'invoices',       // approvals available at same tier as invoices
     'social': 'customIntegrations', // social only on Brokerage Command (same gate as customIntegrations)
+    'walkthroughs': 'walkthroughs', // 3D Gaussian Splat walkthroughs — Agency Growth+
 };

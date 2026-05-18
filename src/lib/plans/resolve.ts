@@ -36,6 +36,7 @@ export const ENTERPRISE_PLAN: Plan = {
         automations: true,
         paymentProcessing: true,
         customIntegrations: true,
+        walkthroughs: true,
     },
 }
 
@@ -121,6 +122,7 @@ export function resolveCompanyPlan(company: {
                 automations: false,
                 paymentProcessing: false,
                 customIntegrations: false,
+                walkthroughs: false,
             },
         },
         planSource: 'default',

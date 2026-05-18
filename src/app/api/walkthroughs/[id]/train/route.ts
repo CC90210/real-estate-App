@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { r2 } from '@/lib/walkthroughs/r2-client';
 import { runpod } from '@/lib/walkthroughs/runpod-client';
+import { checkWalkthroughAccess } from '@/lib/walkthroughs/plan-gate';
 
 export const runtime = 'nodejs';
 
@@ -15,6 +16,14 @@ export async function POST(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const gate = await checkWalkthroughAccess(user.id);
+  if (!gate.allowed) {
+    return NextResponse.json(
+      { error: gate.reason ?? 'Walkthroughs not available on your plan', upgrade_required: true },
+      { status: 403 },
+    );
+  }
 
   const { data: job } = await supabase
     .from('walkthrough_jobs')

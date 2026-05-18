@@ -74,13 +74,25 @@ export async function POST(req: NextRequest) {
       break;
   }
 
-  const { error } = await admin
+  // Only finalize jobs that have actually been dispatched to RunPod.
+  // Defense-in-depth beyond the HMAC: prevents a leaked secret from being
+  // used to mark undispatched jobs as succeeded.
+  const { data: updated, error } = await admin
     .from('walkthrough_jobs')
     .update(update)
-    .eq('id', body.data.job_id);
+    .eq('id', body.data.job_id)
+    .not('runpod_job_id', 'is', null)
+    .select('id')
+    .maybeSingle();
 
   if (error) {
     return NextResponse.json({ error: 'Update failed' }, { status: 500 });
+  }
+  if (!updated) {
+    return NextResponse.json(
+      { error: 'Job not found or not dispatched' },
+      { status: 404 },
+    );
   }
 
   return NextResponse.json({ ok: true });
