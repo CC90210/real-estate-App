@@ -1,15 +1,9 @@
-import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { r2 } from '@/lib/walkthroughs/r2-client';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { apiError } from '@/lib/api-response';
 
 export const runtime = 'nodejs';
-
-function adminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error('Supabase admin credentials not configured');
-  return createAdminClient(url, key, { auth: { persistSession: false } });
-}
 
 export async function GET(
   _req: NextRequest,
@@ -18,16 +12,10 @@ export async function GET(
   const { token } = await params;
 
   if (!token || token.length < 8 || token.length > 64) {
-    return NextResponse.json({ error: 'Invalid token' }, { status: 400 });
+    return apiError('Invalid token', { status: 400, code: 'invalid_token' });
   }
 
-  let admin;
-  try {
-    admin = adminClient();
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : 'config';
-    return NextResponse.json({ error: msg }, { status: 500 });
-  }
+  const admin = getSupabaseAdmin();
 
   const { data: job } = await admin
     .from('walkthrough_jobs')
@@ -36,7 +24,7 @@ export async function GET(
     .maybeSingle();
 
   if (!job) {
-    return NextResponse.json({ error: 'Tour not found' }, { status: 404 });
+    return apiError('Tour not found', { status: 404, code: 'not_found' });
   }
 
   if (job.status !== 'succeeded' || !job.splat_r2_key) {

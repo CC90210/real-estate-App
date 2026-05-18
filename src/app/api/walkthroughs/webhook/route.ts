@@ -1,7 +1,8 @@
-import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verify } from '@/lib/walkthroughs/webhook-signer';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { apiError, zodIssuesToDetails } from '@/lib/api-response';
 
 export const runtime = 'nodejs';
 
@@ -14,43 +15,33 @@ const Body = z.object({
   splat_r2_key: z.string().max(512).optional(),
 });
 
-function adminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error('Supabase admin credentials not configured');
-  return createAdminClient(url, key, { auth: { persistSession: false } });
-}
+const TERMINAL_STATUSES = ['succeeded', 'failed'] as const;
 
 export async function POST(req: NextRequest) {
   const signature = req.headers.get('x-walkthrough-signature') ?? '';
   const raw = await req.text();
 
   if (!verify(raw, signature)) {
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+    return apiError('Invalid signature', { status: 401, code: 'invalid_signature' });
   }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    return apiError('Invalid JSON', { status: 400, code: 'invalid_json' });
   }
 
   const body = Body.safeParse(parsed);
   if (!body.success) {
-    return NextResponse.json(
-      { error: 'Invalid body', details: body.error.flatten() },
-      { status: 400 },
-    );
+    return apiError('Invalid body', {
+      status: 400,
+      code: 'invalid_body',
+      details: zodIssuesToDetails(body.error.issues),
+    });
   }
 
-  let admin;
-  try {
-    admin = adminClient();
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : 'config';
-    return NextResponse.json({ error: msg }, { status: 500 });
-  }
+  const admin = getSupabaseAdmin();
 
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
@@ -74,26 +65,31 @@ export async function POST(req: NextRequest) {
       break;
   }
 
-  // Only finalize jobs that have actually been dispatched to RunPod.
-  // Defense-in-depth beyond the HMAC: prevents a leaked secret from being
-  // used to mark undispatched jobs as succeeded.
-  const { data: updated, error } = await admin
+  // Build the query with two defense-in-depth constraints:
+  // 1. runpod_job_id IS NOT NULL — webhook can't finalize undispatched jobs
+  // 2. status NOT IN ('succeeded','failed') — out-of-order or replayed events
+  //    can't revert a row out of a terminal state (e.g., late 'progress' after 'succeeded')
+  let query = admin
     .from('walkthrough_jobs')
     .update(update)
     .eq('id', body.data.job_id)
-    .not('runpod_job_id', 'is', null)
-    .select('id')
-    .maybeSingle();
+    .not('runpod_job_id', 'is', null);
+
+  if (body.data.event === 'progress') {
+    query = query.not('status', 'in', `(${TERMINAL_STATUSES.join(',')})`);
+  }
+
+  const { data: updated, error } = await query.select('id').maybeSingle();
 
   if (error) {
-    return NextResponse.json({ error: 'Update failed' }, { status: 500 });
-  }
-  if (!updated) {
-    return NextResponse.json(
-      { error: 'Job not found or not dispatched' },
-      { status: 404 },
-    );
+    return apiError('Update failed', { status: 500, code: 'update_failed' });
   }
 
-  return NextResponse.json({ ok: true });
+  if (!updated) {
+    // Either the job wasn't dispatched, or the row is already in a terminal state
+    // and this is a stale/replayed event. Both are no-ops from our perspective.
+    return NextResponse.json({ ok: true, applied: false });
+  }
+
+  return NextResponse.json({ ok: true, applied: true });
 }
