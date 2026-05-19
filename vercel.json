@@ -3,7 +3,7 @@
   "crons": [
     {
       "path": "/api/walkthroughs/reap-stale",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 6 * * *"
     }
   ]
 }
