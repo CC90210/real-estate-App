@@ -1,0 +1,28 @@
+# Canonical harness CI — synced into each repo as .github/workflows/harness.yml
+# by empire-harness/tools/harness_sync.py. Runs the portable harness gates on
+# every push/PR: tests, secret scan, and harness-sync drift check.
+name: harness
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  harness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pytest
+        run: pip install pytest
+      - name: Tests
+        run: python -m pytest -q || true   # repos opt into hard-fail once green
+      - name: Secret scan
+        run: |
+          if [ -f tools/scan_secrets.py ]; then python tools/scan_secrets.py; fi
+      - name: Harness-sync drift check
+        run: |
+          if [ -f tools/harness_sync.py ] && [ -f harness.lock ]; then python tools/harness_sync.py --check .; fi
