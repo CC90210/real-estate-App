@@ -14,5 +14,15 @@ const callbackSource = readFileSync(resolve('src/app/auth/callback/route.ts'), '
 assert.match(forgotPasswordSource, /auth\/callback\?next=\/reset-password/)
 assert.doesNotMatch(resetPasswordSource, /exchangeCodeForSession|getSession/)
 assert.match(callbackSource, /PASSWORD_RECOVERY_COOKIE/)
+assert.match(
+  callbackSource,
+  /searchParams\.get\(['"]token_hash['"]\)/,
+  'the server callback must accept the token hash emitted by recovery email templates',
+)
+assert.match(
+  callbackSource,
+  /verifyOtp\([\s\S]+type:\s*['"]recovery['"]/,
+  'the server callback must exchange recovery token hashes for a session',
+)
 
 console.log('Password recovery tests passed')
