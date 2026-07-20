@@ -15,12 +15,8 @@ export default function WalkthroughDetailPage({
 }) {
   const { id: propertyId, jobId } = use(params);
   const { data: job } = useWalkthrough(jobId);
-  const [appUrl, setAppUrl] = useState<string>('');
+  const [appUrl] = useState(() => typeof window === 'undefined' ? '' : window.location.origin);
   const [splatUrl, setSplatUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') setAppUrl(window.location.origin);
-  }, []);
 
   useEffect(() => {
     if (job?.status !== 'succeeded' || !job.share_token) return;
@@ -40,11 +36,11 @@ export default function WalkthroughDetailPage({
 
   return (
     <div className="container mx-auto py-8 max-w-5xl">
-      <Link href={`/properties/${propertyId}/walkthrough`}>
-        <Button variant="ghost" size="sm" className="mb-4">
+      <Button asChild variant="ghost" size="sm" className="mb-4">
+        <Link href={`/properties/${propertyId}/walkthrough`}>
           <ChevronLeft className="h-4 w-4 mr-1" /> Back to walkthroughs
-        </Button>
-      </Link>
+        </Link>
+      </Button>
 
       <h1 className="text-3xl font-bold mb-6">Walkthrough</h1>
 

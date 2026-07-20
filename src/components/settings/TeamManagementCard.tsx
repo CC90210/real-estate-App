@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -44,33 +44,40 @@ export function TeamManagementCard() {
     const [showInviteModal, setShowInviteModal] = useState(false);
     const { colors } = useAccentColor();
 
-    const fetchTeamData = async () => {
-        if (!companyId) return;
-        setIsLoading(true);
+    const loadTeamData = useCallback(async () => {
+        if (!companyId) return { profileData: null, inviteData: null };
 
-        // Fetch Profiles
-        const { data: profileData } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('company_id', companyId)
-            .order('created_at', { ascending: true });
+        const [{ data: profileData }, { data: inviteData }] = await Promise.all([
+            supabase
+                .from('profiles')
+                .select('*')
+                .eq('company_id', companyId)
+                .order('created_at', { ascending: true }),
+            supabase
+                .from('team_invitations')
+                .select('*')
+                .eq('company_id', companyId)
+                .eq('status', 'pending')
+                .order('created_at', { ascending: false }),
+        ]);
 
-        // Fetch Invitations
-        const { data: inviteData } = await supabase
-            .from('team_invitations')
-            .select('*')
-            .eq('company_id', companyId)
-            .eq('status', 'pending')
-            .order('created_at', { ascending: false });
+        return { profileData, inviteData };
+    }, [companyId, supabase]);
 
+    const fetchTeamData = useCallback(async () => {
+        const { profileData, inviteData } = await loadTeamData();
         if (profileData) setMembers(profileData);
         if (inviteData) setInvites(inviteData);
         setIsLoading(false);
-    };
+    }, [loadTeamData]);
 
     useEffect(() => {
-        fetchTeamData();
-    }, [companyId]);
+        void loadTeamData().then(({ profileData, inviteData }) => {
+            if (profileData) setMembers(profileData);
+            if (inviteData) setInvites(inviteData);
+            setIsLoading(false);
+        });
+    }, [loadTeamData]);
 
     const revokeInvite = async (id: string) => {
         const { error } = await supabase.from('team_invitations').delete().eq('id', id).eq('company_id', companyId);

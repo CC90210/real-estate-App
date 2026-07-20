@@ -218,7 +218,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         initAuth();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (event, session) => {
+            (event, session) => {
                 if (!mounted) return;
 
                 // Skip INITIAL_SESSION — initAuth already handles it
@@ -229,10 +229,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
                 if (session?.user) {
                     setUser(session.user);
-                    // Only re-fetch profile on actual auth state changes after init
+                    // Return from Supabase's auth callback immediately. Awaiting another
+                    // Supabase request here can hold the auth lock and make sign-in hang.
                     if (initComplete) {
-                        const profileData = await fetchProfile(session.user.id);
-                        if (mounted) setProfile(profileData);
+                        void fetchProfile(session.user.id).then(profileData => {
+                            if (mounted) setProfile(profileData);
+                        });
                     }
                 } else {
                     setUser(null);

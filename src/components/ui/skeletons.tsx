@@ -175,7 +175,7 @@ export function ChartSkeleton({ className }: { className?: string }) {
                         <Skeleton
                             key={i}
                             className="w-full rounded-t-lg"
-                            style={{ height: `${30 + Math.random() * 70}%` }}
+                            style={{ height: `${[42, 68, 55, 84, 73, 61][i]}%` }}
                         />
                     ))}
                 </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { Loader2 } from 'lucide-react'
@@ -10,8 +10,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const router = useRouter()
     const pathname = usePathname()
     const { isSuperAdmin, isLoading: authLoading, isAuthenticated } = useAuth()
-    const [authorized, setAuthorized] = useState(false)
     const loading = authLoading
+    const authorized = !authLoading && isAuthenticated && isSuperAdmin
 
     useEffect(() => {
         if (authLoading) return
@@ -23,7 +23,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             router.replace('/dashboard')
             return
         }
-        setAuthorized(true)
     }, [authLoading, isAuthenticated, isSuperAdmin, router])
 
     if (loading) {

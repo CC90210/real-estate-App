@@ -76,21 +76,26 @@ export function DocumentGenerator({ properties, applications }: DocumentGenerato
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedDocument, setGeneratedDocument] = useState<any>(null);
     const [profile, setProfile] = useState<any>(null);
+    const [profileLoading, setProfileLoading] = useState(true);
     const supabase = createClient();
 
     useEffect(() => {
         const fetchProfile = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                const { data } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', user.id)
-                    .single();
-                setProfile(data);
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    const { data } = await supabase
+                        .from('profiles')
+                        .select('*')
+                        .eq('id', user.id)
+                        .single();
+                    setProfile(data);
+                }
+            } finally {
+                setProfileLoading(false);
             }
         };
-        fetchProfile();
+        void fetchProfile();
     }, []);
 
     const handleSelectType = (id: string) => {
@@ -213,17 +218,26 @@ export function DocumentGenerator({ properties, applications }: DocumentGenerato
                             </div>
                         </div>
 
-                        {selectedType === 'property_summary' && (
-                            <PropertySummaryForm properties={properties} onGenerate={handleGenerate} isGenerating={isGenerating} profile={profile} />
-                        )}
-                        {selectedType === 'lease_proposal' && (
-                            <LeaseProposalForm properties={properties} onGenerate={handleGenerate} isGenerating={isGenerating} profile={profile} />
-                        )}
-                        {selectedType === 'showing_sheet' && (
-                            <ShowingSheetForm properties={properties} onGenerate={handleGenerate} isGenerating={isGenerating} profile={profile} />
-                        )}
-                        {selectedType === 'application_summary' && (
-                            <ApplicationSummaryForm properties={properties} applications={applications} onGenerate={handleGenerate} isGenerating={isGenerating} profile={profile} />
+                        {profileLoading ? (
+                            <div className="flex items-center justify-center gap-3 py-16 text-sm text-slate-500">
+                                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                                Loading your profile...
+                            </div>
+                        ) : (
+                            <>
+                                {selectedType === 'property_summary' && (
+                                    <PropertySummaryForm properties={properties} onGenerate={handleGenerate} isGenerating={isGenerating} profile={profile} />
+                                )}
+                                {selectedType === 'lease_proposal' && (
+                                    <LeaseProposalForm properties={properties} onGenerate={handleGenerate} isGenerating={isGenerating} profile={profile} />
+                                )}
+                                {selectedType === 'showing_sheet' && (
+                                    <ShowingSheetForm properties={properties} onGenerate={handleGenerate} isGenerating={isGenerating} profile={profile} />
+                                )}
+                                {selectedType === 'application_summary' && (
+                                    <ApplicationSummaryForm properties={properties} applications={applications} onGenerate={handleGenerate} isGenerating={isGenerating} profile={profile} />
+                                )}
+                            </>
                         )}
                     </div>
                 )}
@@ -272,17 +286,6 @@ function PropertySummaryForm({ properties, onGenerate, isGenerating, profile }: 
         template: 'modern',
         currency: 'USD'
     });
-
-    useEffect(() => {
-        if (profile) {
-            setFormData(prev => ({
-                ...prev,
-                agentName: profile.full_name || prev.agentName,
-                agentPhone: profile.phone || prev.agentPhone,
-                agentEmail: profile.email || prev.agentEmail,
-            }));
-        }
-    }, [profile]);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -373,36 +376,21 @@ function LeaseProposalForm({ properties, onGenerate, isGenerating, profile }: an
         currency: 'USD'
     });
 
-    // Sync with selected property rent
-    const selectedProperty = properties.find((p: any) => p.id === formData.propertyId);
-
-    useEffect(() => {
-        if (profile) {
-            setFormData(prev => ({
-                ...prev,
-                agentName: profile.full_name || prev.agentName,
-                agentTitle: (profile.role?.charAt(0).toUpperCase() + profile.role?.slice(1)) || prev.agentTitle,
-            }));
-        }
-    }, [profile]);
-
-    // Auto-fill rent and deposit when property selected
-    useEffect(() => {
-        if (selectedProperty?.rent) {
-            setFormData(prev => ({
-                ...prev,
-                offerRent: prev.offerRent || selectedProperty.rent.toString(),
-                securityDeposit: prev.securityDeposit || selectedProperty.rent.toString(),
-            }));
-        }
-    }, [selectedProperty]);
-
     return (
         <div className="space-y-6 max-w-2xl">
             {/* Property Selection */}
             <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-widest text-slate-500">Property *</Label>
-                <Select value={formData.propertyId} onValueChange={(v) => setFormData({ ...formData, propertyId: v })}>
+                <Select value={formData.propertyId} onValueChange={(propertyId) => {
+                    const property = properties.find((candidate: any) => candidate.id === propertyId)
+                    const rent = property?.rent?.toString() || ''
+                    setFormData(previous => ({
+                        ...previous,
+                        propertyId,
+                        offerRent: previous.offerRent || rent,
+                        securityDeposit: previous.securityDeposit || rent,
+                    }))
+                }}>
                     <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Select Property" /></SelectTrigger>
                     <SelectContent>
                         {properties.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.address}</SelectItem>)}
@@ -549,16 +537,6 @@ function ShowingSheetForm({ properties, onGenerate, isGenerating, profile }: any
         currency: 'USD'
     });
 
-    useEffect(() => {
-        if (profile) {
-            setFormData(prev => ({
-                ...prev,
-                agentName: profile.full_name || prev.agentName,
-                agentPhone: profile.phone || prev.agentPhone,
-            }));
-        }
-    }, [profile]);
-
     return (
         <div className="space-y-6 max-w-2xl">
             <Select value={formData.propertyId} onValueChange={(v) => setFormData({ ...formData, propertyId: v })}>
@@ -605,15 +583,6 @@ function ApplicationSummaryForm({ properties, applications, onGenerate, isGenera
         template: 'executive',
         currency: 'USD'
     });
-
-    useEffect(() => {
-        if (profile) {
-            setFormData(prev => ({
-                ...prev,
-                agentName: profile.full_name || prev.agentName,
-            }));
-        }
-    }, [profile]);
 
     const propertyApps = applications.filter((a: any) => {
         // Ensure accurate ID matching regardless of type (string/UUID)

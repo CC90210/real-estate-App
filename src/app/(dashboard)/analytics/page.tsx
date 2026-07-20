@@ -75,19 +75,23 @@ function RingChart({ segments, total, label }: {
     total: number;
     label: string;
 }) {
-    let offset = 0
     const circumference = 2 * Math.PI * 45
+    const chartSegments = segments.map((segment, index) => ({
+        ...segment,
+        offset: segments
+            .slice(0, index)
+            .reduce((sum, previous) => sum + (total > 0 ? previous.value / total : 0), 0),
+    }))
 
     return (
         <div className="flex flex-col items-center">
             <div className="relative w-32 h-32">
                 <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
                     <circle cx="50" cy="50" r="45" fill="none" stroke="#f1f5f9" strokeWidth="8" />
-                    {segments.map((seg, i) => {
+                    {chartSegments.map((seg, i) => {
                         const pct = total > 0 ? seg.value / total : 0
                         const dashArray = `${pct * circumference} ${circumference}`
-                        const dashOffset = -offset * circumference
-                        offset += pct
+                        const dashOffset = -seg.offset * circumference
                         return (
                             <circle
                                 key={i}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/useAuth'
@@ -69,8 +69,8 @@ interface LeadState {
 function buildInitialMessages(prospect: Prospect, botStep: number): Message[] {
     const msgs: Message[] = []
     const address = '[property address]'
-    const videoUrl = 'https://propflow.app/video/demo'
-    const appUrl = 'https://propflow.app/apply/demo'
+    const videoUrl = '[secure PropFlow tour link]'
+    const appUrl = '[secure PropFlow application link]'
 
     const addBot = (content: string, minutesAgo: number) => {
         msgs.push({
@@ -112,6 +112,11 @@ function buildInitialMessages(prospect: Prospect, botStep: number): Message[] {
     return msgs.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
 }
 
+function getInitialBotStep(prospectId: string): number {
+    const hash = Array.from(prospectId).reduce((sum, character) => sum + character.charCodeAt(0), 0)
+    return (hash % 4) + 1
+}
+
 // ---------------------------------------------------------------------------
 // Page Component
 // ---------------------------------------------------------------------------
@@ -150,39 +155,25 @@ export default function CommunicationPage() {
         enabled: !!resolvedCompanyId,
     })
 
-    // -----------------------------------------------------------------------
-    // Initialise lead state when prospects load
-    // -----------------------------------------------------------------------
-    useEffect(() => {
-        if (!prospects) return
-        setLeadStates(prev => {
-            const next = { ...prev }
-            prospects.forEach(p => {
-                if (!next[p.id]) {
-                    // Assign a random bot step (1–4) so the UI looks populated
-                    const step = Math.floor(Math.random() * 4) + 1
-                    next[p.id] = {
-                        botStep: step,
-                        messages: buildInitialMessages(p, step),
-                        botEnabled: true,
-                    }
-                }
-            })
-            return next
-        })
-    }, [prospects])
-
-    // Auto-select first lead
-    useEffect(() => {
-        if (prospects && prospects.length > 0 && !selectedLeadId) {
-            setSelectedLeadId(prospects[0].id)
-        }
-    }, [prospects, selectedLeadId])
+    const defaultLeadStates = useMemo<Record<string, LeadState>>(() =>
+        Object.fromEntries((prospects || []).map(prospect => {
+            const step = getInitialBotStep(prospect.id)
+            return [prospect.id, {
+                botStep: step,
+                messages: buildInitialMessages(prospect, step),
+                botEnabled: true,
+            }]
+        })), [prospects])
+    const currentLeadStates = useMemo(
+        () => ({ ...defaultLeadStates, ...leadStates }),
+        [defaultLeadStates, leadStates]
+    )
+    const activeSelectedLeadId = selectedLeadId ?? prospects?.[0]?.id ?? null
 
     // Scroll to bottom on new messages
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }, [leadStates, selectedLeadId])
+    }, [currentLeadStates, activeSelectedLeadId])
 
     // -----------------------------------------------------------------------
     // Derived data
@@ -192,16 +183,16 @@ export default function CommunicationPage() {
         (p.email || '').toLowerCase().includes(searchQuery.toLowerCase())
     )
 
-    const selectedLead = prospects?.find(p => p.id === selectedLeadId) ?? null
-    const selectedState = selectedLeadId ? leadStates[selectedLeadId] : null
+    const selectedLead = prospects?.find(p => p.id === activeSelectedLeadId) ?? null
+    const selectedState = activeSelectedLeadId ? currentLeadStates[activeSelectedLeadId] : null
 
-    const pendingFollowUps = Object.values(leadStates).filter(s => s.botStep < 5 && s.botEnabled).length
+    const pendingFollowUps = Object.values(currentLeadStates).filter(s => s.botStep < 5 && s.botEnabled).length
 
     // -----------------------------------------------------------------------
     // Actions
     // -----------------------------------------------------------------------
     const sendMessage = useCallback(() => {
-        if (!draftMessage.trim() || !selectedLeadId) return
+        if (!draftMessage.trim() || !activeSelectedLeadId) return
         setIsSending(true)
 
         const newMsg: Message = {
@@ -213,9 +204,9 @@ export default function CommunicationPage() {
 
         setLeadStates(prev => ({
             ...prev,
-            [selectedLeadId]: {
-                ...prev[selectedLeadId],
-                messages: [...(prev[selectedLeadId]?.messages || []), newMsg],
+            [activeSelectedLeadId]: {
+                ...(prev[activeSelectedLeadId] ?? defaultLeadStates[activeSelectedLeadId]),
+                messages: [...(currentLeadStates[activeSelectedLeadId]?.messages || []), newMsg],
             },
         }))
         setDraftMessage('')
@@ -224,11 +215,11 @@ export default function CommunicationPage() {
             setIsSending(false)
             toast.success('Message sent')
         }, 400)
-    }, [draftMessage, selectedLeadId])
+    }, [activeSelectedLeadId, currentLeadStates, defaultLeadStates, draftMessage])
 
     const advanceBotStep = useCallback((leadId: string) => {
         setLeadStates(prev => {
-            const current = prev[leadId]
+            const current = prev[leadId] ?? defaultLeadStates[leadId]
             if (!current || current.botStep >= 5) return prev
             const newStep = current.botStep + 1
             const lead = prospects?.find(p => p.id === leadId)
@@ -250,17 +241,17 @@ export default function CommunicationPage() {
             }
         })
         toast.success('Bot advanced to next step')
-    }, [prospects])
+    }, [defaultLeadStates, prospects])
 
     const toggleBot = useCallback((leadId: string) => {
         setLeadStates(prev => ({
             ...prev,
             [leadId]: {
-                ...prev[leadId],
-                botEnabled: !prev[leadId]?.botEnabled,
+                ...(prev[leadId] ?? defaultLeadStates[leadId]),
+                botEnabled: !currentLeadStates[leadId]?.botEnabled,
             },
         }))
-    }, [])
+    }, [currentLeadStates, defaultLeadStates])
 
     const handleQuickReply = useCallback((msg: string) => {
         setDraftMessage(msg)
@@ -379,8 +370,8 @@ export default function CommunicationPage() {
                                 <div className="p-3 space-y-1">
                                     <AnimatePresence>
                                         {filteredProspects.map((prospect, idx) => {
-                                            const state = leadStates[prospect.id]
-                                            const isSelected = selectedLeadId === prospect.id
+                                            const state = currentLeadStates[prospect.id]
+                                            const isSelected = activeSelectedLeadId === prospect.id
 
                                             return (
                                                 <motion.button

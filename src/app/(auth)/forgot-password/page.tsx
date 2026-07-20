@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Building2, Mail, ArrowLeft, CheckCircle, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { authErrorMessage } from '@/lib/auth-errors'
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState('')
@@ -21,14 +22,14 @@ export default function ForgotPasswordPage() {
 
         try {
             const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: `${window.location.origin}/reset-password`,
+                redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
             })
 
             if (error) throw error
             setSent(true)
             toast.success('Reset email sent!')
-        } catch (err: any) {
-            toast.error(err.message || 'Failed to send reset email')
+        } catch (err: unknown) {
+            toast.error(authErrorMessage(err))
         } finally {
             setLoading(false)
         }
@@ -70,7 +71,7 @@ export default function ForgotPasswordPage() {
                             <>
                                 <h2 className="text-xl font-bold text-slate-900 mb-2">Forgot Password?</h2>
                                 <p className="text-sm text-slate-500 mb-6">
-                                    Enter your email address and we'll send you a link to reset your password.
+                                    Enter your email address and we&apos;ll send you a link to reset your password.
                                 </p>
 
                                 <form onSubmit={handleSubmit} className="space-y-4">

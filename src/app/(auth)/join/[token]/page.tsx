@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Building2, Loader2, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import Image from 'next/image'
+import { authErrorMessage } from '@/lib/auth-errors'
 
 interface InvitationData {
     email: string
@@ -51,7 +53,7 @@ export default function JoinPage() {
                 }
 
                 setInvitation(data.invitation)
-            } catch (err) {
+            } catch {
                 setError('Failed to validate invitation')
             } finally {
                 setLoading(false)
@@ -112,8 +114,8 @@ export default function JoinPage() {
                 router.push('/login?message=Account created. Please sign in.')
             }, 2000)
 
-        } catch (err: any) {
-            toast.error(err.message || 'Failed to create account')
+        } catch (err: unknown) {
+            toast.error(authErrorMessage(err))
         } finally {
             setSubmitting(false)
         }
@@ -181,9 +183,11 @@ export default function JoinPage() {
                 <CardHeader className="text-center pt-10 pb-6 bg-white">
                     {invitation?.company?.logo_url ? (
                         <div className="h-14 w-14 rounded-2xl mx-auto mb-6 overflow-hidden border border-slate-100 bg-white shadow-sm flex items-center justify-center">
-                            <img
+                            <Image
                                 src={invitation.company.logo_url}
                                 alt={invitation.company.name}
+                                width={56}
+                                height={56}
                                 className="object-contain p-2"
                             />
                         </div>
@@ -196,7 +200,7 @@ export default function JoinPage() {
                         Join {invitation?.company?.name}
                     </CardTitle>
                     <p className="text-slate-500 font-medium mt-2">
-                        You've been invited as a{' '}
+                        You&apos;ve been invited as a{' '}
                         <span className="text-indigo-600 font-bold uppercase tracking-wider text-xs ml-1">
                             {invitation?.role}
                         </span>

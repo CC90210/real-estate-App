@@ -80,7 +80,7 @@ export async function POST(req: Request) {
             .eq('email', invitation.email.toLowerCase())
             .maybeSingle()
 
-        let existingUser: { id: string } | null = existingProfile || null
+        const existingUser: { id: string } | null = existingProfile || null
 
         let userId: string
 

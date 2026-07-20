@@ -1,13 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Building2, Lock, CheckCircle, Loader2, Eye, EyeOff } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import Link from 'next/link'
 
 export default function ResetPasswordPage() {
     const [password, setPassword] = useState('')
@@ -15,8 +14,24 @@ export default function ResetPasswordPage() {
     const [loading, setLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
     const [done, setDone] = useState(false)
-    const supabase = createClient()
-    const router = useRouter()
+    const [sessionStatus, setSessionStatus] = useState<'checking' | 'ready' | 'invalid'>('checking')
+
+    useEffect(() => {
+        let cancelled = false
+
+        void fetch('/api/auth/update-password', { cache: 'no-store' })
+            .then(response => response.json() as Promise<{ ready?: boolean }>)
+            .then(data => {
+                if (!cancelled) setSessionStatus(data.ready ? 'ready' : 'invalid')
+            })
+            .catch(() => {
+                if (!cancelled) setSessionStatus('invalid')
+            })
+
+        return () => {
+            cancelled = true
+        }
+    }, [])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -33,13 +48,18 @@ export default function ResetPasswordPage() {
 
         setLoading(true)
         try {
-            const { error } = await supabase.auth.updateUser({ password })
-            if (error) throw error
+            const response = await fetch('/api/auth/update-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password }),
+            })
+            const result = await response.json() as { error?: string }
+            if (!response.ok) throw new Error(result.error || 'Unable to update password.')
             setDone(true)
             toast.success('Password updated successfully!')
-            setTimeout(() => router.push('/login'), 3000)
-        } catch (err: any) {
-            toast.error(err.message || 'Failed to reset password')
+            setTimeout(() => window.location.replace('/dashboard'), 1200)
+        } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : 'Unable to update password.')
         } finally {
             setLoading(false)
         }
@@ -59,14 +79,29 @@ export default function ResetPasswordPage() {
 
                 <Card className="border-0 shadow-xl">
                     <CardContent className="p-8">
-                        {done ? (
+                        {sessionStatus === 'checking' ? (
+                            <div className="text-center space-y-3 py-4">
+                                <Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-600" />
+                                <p className="text-sm text-slate-500">Verifying your reset link...</p>
+                            </div>
+                        ) : sessionStatus === 'invalid' ? (
+                            <div className="text-center space-y-4">
+                                <h2 className="text-xl font-bold text-slate-900">Reset link is invalid or has expired</h2>
+                                <p className="text-sm text-slate-500">
+                                    Request a fresh password-reset link before choosing a new password.
+                                </p>
+                                <Button asChild className="w-full">
+                                    <Link href="/forgot-password">Request New Link</Link>
+                                </Button>
+                            </div>
+                        ) : done ? (
                             <div className="text-center space-y-4">
                                 <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
                                     <CheckCircle className="w-8 h-8 text-emerald-600" />
                                 </div>
                                 <h2 className="text-xl font-bold text-slate-900">Password Reset!</h2>
                                 <p className="text-sm text-slate-500">
-                                    Your password has been updated. Redirecting to login...
+                                    Your password has been updated. Taking you to your dashboard...
                                 </p>
                             </div>
                         ) : (
@@ -89,6 +124,7 @@ export default function ResetPasswordPage() {
                                                 className="pl-10 pr-10 h-12 rounded-xl"
                                                 required
                                                 minLength={8}
+                                                autoComplete="new-password"
                                             />
                                             <button
                                                 type="button"
@@ -112,6 +148,7 @@ export default function ResetPasswordPage() {
                                                 className="pl-10 h-12 rounded-xl"
                                                 required
                                                 minLength={8}
+                                                autoComplete="new-password"
                                             />
                                         </div>
                                     </div>

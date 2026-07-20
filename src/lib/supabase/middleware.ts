@@ -1,6 +1,7 @@
 
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { isProtectedPath } from '@/lib/auth-routes'
 
 export async function updateSession(request: NextRequest) {
     let supabaseResponse = NextResponse.next({
@@ -16,7 +17,7 @@ export async function updateSession(request: NextRequest) {
                     return request.cookies.getAll()
                 },
                 setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+                    cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
                     supabaseResponse = NextResponse.next({
                         request,
                     })
@@ -41,15 +42,7 @@ export async function updateSession(request: NextRequest) {
     //   /pricing, /login, /signup, /forgot-password, /reset-password
     //
     // These are NOT in protectedPaths and must NEVER be added.
-    const protectedPaths = [
-        '/dashboard', '/properties', '/applications', '/invoices',
-        '/documents', '/analytics', '/social', '/settings',
-        '/areas', '/approvals', '/leases', '/maintenance',
-        '/showings', '/automations', '/activity', '/inspections',
-        '/communication', '/admin', '/tenant', '/landlord',
-        '/landlords', '/onboarding'
-    ]
-    const isProtectedRoute = protectedPaths.some(path => pathname.startsWith(path))
+    const isProtectedRoute = isProtectedPath(pathname)
 
     // ROUTE GUARDING
     if (isProtectedRoute && !user) {
