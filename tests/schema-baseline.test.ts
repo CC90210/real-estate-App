@@ -102,6 +102,11 @@ assert.doesNotMatch(
   /GRANT EXECUTE ON FUNCTION public\.increment_automation_counter\([^;]+\) TO (?:PUBLIC|anon|authenticated)/i,
   'automation counters must remain service-role only',
 )
+assert.doesNotMatch(
+  sql,
+  /current_setting\('request\.jwt\.claim\.role'/i,
+  'service-role checks must use auth.role() instead of the obsolete singular JWT setting',
+)
 assert.match(
   sql,
   /CREATE TRIGGER protect_profile_privileges_before_update[\s\S]+FUNCTION public\.protect_profile_privileges\(\)/i,
@@ -121,5 +126,11 @@ assert.match(
 for (const bucket of ['documents', 'logos', 'media', 'application-documents', 'application-screening-reports']) {
   assert.match(sql, new RegExp(`'${bucket}'`), `missing storage bucket ${bucket}`)
 }
+
+assert.match(
+  sql,
+  /ON storage\.objects[\s\S]+owner_id = auth\.uid\(\)::text/i,
+  'storage ownership policies must compare storage.owner_id text with a text-cast auth uid',
+)
 
 console.log(`Schema baseline contract passed (${requiredTables.length} tenant-aware tables)`)

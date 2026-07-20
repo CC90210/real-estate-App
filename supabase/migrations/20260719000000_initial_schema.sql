@@ -131,7 +131,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  IF current_setting('request.jwt.claim.role', true) = 'service_role' THEN
+  IF auth.role() = 'service_role' THEN
     RETURN NEW;
   END IF;
 
@@ -169,7 +169,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  IF current_setting('request.jwt.claim.role', true) = 'service_role'
+  IF auth.role() = 'service_role'
      OR public.current_user_is_super_admin() THEN
     RETURN NEW;
   END IF;
@@ -1151,7 +1151,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  current_user auth.users%ROWTYPE;
+  auth_user_record auth.users%ROWTYPE;
   new_company_id uuid;
 BEGIN
   IF auth.uid() IS NULL THEN
@@ -1162,18 +1162,18 @@ BEGIN
     RETURN jsonb_build_object('status', 'success', 'message', 'Profile already exists');
   END IF;
 
-  SELECT * INTO current_user FROM auth.users WHERE id = auth.uid();
+  SELECT * INTO auth_user_record FROM auth.users WHERE id = auth.uid();
   INSERT INTO public.companies (name, email)
-  VALUES (COALESCE(NULLIF(current_user.raw_user_meta_data->>'company_name', ''), 'My Company'), lower(current_user.email))
+  VALUES (COALESCE(NULLIF(auth_user_record.raw_user_meta_data->>'company_name', ''), 'My Company'), lower(auth_user_record.email))
   RETURNING id INTO new_company_id;
 
   INSERT INTO public.profiles (id, company_id, email, full_name, job_title, role)
   VALUES (
-    current_user.id,
+    auth_user_record.id,
     new_company_id,
-    lower(current_user.email),
-    COALESCE(NULLIF(current_user.raw_user_meta_data->>'full_name', ''), split_part(current_user.email, '@', 1)),
-    current_user.raw_user_meta_data->>'job_title',
+    lower(auth_user_record.email),
+    COALESCE(NULLIF(auth_user_record.raw_user_meta_data->>'full_name', ''), split_part(auth_user_record.email, '@', 1)),
+    auth_user_record.raw_user_meta_data->>'job_title',
     'admin'
   );
 
@@ -1284,7 +1284,7 @@ DECLARE
   prefix text;
 BEGIN
   IF p_company_id <> public.get_user_company_id()
-     AND current_setting('request.jwt.claim.role', true) <> 'service_role' THEN
+     AND auth.role() IS DISTINCT FROM 'service_role' THEN
     RAISE EXCEPTION 'Forbidden';
   END IF;
 
@@ -1327,7 +1327,7 @@ AS $$
     'recentActivity', COALESCE((SELECT jsonb_agg(row_to_json(recent)) FROM (SELECT a.id, a.action, a.entity_type, a.details, a.created_at FROM public.activity_log a WHERE a.company_id = p_company_id ORDER BY a.created_at DESC LIMIT 20) recent), '[]'::jsonb)
   )
   WHERE p_company_id = public.get_user_company_id()
-     OR current_setting('request.jwt.claim.role', true) = 'service_role';
+     OR auth.role() = 'service_role';
 $$;
 
 CREATE OR REPLACE FUNCTION public.increment_automation_counter(config_id uuid, is_success boolean)
@@ -1343,7 +1343,7 @@ BEGIN
       last_execution_at = now(),
       updated_at = now()
   WHERE id = config_id
-    AND (company_id = public.get_user_company_id() OR current_setting('request.jwt.claim.role', true) = 'service_role');
+    AND (company_id = public.get_user_company_id() OR auth.role() = 'service_role');
 END;
 $$;
 
@@ -1504,9 +1504,9 @@ CREATE POLICY propflow_storage_authenticated_insert ON storage.objects
   FOR INSERT TO authenticated
   WITH CHECK (bucket_id IN ('documents', 'logos', 'media', 'properties', 'property-photos', 'application-documents', 'application-screening-reports'));
 CREATE POLICY propflow_storage_owner_update ON storage.objects
-  FOR UPDATE TO authenticated USING (owner_id = auth.uid()) WITH CHECK (owner_id = auth.uid());
+  FOR UPDATE TO authenticated USING (owner_id = auth.uid()::text) WITH CHECK (owner_id = auth.uid()::text);
 CREATE POLICY propflow_storage_owner_delete ON storage.objects
-  FOR DELETE TO authenticated USING (owner_id = auth.uid());
+  FOR DELETE TO authenticated USING (owner_id = auth.uid()::text);
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
