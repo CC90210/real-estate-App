@@ -210,7 +210,7 @@ export class StatsService {
 
             // Fetch user profiles via proxy for these logs
             const userIds = Array.from(new Set(rawLogs.map(l => l.user_id).filter(Boolean)));
-            let userMap: Record<string, any> = {};
+            const userMap: Record<string, any> = {};
 
             if (userIds.length > 0) {
                 try {

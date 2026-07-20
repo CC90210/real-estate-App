@@ -104,22 +104,17 @@ export function NewApplicationModal({ propertyId }: { propertyId: string }) {
     const [formData, setFormData] = useState<FormData>(EMPTY_FORM);
 
     useEffect(() => {
-        if (open && propertyId) {
-            fetchProperty();
-        }
-    }, [open, propertyId]);
+        if (!open || !propertyId) return;
 
-    const fetchProperty = async () => {
-        const { data } = await supabase
+        void supabase
             .from('properties')
             .select('id, address, rent, deposit, status')
             .eq('id', propertyId)
-            .single();
-
-        if (data) {
-            setProperty(data);
-        }
-    };
+            .single()
+            .then(({ data }) => {
+                if (data) setProperty(data);
+            });
+    }, [open, propertyId, supabase]);
 
     const set = (field: keyof FormData) => (
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>

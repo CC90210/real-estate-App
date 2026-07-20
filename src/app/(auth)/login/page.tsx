@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { authErrorMessage, withTimeout } from '@/lib/auth-errors'
+import { normalizeAuthRedirect } from '@/lib/auth-routing'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,16 +17,16 @@ import { useAuth } from '@/lib/hooks/useAuth'
 import { useEffect } from 'react'
 
 function LoginForm() {
-    const router = useRouter()
     const searchParams = useSearchParams()
     const { isAuthenticated, isLoading: authLoading } = useAuth()
-    const redirectTo = searchParams.get('redirect') || '/dashboard'
+    const redirectTo = normalizeAuthRedirect(searchParams.get('redirect'))
     const supabase = createClient()
 
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
+    const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
     // Client-side redirect if already authenticated
     useEffect(() => {
@@ -36,36 +38,27 @@ function LoginForm() {
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
         setIsLoading(true)
-
-        // Safety timeout: never let the button spin forever
-        const safetyTimeout = setTimeout(() => {
-            setIsLoading(false)
-            toast.error('Sign-in is taking too long', {
-                description: 'Please check your connection and try again.'
-            })
-        }, 15000)
+        setErrorMessage(null)
 
         try {
-            // Sign in with Supabase Auth
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email,
-                password
-            })
+            const { error } = await withTimeout<Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>>(
+                supabase.auth.signInWithPassword({ email: email.trim(), password }),
+                8000,
+            )
 
             if (error) throw error
-
-            clearTimeout(safetyTimeout)
 
             // SUCCESS — navigate using window.location for a clean full reload
             // This ensures the middleware picks up the new auth cookies properly
             toast.success('Welcome back!')
             window.location.replace(redirectTo)
 
-        } catch (error: any) {
-            clearTimeout(safetyTimeout)
+        } catch (error: unknown) {
             console.error('Login error:', error)
+            const description = authErrorMessage(error)
+            setErrorMessage(description)
             toast.error('Login failed', {
-                description: error.message || 'Please check your credentials'
+                description,
             })
             setIsLoading(false)
         }
@@ -123,6 +116,7 @@ function LoginForm() {
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
                                 disabled={isLoading}
+                                autoComplete="email"
                             />
                         </div>
 
@@ -146,6 +140,7 @@ function LoginForm() {
                                     required
                                     disabled={isLoading}
                                     className="pr-10"
+                                    autoComplete="current-password"
                                 />
                                 <Button
                                     type="button"
@@ -179,10 +174,15 @@ function LoginForm() {
                                 'Sign In to Dashboard'
                             )}
                         </Button>
+                        {errorMessage && (
+                            <p role="alert" className="text-sm text-red-600">
+                                {errorMessage}
+                            </p>
+                        )}
                     </form>
 
                     <p className="text-center text-sm text-gray-500 mt-6">
-                        Don't have an account?{' '}
+                        Don&apos;t have an account?{' '}
                         <Link href="/signup" className="text-blue-600 hover:underline font-bold">
                             Create Account
                         </Link>

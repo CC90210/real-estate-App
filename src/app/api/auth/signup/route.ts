@@ -66,7 +66,7 @@ export async function POST(request: Request) {
             }
         });
 
-        let user = signupResult.data.user;
+        const user = signupResult.data.user;
         const signupError = signupResult.error;
 
         // 2. Handle signup errors

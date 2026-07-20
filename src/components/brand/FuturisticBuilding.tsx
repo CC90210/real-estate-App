@@ -131,9 +131,9 @@ export function FuturisticBuilding({
                             <animate
                                 attributeName="fill-opacity"
                                 values={`${opacity};${opacity * 8};${opacity}`}
-                                dur={`${2 + Math.random() * 2}s`}
+                                dur={`${2 + ((i * 37) % 20) / 10}s`}
                                 repeatCount="indefinite"
-                                begin={`${Math.random() * 5}s`}
+                                begin={`${((i * 53) % 50) / 10}s`}
                             />
                         </rect>
                     );

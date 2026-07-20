@@ -124,8 +124,10 @@ NEXT_PUBLIC_SUPER_ADMIN_EMAILS
 - Max file size: 250MB (enterprise documents)
 
 ## Testing
-- E2E: Playwright against production (propflow.pro)
-- No unit test framework configured yet
+- Unit regression tests: `npm run test:unit`
+- Auth-focused zero-warning lint: `npm run lint:auth`
+- E2E: Playwright against local development by default; set `BASE_URL=https://propflow.pro` for production smoke tests
+- Full local quality gate: `npm run quality`
 - Test files: `test-*.pdf` in project root (gitignored)
 
 ## Git Conventions
@@ -184,17 +186,11 @@ Every feature follows this exact order — never skip steps:
 - **API routes:** Every route auth-gated + company-scoped. Zod validation on all payloads.
 - **Error sanitization:** No internal DB/API details leak to client.
 - **Python backend:** CORS restricted to production (localhost only in debug), JWT uses proper secret, SMTP encryption failure raises (no plaintext fallback), bearer token length validation.
-- **Remaining:** Rate limiting is in-memory (needs Redis for multi-instance). No unit tests.
+- **Remaining:** Rate limiting is in-memory (needs Redis for multi-instance). Auth and route unit coverage exists; business workflows still need unit coverage.
 
 ## Phase Status
-- P1 Property Onboarding: COMPLETE
-- P2 Pre-Rental Inspection: COMPLETE
-- P3 Listing & Marketing: COMPLETE
-- P4 Lead Communication: IN PROGRESS (Gmail connected, needs lead capture + auto-response + tour scheduling)
-- P5 Application & Vetting: IN PROGRESS (CRUD + screening done, needs comparison view + batch actions)
-- P6 Documents & E-Sign: NOT STARTED
-- P7 Payment Collection: NOT STARTED
-- P8 Key Handoff: NOT STARTED
+
+The code surfaces for all eight phases exist, but production authentication is blocked by the retired Supabase project and the workflows require live revalidation. Treat every phase as `NEEDS RUNTIME VERIFICATION`; use `docs/PROPFLOW_MODERNIZATION.md` as the current acceptance matrix instead of inferring completion from page presence.
 
 ## Do NOT
 - Create `middleware.ts` (use `proxy.ts` only)

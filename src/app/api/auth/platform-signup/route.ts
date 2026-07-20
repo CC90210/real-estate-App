@@ -71,6 +71,9 @@ export async function POST(req: Request) {
             email,
             password,
             email_confirm: true,
+            user_metadata: {
+                skip_profile_provisioning: true,
+            },
         })
 
         if (authError) {

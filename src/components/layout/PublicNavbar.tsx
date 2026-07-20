@@ -15,9 +15,10 @@ const navLinks = [
 ];
 
 export function PublicNavbar() {
-    const [isOpen, setIsOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const pathname = usePathname();
+    const [menuPath, setMenuPath] = useState<string | null>(null);
+    const isOpen = menuPath === pathname;
 
     useEffect(() => {
         const handleScroll = () => {
@@ -26,11 +27,6 @@ export function PublicNavbar() {
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
-
-    // Close mobile menu on path change
-    useEffect(() => {
-        setIsOpen(false);
-    }, [pathname]);
 
     // Lock body scroll when mobile menu is open
     useEffect(() => {
@@ -58,7 +54,7 @@ export function PublicNavbar() {
         };
     }, [isOpen]);
 
-    const closeMenu = useCallback(() => setIsOpen(false), []);
+    const closeMenu = useCallback(() => setMenuPath(null), []);
 
     return (
         <>
@@ -90,22 +86,22 @@ export function PublicNavbar() {
 
                         {/* Desktop CTAs */}
                         <div className="hidden md:flex items-center gap-4">
-                            <Link href="/login">
-                                <Button variant="ghost" className="font-bold text-slate-600 hover:text-blue-600">
+                            <Button asChild variant="ghost" className="font-bold text-slate-600 hover:text-blue-600">
+                                <Link href="/login">
                                     Sign In
-                                </Button>
-                            </Link>
-                            <Link href="/signup">
-                                <Button className="font-bold px-6 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 rounded-xl">
+                                </Link>
+                            </Button>
+                            <Button asChild className="font-bold px-6 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 rounded-xl">
+                                <Link href="/signup">
                                     Get Started
-                                </Button>
-                            </Link>
+                                </Link>
+                            </Button>
                         </div>
 
                         {/* Mobile Menu Button */}
                         <button
                             className="md:hidden relative z-[110] w-11 h-11 flex items-center justify-center rounded-xl bg-slate-100/80 text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-all active:scale-95"
-                            onClick={() => setIsOpen(!isOpen)}
+                            onClick={() => setMenuPath(isOpen ? null : pathname)}
                             aria-label="Toggle Menu"
                         >
                             {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -192,17 +188,17 @@ export function PublicNavbar() {
 
                         {/* CTA Buttons */}
                         <div className="space-y-3">
-                            <Link href="/signup" onClick={closeMenu} className="block">
-                                <Button className="w-full h-14 rounded-2xl font-bold text-base bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200/50 transition-all active:scale-[0.98]">
+                            <Button asChild className="w-full h-14 rounded-2xl font-bold text-base bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200/50 transition-all active:scale-[0.98]">
+                                <Link href="/signup" onClick={closeMenu}>
                                     Get Started
                                     <ArrowRight className="ml-2 h-4 w-4" />
-                                </Button>
-                            </Link>
-                            <Link href="/login" onClick={closeMenu} className="block">
-                                <Button variant="outline" className="w-full h-14 rounded-2xl font-bold text-base border-2 border-slate-200 text-slate-700 hover:bg-slate-50 transition-all active:scale-[0.98]">
+                                </Link>
+                            </Button>
+                            <Button asChild variant="outline" className="w-full h-14 rounded-2xl font-bold text-base border-2 border-slate-200 text-slate-700 hover:bg-slate-50 transition-all active:scale-[0.98]">
+                                <Link href="/login" onClick={closeMenu}>
                                     Sign In
-                                </Button>
-                            </Link>
+                                </Link>
+                            </Button>
                         </div>
                     </div>
 

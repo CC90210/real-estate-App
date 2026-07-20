@@ -78,8 +78,6 @@ export default function AreasMap({ areas }: AreasMapProps) {
 
         if (areas.length > 0) {
             processAreas();
-        } else {
-            setLoading(false);
         }
 
         return () => { isMounted = false; };
@@ -90,7 +88,7 @@ export default function AreasMap({ areas }: AreasMapProps) {
         ? [geocodedAreas[0].lat, geocodedAreas[0].lon]
         : [45.5017, -73.5673]; // Default to Montreal
 
-    if (loading && geocodedAreas.length === 0) {
+    if (areas.length > 0 && loading && geocodedAreas.length === 0) {
         return (
             <div className="h-[500px] w-full bg-slate-50 flex flex-col items-center justify-center rounded-[2.5rem] border border-slate-200">
                 <Loader2 className="w-10 h-10 animate-spin text-slate-400 mb-4" />

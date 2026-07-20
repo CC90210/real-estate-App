@@ -2,18 +2,18 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 
-import { Loader2, Building2, Eye, EyeOff, AlertTriangle } from 'lucide-react'
+import { Loader2, Building2, Eye, EyeOff } from 'lucide-react'
 import Link from 'next/link'
 import { useUser } from '@/lib/hooks/useUser'
 
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useEffect } from 'react'
+import { authErrorMessage } from '@/lib/auth-errors'
 
 export default function SignupPage() {
     const router = useRouter()
@@ -75,10 +75,10 @@ export default function SignupPage() {
             });
 
             router.push('/dashboard');
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Signup error:', error)
             toast.error('Signup Failed', {
-                description: error.message || 'Please check your information and try again.',
+                description: authErrorMessage(error),
                 duration: 5000,
             })
         } finally {
@@ -104,7 +104,7 @@ export default function SignupPage() {
                         Start managing properties smarter today.
                     </h1>
                     <p className="text-blue-100 text-lg mb-8">
-                        Join thousands of property managers who've simplified their workflow with PropFlow.
+                        Join thousands of property managers who&apos;ve simplified their workflow with PropFlow.
                     </p>
                     <div className="space-y-3">
                         <Feature text="14-day free trial" />

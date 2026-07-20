@@ -1,6 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
-let adminClient: ReturnType<typeof createClient<any>> | null = null
+let adminClient: SupabaseClient | null = null
 
 export function getSupabaseAdmin() {
     if (adminClient) {
@@ -14,7 +14,7 @@ export function getSupabaseAdmin() {
         throw new Error('Supabase admin client is not configured')
     }
 
-    adminClient = createClient<any>(supabaseUrl, serviceRoleKey, {
+    adminClient = createClient(supabaseUrl, serviceRoleKey, {
         auth: {
             autoRefreshToken: false,
             persistSession: false,
