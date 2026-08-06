@@ -11,6 +11,7 @@ const TURSO_PUBLIC_API = [
     '/api/auth/turso-login',
     '/api/auth/turso-me',
     '/api/data/bridge',
+    '/api/data/rpc',
 ]
 
 export async function updateSession(request: NextRequest) {

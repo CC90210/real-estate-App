@@ -252,15 +252,27 @@ export function createTursoBrowserClient() {
     },
     removeChannel() { /* no-op */ },
 
-    rpc(name: string) {
-      return Promise.resolve({
-        data: null,
-        error: {
-          message: `rpc("${name}") is not available in the browser under Turso mode — `
-            + `call a server route instead.`,
-          code: "TURSO_RPC_BLOCKED",
-        },
-      });
+    /** Ported PL/pgSQL, executed by /api/data/rpc with the caller's scope
+     *  resolved server-side. Unported names come back as a loud error rather
+     *  than a silent no-op. */
+    async rpc(name: string, args?: Json) {
+      try {
+        const r = await fetch("/api/data/rpc", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ name, args: args ?? {} }),
+        });
+        return (await r.json()) as BridgeResponse;
+      } catch (e) {
+        return {
+          data: null,
+          error: {
+            message: e instanceof Error ? e.message : "network error",
+            code: "BRIDGE_UNREACHABLE",
+          },
+        } as BridgeResponse;
+      }
     },
 
     /** Storage stayed on Supabase — its 7 buckets did not migrate (a Turso
