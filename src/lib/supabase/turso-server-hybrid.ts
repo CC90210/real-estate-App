@@ -75,7 +75,15 @@ export function withTursoData<T extends object>(
               },
             };
           }
-          if (!ctx?.userId) {
+          // Infrastructure RPCs that legitimately run without a caller.
+          // check_rate_limit guards UNAUTHENTICATED routes (signup, signing
+          // verification) — lib/rate-limit.ts calls getSupabaseAdmin() with no
+          // ctx because there is no user yet. Without this exemption every
+          // limiter call would error, rate-limit.ts would swallow it, and all
+          // ~25 call sites would silently degrade to a per-instance in-memory
+          // counter — i.e. no shared limit at all on serverless.
+          const CTX_FREE = new Set(["check_rate_limit", "register_incoming_webhook_event"]);
+          if (!ctx?.userId && !CTX_FREE.has(name)) {
             return {
               data: null,
               count: null,
@@ -94,8 +102,8 @@ export function withTursoData<T extends object>(
           }
           try {
             const data = await fn(tursoClient(), args ?? {}, {
-              userId: ctx.userId,
-              companyId: ctx.companyId ?? null,
+              userId: ctx?.userId ?? "",
+              companyId: ctx?.companyId ?? null,
             });
             return { data, error: null, count: null, status: 200, statusText: "OK" };
           } catch (e) {

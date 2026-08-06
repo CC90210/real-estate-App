@@ -45,6 +45,29 @@ export async function POST(req: NextRequest) {
       { data: null, error: { message: "invalid request", code: "400" } }, { status: 400 });
   }
 
+  // Browser-exposable allowlist. Registering an RPC makes it callable by ANY
+  // authenticated session with verbatim args — so infrastructure functions must
+  // not be reachable here. check_rate_limit is the concrete case: exposing it
+  // would let a logged-in user POST another principal's scope in a loop and
+  // exhaust their signup/login bucket. Server code still reaches every RPC
+  // through the factories; this gate is only about the browser surface.
+  const BROWSER_BLOCKED = new Set([
+    "check_rate_limit",
+    "register_incoming_webhook_event",
+    "reap_stale_walkthrough_jobs",
+    "ensure_user_profile_admin",
+    "get_platform_metrics",
+  ]);
+  if (body.name && BROWSER_BLOCKED.has(body.name)) {
+    return NextResponse.json({
+      data: null,
+      error: {
+        message: `rpc("${body.name}") is not callable from the browser.`,
+        code: "TURSO_RPC_SERVER_ONLY",
+      },
+    }, { status: 403 });
+  }
+
   const fn = body.name ? PROPFLOW_RPC[body.name] : undefined;
   if (!fn) {
     return NextResponse.json({
