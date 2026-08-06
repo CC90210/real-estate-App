@@ -12,6 +12,17 @@ const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, prefix
 
 export async function POST(req: Request) {
     try {
+        // Turso auth mode: auth.admin.createUser below mints a SUPABASE user
+        // that Turso login cannot see — a stranded account for someone who
+        // just accepted an invite. Refuse clearly until the Turso signup path
+        // ships. (Same gate as breeze invites / nostalgic signup.)
+        if (process.env.EMPIRE_AUTH_BACKEND === 'turso') {
+            return apiError(
+                'Account creation is temporarily paused for maintenance. Existing users can sign in normally.',
+                { status: 503 },
+            )
+        }
+
         // Rate limit by IP to prevent brute-force token guessing
         const ip = req.headers.get('x-forwarded-for') || 'anonymous'
         try {
