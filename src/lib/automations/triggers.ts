@@ -1,6 +1,19 @@
 import { triggerAutomation } from './dispatcher'
 
 /**
+ * Both triggers are imported from client pages (invoices/new, invoices/[id]/edit)
+ * AND from a server route (api/generate-document). The browser path goes through
+ * the authenticated API route; the server path must execute in-process, since a
+ * relative fetch has no origin there.
+ *
+ * Rather than fork this file, the dispatcher is injected. Server callers pass
+ * triggerAutomationServer from ./dispatcher-server — which is server-only, so it
+ * never reaches a client bundle. The default keeps every existing client call
+ * site unchanged.
+ */
+export type AutomationDispatch = typeof triggerAutomation
+
+/**
  * Trigger document-related automations when a document is generated.
  * Routes through the central dispatcher to the Python automation service.
  */
@@ -17,12 +30,13 @@ export async function triggerDocumentAutomations(
         }
         landlord?: { email: string }
         currency?: string
-    }
+    },
+    dispatch: AutomationDispatch = triggerAutomation
 ) {
     try {
         const eventType = document.type === 'lease_proposal' ? 'LEASE_GENERATED' : 'DOCUMENT_SEND'
 
-        await triggerAutomation(eventType, {
+        await dispatch(eventType, {
             company_id: companyId,
             document_id: document.id,
             document_type: document.type,
@@ -53,10 +67,11 @@ export async function triggerInvoiceAutomations(
         payment_url?: string
         currency?: string
         items?: any[]
-    }
+    },
+    dispatch: AutomationDispatch = triggerAutomation
 ) {
     try {
-        await triggerAutomation('DOCUMENT_SEND', {
+        await dispatch('DOCUMENT_SEND', {
             company_id: companyId,
             document_id: invoice.id,
             document_type: 'invoice',
