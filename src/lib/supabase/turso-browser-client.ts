@@ -16,6 +16,8 @@
  * a filter added here could be edited by any user in devtools.
  */
 
+import { createBrowserClient } from "@supabase/ssr";
+
 type Json = Record<string, unknown>;
 
 interface FilterSpec { method: string; args: unknown[] }
@@ -49,6 +51,7 @@ const FILTER_METHODS = [
 
 class BridgeQuery implements PromiseLike<BridgeResponse> {
   private spec: QuerySpec;
+  private signal?: AbortSignal;
 
   constructor(table: string) {
     this.spec = { table, action: "select", filters: [], order: [] };
@@ -113,6 +116,14 @@ class BridgeQuery implements PromiseLike<BridgeResponse> {
     return this;
   }
 
+  /** Real cancellation: the signal is forwarded to the bridge fetch, so an
+   *  aborted request actually aborts (useUser.tsx relies on this to cancel
+   *  in-flight profile loads on unmount). */
+  abortSignal(signal: AbortSignal) {
+    this.signal = signal;
+    return this;
+  }
+
   then<R1 = BridgeResponse, R2 = never>(
     onfulfilled?: ((v: BridgeResponse) => R1 | PromiseLike<R1>) | null,
     onrejected?: ((reason: unknown) => R2 | PromiseLike<R2>) | null,
@@ -127,6 +138,7 @@ class BridgeQuery implements PromiseLike<BridgeResponse> {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(this.spec),
+        signal: this.signal,
       });
       const body = (await res.json()) as BridgeResponse;
       return body;
@@ -141,6 +153,20 @@ class BridgeQuery implements PromiseLike<BridgeResponse> {
       };
     }
   }
+}
+
+/** Lazily-built real Supabase browser client, used ONLY for storage (files did
+ *  not migrate — Turso is a database, not an object store). Kept out of the
+ *  auth/data paths entirely. */
+let _storageClient: ReturnType<typeof createBrowserClient> | null = null;
+function supabaseStorageClient() {
+  if (!_storageClient) {
+    _storageClient = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    );
+  }
+  return _storageClient;
 }
 
 async function meRequest(): Promise<{ id: string; email: string } | null> {
@@ -235,6 +261,14 @@ export function createTursoBrowserClient() {
           code: "TURSO_RPC_BLOCKED",
         },
       });
+    },
+
+    /** Storage stayed on Supabase — its 7 buckets did not migrate (a Turso
+     *  database is not an object store). This app's 2 call sites keep working
+     *  against the real Supabase storage client, which is why the browser
+     *  Supabase client is still constructed for that surface alone. */
+    get storage() {
+      return supabaseStorageClient().storage;
     },
   };
 }
