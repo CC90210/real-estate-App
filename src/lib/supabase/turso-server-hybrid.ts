@@ -18,6 +18,7 @@ import "server-only";
 import { createClient as createLibsql, type Client } from "@libsql/client";
 import { createTursoPostgrest } from "./turso-postgrest";
 import { PROPFLOW_RPC, type RpcContext } from "./turso-rpc-shim";
+import { r2Configured, r2StorageSurface } from "./r2-storage";
 
 let _libsql: Client | null = null;
 
@@ -121,6 +122,12 @@ export function withTursoData<T extends object>(
             };
           }
         };
+      }
+      // Turso has no object store, so .storage routes to R2 when configured.
+      // Otherwise it passes through to Supabase — which is the rollback, and
+      // also the reason storage stayed a hard dependency after the data flip.
+      if (prop === "storage" && r2Configured()) {
+        return r2StorageSurface();
       }
       return Reflect.get(target, prop, receiver);
     },

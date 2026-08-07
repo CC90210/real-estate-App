@@ -275,12 +275,38 @@ export function createTursoBrowserClient() {
       }
     },
 
-    /** Storage stayed on Supabase — its 7 buckets did not migrate (a Turso
-     *  database is not an object store). This app's 2 call sites keep working
-     *  against the real Supabase storage client, which is why the browser
-     *  Supabase client is still constructed for that surface alone. */
+    /** Storage. A Turso database is not an object store, so objects live in R2.
+     *
+     *  Only getPublicUrl is served here, and only when NEXT_PUBLIC_R2_PUBLIC_BASE_URL
+     *  is set — it is pure string construction, needs no credentials, and is the
+     *  one storage call this app makes from the browser. Everything else falls
+     *  through to the real Supabase storage client, which is also the rollback.
+     *
+     *  Writes deliberately do NOT route to R2 from the browser: that would mean
+     *  shipping an R2 key to the client. Uploads belong on the server adapter
+     *  (src/lib/supabase/r2-storage.ts), reached through the server factories. */
     get storage() {
-      return supabaseStorageClient().storage;
+      const base = (process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL || "").replace(/\/$/, "");
+      if (!base) return supabaseStorageClient().storage;
+      const real = supabaseStorageClient().storage;
+      return {
+        ...real,
+        from(bucket: string) {
+          const realBucket = real.from(bucket);
+          return {
+            ...realBucket,
+            getPublicUrl(path: string) {
+              // Same <bucket>/<path> key convention etl_storage_to_r2.py
+              // uploads with, so migrated objects resolve unchanged.
+              return {
+                data: {
+                  publicUrl: `${base}/${bucket}/${String(path).replace(/^\/+/, "")}`,
+                },
+              };
+            },
+          };
+        },
+      } as unknown as ReturnType<typeof supabaseStorageClient>["storage"];
     },
   };
 }
