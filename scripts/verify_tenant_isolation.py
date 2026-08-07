@@ -148,6 +148,33 @@ try:
     print(f"\nA reads the auth table -> {code}")
     print("  " + ("PASS — unknown/denied table refused (deny-by-default)"
                   if code != 200 else f"FAIL — auth table readable: {text[:150]}"))
+
+    # Privilege escalation. In Postgres, protect_profile_privileges and
+    # protect_company_entitlements blocked these for browser clients, because
+    # auth.role() was 'authenticated' and the triggers only bypass for
+    # service_role. The bridge holds a full-database token, so that bypass now
+    # covers every request and the triggers protect nothing. A column denylist
+    # has to take over.
+    print("\n== privilege escalation (triggers that did not migrate) ==")
+    code, _t, _ = call("/api/data/bridge", "POST",
+                       {"table": "profiles", "action": "update",
+                        "values": {"is_super_admin": True}}, cookie)
+    row = db.execute("select is_super_admin from profiles where id = ?",
+                     [A["uid"]]).fetchall()
+    got = row[0][0] if row else "?"
+    print(f"  A sets own is_super_admin -> {code}; db now = {got!r}")
+    print("  " + ("FAIL — PRIVILEGE ESCALATION" if row and row[0][0]
+                  else "PASS — refused / not applied"))
+
+    code, _t, _ = call("/api/data/bridge", "POST",
+                       {"table": "companies", "action": "update",
+                        "values": {"subscription_plan": "enterprise"}}, cookie)
+    row = db.execute("select subscription_plan from companies where id = ?",
+                     [A["company"]]).fetchall()
+    got = row[0][0] if row else "?"
+    print(f"  A sets own subscription_plan -> {code}; db now = {got!r}")
+    print("  " + ("FAIL — SELF-SERVE PLAN UPGRADE" if got == "enterprise"
+                  else "PASS — refused / not applied"))
 finally:
     cleanup()
     left = db.execute("select count(*) from properties where id like 'zzprobe%'").fetchall()[0][0]

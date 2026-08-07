@@ -17,6 +17,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type Client } from "@libsql/client";
 import { SCOPE_MAP } from "@/lib/supabase/turso-bridge-scope";
+import { guardedColumnsIn } from "@/lib/supabase/turso-bridge-guarded-columns";
 import { SESSION_COOKIE, verifySession } from "@/lib/supabase/turso-auth";
 import { createTursoPostgrest, TursoQueryBuilder } from "@/lib/supabase/turso-postgrest";
 
@@ -119,6 +120,22 @@ export async function POST(req: NextRequest) {
     // via-scoped children are validated below instead (parent ownership check)
     return out;
   };
+
+  // Privilege guard — the port of protect_company_entitlements and
+  // protect_profile_privileges. Those triggers bypassed for service_role, and
+  // this bridge holds a full-database token, so they no longer stop anything:
+  // without this, a logged-in user can set their own company's
+  // subscription_plan to 'enterprise' and the write lands.
+  if (spec.action === "insert" || spec.action === "upsert" || spec.action === "update") {
+    const guarded = guardedColumnsIn(spec.table, spec.values);
+    if (guarded.length) {
+      return NextResponse.json(
+        { data: null, error: {
+            message: `protected column(s) require service-role access: ${guarded.join(", ")}`,
+            code: "403" } },
+        { status: 403 });
+    }
+  }
 
   if (spec.action === "insert" || spec.action === "upsert") {
     const rows = Array.isArray(spec.values) ? spec.values : [spec.values ?? {}];
