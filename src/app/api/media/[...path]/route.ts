@@ -21,25 +21,19 @@
  * is refused. Deny-by-default: a new bucket is private until it is listed here.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { r2Configured, r2StorageSurface } from "@/lib/supabase/r2-storage";
+import {
+  PUBLIC_BUCKET_PREFIXES,
+  r2Configured,
+  r2StorageSurface,
+} from "@/lib/supabase/r2-storage";
 
 export const runtime = "nodejs";
 
-/**
- * Buckets that were `public: true` in Supabase, read from storage.buckets
- * rather than assumed. Anything absent is private and refused.
- */
-const PUBLIC_PREFIXES = new Set([
-  "avatars",                        // nostalgic
-  "tenant-assets",                  // bravo
-  "application-documents",          // propflow
-  "application-screening-reports",  // propflow
-  "documents",                      // propflow
-  "logos",                          // propflow
-  "media",                          // propflow
-  "properties",                     // propflow
-  "property-photos",                // propflow
-]);
+// The allowlist lives in lib/supabase/r2-storage.ts, which is byte-identical
+// across four repos with a drift check that fails the build. A local copy here
+// would drift silently, and drift on a security boundary means one app quietly
+// starts serving a private bucket.
+const PUBLIC_PREFIXES = PUBLIC_BUCKET_PREFIXES;
 
 /** Short enough that a leaked redirect target expires quickly. */
 const SIGNED_TTL_SEC = 600;
