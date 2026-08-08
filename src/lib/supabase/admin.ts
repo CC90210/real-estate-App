@@ -22,6 +22,25 @@ export function getSupabaseAdmin(ctx?: Partial<RpcContext>) {
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
     if (!supabaseUrl || !serviceRoleKey) {
+        // withTursoData() replaces .from()/.rpc() wholesale under
+        // EMPIRE_DATA_BACKEND=turso_cloud, but it never ran: this throw is
+        // above it, so removing the Supabase keys took out every server file
+        // that reaches the database through here. Hand back a stub that the
+        // wrapper can cover, and keep throwing when there is genuinely no
+        // backend — a missing key must never degrade into empty reads.
+        if (process.env.EMPIRE_DATA_BACKEND === 'turso_cloud') {
+            const stub = new Proxy({} as SupabaseClient, {
+                get(_t, prop) {
+                    throw new Error(
+                        `supabase.${String(prop)} is unavailable: Supabase is not ` +
+                        `configured and EMPIRE_DATA_BACKEND=turso_cloud. Data goes ` +
+                        `through the Turso adapter and storage through R2 — this ` +
+                        `surface has no replacement yet and must be ported.`,
+                    )
+                },
+            })
+            return withTursoData(stub, ctx)
+        }
         throw new Error('Supabase admin client is not configured')
     }
 

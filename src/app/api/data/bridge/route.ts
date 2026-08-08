@@ -200,29 +200,53 @@ export async function POST(req: NextRequest) {
   } else if (scope.kind === "user") {
     q = q.eq(scope.column ?? "user_id", session.sub) as TursoQueryBuilder;
   } else if (scope.kind === "self_profile") {
+    // profiles.id IS the auth uid — there is no user_id column (verified
+    // against the live table: id, company_id, email, full_name, ...). This
+    // filtered on user_id, so every profile read raised "no such column" and
+    // the app bounced a signed-in user back to /login, forever. The stamp path
+    // above already had this right, which is how the two drifted apart.
     if (spec.action === "select") {
       // read: own row OR company colleagues (live policy allows company reads)
       q = (profile.companyId
-        ? (q as any).or(`user_id.eq.${session.sub},company_id.eq.${profile.companyId}`)
-        : q.eq("user_id", session.sub)) as TursoQueryBuilder;
+        ? (q as any).or(`id.eq.${session.sub},company_id.eq.${profile.companyId}`)
+        : q.eq("id", session.sub)) as TursoQueryBuilder;
     } else {
-      q = q.eq("user_id", session.sub) as TursoQueryBuilder; // write: self only
+      q = q.eq("id", session.sub) as TursoQueryBuilder; // write: self only
     }
   } else if (scope.kind === "via") {
+    // FAIL CLOSED. This used to apply the filter only when the parent was
+    // company-scoped AND the caller had a company — and did nothing otherwise,
+    // so a signed-in user whose profile had no company_id read every company's
+    // invoice_items, property_photos, inspection_items, landlord_properties,
+    // automation_executions and signing_audit_log. The company branch above
+    // already 403s in that case; this one silently returned the whole table.
     const parent = SCOPE_MAP[scope.parentTable];
-    if (parent?.kind === "company" && profile.companyId) {
-      const ids = await client.execute({
-        sql: `SELECT id FROM "${scope.parentTable}" WHERE company_id = ?`,
-        args: [profile.companyId],
-      });
-      const idList = ids.rows.map((r) => String((r as unknown as { id: unknown }).id));
-      if (!idList.length && spec.action === "select") {
-        return NextResponse.json({ data: [], error: null, count: 0 });
-      }
-      q = (idList.length
-        ? q.in(scope.fkColumn, idList)
-        : q.eq(scope.fkColumn, "__none__")) as TursoQueryBuilder;
+    if (parent?.kind !== "company") {
+      return NextResponse.json({ data: null,
+        error: { message: `scope for ${spec.table} is not resolvable`, code: "403" } },
+        { status: 403 });
     }
+    if (!profile.companyId) {
+      return NextResponse.json({ data: null,
+        error: { message: "no company on profile", code: "403" } }, { status: 403 });
+    }
+    const ids = await client.execute({
+      sql: `SELECT id FROM "${scope.parentTable}" WHERE company_id = ?`,
+      args: [profile.companyId],
+    });
+    const idList = ids.rows.map((r) => String((r as unknown as { id: unknown }).id));
+    if (!idList.length && spec.action === "select") {
+      return NextResponse.json({ data: [], error: null, count: 0 });
+    }
+    q = (idList.length
+      ? q.in(scope.fkColumn, idList)
+      : q.eq(scope.fkColumn, "__none__")) as TursoQueryBuilder;
+  } else {
+    // A scope kind nobody handled must not fall through unfiltered — that is
+    // the same shape as the bug above, one new SCOPE_MAP entry away.
+    return NextResponse.json({ data: null,
+      error: { message: `unhandled scope kind for ${spec.table}`, code: "403" } },
+      { status: 403 });
   }
 
   // ---- modifiers
