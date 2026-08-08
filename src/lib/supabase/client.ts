@@ -1,10 +1,34 @@
 
 import { createBrowserClient } from '@supabase/ssr'
+import { createTursoBrowserClient } from './turso-browser-client'
 
 let supabaseInstance: ReturnType<typeof createBrowserClient> | null = null
 
+/**
+ * True when the browser is talking to the Turso auth backend rather than
+ * Supabase Auth. The password flows (reset / change) are the one place the two
+ * backends are NOT API-compatible — Supabase Auth owned recovery emails and
+ * session-scoped password writes, and our replacement needs an explicit token
+ * or the current password. Everything else goes through the shim untouched.
+ */
+export function tursoAuthBrowserActive(): boolean {
+    return process.env.NEXT_PUBLIC_EMPIRE_AUTH_BACKEND === 'turso'
+}
+
 export function createClient() {
     if (supabaseInstance) {
+        return supabaseInstance
+    }
+
+    // Turso mode: every table query is shipped to /api/data/bridge, which
+    // re-applies the RLS guarantees server-side (a browser can never hold a
+    // Turso credential). The builder API is identical, so the ~83 files that
+    // query through this factory are untouched. Unset the flag and the
+    // Supabase client below returns byte-identical behavior.
+    if (process.env.NEXT_PUBLIC_EMPIRE_AUTH_BACKEND === 'turso') {
+        supabaseInstance = createTursoBrowserClient() as unknown as ReturnType<
+            typeof createBrowserClient
+        >
         return supabaseInstance
     }
 

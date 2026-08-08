@@ -264,6 +264,10 @@ export async function POST(request: Request) {
         // ====================================================================
         try {
             const { triggerDocumentAutomations } = await import('@/lib/automations/triggers');
+            // In-process dispatch: a relative fetch to the API route has no
+            // origin on the server. dispatcher-server is server-only, so it
+            // never enters a client bundle.
+            const { triggerAutomationServer } = await import('@/lib/automations/dispatcher-server');
             // Construct the doc object for automations
             const automationDoc = {
                 id: savedDoc.id,
@@ -278,7 +282,8 @@ export async function POST(request: Request) {
             };
 
             // Non-blocking call
-            triggerDocumentAutomations(companyId, automationDoc).catch(console.error);
+            triggerDocumentAutomations(companyId, automationDoc, triggerAutomationServer)
+                .catch(console.error);
         } catch (autoError) {
             console.error('Automation trigger failed:', autoError);
         }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { createClient, tursoAuthBrowserActive } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -21,11 +21,27 @@ export default function ForgotPasswordPage() {
         setLoading(true)
 
         try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
-            })
+            if (tursoAuthBrowserActive()) {
+                // Turso auth: the server mints a single-use token, stores only its
+                // sha256, and mails the link. It answers 200 whether or not the
+                // address exists — so the UI must not branch on "found", only on
+                // whether the request itself was accepted.
+                const response = await fetch('/api/auth/turso-reset-request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email }),
+                })
+                if (!response.ok) {
+                    const result = await response.json().catch(() => ({})) as { error?: string }
+                    throw new Error(result.error || 'Unable to send the reset email. Try again shortly.')
+                }
+            } else {
+                const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+                })
+                if (error) throw error
+            }
 
-            if (error) throw error
             setSent(true)
             toast.success('Reset email sent!')
         } catch (err: unknown) {

@@ -2,8 +2,42 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { isProtectedPath } from '@/lib/auth-routes'
+import { verifySessionEdge } from './turso-auth-edge'
+
+/** Endpoints that must never be session-gated: the login POST cannot require a
+ *  session (chicken-and-egg), and the data bridge answers 401 itself so the
+ *  client sees a proper error shape instead of an HTML redirect. */
+const TURSO_PUBLIC_API = [
+    '/api/auth/turso-login',
+    '/api/auth/turso-me',
+    '/api/data/bridge',
+    '/api/data/rpc',
+]
 
 export async function updateSession(request: NextRequest) {
+    const { pathname: earlyPath } = request.nextUrl
+
+    // Turso auth mode: our HMAC cookie is the session. Verified inline at the
+    // Edge (Web Crypto), no Supabase round trip. Route-protection decisions
+    // still come from isProtectedPath so both modes share one source of truth.
+    if (process.env.EMPIRE_AUTH_BACKEND === 'turso' && process.env.AUTH_SESSION_SECRET) {
+        if (TURSO_PUBLIC_API.some((p) => earlyPath.startsWith(p))) {
+            return NextResponse.next({ request })
+        }
+        if (!isProtectedPath(earlyPath)) {
+            return NextResponse.next({ request })
+        }
+        const session = await verifySessionEdge(
+            request.cookies.get('propflow_session')?.value,
+            process.env.AUTH_SESSION_SECRET,
+        )
+        if (session) return NextResponse.next({ request })
+        const url = request.nextUrl.clone()
+        url.pathname = '/login'
+        url.searchParams.set('next', earlyPath)
+        return NextResponse.redirect(url)
+    }
+
     let supabaseResponse = NextResponse.next({
         request,
     })
