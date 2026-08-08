@@ -99,7 +99,7 @@ export async function POST(req: Request) {
         // 3. Create the company
         const slug = companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 
-        const companyData: any = {
+        const companyData: Record<string, unknown> = {
             name: companyName,
             slug: slug + '-' + Date.now().toString(36),
             email: email,
@@ -142,7 +142,7 @@ export async function POST(req: Request) {
         if (profileError) throw profileError
 
         // 5. Mark the invitation as used
-        const updateData: any = {
+        const updateData: Record<string, unknown> = {
             use_count: invite.use_count + 1,
             used_by: userId,
             used_at: new Date().toISOString(),

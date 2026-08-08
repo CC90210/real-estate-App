@@ -65,7 +65,7 @@ async function foreignKeysOf(client: Client, table: string): Promise<FkEdge[]> {
   if (hit) return hit;
   const res = await client.execute(`PRAGMA foreign_key_list("${table.replace(/"/g, '""')}")`);
   const byId = new Map<number, FkEdge>();
-  for (const row of res.rows as any[]) {
+  for (const row of res.rows as Row[]) {
     const id = Number(row.id);
     const e = byId.get(id) ?? { fromTable: table, fromCols: [], toTable: String(row.table), toCols: [] };
     e.fromCols.push(String(row.from));
@@ -238,7 +238,7 @@ function compileOrGroup(expr: string, joiner: "OR" | "AND" = "OR"): Cond {
 
 type Row = Record<string, unknown>;
 
-export class TursoQueryBuilder implements PromiseLike<PgResponse<any>> {
+export class TursoQueryBuilder implements PromiseLike<PgResponse<Row | Row[]>> {
   private mode: "select" | "insert" | "update" | "upsert" | "delete" = "select";
   private selectStr = "*";
   private conds: Cond[] = [];
@@ -311,8 +311,8 @@ export class TursoQueryBuilder implements PromiseLike<PgResponse<any>> {
   throwOnError() { return this; } // errors already reject nothing; kept for API compat
 
   // ---- execution
-  then<R1 = PgResponse<any>, R2 = never>(
-    onfulfilled?: ((value: PgResponse<any>) => R1 | PromiseLike<R1>) | null,
+  then<R1 = PgResponse<Row | Row[]>, R2 = never>(
+    onfulfilled?: ((value: PgResponse<Row | Row[]>) => R1 | PromiseLike<R1>) | null,
     onrejected?: ((reason: unknown) => R2 | PromiseLike<R2>) | null,
   ): PromiseLike<R1 | R2> {
     return this.run().then(onfulfilled, onrejected);
@@ -326,7 +326,7 @@ export class TursoQueryBuilder implements PromiseLike<PgResponse<any>> {
     };
   }
 
-  private async run(): Promise<PgResponse<any>> {
+  private async run(): Promise<PgResponse<Row | Row[]>> {
     try {
       switch (this.mode) {
         case "select": return await this.runSelect();
@@ -335,12 +335,12 @@ export class TursoQueryBuilder implements PromiseLike<PgResponse<any>> {
         case "update": return await this.runUpdate();
         case "delete": return await this.runDelete();
       }
-    } catch (e: any) {
-      return { data: null, error: err(e?.message ?? String(e)), count: null, status: 400, statusText: "Bad Request" };
+    } catch (e: unknown) {
+      return { data: null, error: err(e instanceof Error ? e.message : String(e)), count: null, status: 400, statusText: "Bad Request" };
     }
   }
 
-  private finalizeRows(rows: Row[], count: number | null): PgResponse<any> {
+  private finalizeRows(rows: Row[], count: number | null): PgResponse<Row | Row[]> {
     if (this.singleMode) {
       if (rows.length > 1)
         return { data: null, error: err("JSON object requested, multiple (or no) rows returned", "PGRST116"), count, status: 406, statusText: "Not Acceptable" };
@@ -354,7 +354,7 @@ export class TursoQueryBuilder implements PromiseLike<PgResponse<any>> {
     return { data: rows, error: null, count, status: 200, statusText: "OK" };
   }
 
-  private async runSelect(): Promise<PgResponse<any>> {
+  private async runSelect(): Promise<PgResponse<Row | Row[]>> {
     const { base, embeds } = parseSelect(this.selectStr);
     const where = this.whereSql();
 
@@ -362,7 +362,7 @@ export class TursoQueryBuilder implements PromiseLike<PgResponse<any>> {
     if (this.countMode) {
       const res = await this.client.execute({
         sql: `SELECT count(*) AS n FROM "${this.table}"${where.sql}`, args: where.args });
-      count = Number((res.rows[0] as any).n);
+      count = Number((res.rows[0] as Row).n);
       if (this.headMode)
         return { data: null, error: null, count, status: 200, statusText: "OK" };
     }
@@ -378,7 +378,7 @@ export class TursoQueryBuilder implements PromiseLike<PgResponse<any>> {
     if (this.offsetN != null) sql += ` OFFSET ${Number(this.offsetN)}`;
 
     const res = await this.client.execute({ sql, args: where.args });
-    let rows = (res.rows as any[]).map(rowOut);
+    let rows = (res.rows as Row[]).map(rowOut);
     if (embeds.length && rows.length) rows = await this.attachEmbeds(rows, embeds);
     else if (embeds.length) rows = [];
     return this.finalizeRows(rows, count);
@@ -431,7 +431,7 @@ export class TursoQueryBuilder implements PromiseLike<PgResponse<any>> {
             sql: `SELECT ${e.columns === "*" ? "*" : splitTop(e.columns).map(q).join(", ") + `, ${q(refCol)}`} FROM "${e.table}" WHERE ${q(refCol)} IN (${ph})`,
             args: keys.map(toSql),
           });
-          for (const r of (sub.rows as any[]).map(rowOut)) map.set(r[refCol], r);
+          for (const r of (sub.rows as Row[]).map(rowOut)) map.set(r[refCol], r);
         }
         rows = rows.flatMap((r) => {
           const hit = r[keyCol] != null ? map.get(r[keyCol]) ?? null : null;
@@ -461,7 +461,7 @@ export class TursoQueryBuilder implements PromiseLike<PgResponse<any>> {
           sql: `SELECT ${e.columns === "*" ? "*" : splitTop(e.columns).map(q).join(", ") + `, ${q(childCol)}`} FROM "${e.table}" WHERE ${q(childCol)} IN (${ph})`,
           args: keys.map(toSql),
         });
-        for (const r of (sub.rows as any[]).map(rowOut)) {
+        for (const r of (sub.rows as Row[]).map(rowOut)) {
           const g = groups.get(r[childCol]) ?? [];
           g.push(r);
           groups.set(r[childCol], g);
@@ -476,7 +476,7 @@ export class TursoQueryBuilder implements PromiseLike<PgResponse<any>> {
     return rows;
   }
 
-  private async runWrite(): Promise<PgResponse<any>> {
+  private async runWrite(): Promise<PgResponse<Row | Row[]>> {
     const rows = this.payload!;
     if (!rows.length)
       return { data: [], error: null, count: null, status: 201, statusText: "Created" };
@@ -501,11 +501,11 @@ export class TursoQueryBuilder implements PromiseLike<PgResponse<any>> {
       (this.returning ? " RETURNING *" : "");
     const args = rows.flatMap((r) => cols.map((c) => toSql(r[c])));
     const res = await this.client.execute({ sql, args });
-    const data = this.returning ? (res.rows as any[]).map(rowOut) : null;
+    const data = this.returning ? (res.rows as Row[]).map(rowOut) : null;
     return this.finalizeRows(data ?? [], null);
   }
 
-  private async runUpdate(): Promise<PgResponse<any>> {
+  private async runUpdate(): Promise<PgResponse<Row | Row[]>> {
     const values = this.payload![0];
     const cols = Object.keys(values);
     const where = this.whereSql();
@@ -514,15 +514,15 @@ export class TursoQueryBuilder implements PromiseLike<PgResponse<any>> {
       (this.returning ? " RETURNING *" : "");
     const res = await this.client.execute({
       sql, args: [...cols.map((c) => toSql(values[c])), ...where.args] });
-    return this.finalizeRows(this.returning ? (res.rows as any[]).map(rowOut) : [], null);
+    return this.finalizeRows(this.returning ? (res.rows as Row[]).map(rowOut) : [], null);
   }
 
-  private async runDelete(): Promise<PgResponse<any>> {
+  private async runDelete(): Promise<PgResponse<Row | Row[]>> {
     const where = this.whereSql();
     if (!where.sql) throw new Error("delete without filters refused — it would empty the table");
     const sql = `DELETE FROM "${this.table}"${where.sql}` + (this.returning ? " RETURNING *" : "");
     const res = await this.client.execute({ sql, args: where.args });
-    return this.finalizeRows(this.returning ? (res.rows as any[]).map(rowOut) : [], null);
+    return this.finalizeRows(this.returning ? (res.rows as Row[]).map(rowOut) : [], null);
   }
 }
 

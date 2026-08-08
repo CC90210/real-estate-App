@@ -66,7 +66,7 @@ export async function triggerInvoiceAutomations(
         due_date?: string
         payment_url?: string
         currency?: string
-        items?: any[]
+        items?: unknown[]
     },
     dispatch: AutomationDispatch = triggerAutomation
 ) {
