@@ -4,6 +4,17 @@ import { createTursoBrowserClient } from './turso-browser-client'
 
 let supabaseInstance: ReturnType<typeof createBrowserClient> | null = null
 
+/**
+ * True when the browser is talking to the Turso auth backend rather than
+ * Supabase Auth. The password flows (reset / change) are the one place the two
+ * backends are NOT API-compatible — Supabase Auth owned recovery emails and
+ * session-scoped password writes, and our replacement needs an explicit token
+ * or the current password. Everything else goes through the shim untouched.
+ */
+export function tursoAuthBrowserActive(): boolean {
+    return process.env.NEXT_PUBLIC_EMPIRE_AUTH_BACKEND === 'turso'
+}
+
 export function createClient() {
     if (supabaseInstance) {
         return supabaseInstance

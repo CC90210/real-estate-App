@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { tursoAuthBrowserActive } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -15,9 +16,23 @@ export default function ResetPasswordPage() {
     const [showPassword, setShowPassword] = useState(false)
     const [done, setDone] = useState(false)
     const [sessionStatus, setSessionStatus] = useState<'checking' | 'ready' | 'invalid'>('checking')
+    // Turso auth carries the grant in the link itself (single-use token, hashed
+    // server side) instead of in a recovery session. Read it once on mount —
+    // useSearchParams would force this page into a Suspense boundary.
+    const [tursoToken, setTursoToken] = useState<string | null>(null)
 
     useEffect(() => {
         let cancelled = false
+
+        if (tursoAuthBrowserActive()) {
+            const token = new URLSearchParams(window.location.search).get('turso_token')
+            setTursoToken(token)
+            // Validity is proven by the server when the new password is submitted;
+            // burning the token just to render a form would make every refresh of
+            // this page invalidate the user's only link.
+            setSessionStatus(token ? 'ready' : 'invalid')
+            return
+        }
 
         void fetch('/api/auth/update-password', { cache: 'no-store' })
             .then(response => response.json() as Promise<{ ready?: boolean }>)
@@ -48,16 +63,26 @@ export default function ResetPasswordPage() {
 
         setLoading(true)
         try {
-            const response = await fetch('/api/auth/update-password', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password }),
-            })
+            const useTurso = tursoAuthBrowserActive()
+            const response = useTurso
+                ? await fetch('/api/auth/turso-reset-confirm', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: tursoToken, password }),
+                })
+                : await fetch('/api/auth/update-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password }),
+                })
             const result = await response.json() as { error?: string }
             if (!response.ok) throw new Error(result.error || 'Unable to update password.')
             setDone(true)
             toast.success('Password updated successfully!')
-            setTimeout(() => window.location.replace('/dashboard'), 1200)
+            // Turso reset never signs you in — the link proves you own the inbox,
+            // not that you hold a session. Send them to login, not the dashboard,
+            // which would just bounce off the middleware.
+            setTimeout(() => window.location.replace(useTurso ? '/login' : '/dashboard'), 1200)
         } catch (err: unknown) {
             toast.error(err instanceof Error ? err.message : 'Unable to update password.')
         } finally {
@@ -101,7 +126,9 @@ export default function ResetPasswordPage() {
                                 </div>
                                 <h2 className="text-xl font-bold text-slate-900">Password Reset!</h2>
                                 <p className="text-sm text-slate-500">
-                                    Your password has been updated. Taking you to your dashboard...
+                                    {tursoToken
+                                        ? 'Your password has been updated. Taking you to sign in...'
+                                        : 'Your password has been updated. Taking you to your dashboard...'}
                                 </p>
                             </div>
                         ) : (

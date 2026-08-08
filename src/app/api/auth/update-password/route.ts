@@ -1,9 +1,22 @@
+/**
+ * Supabase-Auth password recovery (pre-cutover only).
+ *
+ * Under EMPIRE_AUTH_BACKEND=turso this endpoint 404s: recovery no longer runs
+ * on a Supabase session, it runs on the single-use token consumed by
+ * /api/auth/turso-reset-confirm. Without the gate this would survive the
+ * cutover as a live route that throws on a missing Supabase URL — a 500 where
+ * a "this isn't the door" is the honest answer.
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { PASSWORD_RECOVERY_COOKIE } from '@/lib/password-recovery'
+import { tursoAuthActive } from '@/lib/supabase/turso-auth'
 
 export async function GET() {
+    if (tursoAuthActive()) {
+        return NextResponse.json({ error: 'not found' }, { status: 404 })
+    }
     const cookieStore = await cookies()
     return NextResponse.json(
         { ready: cookieStore.get(PASSWORD_RECOVERY_COOKIE)?.value === 'ready' },
@@ -12,6 +25,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+    if (tursoAuthActive()) {
+        return NextResponse.json({ error: 'not found' }, { status: 404 })
+    }
     const cookieStore = await cookies()
     if (cookieStore.get(PASSWORD_RECOVERY_COOKIE)?.value !== 'ready') {
         return NextResponse.json({ error: 'Password reset authorization is missing or expired.' }, { status: 403 })

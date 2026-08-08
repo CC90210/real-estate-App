@@ -22,7 +22,7 @@
  */
 
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { compare } from "bcryptjs";
+import { compare, hash } from "bcryptjs";
 import type { Client } from "@libsql/client";
 
 export const SESSION_COOKIE = "propflow_session";
@@ -101,7 +101,67 @@ export async function verifyPassword(
   };
 }
 
+/**
+ * Verify a password for a KNOWN user id. Used by the change-password route,
+ * where the caller is already authenticated by the session cookie, so there is
+ * nothing to enumerate — but the current password still has to be proven
+ * (a stolen session must not be enough to take over the account).
+ *
+ * Returns false for a missing/banned/deleted user or an empty stored hash, so
+ * a password-less account can never be "confirmed" by an empty string.
+ */
+export async function verifyPasswordForUserId(
+  client: Client, userId: string, password: string,
+): Promise<boolean> {
+  const res = await client.execute({
+    sql: `SELECT encrypted_password FROM "_supabase_auth_users"
+          WHERE id = ? AND encrypted_password IS NOT NULL
+            AND encrypted_password <> '' AND (banned_until IS NULL OR banned_until < ?)
+            AND deleted_at IS NULL LIMIT 1`,
+    args: [userId, new Date().toISOString()],
+  });
+  const stored = res.rows[0]?.encrypted_password;
+  if (typeof stored !== "string" || !stored) return false;
+  return compare(password, stored);
+}
+
+/**
+ * Bcrypt cost 10 — the same cost Supabase Auth used, so a rehashed password is
+ * indistinguishable from a migrated one and a future export stays importable.
+ */
+export const PASSWORD_BCRYPT_COST = 10;
+
+export function hashPassword(password: string): Promise<string> {
+  return hash(password, PASSWORD_BCRYPT_COST);
+}
+
+/** Shared policy for every place that accepts a NEW password. */
+export const PASSWORD_MIN_LENGTH = 8;
+export const PASSWORD_MAX_LENGTH = 128;
+
+export function passwordPolicyError(password: unknown): string | null {
+  if (typeof password !== "string") return "Password is required.";
+  if (password.length < PASSWORD_MIN_LENGTH || password.length > PASSWORD_MAX_LENGTH) {
+    return `Password must be between ${PASSWORD_MIN_LENGTH} and ${PASSWORD_MAX_LENGTH} characters.`;
+  }
+  return null;
+}
+
 export function tursoAuthActive(): boolean {
   return process.env.EMPIRE_AUTH_BACKEND === "turso" && !!process.env.AUTH_SESSION_SECRET;
+}
+
+/**
+ * Open a Turso connection for the auth store, or throw. Callers translate the
+ * throw into a 503 — never into a success shape, and never into a silent
+ * fallback to Supabase Auth, which will not exist after the cutover.
+ */
+export function authDbConfig(): { url: string; authToken: string } {
+  const url = process.env.TURSO_DATABASE_URL;
+  const authToken = process.env.TURSO_AUTH_TOKEN;
+  if (!url || !authToken) {
+    throw new Error("TURSO_DATABASE_URL/TURSO_AUTH_TOKEN missing — auth backend unavailable");
+  }
+  return { url, authToken };
 }
 

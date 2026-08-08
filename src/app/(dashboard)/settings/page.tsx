@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { createClient, tursoAuthBrowserActive } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -385,10 +385,34 @@ export default function SettingsPage() {
             toast.error("New passwords do not match.");
             return;
         }
+        if (passwords.new.length < 8) {
+            toast.error("New password must be at least 8 characters.");
+            return;
+        }
         setIsSaving(true);
         try {
-            const { error } = await supabase.auth.updateUser({ password: passwords.new });
-            if (error) throw error;
+            if (tursoAuthBrowserActive()) {
+                // Turso auth has no session-scoped password write. The route
+                // re-checks the current password against the stored bcrypt hash
+                // before it will touch the account.
+                if (!passwords.current) {
+                    toast.error("Enter your current password to change it.");
+                    return;
+                }
+                const response = await fetch('/api/auth/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        currentPassword: passwords.current,
+                        newPassword: passwords.new,
+                    }),
+                });
+                const result = await response.json().catch(() => ({})) as { error?: string };
+                if (!response.ok) throw new Error(result.error || 'Unable to update the password.');
+            } else {
+                const { error } = await supabase.auth.updateUser({ password: passwords.new });
+                if (error) throw error;
+            }
             toast.success("Password updated successfully.");
             setPasswords({ current: '', new: '', confirm: '' });
         } catch (error: any) {
