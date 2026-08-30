@@ -23,7 +23,7 @@
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { compare, hash } from "bcryptjs";
-import type { Client } from "@libsql/client";
+import type { Client } from "@libsql/client/web";
 
 export const SESSION_COOKIE = "propflow_session";
 const SESSION_TTL_S = 60 * 60 * 24 * 7; // 7 days, matching Supabase's default refresh window

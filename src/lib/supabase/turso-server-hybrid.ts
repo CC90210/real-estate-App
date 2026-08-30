@@ -15,7 +15,7 @@ import "server-only";
  * Server-only by construction: @libsql/client's native bindings must never be
  * traced into a browser bundle (see the nostalgic-requests build failure).
  */
-import { createClient as createLibsql, type Client } from "@libsql/client";
+import { createClient as createLibsql, type Client } from "@libsql/client/web";
 import { createTursoPostgrest } from "./turso-postgrest";
 import { PROPFLOW_RPC, type RpcContext } from "./turso-rpc-shim";
 import { r2Configured, r2StorageSurface } from "./r2-storage";

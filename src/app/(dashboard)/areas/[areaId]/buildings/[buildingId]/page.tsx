@@ -13,7 +13,7 @@ type PropertyStatus = 'available' | 'rented' | 'pending' | 'maintenance';
 
 export const dynamic = 'force-dynamic';
 
-export default async function BuildingDetailsPage({ params }: { params: { areaId: string, buildingId: string } }) {
+export default async function BuildingDetailsPage({ params }: { params: Promise<{ areaId: string, buildingId: string }> }) {
     const supabase = await createClient();
     const { areaId, buildingId } = await params;
 

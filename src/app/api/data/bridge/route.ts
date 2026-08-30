@@ -15,7 +15,7 @@
  * Turso mode only; otherwise 404 (the browser shim isn't active either).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, type Client } from "@libsql/client";
+import { createClient, type Client } from "@libsql/client/web";
 import { SCOPE_MAP } from "@/lib/supabase/turso-bridge-scope";
 import { guardedColumnsIn } from "@/lib/supabase/turso-bridge-guarded-columns";
 import { SESSION_COOKIE, verifySession } from "@/lib/supabase/turso-auth";

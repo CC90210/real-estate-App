@@ -11,7 +11,7 @@
  * to Supabase while tables live in Turso would split writes across databases.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, type Client } from "@libsql/client";
+import { createClient, type Client } from "@libsql/client/web";
 import { SESSION_COOKIE, verifySession } from "@/lib/supabase/turso-auth";
 import { PROPFLOW_RPC } from "@/lib/supabase/turso-rpc-shim";
 

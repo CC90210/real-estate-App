@@ -60,3 +60,7 @@ lint-output.txt
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Cloudflare/OpenNext build output
+.open-next/
+.wrangler/

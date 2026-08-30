@@ -31,7 +31,7 @@
  *     scale).
  */
 
-import type { Client, InValue } from "@libsql/client";
+import type { Client, InValue } from "@libsql/client/web";
 
 // ---------------------------------------------------------------- result types
 

@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Building2, Mail, Lock, User, ArrowRight, ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
-export default function PlatformSignupPage({ params }: { params: { token: string } }) {
+export default function PlatformSignupPage(props: { params: Promise<{ token: string }> }) {
+    const params = use(props.params);
     const router = useRouter()
     const [loading, setLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)

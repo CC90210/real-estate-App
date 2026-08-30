@@ -14,7 +14,7 @@ import { WorkflowTracker } from '@/components/properties/WorkflowTracker';
 
 export const dynamic = 'force-dynamic';
 
-export default async function PropertyDetailsPage({ params }: { params: { id: string } }) {
+export default async function PropertyDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const supabase = await createClient();
     const { id } = await params;
 

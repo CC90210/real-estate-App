@@ -10,7 +10,7 @@
  * House pattern: breeze-portal app/api/auth/turso-reset-request/route.ts.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@libsql/client";
+import { createClient } from "@libsql/client/web";
 import { createHash, randomBytes } from "node:crypto";
 import { sendPlatformEmail } from "@/lib/email-server";
 import { rateLimited, clientIp } from "@/lib/turso-rate-limit";

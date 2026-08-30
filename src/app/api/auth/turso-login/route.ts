@@ -6,7 +6,7 @@
  * on; per-IP throttled so bcrypt can't be used as a password oracle.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@libsql/client";
+import { createClient } from "@libsql/client/web";
 import {
   SESSION_COOKIE,
   signSession,

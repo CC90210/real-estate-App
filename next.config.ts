@@ -4,6 +4,12 @@ const nextConfig: NextConfig = {
   // Disable x-powered-by header
   poweredByHeader: false,
 
+  // Cloudflare migration (2026-08-29): tracing drops hrana-client's ws shim,
+  // breaking the OpenNext bundle step; its default export is dependency-free.
+  outputFileTracingIncludes: {
+    "/**/*": ["./node_modules/@libsql/isomorphic-ws/**/*"],
+  },
+
   // Allow large file uploads (screening reports can be 40MB+)
   experimental: {
     serverActions: {

@@ -8,7 +8,7 @@
  * side, so this is parity, not a new restriction.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@libsql/client";
+import { createClient } from "@libsql/client/web";
 import {
   SESSION_COOKIE,
   authDbConfig,

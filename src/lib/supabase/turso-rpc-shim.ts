@@ -19,7 +19,7 @@ import "server-only";
  * silent no-op, and never a proxy to Supabase, which would split writes across
  * two databases.
  */
-import type { Client } from "@libsql/client";
+import type { Client } from "@libsql/client/web";
 
 export interface RpcContext {
   /** Authenticated auth-user id. profiles.id IS the auth uid in this schema. */
